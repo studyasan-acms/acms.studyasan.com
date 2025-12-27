@@ -1,0 +1,103 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .btn-3d {
+    @apply relative transition-all duration-75 active:translate-y-1 active:shadow-none;
+  }
+
+  .btn-3d-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-500 rounded-xl px-6 py-3 font-bold;
+    box-shadow: 0 6px 0 0 #1e40af;
+  }
+
+  .btn-3d-success {
+    @apply bg-green-500 text-white hover:bg-green-400 rounded-xl px-6 py-3 font-bold;
+    box-shadow: 0 6px 0 0 #15803d;
+  }
+
+  .btn-3d-danger {
+    @apply bg-red-600 text-white hover:bg-red-500 rounded-xl px-6 py-3 font-bold;
+    box-shadow: 0 6px 0 0 #991b1b;
+  }
+
+  .btn-3d-neutral {
+    @apply bg-white text-gray-800 hover:bg-gray-100 rounded-xl px-6 py-3 font-bold;
+    box-shadow: 0 6px 0 0 #d1d5db;
+  }
+
+  .gamified-card {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl;
+  }
+
+  .floating {
+    animation: floating 4s ease-in-out infinite;
+  }
+
+  @keyframes floating {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-15px); }
+    100% { transform: translateY(0px); }
+  }
+
+  .animate-spin-slow {
+    animation: spin 3s linear infinite;
+  }
+}

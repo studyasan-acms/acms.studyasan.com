@@ -1,0 +1,690 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id             Int            @id @default(autoincrement())
+  name           String         @unique
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  students       Student[]
+  subjects       Subject[]
+  class_sessions ClassSession[]
+
+  @@map("board")
+}
+
+model Class {
+  id             Int            @id @default(autoincrement())
+  name           String         @unique
+  created_at     DateTime       @default(now())
+  updated_at     DateTime       @updatedAt
+  students       Student[]
+  subjects       Subject[]
+  class_sessions ClassSession[]
+
+  @@map("class")
+}
+
+model User {
+  id                  Int                      @id @default(autoincrement())
+  name                String
+  email               String                   @unique
+  phone               String
+  password            String
+  role                Role                     @default(STUDENT)
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
+  student             Student?
+  teacher             Teacher?
+  notifications       Notification[]
+  created_sessions    ClassSession[]           @relation("SessionCreator")
+  session_attendances ClassSessionAttendance[] @relation("SessionAttendances")
+  created_tests       Test[]
+  graded_attempts     TestAttempt[]
+  chat_participations ChatParticipant[]
+  sent_messages       Message[]
+  created_test_series TestSeries[]             @relation("TestSeriesCreator")
+  created_activity_groups ActivityGroup[]      @relation("ActivityGroupCreator")
+  created_activities  Activity[]               @relation("ActivityCreator")
+  quiz_sessions_hosted QuizSession[]
+
+  @@map("user")
+}
+
+enum Role {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum BloodGroup {
+  A_POS
+  A_NEG
+  B_POS
+  B_NEG
+  AB_POS
+  AB_NEG
+  O_POS
+  O_NEG
+}
+
+model Student {
+  id                       Int                      @id @default(autoincrement())
+  user_id                  Int                      @unique
+  class_id                 Int?
+  board_id                 Int?
+  date_of_birth            DateTime?
+  gender                   Gender?
+  school                   String?
+  blood_group              BloodGroup?
+  address                  StudentAddress?
+  created_at               DateTime                 @default(now())
+  updated_at               DateTime                 @updatedAt
+  user                     User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  class                    Class?                   @relation(fields: [class_id], references: [id])
+  board                    Board?                   @relation(fields: [board_id], references: [id])
+  enrollments              Enrollment[]
+  module_progress          StudentModuleProgress[]
+  test_attempts            TestAttempt[]
+  test_series_enrollments  TestSeriesEnrollment[]
+  activity_enrollments     ActivityEnrollment[]
+  activity_attempts        ActivityAttempt[]
+
+  @@map("students")
+}
+
+enum Gender {
+  M
+  F
+  OTHER
+}
+
+model Subject {
+  id                        Int                      @id @default(autoincrement())
+  name                      String
+  cover_image               String?
+  class_id                  Int?
+  board_id                  Int?
+  syllabus                  Json?
+  is_course                 Boolean                  @default(false)
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+  class                     Class?                   @relation(fields: [class_id], references: [id])
+  board                     Board?                   @relation(fields: [board_id], references: [id])
+  enrollments               Enrollment[]
+  teacher_subject_junctions TeacherSubjectJunction[]
+  class_sessions            ClassSession[]
+  student_progress          StudentModuleProgress[]
+  tests                     Test[]
+
+  @@map("subjects")
+}
+
+model Enrollment {
+  id         Int      @id @default(autoincrement())
+  student_id Int
+  subject_id Int
+  created_on DateTime @default(now())
+  updated_on DateTime @updatedAt
+  student    Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, subject_id])
+  @@map("enrollments")
+}
+
+model Teacher {
+  id                        Int                      @id @default(autoincrement())
+  user_id                   Int                      @unique
+  salary                    Int?
+  salary_currency_id        Int?
+  salary_currency           Currency?                @relation(fields: [salary_currency_id], references: [id])
+  qualification             String?
+  gender                    Gender?
+  experience                String?
+  address                   TeacherAddress?
+  created_at                DateTime                 @default(now())
+  updated_at                DateTime                 @updatedAt
+  user                      User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  teacher_subject_junctions TeacherSubjectJunction[]
+  class_sessions            ClassSession[]
+
+  @@map("teachers")
+}
+
+enum SessionMode {
+  ONLINE
+  OFFLINE
+}
+
+enum AttendanceRole {
+  TEACHER
+  STUDENT
+}
+
+model ClassSession {
+  id              Int                      @id @default(autoincrement())
+  teacher_id      Int
+  subject_id      Int
+  class_id        Int?
+  board_id        Int?
+  mode            SessionMode
+  location        String?
+  meeting_link    String?
+  google_event_id String?
+  start_time      DateTime
+  end_time        DateTime
+  is_recurring    Boolean                  @default(false)
+  recurrence_rule Json?
+  created_by      Int
+  created_at      DateTime                 @default(now())
+  updated_at      DateTime                 @updatedAt
+  teacher         Teacher                  @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  subject         Subject                  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  class           Class?                   @relation(fields: [class_id], references: [id])
+  board           Board?                   @relation(fields: [board_id], references: [id])
+  creator         User                     @relation("SessionCreator", fields: [created_by], references: [id])
+  attendances     ClassSessionAttendance[]
+
+  @@map("class_sessions")
+}
+
+model ClassSessionAttendance {
+  id               Int            @id @default(autoincrement())
+  class_session_id Int
+  user_id          Int
+  role             AttendanceRole
+  joined_at        DateTime?
+  left_at          DateTime?
+  duration_minutes Int?
+  created_at       DateTime       @default(now())
+  updated_at       DateTime       @updatedAt
+  class_session    ClassSession   @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
+  user             User           @relation("SessionAttendances", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([class_session_id, user_id])
+  @@map("class_session_attendance")
+}
+
+model TeacherSubjectJunction {
+  id         Int      @id @default(autoincrement())
+  teacher_id Int
+  subject_id Int
+  created_on DateTime @default(now())
+  updated_on DateTime @updatedAt
+  teacher    Teacher  @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+
+  @@unique([teacher_id, subject_id])
+  @@map("teacher_subject_junction")
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  user_id     Int
+  type        NotificationType
+  title       String
+  description String?
+  is_read     Boolean          @default(false)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+  user        User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  SUCCESS
+}
+
+model StudentModuleProgress {
+  id                 Int       @id @default(autoincrement())
+  student_id         Int
+  subject_id         Int
+  module_id          Int
+  progress_percent   Int       @default(0)
+  is_completed       Boolean   @default(false)
+  time_spent_minutes Int       @default(0)
+  completed_on       DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  student            Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  subject            Subject   @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+
+  @@unique([student_id, subject_id, module_id])
+  @@map("student_module_progress")
+}
+
+model Test {
+  id               Int           @id @default(autoincrement())
+  title            String
+  description      String?
+  subject_id       Int?          // Optional - for subject-based tests
+  test_series_id   Int?          // Optional - for test series tests
+  created_by       Int
+  total_marks      Int
+  passing_marks    Int
+  duration_minutes Int
+  available_from   DateTime
+  available_until  DateTime
+  is_published     Boolean       @default(false)
+  created_at       DateTime      @default(now())
+  updated_at       DateTime      @updatedAt
+  subject          Subject?      @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  test_series      TestSeries?   @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  creator          User          @relation(fields: [created_by], references: [id])
+  questions        Question[]
+  test_attempts    TestAttempt[]
+
+  @@map("tests")
+}
+
+enum QuestionType {
+  MCQ
+  TRUE_FALSE
+  SHORT_ANSWER
+  LONG_ANSWER
+}
+
+model Question {
+  id             Int          @id @default(autoincrement())
+  test_id        Int
+  question_type  QuestionType
+  question_text  String
+  options        Json?
+  correct_answer String?
+  marks          Int
+  order          Int
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+  test           Test         @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  answers        Answer[]
+
+  @@map("questions")
+}
+
+model TestAttempt {
+  id           Int       @id @default(autoincrement())
+  test_id      Int
+  student_id   Int
+  started_at   DateTime  @default(now())
+  submitted_at DateTime?
+  score        Int?
+  total_marks  Int
+  is_passed    Boolean?
+  is_graded    Boolean   @default(false)
+  is_practice  Boolean   @default(false)  // Practice mode - no scoring, unlimited attempts
+  graded_by    Int?
+  graded_at    DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  test         Test      @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  student      Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  grader       User?     @relation(fields: [graded_by], references: [id])
+  answers      Answer[]
+
+  @@index([test_id, student_id, is_practice])
+  @@map("test_attempts")
+}
+
+model Answer {
+  id              Int         @id @default(autoincrement())
+  test_attempt_id Int
+  question_id     Int
+  answer_text     String?
+  marks_obtained  Int?
+  is_correct      Boolean?
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+  test_attempt    TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
+  question        Question    @relation(fields: [question_id], references: [id], onDelete: Cascade)
+
+  @@unique([test_attempt_id, question_id])
+  @@map("answers")
+}
+
+model Chat {
+  id           Int               @id @default(autoincrement())
+  created_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+  participants ChatParticipant[]
+  messages     Message[]
+
+  @@map("chats")
+}
+
+model ChatParticipant {
+  id        Int      @id @default(autoincrement())
+  chat_id   Int
+  user_id   Int
+  joined_at DateTime @default(now())
+  chat      Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([chat_id, user_id])
+  @@map("chat_participants")
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  PDF
+  FILE
+}
+
+model Message {
+  id             Int         @id @default(autoincrement())
+  chat_id        Int
+  sender_id      Int
+  content        String?
+  message_type   MessageType @default(TEXT)
+  attachment_url String?
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+  chat           Chat        @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+  sender         User        @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model Currency {
+  id        Int       @id @default(autoincrement())
+  code      String    @unique
+  name      String
+  symbol    String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  teachers  Teacher[]
+
+  @@map("currency")
+}
+
+model Country {
+  id               Int              @id @default(autoincrement())
+  code             String           @unique
+  name             String
+  states           State[]
+  addresses        StudentAddress[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  teacherAddresses TeacherAddress[]
+
+  @@map("country")
+}
+
+model State {
+  id        Int              @id @default(autoincrement())
+  name      String
+  countryId Int
+  country   Country          @relation(fields: [countryId], references: [id])
+  cities    City[]
+  addresses StudentAddress[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  teacherAddresses TeacherAddress[]
+
+  @@unique([name, countryId])
+  @@map("state")
+}
+
+model City {
+  id        Int              @id @default(autoincrement())
+  name      String
+  stateId   Int
+  state     State            @relation(fields: [stateId], references: [id])
+  addresses StudentAddress[]
+
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  teacherAddresses TeacherAddress[]
+
+  @@unique([name, stateId])
+  @@map("city")
+}
+
+model StudentAddress {
+  id          Int    @id @default(autoincrement())
+  studentId   Int    @unique
+  addressLine String
+  postalCode  String
+
+  countryId Int
+  stateId   Int
+  cityId    Int
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id])
+  state   State   @relation(fields: [stateId], references: [id])
+  city    City    @relation(fields: [cityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_address")
+}
+
+model TeacherAddress {
+  id          Int    @id @default(autoincrement())
+  teacherId   Int    @unique
+  addressLine String
+  postalCode  String
+
+  countryId Int
+  stateId   Int
+  cityId    Int
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  country Country @relation(fields: [countryId], references: [id])
+  state   State   @relation(fields: [stateId], references: [id])
+  city    City    @relation(fields: [cityId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("teacher_address")
+}
+
+// Test Series - Independent test collections not tied to class/board/subject
+model TestSeries {
+  id           Int      @id @default(autoincrement())
+  title        String
+  description  String?
+  cover_image  String?
+  price        Int?     // Optional pricing for paid test series
+  is_published Boolean  @default(false)
+  created_by   Int
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  
+  creator      User     @relation("TestSeriesCreator", fields: [created_by], references: [id])
+  tests        Test[]
+  enrollments  TestSeriesEnrollment[]
+
+  @@map("test_series")
+}
+
+// Test Series Enrollment - Links students to test series
+model TestSeriesEnrollment {
+  id             Int        @id @default(autoincrement())
+  test_series_id Int
+  student_id     Int
+  enrolled_at    DateTime   @default(now())
+  
+  test_series    TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  student        Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([test_series_id, student_id])
+  @@map("test_series_enrollments")
+}
+
+// Activity Types - Educational games for students
+enum ActivityType {
+  MATCH_PAIRS          // Match items from two columns
+  WORD_SEARCH          // Find words in a grid
+  CROSSWORD            // Fill crossword puzzle
+  FILL_BLANKS          // Fill in the missing words
+  DRAG_DROP            // Drag and drop items to correct positions
+  MEMORY_GAME          // Match pairs of cards
+  QUIZ_GAME            // Multiple choice questions with timer
+  SEQUENCE_ORDER       // Arrange items in correct order
+  TRUE_FALSE           // True or False questions
+  PICTURE_REVEAL       // Reveal picture by answering questions
+}
+
+// Activity Group - Collection of activities for organizing
+model ActivityGroup {
+  id          Int        @id @default(autoincrement())
+  name        String
+  description String?
+  cover_image String?
+  is_active   Boolean    @default(true)
+  created_by  Int
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  
+  creator     User       @relation("ActivityGroupCreator", fields: [created_by], references: [id])
+  activities  Activity[]
+
+  @@map("activity_groups")
+}
+
+// Activity - Individual educational game
+model Activity {
+  id              Int            @id @default(autoincrement())
+  group_id        Int
+  title           String
+  description     String?
+  instructions    String?        // How to play the game
+  cover_image     String?
+  activity_type   ActivityType
+  difficulty      Difficulty     @default(MEDIUM)
+  estimated_time  Int?           // Estimated time in minutes
+  points          Int            @default(100)  // Points awarded on completion
+  is_published    Boolean        @default(false)
+  created_by      Int
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+  
+  group           ActivityGroup  @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  creator         User           @relation("ActivityCreator", fields: [created_by], references: [id])
+  items           ActivityItem[]
+  enrollments     ActivityEnrollment[]
+  attempts        ActivityAttempt[]
+  quiz_sessions   QuizSession[]
+
+  @@map("activities")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+// Activity Item - Individual items/questions for each activity
+model ActivityItem {
+  id          Int      @id @default(autoincrement())
+  activity_id Int
+  content     Json     // Flexible JSON structure for different activity types
+  order       Int
+  points      Int      @default(10)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  responses   ActivityResponse[]
+
+  @@map("activity_items")
+}
+
+// Activity Enrollment - Students enrolled in activities
+model ActivityEnrollment {
+  id          Int      @id @default(autoincrement())
+  activity_id Int
+  student_id  Int
+  enrolled_at DateTime @default(now())
+  
+  activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  student     Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([activity_id, student_id])
+  @@map("activity_enrollments")
+}
+
+// Activity Attempt - Student's attempt at an activity
+model ActivityAttempt {
+  id                Int                @id @default(autoincrement())
+  activity_id       Int
+  student_id        Int
+  started_at        DateTime           @default(now())
+  completed_at      DateTime?
+  score             Int                @default(0)
+  max_score         Int
+  time_taken        Int?               // Time taken in seconds
+  is_completed      Boolean            @default(false)
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  
+  activity          Activity           @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  student           Student            @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  quiz_session_id   Int?
+  quiz_session      QuizSession?       @relation(fields: [quiz_session_id], references: [id])
+  responses         ActivityResponse[]
+
+  @@index([activity_id, student_id])
+  @@index([student_id, score])
+  @@map("activity_attempts")
+}
+
+// Activity Response - Student's response to activity items
+model ActivityResponse {
+  id          Int             @id @default(autoincrement())
+  attempt_id  Int
+  item_id     Int
+  response    Json            // Student's answer/response
+  is_correct  Boolean
+  points      Int             @default(0)
+  time_taken  Int?            // Time taken in seconds
+  created_at  DateTime        @default(now())
+  
+  attempt     ActivityAttempt @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+  item        ActivityItem    @relation(fields: [item_id], references: [id], onDelete: Cascade)
+
+  @@unique([attempt_id, item_id])
+  @@map("activity_responses")
+}
+
+enum QuizStatus {
+  LOBBY
+  IN_PROGRESS
+  FINISHED
+}
+
+model QuizSession {
+  id                     Int           @id @default(autoincrement())
+  activity_id            Int
+  host_id                Int
+  status                 QuizStatus    @default(LOBBY)
+  join_code              String        @unique
+  current_question_index Int           @default(-1)
+  start_time             DateTime      @default(now())
+  end_time               DateTime?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  activity               Activity      @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  host                   User          @relation(fields: [host_id], references: [id])
+  attempts               ActivityAttempt[]
+
+  @@map("quiz_sessions")
+}
