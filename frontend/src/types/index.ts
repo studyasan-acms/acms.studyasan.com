@@ -590,6 +590,8 @@ export interface Question {
   test_id: number;
   question_type: QuestionType;
   question_text: string;
+  media_url?: string | null;
+  media_type?: string | null;
   options: string[] | null;
   correct_answer: string | null;
   marks: number;
@@ -639,6 +641,10 @@ export interface Answer {
   test_attempt_id: number;
   question_id: number;
   answer_text: string | null;
+  answer_media_url?: string | null;
+  answer_media_type?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   marks_obtained: number | null;
   is_correct: boolean | null;
   created_at: string;
@@ -712,6 +718,8 @@ export interface GenerateQuestionsData {
 export interface CreateQuestionData {
   question_type: QuestionType;
   question_text: string;
+  media_url?: string;
+  media_type?: string;
   options?: string[];
   correct_answer: string;
   marks: number;
@@ -719,6 +727,8 @@ export interface CreateQuestionData {
 
 export interface UpdateQuestionData {
   question_text?: string;
+  media_url?: string;
+  media_type?: string;
   options?: string[];
   correct_answer?: string;
   marks?: number;
@@ -727,6 +737,8 @@ export interface UpdateQuestionData {
 export interface SubmitAnswerData {
   question_id: number;
   answer_text: string;
+  answer_media_url?: string;
+  answer_media_type?: string;
 }
 
 export interface GradeAnswerData {

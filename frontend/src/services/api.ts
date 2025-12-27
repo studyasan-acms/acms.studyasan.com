@@ -604,9 +604,29 @@ export const testService = {
     return response.data;
   },
 
+  // Add question with media upload
+  addQuestionWithMedia: async (testId: number, formData: FormData): Promise<{ success: boolean; data: Question }> => {
+    const response = await api.post(`/tests/${testId}/questions`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   // Update question
   updateQuestion: async (questionId: number, data: UpdateQuestionData): Promise<{ success: boolean; data: Question }> => {
     const response = await api.put(`/questions/${questionId}`, data);
+    return response.data;
+  },
+
+  // Update question with media upload
+  updateQuestionWithMedia: async (questionId: number, formData: FormData): Promise<{ success: boolean; data: Question }> => {
+    const response = await api.put(`/questions/${questionId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -633,6 +653,16 @@ export const testAttemptService = {
   // Submit answer
   submitAnswer: async (attemptId: number, data: SubmitAnswerData): Promise<{ success: boolean; data: Answer }> => {
     const response = await api.post(`/test-attempts/${attemptId}/answers`, data);
+    return response.data;
+  },
+
+  // Submit answer with media upload
+  submitAnswerWithMedia: async (attemptId: number, formData: FormData): Promise<{ success: boolean; data: Answer }> => {
+    const response = await api.post(`/test-attempts/${attemptId}/answers`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 

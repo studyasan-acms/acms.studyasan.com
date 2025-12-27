@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
+import MediaUpload from "@/components/ui/MediaUpload";
 
 export default function CreateTestPage() {
   const navigate = useNavigate();
@@ -62,6 +63,14 @@ export default function CreateTestPage() {
     correct_answer: "",
     marks: 2,
   });
+
+  const [questionMediaFile, setQuestionMediaFile] = useState<File | null>(null);
+  const [questionMediaUrl, setQuestionMediaUrl] = useState<string | null>(null);
+  const [questionMediaType, setQuestionMediaType] = useState<string | null>(null);
+  
+  const [optionMedia, setOptionMedia] = useState<{
+    [index: number]: { file: File | null; url: string | null; type: string | null };
+  }>({});
 
   const [successOpen, setSuccessOpen] = useState(false);
   const [errorOpen, setErrorOpen] = useState(false);
@@ -226,7 +235,60 @@ export default function CreateTestPage() {
 
     try {
       setLoading(true);
-      await testService.addQuestion(testId, manualQuestion);
+
+      const formData = new FormData();
+      formData.append("question_type", manualQuestion.question_type);
+      formData.append("question_text", manualQuestion.question_text);
+      formData.append("correct_answer", manualQuestion.correct_answer);
+      formData.append("marks", manualQuestion.marks.toString());
+
+      // Build options with media
+      if (manualQuestion.options && manualQuestion.question_type === "MCQ") {
+        const optionsWithMedia = manualQuestion.options.map((text, index) => {
+          const media = optionMedia[index];
+          return {
+            text,
+            media_url: media?.url || null,
+            media_type: media?.type || null,
+          };
+        });
+        formData.append("options", JSON.stringify(optionsWithMedia));
+
+        // Append option media files
+        Object.keys(optionMedia).forEach((key) => {
+          const index = parseInt(key);
+          const media = optionMedia[index];
+          if (media?.file) {
+            formData.append(`option_media_${index}`, media.file);
+          }
+        });
+      } else if (manualQuestion.options) {
+        formData.append("options", JSON.stringify(manualQuestion.options));
+      }
+
+      if (questionMediaFile) {
+        formData.append("media", questionMediaFile);
+      } else if (questionMediaUrl) {
+        formData.append("media_url", questionMediaUrl);
+        if (questionMediaType) {
+          formData.append("media_type", questionMediaType);
+        }
+      }
+
+      // Debug logging
+      console.log("=== Question Form Data ===");
+      console.log("Question Text:", manualQuestion.question_text);
+      console.log("Question Media File:", questionMediaFile);
+      console.log("Question Media URL:", questionMediaUrl);
+      console.log("Question Media Type:", questionMediaType);
+      console.log("Options:", manualQuestion.options);
+      console.log("Option Media:", optionMedia);
+      console.log("FormData entries:");
+      for (let pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+      
+      await testService.addQuestionWithMedia(testId, formData);
 
       setSuccessMessage("Question added successfully!");
       setSuccessOpen(true);
@@ -238,6 +300,10 @@ export default function CreateTestPage() {
         correct_answer: "",
         marks: 2,
       });
+      setQuestionMediaFile(null);
+      setQuestionMediaUrl(null);
+      setQuestionMediaType(null);
+      setOptionMedia({});
     } catch (error) {
       console.error("Error adding question:", error);
       setErrorMessage("Failed to add question.");
@@ -618,37 +684,93 @@ export default function CreateTestPage() {
                 }
               />
 
+              <MediaUpload
+                label="Question Media (Optional)"
+                value={questionMediaUrl}
+                mediaType={questionMediaType}
+                onChange={(file, url, type) => {
+                  setQuestionMediaFile(file);
+                  setQuestionMediaUrl(url);
+                  setQuestionMediaType(type);
+                }}
+              />
+
               {manualQuestion.question_type === "MCQ" && (
                 <>
                   <Label>Options</Label>
                   {manualQuestion.options?.map((opt, index) => (
-                    <Input
-                      key={index}
-                      value={opt}
-                      onChange={(e) => {
-                        const newOptions = [...(manualQuestion.options || [])];
-                        newOptions[index] = e.target.value;
-                        setManualQuestion({
-                          ...manualQuestion,
-                          options: newOptions,
-                        });
-                      }}
-                      className="mb-2"
-                    />
+                    <div key={index} className="mb-4 p-3 border rounded-lg bg-gray-50">
+                      <Label className="text-sm text-gray-600 mb-1">
+                        Option {String.fromCharCode(65 + index)}
+                      </Label>
+                      <Input
+                        value={opt}
+                        onChange={(e) => {
+                          const newOptions = [...(manualQuestion.options || [])];
+                          newOptions[index] = e.target.value;
+                          setManualQuestion({
+                            ...manualQuestion,
+                            options: newOptions,
+                          });
+                        }}
+                        className="mb-2"
+                        placeholder={`Option ${String.fromCharCode(65 + index)} text`}
+                      />
+                      <MediaUpload
+                        label={`Option ${String.fromCharCode(65 + index)} Media (Optional)`}
+                        value={optionMedia[index]?.url}
+                        mediaType={optionMedia[index]?.type}
+                        onChange={(file, url, type) => {
+                          setOptionMedia({
+                            ...optionMedia,
+                            [index]: { file, url, type },
+                          });
+                        }}
+                        acceptTypes="image/*"
+                        maxSize={5}
+                      />
+                    </div>
                   ))}
                 </>
               )}
 
               <Label>Correct Answer *</Label>
-              <Input
-                value={manualQuestion.correct_answer}
-                onChange={(e) =>
-                  setManualQuestion({
-                    ...manualQuestion,
-                    correct_answer: e.target.value,
-                  })
-                }
-              />
+              {manualQuestion.question_type === "MCQ" ? (
+                <select
+                  value={manualQuestion.correct_answer}
+                  onChange={(e) =>
+                    setManualQuestion({
+                      ...manualQuestion,
+                      correct_answer: e.target.value,
+                    })
+                  }
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Select correct answer</option>
+                  {manualQuestion.options?.map((opt, idx) => {
+                    const optionText = opt || '';
+                    const optionLetter = String.fromCharCode(65 + idx);
+                    // If option is empty, use just the letter as both label and value
+                    const displayLabel = optionText ? `${optionLetter}. ${optionText}` : `${optionLetter}. (Image only)`;
+                    const optionValue = optionText || optionLetter;
+                    return (
+                      <option key={idx} value={optionValue}>
+                        {displayLabel}
+                      </option>
+                    );
+                  })}
+                </select>
+              ) : (
+                <Input
+                  value={manualQuestion.correct_answer}
+                  onChange={(e) =>
+                    setManualQuestion({
+                      ...manualQuestion,
+                      correct_answer: e.target.value,
+                    })
+                  }
+                />
+              )}
 
               <Label>Marks</Label>
               <Input

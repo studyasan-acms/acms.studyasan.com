@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Clock, AlertTriangle, CheckCircle, FileText, Image as ImageIcon, Video } from 'lucide-react';
 import { testAttemptService } from '@/services/api';
 import type { TestAttempt } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import MediaUpload from '@/components/ui/MediaUpload';
 
 export default function TestAttemptPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -14,6 +15,8 @@ export default function TestAttemptPage() {
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: number]: string }>({});
+  const [answerMediaFiles, setAnswerMediaFiles] = useState<{ [questionId: number]: File | null }>({});
+  const [answerMediaUrls, setAnswerMediaUrls] = useState<{ [questionId: number]: string | null }>({});
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -97,14 +100,19 @@ export default function TestAttemptPage() {
       const response = await testAttemptService.getAttempt(parseInt(attemptId!));
       setAttempt(response.data);
 
-      // Load existing answers
+      // Load existing answers and media
       const existingAnswers: { [key: number]: string } = {};
+      const existingMediaUrls: { [key: number]: string | null } = {};
       response.data.answers?.forEach((answer) => {
         if (answer.answer_text) {
           existingAnswers[answer.question_id] = answer.answer_text;
         }
+        if (answer.answer_media_url) {
+          existingMediaUrls[answer.question_id] = answer.answer_media_url;
+        }
       });
       setAnswers(existingAnswers);
+      setAnswerMediaUrls(existingMediaUrls);
     } catch (error) {
       console.error('Error fetching test attempt:', error);
       alert('Failed to load test');
@@ -114,15 +122,31 @@ export default function TestAttemptPage() {
     }
   };
 
-  const handleAnswerChange = async (questionId: number, answerText: string) => {
+  const handleAnswerChange = async (questionId: number, answerText: string, mediaFile?: File | null, mediaUrl?: string | null) => {
     setAnswers({ ...answers, [questionId]: answerText });
 
     // Auto-save answer
     try {
-      await testAttemptService.submitAnswer(parseInt(attemptId!), {
-        question_id: questionId,
-        answer_text: answerText,
-      });
+      if (mediaFile || mediaUrl) {
+        const formData = new FormData();
+        formData.append("question_id", questionId.toString());
+        formData.append("answer_text", answerText || "");
+        
+        if (mediaFile) {
+          formData.append("answer_media", mediaFile);
+          setAnswerMediaFiles({ ...answerMediaFiles, [questionId]: mediaFile });
+        } else if (mediaUrl) {
+          formData.append("answer_media_url", mediaUrl);
+          setAnswerMediaUrls({ ...answerMediaUrls, [questionId]: mediaUrl });
+        }
+        
+        await testAttemptService.submitAnswerWithMedia(parseInt(attemptId!), formData);
+      } else {
+        await testAttemptService.submitAnswer(parseInt(attemptId!), {
+          question_id: questionId,
+          answer_text: answerText,
+        });
+      }
     } catch (error) {
       console.error('Error saving answer:', error);
     }
@@ -220,29 +244,91 @@ export default function TestAttemptPage() {
             </p>
           </CardHeader>
           <CardContent>
-            <p className="text-lg mb-6">{currentQuestion.question_text}</p>
+            <p className="text-lg mb-4">{currentQuestion.question_text}</p>
+
+            {/* Question Media Display */}
+            {currentQuestion.media_url && (
+              <div className="mb-6 border rounded-lg p-3 bg-gray-50">
+                {currentQuestion.media_type === 'image' && (
+                  <img 
+                    src={currentQuestion.media_url} 
+                    alt="Question" 
+                    className="max-w-full max-h-96 mx-auto rounded"
+                  />
+                )}
+                {currentQuestion.media_type === 'pdf' && (
+                  <div className="flex items-center gap-3">
+                    <FileText className="w-8 h-8 text-red-500" />
+                    <div>
+                      <p className="font-medium">PDF Document</p>
+                      <a 
+                        href={currentQuestion.media_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:underline"
+                      >
+                        View PDF
+                      </a>
+                    </div>
+                  </div>
+                )}
+                {currentQuestion.media_type === 'video' && (
+                  <video 
+                    src={currentQuestion.media_url} 
+                    controls 
+                    className="max-w-full max-h-96 mx-auto rounded"
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                )}
+              </div>
+            )}
 
             {/* MCQ Options */}
             {currentQuestion.question_type === 'MCQ' && currentQuestion.options && (
               <div className="space-y-3">
-                {(currentQuestion.options as string[]).map((option, index) => (
-                  <label
-                    key={index}
-                    className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50"
-                  >
-                    <input
-                      type="radio"
-                      name={`question-${currentQuestion.id}`}
-                      value={option}
-                      checked={answers[currentQuestion.id] === option}
-                      onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                      className="mr-3"
-                    />
-                    <span>
-                      {String.fromCharCode(65 + index)}. {option}
-                    </span>
-                  </label>
-                ))}
+                {(currentQuestion.options as any[]).map((option, index) => {
+                  const optionText = typeof option === 'string' ? option : option.text;
+                  const optionMediaUrl = typeof option === 'object' ? option.media_url : null;
+                  const optionMediaType = typeof option === 'object' ? option.media_type : null;
+                  const optionLetter = String.fromCharCode(65 + index);
+                  // Use option text if available, otherwise use letter for image-only options
+                  const optionValue = optionText || optionLetter;
+                  
+                  return (
+                    <label
+                      key={index}
+                      className="flex flex-col p-4 border rounded-lg cursor-pointer hover:bg-gray-50"
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="radio"
+                          name={`question-${currentQuestion.id}`}
+                          value={optionValue}
+                          checked={answers[currentQuestion.id] === optionValue}
+                          onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                          className="mr-3"
+                        />
+                        <span>
+                          {optionLetter}. {optionText}
+                        </span>
+                      </div>
+                      
+                      {/* Option Media */}
+                      {optionMediaUrl && (
+                        <div className="ml-8 mt-2">
+                          {optionMediaType === 'image' && (
+                            <img 
+                              src={optionMediaUrl} 
+                              alt={`Option ${optionLetter}`}
+                              className="max-w-xs max-h-32 rounded border"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </label>
+                  );
+                })}
               </div>
             )}
 
@@ -268,14 +354,28 @@ export default function TestAttemptPage() {
               </div>
             )}
 
-            {/* Short Answer */}
-            {currentQuestion.question_type === 'SHORT_ANSWER' && (
-              <textarea
-                value={answers[currentQuestion.id] || ''}
-                onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
-                className="w-full p-4 border rounded-lg min-h-[150px]"
-                placeholder="Type your answer here..."
-              />
+            {/* Short Answer / Long Answer - with text and media upload */}
+            {(currentQuestion.question_type === 'SHORT_ANSWER' || currentQuestion.question_type === 'LONG_ANSWER') && (
+              <div className="space-y-4">
+                <textarea
+                  value={answers[currentQuestion.id] || ''}
+                  onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                  className="w-full p-4 border rounded-lg min-h-[150px]"
+                  placeholder="Type your answer here..."
+                />
+                
+                <MediaUpload
+                  label="Upload Answer Media (Optional)"
+                  value={answerMediaUrls[currentQuestion.id]}
+                  onChange={(file, url, type) => {
+                    if (file || url) {
+                      handleAnswerChange(currentQuestion.id, answers[currentQuestion.id] || '', file, url);
+                    }
+                  }}
+                  acceptTypes="image/*,application/pdf"
+                  maxSize={10}
+                />
+              </div>
             )}
           </CardContent>
         </Card>

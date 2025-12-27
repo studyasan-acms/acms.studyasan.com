@@ -188,20 +188,38 @@ export default function GradeTestPage() {
 
                   {/* Display options for MCQ */}
                   {question.question_type === 'MCQ' && question.options && (
-                    <div className="ml-4 mb-3 space-y-1">
-                      {(question.options as string[]).map((option, optIndex) => (
-                        <p
-                          key={optIndex}
-                          className={`text-sm ${
-                            option === question.correct_answer
-                              ? 'text-green-600 font-medium'
-                              : 'text-gray-700'
-                          }`}
-                        >
-                          {String.fromCharCode(65 + optIndex)}. {option}
-                          {option === question.correct_answer && ' ✓ (Correct)'}
-                        </p>
-                      ))}
+                    <div className="ml-4 mb-3 space-y-2">
+                      {(question.options as any[]).map((option, optIndex) => {
+                        const optionText = typeof option === 'string' ? option : option?.text || '';
+                        const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
+                        const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
+                        const optionLetter = String.fromCharCode(65 + optIndex);
+                        const isCorrect = optionText === question.correct_answer || 
+                                         optionLetter === question.correct_answer ||
+                                         (optionText === '' && question.correct_answer === optionLetter);
+                        
+                        return (
+                          <div key={optIndex}>
+                            <p
+                              className={`text-sm ${
+                                isCorrect
+                                  ? 'text-green-600 font-medium'
+                                  : 'text-gray-700'
+                              }`}
+                            >
+                              {optionLetter}. {optionText}
+                              {isCorrect && ' ✓ (Correct)'}
+                            </p>
+                            {optionMediaUrl && optionMediaType === 'image' && (
+                              <img 
+                                src={optionMediaUrl} 
+                                alt={`Option ${optionLetter}`}
+                                className="mt-1 ml-4 max-w-xs max-h-24 rounded border"
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -210,9 +228,24 @@ export default function GradeTestPage() {
                       <p className="text-sm font-medium text-gray-600 min-w-[120px]">
                         Student Answer:
                       </p>
-                      <p className="text-sm flex-1">
-                        {answer.answer_text || <span className="text-gray-400">Not answered</span>}
-                      </p>
+                      <div className="flex-1">
+                        {!answer.answer_text && !answer.answer_media_url ? (
+                          <p className="text-sm text-gray-400">Not answered</p>
+                        ) : (
+                          <>
+                            {answer.answer_text && (
+                              <p className="text-sm">{answer.answer_text}</p>
+                            )}
+                            {answer.answer_media_url && answer.answer_media_type === 'image' && (
+                              <img 
+                                src={answer.answer_media_url} 
+                                alt="Student answer"
+                                className="mt-2 max-w-md max-h-48 rounded border"
+                              />
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-start gap-2">

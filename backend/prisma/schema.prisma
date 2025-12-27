@@ -299,7 +299,9 @@ model Question {
   test_id        Int
   question_type  QuestionType
   question_text  String
-  options        Json?
+  media_url      String?      // URL for uploaded image/PDF/video or external link
+  media_type     String?      // Type: image, pdf, video, link
+  options        Json?        // Can include media URLs for each option
   correct_answer String?
   marks          Int
   order          Int
@@ -340,6 +342,8 @@ model Answer {
   test_attempt_id Int
   question_id     Int
   answer_text     String?
+  answer_media_url String?    // URL for uploaded answer media (image/PDF)
+  answer_media_type String?   // Type: image, pdf
   marks_obtained  Int?
   is_correct      Boolean?
   created_at      DateTime    @default(now())

@@ -151,7 +151,22 @@ export default function TestResultsPage() {
                   <div className="ml-4 space-y-2">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Your Answer:</p>
-                      <p className="text-sm">{answer.answer_text || 'Not answered'}</p>
+                      {!answer.answer_text && !answer.answer_media_url ? (
+                        <p className="text-sm text-gray-400">Not answered</p>
+                      ) : (
+                        <>
+                          {answer.answer_text && (
+                            <p className="text-sm">{answer.answer_text}</p>
+                          )}
+                          {answer.answer_media_url && answer.answer_media_type === 'image' && (
+                            <img 
+                              src={answer.answer_media_url} 
+                              alt="Your answer"
+                              className="mt-2 max-w-md max-h-48 rounded border"
+                            />
+                          )}
+                        </>
+                      )}
                     </div>
 
                     {answer.question?.question_type !== 'SHORT_ANSWER' && (

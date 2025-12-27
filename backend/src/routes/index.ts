@@ -270,11 +270,17 @@ router.delete('/tests/:testId', authenticate, authorize('ADMIN', 'TEACHER'), tes
 // Generate questions using AI
 router.post('/tests/:testId/generate-questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.generateTestQuestions);
 
-// Add manual question
-router.post('/tests/:testId/questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.addQuestion);
+// Add manual question (with optional file upload for question and options)
+router.post('/tests/:testId/questions', authenticate, authorize('ADMIN', 'TEACHER'), upload.fields([
+  { name: 'media', maxCount: 1 },
+  { name: 'option_media_0', maxCount: 1 },
+  { name: 'option_media_1', maxCount: 1 },
+  { name: 'option_media_2', maxCount: 1 },
+  { name: 'option_media_3', maxCount: 1 }
+]), testController.addQuestion);
 
-// Update question
-router.put('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), testController.updateQuestion);
+// Update question (with optional file upload)
+router.put('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('media'), testController.updateQuestion);
 
 // Delete question
 router.delete('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), testController.deleteQuestion);
@@ -286,8 +292,8 @@ router.post('/tests/:testId/start', authenticate, authorize('STUDENT'), testAtte
 // Start practice attempt (students) - for closed/already-attempted tests
 router.post('/tests/:testId/practice', authenticate, authorize('STUDENT'), testAttemptController.startPracticeAttempt);
 
-// Submit answer for a question
-router.post('/test-attempts/:attemptId/answers', authenticate, authorize('STUDENT'), testAttemptController.submitAnswer);
+// Submit answer for a question (with optional file upload)
+router.post('/test-attempts/:attemptId/answers', authenticate, authorize('STUDENT'), upload.single('answer_media'), testAttemptController.submitAnswer);
 
 // Submit entire test
 router.post('/test-attempts/:attemptId/submit', authenticate, authorize('STUDENT'), testAttemptController.submitTest);
