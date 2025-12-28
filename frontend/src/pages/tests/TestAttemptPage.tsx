@@ -367,7 +367,7 @@ export default function TestAttemptPage() {
                 <MediaUpload
                   label="Upload Answer Media (Optional)"
                   value={answerMediaUrls[currentQuestion.id]}
-                  onChange={(file, url, type) => {
+                  onChange={(file, url) => {
                     if (file || url) {
                       handleAnswerChange(currentQuestion.id, answers[currentQuestion.id] || '', file, url);
                     }

@@ -32,27 +32,27 @@ model Class {
 }
 
 model User {
-  id                  Int                      @id @default(autoincrement())
-  name                String
-  email               String                   @unique
-  phone               String
-  password            String
-  role                Role                     @default(STUDENT)
-  created_at          DateTime                 @default(now())
-  updated_at          DateTime                 @updatedAt
-  student             Student?
-  teacher             Teacher?
-  notifications       Notification[]
-  created_sessions    ClassSession[]           @relation("SessionCreator")
-  session_attendances ClassSessionAttendance[] @relation("SessionAttendances")
-  created_tests       Test[]
-  graded_attempts     TestAttempt[]
-  chat_participations ChatParticipant[]
-  sent_messages       Message[]
-  created_test_series TestSeries[]             @relation("TestSeriesCreator")
-  created_activity_groups ActivityGroup[]      @relation("ActivityGroupCreator")
-  created_activities  Activity[]               @relation("ActivityCreator")
-  quiz_sessions_hosted QuizSession[]
+  id                      Int                      @id @default(autoincrement())
+  name                    String
+  email                   String                   @unique
+  phone                   String
+  password                String
+  role                    Role                     @default(STUDENT)
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime                 @updatedAt
+  student                 Student?
+  teacher                 Teacher?
+  notifications           Notification[]
+  created_sessions        ClassSession[]           @relation("SessionCreator")
+  session_attendances     ClassSessionAttendance[] @relation("SessionAttendances")
+  created_tests           Test[]
+  graded_attempts         TestAttempt[]
+  chat_participations     ChatParticipant[]
+  sent_messages           Message[]
+  created_test_series     TestSeries[]             @relation("TestSeriesCreator")
+  created_activity_groups ActivityGroup[]          @relation("ActivityGroupCreator")
+  created_activities      Activity[]               @relation("ActivityCreator")
+  quiz_sessions_hosted    QuizSession[]
 
   @@map("user")
 }
@@ -75,26 +75,26 @@ enum BloodGroup {
 }
 
 model Student {
-  id                       Int                      @id @default(autoincrement())
-  user_id                  Int                      @unique
-  class_id                 Int?
-  board_id                 Int?
-  date_of_birth            DateTime?
-  gender                   Gender?
-  school                   String?
-  blood_group              BloodGroup?
-  address                  StudentAddress?
-  created_at               DateTime                 @default(now())
-  updated_at               DateTime                 @updatedAt
-  user                     User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  class                    Class?                   @relation(fields: [class_id], references: [id])
-  board                    Board?                   @relation(fields: [board_id], references: [id])
-  enrollments              Enrollment[]
-  module_progress          StudentModuleProgress[]
-  test_attempts            TestAttempt[]
-  test_series_enrollments  TestSeriesEnrollment[]
-  activity_enrollments     ActivityEnrollment[]
-  activity_attempts        ActivityAttempt[]
+  id                      Int                     @id @default(autoincrement())
+  user_id                 Int                     @unique
+  class_id                Int?
+  board_id                Int?
+  date_of_birth           DateTime?
+  gender                  Gender?
+  school                  String?
+  blood_group             BloodGroup?
+  address                 StudentAddress?
+  created_at              DateTime                @default(now())
+  updated_at              DateTime                @updatedAt
+  user                    User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  class                   Class?                  @relation(fields: [class_id], references: [id])
+  board                   Board?                  @relation(fields: [board_id], references: [id])
+  enrollments             Enrollment[]
+  module_progress         StudentModuleProgress[]
+  test_attempts           TestAttempt[]
+  test_series_enrollments TestSeriesEnrollment[]
+  activity_enrollments    ActivityEnrollment[]
+  activity_attempts       ActivityAttempt[]
 
   @@map("students")
 }
@@ -140,20 +140,22 @@ model Enrollment {
 }
 
 model Teacher {
-  id                        Int                      @id @default(autoincrement())
-  user_id                   Int                      @unique
+  id                        Int                            @id @default(autoincrement())
+  user_id                   Int                            @unique
   salary                    Int?
   salary_currency_id        Int?
-  salary_currency           Currency?                @relation(fields: [salary_currency_id], references: [id])
+  salary_currency           Currency?                      @relation(fields: [salary_currency_id], references: [id])
   qualification             String?
   gender                    Gender?
   experience                String?
   address                   TeacherAddress?
-  created_at                DateTime                 @default(now())
-  updated_at                DateTime                 @updatedAt
-  user                      User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at                DateTime                       @default(now())
+  updated_at                DateTime                       @updatedAt
+  user                      User                           @relation(fields: [user_id], references: [id], onDelete: Cascade)
   teacher_subject_junctions TeacherSubjectJunction[]
   class_sessions            ClassSession[]
+  activity_group_junctions  ActivityGroupTeacherJunction[]
+  test_series_junctions     TestSeriesTeacherJunction[]
 
   @@map("teachers")
 }
@@ -267,8 +269,8 @@ model Test {
   id               Int           @id @default(autoincrement())
   title            String
   description      String?
-  subject_id       Int?          // Optional - for subject-based tests
-  test_series_id   Int?          // Optional - for test series tests
+  subject_id       Int? // Optional - for subject-based tests
+  test_series_id   Int? // Optional - for test series tests
   created_by       Int
   total_marks      Int
   passing_marks    Int
@@ -299,9 +301,9 @@ model Question {
   test_id        Int
   question_type  QuestionType
   question_text  String
-  media_url      String?      // URL for uploaded image/PDF/video or external link
-  media_type     String?      // Type: image, pdf, video, link
-  options        Json?        // Can include media URLs for each option
+  media_url      String? // URL for uploaded image/PDF/video or external link
+  media_type     String? // Type: image, pdf, video, link
+  options        Json? // Can include media URLs for each option
   correct_answer String?
   marks          Int
   order          Int
@@ -323,7 +325,7 @@ model TestAttempt {
   total_marks  Int
   is_passed    Boolean?
   is_graded    Boolean   @default(false)
-  is_practice  Boolean   @default(false)  // Practice mode - no scoring, unlimited attempts
+  is_practice  Boolean   @default(false) // Practice mode - no scoring, unlimited attempts
   graded_by    Int?
   graded_at    DateTime?
   created_at   DateTime  @default(now())
@@ -338,18 +340,18 @@ model TestAttempt {
 }
 
 model Answer {
-  id              Int         @id @default(autoincrement())
-  test_attempt_id Int
-  question_id     Int
-  answer_text     String?
-  answer_media_url String?    // URL for uploaded answer media (image/PDF)
-  answer_media_type String?   // Type: image, pdf
-  marks_obtained  Int?
-  is_correct      Boolean?
-  created_at      DateTime    @default(now())
-  updated_at      DateTime    @updatedAt
-  test_attempt    TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
-  question        Question    @relation(fields: [question_id], references: [id], onDelete: Cascade)
+  id                Int         @id @default(autoincrement())
+  test_attempt_id   Int
+  question_id       Int
+  answer_text       String?
+  answer_media_url  String? // URL for uploaded answer media (image/PDF)
+  answer_media_type String? // Type: image, pdf
+  marks_obtained    Int?
+  is_correct        Boolean?
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  test_attempt      TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
+  question          Question    @relation(fields: [question_id], references: [id], onDelete: Cascade)
 
   @@unique([test_attempt_id, question_id])
   @@map("answers")
@@ -504,87 +506,103 @@ model TestSeries {
   title        String
   description  String?
   cover_image  String?
-  price        Int?     // Optional pricing for paid test series
+  price        Int? // Optional pricing for paid test series
   is_published Boolean  @default(false)
   created_by   Int
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
-  
-  creator      User     @relation("TestSeriesCreator", fields: [created_by], references: [id])
-  tests        Test[]
-  enrollments  TestSeriesEnrollment[]
+
+  creator           User                        @relation("TestSeriesCreator", fields: [created_by], references: [id])
+  tests             Test[]
+  enrollments       TestSeriesEnrollment[]
+  teacher_junctions TestSeriesTeacherJunction[]
 
   @@map("test_series")
 }
 
 // Test Series Enrollment - Links students to test series
 model TestSeriesEnrollment {
-  id             Int        @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   test_series_id Int
   student_id     Int
-  enrolled_at    DateTime   @default(now())
-  
-  test_series    TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
-  student        Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  enrolled_at    DateTime @default(now())
+
+  test_series TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  student     Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@unique([test_series_id, student_id])
   @@map("test_series_enrollments")
 }
 
+// Test Series Teacher Junction - Links teachers to test series
+model TestSeriesTeacherJunction {
+  id             Int      @id @default(autoincrement())
+  test_series_id Int
+  teacher_id     Int
+  assigned_at    DateTime @default(now())
+
+  test_series TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  teacher     Teacher    @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@unique([test_series_id, teacher_id])
+  @@map("test_series_teacher_junction")
+}
+
 // Activity Types - Educational games for students
 enum ActivityType {
-  MATCH_PAIRS          // Match items from two columns
-  WORD_SEARCH          // Find words in a grid
-  CROSSWORD            // Fill crossword puzzle
-  FILL_BLANKS          // Fill in the missing words
-  DRAG_DROP            // Drag and drop items to correct positions
-  MEMORY_GAME          // Match pairs of cards
-  QUIZ_GAME            // Multiple choice questions with timer
-  SEQUENCE_ORDER       // Arrange items in correct order
-  TRUE_FALSE           // True or False questions
-  PICTURE_REVEAL       // Reveal picture by answering questions
+  MATCH_PAIRS // Match items from two columns
+  WORD_SEARCH // Find words in a grid
+  CROSSWORD // Fill crossword puzzle
+  FILL_BLANKS // Fill in the missing words
+  DRAG_DROP // Drag and drop items to correct positions
+  MEMORY_GAME // Match pairs of cards
+  QUIZ_GAME // Multiple choice questions with timer
+  SEQUENCE_ORDER // Arrange items in correct order
+  TRUE_FALSE // True or False questions
+  PICTURE_REVEAL // Reveal picture by answering questions
 }
 
 // Activity Group - Collection of activities for organizing
 model ActivityGroup {
-  id          Int        @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String?
   cover_image String?
-  is_active   Boolean    @default(true)
+  is_active   Boolean  @default(true)
   created_by  Int
-  created_at  DateTime   @default(now())
-  updated_at  DateTime   @updatedAt
-  
-  creator     User       @relation("ActivityGroupCreator", fields: [created_by], references: [id])
-  activities  Activity[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  creator           User                           @relation("ActivityGroupCreator", fields: [created_by], references: [id])
+  activities        Activity[]
+  teacher_junctions ActivityGroupTeacherJunction[]
 
   @@map("activity_groups")
 }
 
 // Activity - Individual educational game
 model Activity {
-  id              Int            @id @default(autoincrement())
-  group_id        Int
-  title           String
-  description     String?
-  instructions    String?        // How to play the game
-  cover_image     String?
-  activity_type   ActivityType
-  difficulty      Difficulty     @default(MEDIUM)
-  estimated_time  Int?           // Estimated time in minutes
-  points          Int            @default(100)  // Points awarded on completion
-  is_published    Boolean        @default(false)
-  created_by      Int
-  created_at      DateTime       @default(now())
-  updated_at      DateTime       @updatedAt
-  
-  group           ActivityGroup  @relation(fields: [group_id], references: [id], onDelete: Cascade)
-  creator         User           @relation("ActivityCreator", fields: [created_by], references: [id])
-  items           ActivityItem[]
-  enrollments     ActivityEnrollment[]
-  attempts        ActivityAttempt[]
-  quiz_sessions   QuizSession[]
+  id             Int          @id @default(autoincrement())
+  group_id       Int
+  title          String
+  description    String?
+  instructions   String? // How to play the game
+  cover_image    String?
+  activity_type  ActivityType
+  difficulty     Difficulty   @default(MEDIUM)
+  estimated_time Int? // Estimated time in minutes
+  points         Int          @default(100) // Points awarded on completion
+  is_published   Boolean      @default(false)
+  created_by     Int
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  group         ActivityGroup        @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  creator       User                 @relation("ActivityCreator", fields: [created_by], references: [id])
+  items         ActivityItem[]
+  enrollments   ActivityEnrollment[]
+  attempts      ActivityAttempt[]
+  quiz_sessions QuizSession[]
 
   @@map("activities")
 }
@@ -599,14 +617,14 @@ enum Difficulty {
 model ActivityItem {
   id          Int      @id @default(autoincrement())
   activity_id Int
-  content     Json     // Flexible JSON structure for different activity types
+  content     Json // Flexible JSON structure for different activity types
   order       Int
   points      Int      @default(10)
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
-  
-  activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
-  responses   ActivityResponse[]
+
+  activity  Activity           @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  responses ActivityResponse[]
 
   @@map("activity_items")
 }
@@ -617,9 +635,9 @@ model ActivityEnrollment {
   activity_id Int
   student_id  Int
   enrolled_at DateTime @default(now())
-  
-  activity    Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
-  student     Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  activity Activity @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
   @@unique([activity_id, student_id])
   @@map("activity_enrollments")
@@ -627,23 +645,23 @@ model ActivityEnrollment {
 
 // Activity Attempt - Student's attempt at an activity
 model ActivityAttempt {
-  id                Int                @id @default(autoincrement())
-  activity_id       Int
-  student_id        Int
-  started_at        DateTime           @default(now())
-  completed_at      DateTime?
-  score             Int                @default(0)
-  max_score         Int
-  time_taken        Int?               // Time taken in seconds
-  is_completed      Boolean            @default(false)
-  created_at        DateTime           @default(now())
-  updated_at        DateTime           @updatedAt
-  
-  activity          Activity           @relation(fields: [activity_id], references: [id], onDelete: Cascade)
-  student           Student            @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  quiz_session_id   Int?
-  quiz_session      QuizSession?       @relation(fields: [quiz_session_id], references: [id])
-  responses         ActivityResponse[]
+  id           Int       @id @default(autoincrement())
+  activity_id  Int
+  student_id   Int
+  started_at   DateTime  @default(now())
+  completed_at DateTime?
+  score        Int       @default(0)
+  max_score    Int
+  time_taken   Int? // Time taken in seconds
+  is_completed Boolean   @default(false)
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  activity        Activity           @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  student         Student            @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  quiz_session_id Int?
+  quiz_session    QuizSession?       @relation(fields: [quiz_session_id], references: [id])
+  responses       ActivityResponse[]
 
   @@index([activity_id, student_id])
   @@index([student_id, score])
@@ -652,17 +670,17 @@ model ActivityAttempt {
 
 // Activity Response - Student's response to activity items
 model ActivityResponse {
-  id          Int             @id @default(autoincrement())
-  attempt_id  Int
-  item_id     Int
-  response    Json            // Student's answer/response
-  is_correct  Boolean
-  points      Int             @default(0)
-  time_taken  Int?            // Time taken in seconds
-  created_at  DateTime        @default(now())
-  
-  attempt     ActivityAttempt @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
-  item        ActivityItem    @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  id         Int      @id @default(autoincrement())
+  attempt_id Int
+  item_id    Int
+  response   Json // Student's answer/response
+  is_correct Boolean
+  points     Int      @default(0)
+  time_taken Int? // Time taken in seconds
+  created_at DateTime @default(now())
+
+  attempt ActivityAttempt @relation(fields: [attempt_id], references: [id], onDelete: Cascade)
+  item    ActivityItem    @relation(fields: [item_id], references: [id], onDelete: Cascade)
 
   @@unique([attempt_id, item_id])
   @@map("activity_responses")
@@ -675,20 +693,34 @@ enum QuizStatus {
 }
 
 model QuizSession {
-  id                     Int           @id @default(autoincrement())
+  id                     Int        @id @default(autoincrement())
   activity_id            Int
   host_id                Int
-  status                 QuizStatus    @default(LOBBY)
-  join_code              String        @unique
-  current_question_index Int           @default(-1)
-  start_time             DateTime      @default(now())
+  status                 QuizStatus @default(LOBBY)
+  join_code              String     @unique
+  current_question_index Int        @default(-1)
+  start_time             DateTime   @default(now())
   end_time               DateTime?
-  created_at             DateTime      @default(now())
-  updated_at             DateTime      @updatedAt
+  created_at             DateTime   @default(now())
+  updated_at             DateTime   @updatedAt
 
-  activity               Activity      @relation(fields: [activity_id], references: [id], onDelete: Cascade)
-  host                   User          @relation(fields: [host_id], references: [id])
-  attempts               ActivityAttempt[]
+  activity Activity          @relation(fields: [activity_id], references: [id], onDelete: Cascade)
+  host     User              @relation(fields: [host_id], references: [id])
+  attempts ActivityAttempt[]
 
   @@map("quiz_sessions")
+}
+
+// Activity Group Teacher Junction - Links teachers to activity groups
+model ActivityGroupTeacherJunction {
+  id                Int      @id @default(autoincrement())
+  activity_group_id Int
+  teacher_id        Int
+  assigned_at       DateTime @default(now())
+
+  activity_group ActivityGroup @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
+  teacher        Teacher       @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+
+  @@unique([activity_group_id, teacher_id])
+  @@map("activity_group_teacher_junction")
 }

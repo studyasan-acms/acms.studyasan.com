@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, FolderOpen, Users } from 'lucide-react';
+import { Plus, Edit, Trash2, FolderOpen, Users, UserCheck } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { activityGroupAPI } from '../../services/activity.service';
@@ -17,9 +17,11 @@ const getRandomGradient = () => {
     'from-fuchsia-500 to-pink-500',
   ];
   return gradients[Math.floor(Math.random() * gradients.length)];
-};import type { ActivityGroup } from '../../types/activity';
+};
+import type { ActivityGroup } from '../../types/activity';
 import ActivityGroupForm from '../../components/activities/admin/ActivityGroupForm.tsx';
 import EnrollStudentsToGroupModal from '../../components/activities/admin/EnrollStudentsToGroupModal.tsx';
+import AssignTeachersToGroupModal from '../../components/activities/admin/AssignTeachersToGroupModal.tsx';
 import { toast } from 'sonner';
 
 export default function ActivityGroupsPage() {
@@ -28,6 +30,7 @@ export default function ActivityGroupsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ActivityGroup | null>(null);
   const [enrollingGroup, setEnrollingGroup] = useState<ActivityGroup | null>(null);
+  const [managingTeachersGroup, setManagingTeachersGroup] = useState<ActivityGroup | null>(null);
 
   useEffect(() => {
     fetchActivityGroups();
@@ -111,6 +114,16 @@ export default function ActivityGroupsPage() {
           }}
         />
       )}
+      {managingTeachersGroup && (
+        <AssignTeachersToGroupModal
+          group={managingTeachersGroup}
+          onClose={() => setManagingTeachersGroup(null)}
+          onSuccess={() => {
+            setManagingTeachersGroup(null);
+            fetchActivityGroups();
+          }}
+        />
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {activityGroups.map((group) => (
           <Card key={group.id} className="p-6 hover:shadow-lg transition-shadow">
@@ -169,6 +182,15 @@ export default function ActivityGroupsPage() {
               >
                 <Users className="w-3 h-3 mr-1" />
                 Enroll Students
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setManagingTeachersGroup(group)}
+                className="text-green-600 hover:text-green-700"
+              >
+                <UserCheck className="w-3 h-3 mr-1" />
+                Manage Teachers
               </Button>
             </div>
 

@@ -242,7 +242,7 @@ export interface Teacher {
     email: string;
     phone: string;
   };
-  _count?: { teacher_subject_junctions: number };
+  _count?: { teacher_subject_junctions: number; test_series_junctions: number; activity_group_junctions: number };
   teacher_subject_junctions?: {
     id: number;
     subject_id: number;
@@ -252,6 +252,27 @@ export interface Teacher {
       id: number;
       name: string;
       class: { id: number; name: string } | null;
+    };
+  }[];
+  test_series_junctions?: {
+    id: number;
+    test_series_id: number;
+    assigned_at: string;
+    test_series: {
+      id: number;
+      title: string;
+      is_published: boolean;
+    };
+  }[];
+  activity_group_junctions?: {
+    id: number;
+    activity_group_id: number;
+    assigned_at: string;
+    activity_group: {
+      id: number;
+      name: string;
+      description?: string;
+      is_active: boolean;
     };
   }[];
 }
@@ -818,4 +839,98 @@ export interface ChatMessagesResponse {
       pages: number;
     };
   };
+}
+
+// ================== ACTIVITY GROUP TYPES ==================
+export interface ActivityGroup {
+  id: number;
+  name: string;
+  description?: string;
+  cover_image?: string;
+  is_active: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  teacher_junctions?: ActivityGroupTeacherJunction[];
+  activities?: any[];
+  _count?: {
+    activities: number;
+  };
+}
+
+export interface ActivityGroupTeacherJunction {
+  id: number;
+  activity_group_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+  activity_group?: {
+    id: number;
+    name: string;
+  };
+}
+
+// ================== TEST SERIES TYPES ==================
+export interface TestSeries {
+  id: number;
+  title: string;
+  description?: string;
+  cover_image?: string;
+  price?: number;
+  is_published: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  teacher_junctions?: TestSeriesTeacherJunction[];
+  tests?: Test[];
+  _count?: {
+    tests: number;
+    enrollments: number;
+  };
+  is_enrolled?: boolean;
+  enrolled_at?: string;
+}
+
+export interface TestSeriesTeacherJunction {
+  id: number;
+  test_series_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+}
+
+// ================== TEST SERIES ENROLLMENT TYPES ==================
+export interface TestSeriesEnrollment {
+  id: number;
+  test_series_id: number;
+  student_id: number;
+  enrolled_at: string;
+  test_series?: TestSeries;
+  student?: Student;
 }

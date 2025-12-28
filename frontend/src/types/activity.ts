@@ -44,6 +44,22 @@ export interface Activity {
   };
 }
 
+export interface ActivityGroupTeacherJunction {
+  id: number;
+  activity_group_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 export interface ActivityGroup {
   id: number;
   name: string;
@@ -58,6 +74,7 @@ export interface ActivityGroup {
     name: string;
     email: string;
   };
+  teacher_junctions?: ActivityGroupTeacherJunction[];
   activities?: Activity[];
   _count?: {
     activities: number;

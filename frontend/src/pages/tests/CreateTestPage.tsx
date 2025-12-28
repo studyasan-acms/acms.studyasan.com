@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Plus, Sparkles } from "lucide-react";
 import { testService, subjectService, testSeriesService } from "@/services/api";
-import type { TestSeries } from "@/services/api";
+import type { TestSeries } from "@/types";
 import type {
   Subject,
   CreateTestData,

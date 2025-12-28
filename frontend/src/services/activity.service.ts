@@ -6,6 +6,7 @@ import type {
   ActivityAttempt,
   CreateActivityGroupInput,
   CreateActivityInput,
+  ActivityGroupTeacherJunction,
 } from '../types/activity';
 
 // Activity Group APIs
@@ -27,6 +28,15 @@ export const activityGroupAPI = {
     api.put<{ data: ActivityGroup }>(`/activity-groups/${id}`, data),
 
   delete: (id: number) => api.delete(`/activity-groups/${id}`),
+
+  assignTeacher: (data: { activity_group_id: number; teacher_id: number }) =>
+    api.post('/activity-groups/assign-teacher', data),
+
+  removeTeacher: (junctionId: number) =>
+    api.delete(`/activity-groups/remove-teacher/${junctionId}`),
+
+  getTeachers: (groupId: number) =>
+    api.get<{ data: ActivityGroupTeacherJunction[] }>(`/activity-groups/${groupId}/teachers`),
 };
 
 // Activity APIs

@@ -58,6 +58,11 @@ import type {
   Currency,
   State,
   City,
+  ActivityGroup,
+  ActivityGroupTeacherJunction,
+  TestSeries,
+  TestSeriesTeacherJunction,
+  TestSeriesEnrollment,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -872,40 +877,6 @@ export const currencyService = {
 };
 
 
-// Test Series Service
-export interface TestSeries {
-  id: number;
-  title: string;
-  description?: string;
-  cover_image?: string;
-  price?: number;
-  is_published: boolean;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-  creator?: {
-    id: number;
-    name: string;
-    email: string;
-  };
-  tests?: Test[];
-  _count?: {
-    tests: number;
-    enrollments: number;
-  };
-  is_enrolled?: boolean;
-  enrolled_at?: string;
-}
-
-export interface TestSeriesEnrollment {
-  id: number;
-  test_series_id: number;
-  student_id: number;
-  enrolled_at: string;
-  test_series?: TestSeries;
-  student?: Student;
-}
-
 export const testSeriesService = {
   // Get all test series
   getAll: async (params?: {
@@ -978,7 +949,88 @@ export const testSeriesService = {
     const response = await api.get(`/test-series/${id}/enrollments`);
     return response.data;
   },
+
+  // Assign teacher to test series
+  assignTeacher: async (data: { test_series_id: number; teacher_id: number }): Promise<{ success: boolean; data: TestSeriesTeacherJunction }> => {
+    const response = await api.post('/test-series/assign-teacher', data);
+    return response.data;
+  },
+
+  // Remove teacher from test series
+  removeTeacher: async (junctionId: number): Promise<void> => {
+    await api.delete(`/test-series/remove-teacher/${junctionId}`);
+  },
+
+  // Get teachers by test series
+  getTeachers: async (id: number): Promise<{ success: boolean; data: TestSeriesTeacherJunction[] }> => {
+    const response = await api.get(`/test-series/${id}/teachers`);
+    return response.data;
+  },
 };
 
+export const activityGroupService = {
+  // Get all activity groups
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    is_active?: boolean;
+  }): Promise<PaginatedResponse<ActivityGroup>> => {
+    const response = await api.get<PaginatedResponse<ActivityGroup>>('/activity-groups', { params });
+    return response.data;
+  },
+
+  // Get activity group by ID
+  getById: async (id: number): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.get(`/activity-groups/${id}`);
+    return response.data;
+  },
+
+  // Create activity group
+  create: async (data: {
+    name: string;
+    description?: string;
+    cover_image?: string;
+  }): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.post('/activity-groups', data);
+    return response.data;
+  },
+
+  // Update activity group
+  update: async (
+    id: number,
+    data: {
+      name?: string;
+      description?: string;
+      cover_image?: string;
+      is_active?: boolean;
+    }
+  ): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.put(`/activity-groups/${id}`, data);
+    return response.data;
+  },
+
+  // Delete activity group
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/activity-groups/${id}`);
+  },
+
+  // Assign teacher to activity group
+  assignTeacher: async (data: { activity_group_id: number; teacher_id: number }): Promise<{ success: boolean; data: ActivityGroupTeacherJunction }> => {
+    const response = await api.post('/activity-groups/assign-teacher', data);
+    return response.data;
+  },
+
+  // Remove teacher from activity group
+  removeTeacher: async (junctionId: number): Promise<void> => {
+    await api.delete(`/activity-groups/remove-teacher/${junctionId}`);
+  },
+
+  // Get teachers by activity group
+  getTeachers: async (id: number): Promise<{ success: boolean; data: ActivityGroupTeacherJunction[] }> => {
+    const response = await api.get(`/activity-groups/${id}/teachers`);
+    return response.data;
+  },
+};
 
 export default api;

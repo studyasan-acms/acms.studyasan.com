@@ -374,6 +374,15 @@ router.post('/test-series/:id/enroll', authenticate, testSeriesController.enroll
 // Unenroll from test series
 router.delete('/test-series/:id/enroll', authenticate, testSeriesController.unenrollFromTestSeries);
 
+// Assign teacher to test series
+router.post('/test-series/assign-teacher', authenticate, authorize('ADMIN'), testSeriesController.assignTeacherToTestSeries);
+
+// Remove teacher from test series
+router.delete('/test-series/remove-teacher/:id', authenticate, authorize('ADMIN'), testSeriesController.removeTeacherFromTestSeries);
+
+// Get teachers by test series
+router.get('/test-series/:id/teachers', authenticate, testSeriesController.getTeachersByTestSeries);
+
 
 // ================== ACTIVITY GROUP ROUTES ==================
 
@@ -391,6 +400,15 @@ router.put('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGro
 
 // Delete activity group
 router.delete('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGroupController.deleteActivityGroup);
+
+// Assign teacher to activity group
+router.post('/activity-groups/assign-teacher', authenticate, authorize('ADMIN'), activityGroupController.assignTeacherToActivityGroup);
+
+// Remove teacher from activity group
+router.delete('/activity-groups/remove-teacher/:id', authenticate, authorize('ADMIN'), activityGroupController.removeTeacherFromActivityGroup);
+
+// Get teachers by activity group
+router.get('/activity-groups/:id/teachers', authenticate, activityGroupController.getTeachersByActivityGroup);
 
 
 // ================== ACTIVITY ROUTES ==================

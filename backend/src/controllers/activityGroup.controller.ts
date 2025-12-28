@@ -58,6 +58,21 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
               email: true,
             },
           },
+          teacher_junctions: {
+            include: {
+              teacher: {
+                include: {
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
           _count: {
             select: {
               activities: true,
@@ -98,6 +113,21 @@ export const getActivityGroupById = async (req: Request, res: Response) => {
             id: true,
             name: true,
             email: true,
+          },
+        },
+        teacher_junctions: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
           },
         },
         activities: {
@@ -164,6 +194,113 @@ export const deleteActivityGroup = async (req: Request, res: Response) => {
     });
 
     return sendSuccess(res, null, 'Activity group deleted successfully');
+  } catch (error: any) {
+    return sendError(res, error.message);
+  }
+};
+
+// Assign Teacher to Activity Group
+export const assignTeacherToActivityGroup = async (req: Request, res: Response) => {
+  try {
+    const { activity_group_id, teacher_id } = req.body;
+
+    const existing = await prisma.activityGroupTeacherJunction.findFirst({
+      where: {
+        activity_group_id,
+        teacher_id,
+      },
+    });
+
+    if (existing) {
+      return sendError(res, 'Teacher already assigned to this activity group', 400);
+    }
+
+    const assignment = await prisma.activityGroupTeacherJunction.create({
+      data: {
+        activity_group_id,
+        teacher_id,
+      },
+      include: {
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        },
+        activity_group: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    return sendSuccess(res, assignment, 'Teacher assigned to activity group successfully', 201);
+  } catch (error: any) {
+    return sendError(res, error.message);
+  }
+};
+
+// Remove Teacher from Activity Group
+export const removeTeacherFromActivityGroup = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params; // junction id
+
+    const junction = await prisma.activityGroupTeacherJunction.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!junction) {
+      return sendError(res, 'Assignment not found', 404);
+    }
+
+    await prisma.activityGroupTeacherJunction.delete({
+      where: { id: Number(id) },
+    });
+
+    return sendSuccess(res, null, 'Teacher removed from activity group successfully');
+  } catch (error: any) {
+    return sendError(res, error.message);
+  }
+};
+
+// Get Teachers by Activity Group
+export const getTeachersByActivityGroup = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const activityGroup = await prisma.activityGroup.findUnique({
+      where: { id: Number(id) },
+      include: {
+        teacher_junctions: {
+          include: {
+            teacher: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!activityGroup) {
+      return sendError(res, 'Activity group not found', 404);
+    }
+
+    return sendSuccess(res, activityGroup.teacher_junctions);
   } catch (error: any) {
     return sendError(res, error.message);
   }

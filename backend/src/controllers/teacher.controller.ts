@@ -85,6 +85,29 @@ export const getTeacherById = async (req: Request, res: Response) => {
             subject: true,
           },
         },
+        test_series_junctions: {
+          include: {
+            test_series: {
+              select: {
+                id: true,
+                title: true,
+                is_published: true,
+              },
+            },
+          },
+        },
+        activity_group_junctions: {
+          include: {
+            activity_group: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                is_active: true,
+              },
+            },
+          },
+        },
         salary_currency: true,
         address: {
           include: {

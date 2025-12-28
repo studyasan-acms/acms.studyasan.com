@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { testSeriesService } from "@/services/api";
-import type { TestSeries } from "@/services/api";
+import type { TestSeries } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 import {
     Plus,
@@ -180,6 +180,12 @@ export default function TestSeriesPage() {
                                                 <Users className="h-4 w-4" />
                                                 <span>{series._count?.enrollments || 0} Enrolled</span>
                                             </div>
+                                            {(isAdmin || isTeacher) && (
+                                                <div className="flex items-center gap-1">
+                                                    <Users className="h-4 w-4" />
+                                                    <span>{series.teacher_junctions?.length || 0} Teachers</span>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>

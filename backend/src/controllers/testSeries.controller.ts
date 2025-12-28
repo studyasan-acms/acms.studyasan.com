@@ -55,6 +55,21 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
                             email: true,
                         },
                     },
+                    teacher_junctions: {
+                        include: {
+                            teacher: {
+                                include: {
+                                    user: {
+                                        select: {
+                                            id: true,
+                                            name: true,
+                                            email: true,
+                                        },
+                                    },
+                                },
+                            },
+                        },
+                    },
                     _count: {
                         select: {
                             tests: true,
@@ -90,6 +105,21 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
                         id: true,
                         name: true,
                         email: true,
+                    },
+                },
+                teacher_junctions: {
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        email: true,
+                                    },
+                                },
+                            },
+                        },
                     },
                 },
                 tests: {
@@ -458,6 +488,116 @@ export const getTestSeriesEnrollments = async (req: AuthRequest, res: Response) 
         sendSuccess(res, enrollments);
     } catch (error: any) {
         console.error('Error fetching test series enrollments:', error);
+        sendError(res, error.message, 500);
+    }
+};
+
+// Assign Teacher to Test Series
+export const assignTeacherToTestSeries = async (req: AuthRequest, res: Response) => {
+    try {
+        const { test_series_id, teacher_id } = req.body;
+
+        const existing = await prisma.testSeriesTeacherJunction.findFirst({
+            where: {
+                test_series_id,
+                teacher_id,
+            },
+        });
+
+        if (existing) {
+            return sendError(res, 'Teacher already assigned to this test series', 400);
+        }
+
+        const assignment = await prisma.testSeriesTeacherJunction.create({
+            data: {
+                test_series_id,
+                teacher_id,
+            },
+            include: {
+                teacher: {
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                            },
+                        },
+                    },
+                },
+                test_series: {
+                    select: {
+                        id: true,
+                        title: true,
+                    },
+                },
+            },
+        });
+
+        sendSuccess(res, assignment, 'Teacher assigned to test series successfully', 201);
+    } catch (error: any) {
+        console.error('Error assigning teacher to test series:', error);
+        sendError(res, error.message, 500);
+    }
+};
+
+// Remove Teacher from Test Series
+export const removeTeacherFromTestSeries = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params; // junction id
+
+        const junction = await prisma.testSeriesTeacherJunction.findUnique({
+            where: { id: parseInt(id!) },
+        });
+
+        if (!junction) {
+            return sendError(res, 'Assignment not found', 404);
+        }
+
+        await prisma.testSeriesTeacherJunction.delete({
+            where: { id: parseInt(id!) },
+        });
+
+        sendSuccess(res, null, 'Teacher removed from test series successfully');
+    } catch (error: any) {
+        console.error('Error removing teacher from test series:', error);
+        sendError(res, error.message, 500);
+    }
+};
+
+// Get Teachers by Test Series
+export const getTeachersByTestSeries = async (req: AuthRequest, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const testSeries = await prisma.testSeries.findUnique({
+            where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: {
+                    include: {
+                        teacher: {
+                            include: {
+                                user: {
+                                    select: {
+                                        id: true,
+                                        name: true,
+                                        email: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!testSeries) {
+            return sendError(res, 'Test series not found', 404);
+        }
+
+        sendSuccess(res, testSeries.teacher_junctions);
+    } catch (error: any) {
+        console.error('Error fetching teachers for test series:', error);
         sendError(res, error.message, 500);
     }
 };
