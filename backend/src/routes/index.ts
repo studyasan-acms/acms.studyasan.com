@@ -357,7 +357,7 @@ router.get('/test-series/my-enrollments', authenticate, testSeriesController.get
 router.get('/test-series/:id', authenticate, testSeriesController.getTestSeriesById);
 
 // Get test series enrollments (admin)
-router.get('/test-series/:id/enrollments', authenticate, authorize('ADMIN'), testSeriesController.getTestSeriesEnrollments);
+router.get('/test-series/:id/enrollments', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.getTestSeriesEnrollments);
 
 // Create test series
 router.post('/test-series', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.createTestSeries);
@@ -381,7 +381,7 @@ router.post('/test-series/assign-teacher', authenticate, authorize('ADMIN'), tes
 router.delete('/test-series/remove-teacher/:id', authenticate, authorize('ADMIN'), testSeriesController.removeTeacherFromTestSeries);
 
 // Get teachers by test series
-router.get('/test-series/:id/teachers', authenticate, testSeriesController.getTeachersByTestSeries);
+router.get('/test-series/:id/teachers', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.getTeachersByTestSeries);
 
 
 // ================== ACTIVITY GROUP ROUTES ==================

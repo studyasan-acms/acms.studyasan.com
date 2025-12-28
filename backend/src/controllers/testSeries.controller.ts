@@ -28,10 +28,50 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
 
         const where: any = {};
 
-        // Students can only see published test series
+        // Role-based filtering
         if (userRole === 'STUDENT') {
+            // Students see only published test series they are enrolled in
             where.is_published = true;
-        } else if (is_published !== undefined) {
+            // Get student record
+            if (userId) {
+                const student = await prisma.student.findUnique({
+                    where: { user_id: userId },
+                });
+                if (student) {
+                    where.enrollments = {
+                        some: {
+                            student_id: student.id,
+                        },
+                    };
+                } else {
+                    // If no student record, return no results
+                    where.id = -1;
+                }
+            } else {
+                where.id = -1;
+            }
+        } else if (userRole === 'TEACHER') {
+            // Teachers see only test series they are assigned to
+            if (userId) {
+                const teacher = await prisma.teacher.findUnique({
+                    where: { user_id: userId },
+                });
+                if (teacher) {
+                    where.teacher_junctions = {
+                        some: {
+                            teacher_id: teacher.id,
+                        },
+                    };
+                } else {
+                    // If no teacher record, return no results
+                    where.id = -1;
+                }
+            } else {
+                where.id = -1;
+            }
+        }
+        // Admins see all test series, with optional is_published filter
+        else if (is_published !== undefined) {
             where.is_published = is_published === 'true';
         }
 
@@ -145,34 +185,68 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Test series not found', 404);
         }
 
-        // For students, check if they're enrolled and only show published tests
+        // Role-based access control
         if (userRole === 'STUDENT') {
+            // Students can only access published test series they are enrolled in
             if (!testSeries.is_published) {
                 return sendError(res, 'Test series not found', 404);
             }
 
             // Get student record
-            const student = userId ? await prisma.student.findFirst({
-                where: { user_id: userId },
-            }) : null;
-
-            if (student) {
-                const enrollment = await prisma.testSeriesEnrollment.findUnique({
-                    where: {
-                        test_series_id_student_id: {
-                            test_series_id: testSeries.id,
-                            student_id: student.id,
-                        },
-                    },
-                });
-
-                // Add enrollment status to response
-                (testSeries as any).is_enrolled = !!enrollment;
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
             }
+
+            const student = await prisma.student.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!student) {
+                return sendError(res, 'Student record not found', 404);
+            }
+
+            // Check if student is enrolled
+            const enrollment = await prisma.testSeriesEnrollment.findUnique({
+                where: {
+                    test_series_id_student_id: {
+                        test_series_id: testSeries.id,
+                        student_id: student.id,
+                    },
+                },
+            });
+
+            if (!enrollment) {
+                return sendError(res, 'Test series not found', 404);
+            }
+
+            // Add enrollment status to response
+            (testSeries as any).is_enrolled = true;
 
             // Filter to only published tests for students
             testSeries.tests = testSeries.tests.filter(test => test.is_published);
+        } else if (userRole === 'TEACHER') {
+            // Teachers can only access test series they are assigned to
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
+            }
+
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = testSeries.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
         }
+        // Admins have access to all test series
 
         sendSuccess(res, testSeries);
     } catch (error: any) {
@@ -219,14 +293,46 @@ export const updateTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
         const { title, description, cover_image, price, is_published } = req.body;
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
 
         const existing = await prisma.testSeries.findUnique({
             where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: true,
+            },
         });
 
         if (!existing) {
             return sendError(res, 'Test series not found', 404);
         }
+
+        // Role-based access control for updates
+        if (userRole === 'STUDENT') {
+            return sendError(res, 'Access denied', 403);
+        } else if (userRole === 'TEACHER') {
+            // Teachers can only update test series they are assigned to
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
+            }
+
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = existing.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
+        }
+        // Admins can update all test series
 
         const updateData: any = {};
         if (title !== undefined) updateData.title = title;
@@ -266,14 +372,46 @@ export const updateTestSeries = async (req: AuthRequest, res: Response) => {
 export const deleteTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
 
         const existing = await prisma.testSeries.findUnique({
             where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: true,
+            },
         });
 
         if (!existing) {
             return sendError(res, 'Test series not found', 404);
         }
+
+        // Role-based access control for deletion
+        if (userRole === 'STUDENT') {
+            return sendError(res, 'Access denied', 403);
+        } else if (userRole === 'TEACHER') {
+            // Teachers can only delete test series they are assigned to
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
+            }
+
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = existing.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
+        }
+        // Admins can delete all test series
 
         await prisma.testSeries.delete({
             where: { id: parseInt(id!) },
@@ -317,10 +455,32 @@ export const enrollInTestSeries = async (req: AuthRequest, res: Response) => {
         // Check if test series exists
         const testSeries = await prisma.testSeries.findUnique({
             where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: true,
+            },
         });
 
         if (!testSeries) {
             return sendError(res, 'Test series not found', 404);
+        }
+
+        // For teachers, check if they are assigned to this test series
+        if (userRole === 'TEACHER') {
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = testSeries.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
         }
 
         // Check if already enrolled
@@ -396,6 +556,37 @@ export const unenrollFromTestSeries = async (req: AuthRequest, res: Response) =>
             studentId = parseInt(student_id);
         }
 
+        // Check if test series exists and teacher has permission
+        const testSeries = await prisma.testSeries.findUnique({
+            where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: true,
+            },
+        });
+
+        if (!testSeries) {
+            return sendError(res, 'Test series not found', 404);
+        }
+
+        // For teachers, check if they are assigned to this test series
+        if (userRole === 'TEACHER') {
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = testSeries.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
+        }
+
         const enrollment = await prisma.testSeriesEnrollment.findUnique({
             where: {
                 test_series_id_student_id: {
@@ -465,6 +656,47 @@ export const getMyTestSeries = async (req: AuthRequest, res: Response) => {
 export const getTestSeriesEnrollments = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
+
+        // Check if test series exists and user has permission
+        const testSeries = await prisma.testSeries.findUnique({
+            where: { id: parseInt(id!) },
+            include: {
+                teacher_junctions: true,
+            },
+        });
+
+        if (!testSeries) {
+            return sendError(res, 'Test series not found', 404);
+        }
+
+        // Role-based access control
+        if (userRole === 'STUDENT') {
+            return sendError(res, 'Access denied', 403);
+        } else if (userRole === 'TEACHER') {
+            // Teachers can only see enrollments for test series they are assigned to
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
+            }
+
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = testSeries.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
+        }
+        // Admins can see enrollments for all test series
 
         const enrollments = await prisma.testSeriesEnrollment.findMany({
             where: { test_series_id: parseInt(id!) },
@@ -569,6 +801,8 @@ export const removeTeacherFromTestSeries = async (req: AuthRequest, res: Respons
 export const getTeachersByTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
+        const userRole = req.user?.role;
+        const userId = req.user?.id;
 
         const testSeries = await prisma.testSeries.findUnique({
             where: { id: parseInt(id!) },
@@ -594,6 +828,33 @@ export const getTeachersByTestSeries = async (req: AuthRequest, res: Response) =
         if (!testSeries) {
             return sendError(res, 'Test series not found', 404);
         }
+
+        // Role-based access control
+        if (userRole === 'STUDENT') {
+            return sendError(res, 'Access denied', 403);
+        } else if (userRole === 'TEACHER') {
+            // Teachers can only see teachers for test series they are assigned to
+            if (!userId) {
+                return sendError(res, 'User not authenticated', 401);
+            }
+
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+
+            if (!teacher) {
+                return sendError(res, 'Teacher record not found', 404);
+            }
+
+            const isAssigned = testSeries.teacher_junctions.some(
+                junction => junction.teacher_id === teacher.id
+            );
+
+            if (!isAssigned) {
+                return sendError(res, 'Test series not found', 404);
+            }
+        }
+        // Admins can see teachers for all test series
 
         sendSuccess(res, testSeries.teacher_junctions);
     } catch (error: any) {
