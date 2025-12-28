@@ -390,28 +390,30 @@ export default function SubjectDetailPage() {
         </Card>
 
         {/* Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">Timeline</CardTitle>
-            <CardDescription>Important dates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Created</span>
-              <span className="text-sm font-medium text-gray-600">
-                {format(new Date(subject.created_at), "PPP")}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">
-                Last Updated
-              </span>
-              <span className="text-sm font-medium text-gray-600">
-                {format(new Date(subject.updated_at), "PPP")}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {isAdmin && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl text-gray-600">Timeline</CardTitle>
+              <CardDescription>Important dates</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Created</span>
+                <span className="text-sm font-medium text-gray-600">
+                  {format(new Date(subject.created_at), "PPP")}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">
+                  Last Updated
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {format(new Date(subject.updated_at), "PPP")}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Syllabus */}
@@ -451,7 +453,7 @@ export default function SubjectDetailPage() {
         )}
 
       {/* Assigned Teachers */}
-      {subject.teacher_subject_junctions &&
+      {isAdmin && subject.teacher_subject_junctions &&
         subject.teacher_subject_junctions.length > 0 && (
           <Card>
             <CardHeader>
@@ -490,7 +492,7 @@ export default function SubjectDetailPage() {
         )}
 
       {/* Enrolled Students */}
-      {subject.enrollments && subject.enrollments.length > 0 && (
+      {isAdmin && subject.enrollments && subject.enrollments.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-gray-600 text-xl">Enrolled Students</CardTitle>

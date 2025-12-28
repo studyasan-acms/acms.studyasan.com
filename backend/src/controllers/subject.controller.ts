@@ -111,6 +111,7 @@ export const getAllSubjects = async (req: Request, res: Response) => {
         include: {
           class: true,
           board: true,
+          currency: true,
           _count: {
             select: { enrollments: true, teacher_subject_junctions: true },
           },
@@ -138,6 +139,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
       include: {
         class: true,
         board: true,
+        currency: true,
         enrollments: {
           include: {
             student: {
@@ -183,7 +185,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
 
 export const createSubject = async (req: Request, res: Response) => {
   try {
-    const { name, class_id, board_id, syllabus, is_course } = req.body;
+    const { name, class_id, board_id, syllabus, is_course, price, currency_id } = req.body;
     let cover_image: string | undefined;
 
     // Handle file upload
@@ -199,11 +201,14 @@ export const createSubject = async (req: Request, res: Response) => {
         ...(class_id && { class_id: parseInt(class_id) }),
         ...(board_id && { board_id: parseInt(board_id) }),
         ...(syllabus && { syllabus: JSON.parse(syllabus) }),
+        ...(price && { price: parseFloat(price) }),
+        ...(currency_id && { currency_id: parseInt(currency_id) }),
         is_course: is_course === 'true',
       },
       include: {
         class: true,
         board: true,
+        currency: true,
       },
     });
 
@@ -216,7 +221,7 @@ export const createSubject = async (req: Request, res: Response) => {
 export const updateSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, class_id, board_id, syllabus, is_course } = req.body;
+    const { name, class_id, board_id, syllabus, is_course, price, currency_id } = req.body;
     let cover_image: string | undefined;
 
     // Handle file upload
@@ -233,11 +238,14 @@ export const updateSubject = async (req: Request, res: Response) => {
         ...(class_id && { class_id: parseInt(class_id) }),
         ...(board_id && { board_id: parseInt(board_id) }),
         ...(syllabus && { syllabus: JSON.parse(syllabus) }),
+        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(currency_id !== undefined && { currency_id: currency_id ? parseInt(currency_id) : null }),
         ...(is_course !== undefined && { is_course: is_course === 'true' }),
       },
       include: {
         class: true,
         board: true,
+        currency: true,
       },
     });
 

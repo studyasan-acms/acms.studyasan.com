@@ -95,6 +95,7 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
                             email: true,
                         },
                     },
+                    currency: true,
                     teacher_junctions: {
                         include: {
                             teacher: {
@@ -147,6 +148,7 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
                         email: true,
                     },
                 },
+                currency: true,
                 teacher_junctions: {
                     include: {
                         teacher: {
@@ -258,7 +260,7 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
 // Create test series
 export const createTestSeries = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, cover_image, price, is_published } = req.body;
+        const { title, description, cover_image, price, currency_id, is_published } = req.body;
         const userId = req.user!.id;
 
         const testSeries = await prisma.testSeries.create({
@@ -267,6 +269,7 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
                 description,
                 cover_image,
                 price: price ? parseInt(price) : null,
+                ...(currency_id && { currency_id: parseInt(currency_id) }),
                 is_published: is_published || false,
                 created_by: userId,
             },
@@ -278,6 +281,7 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
                         email: true,
                     },
                 },
+                currency: true,
             },
         });
 
@@ -292,7 +296,7 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
 export const updateTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, cover_image, price, is_published } = req.body;
+        const { title, description, cover_image, price, currency_id, is_published } = req.body;
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
@@ -339,6 +343,7 @@ export const updateTestSeries = async (req: AuthRequest, res: Response) => {
         if (description !== undefined) updateData.description = description;
         if (cover_image !== undefined) updateData.cover_image = cover_image;
         if (price !== undefined) updateData.price = price ? parseInt(price) : null;
+        if (currency_id !== undefined) updateData.currency_id = currency_id ? parseInt(currency_id) : null;
         if (is_published !== undefined) updateData.is_published = is_published;
 
         const testSeries = await prisma.testSeries.update({
@@ -352,6 +357,7 @@ export const updateTestSeries = async (req: AuthRequest, res: Response) => {
                         email: true,
                     },
                 },
+                currency: true,
                 _count: {
                     select: {
                         tests: true,

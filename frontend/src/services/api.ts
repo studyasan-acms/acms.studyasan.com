@@ -392,6 +392,8 @@ export const subjectService = {
     if (data.syllabus !== null) formData.append('syllabus', JSON.stringify(data.syllabus));
     formData.append('is_course', data.is_course.toString());
     if (data.cover_image) formData.append('cover_image', data.cover_image);
+    if (data.price !== null && data.price !== undefined) formData.append('price', data.price.toString());
+    if (data.currency_id !== null && data.currency_id !== undefined) formData.append('currency_id', data.currency_id.toString());
 
     const response = await api.post('/subjects', formData, {
       headers: {
@@ -412,6 +414,8 @@ export const subjectService = {
     if (data.syllabus !== undefined) formData.append('syllabus', JSON.stringify(data.syllabus));
     if (data.is_course !== undefined) formData.append('is_course', data.is_course.toString());
     if (data.cover_image !== undefined && data.cover_image) formData.append('cover_image', data.cover_image);
+    if (data.price !== undefined) formData.append('price', data.price !== null ? data.price.toString() : '');
+    if (data.currency_id !== undefined) formData.append('currency_id', data.currency_id !== null ? data.currency_id.toString() : '');
 
     const response = await api.put(`/subjects/${id}`, formData, {
       headers: {
@@ -901,6 +905,7 @@ export const testSeriesService = {
     description?: string;
     cover_image?: string;
     price?: number;
+    currency_id?: number | null;
     is_published?: boolean;
   }): Promise<{ success: boolean; data: TestSeries }> => {
     const response = await api.post('/test-series', data);
@@ -915,6 +920,7 @@ export const testSeriesService = {
       description?: string;
       cover_image?: string;
       price?: number;
+      currency_id?: number | null;
       is_published?: boolean;
     }
   ): Promise<{ success: boolean; data: TestSeries }> => {
@@ -975,7 +981,7 @@ export const activityGroupService = {
     limit?: number;
     search?: string;
     is_active?: boolean;
-  }): Promise<{ success: boolean; data: { activityGroups: ActivityGroup[]; pagination: any } }> => {
+  }): Promise<{ success: boolean; message: string; data: { activityGroups: ActivityGroup[]; pagination: any } }> => {
     const response = await api.get('/activity-groups', { params });
     return response.data;
   },
@@ -991,6 +997,8 @@ export const activityGroupService = {
     name: string;
     description?: string;
     cover_image?: string;
+    price?: number | null;
+    currency_id?: number | null;
   }): Promise<{ success: boolean; data: ActivityGroup }> => {
     const response = await api.post('/activity-groups', data);
     return response.data;
@@ -1004,6 +1012,8 @@ export const activityGroupService = {
       description?: string;
       cover_image?: string;
       is_active?: boolean;
+      price?: number | null;
+      currency_id?: number | null;
     }
   ): Promise<{ success: boolean; data: ActivityGroup }> => {
     const response = await api.put(`/activity-groups/${id}`, data);

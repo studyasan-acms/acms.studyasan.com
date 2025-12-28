@@ -130,7 +130,7 @@ export default function TeacherDetailPage() {
     setActivityGroupListLoading(true);
     try {
       const response = await activityGroupService.getAll();
-      setActivityGroups(response.data.data);
+      setActivityGroups(response.data.activityGroups);
     } catch (error) {
       console.error("Failed to fetch activity groups:", error);
       setActivityGroupError("Failed to load activity groups");
@@ -254,7 +254,7 @@ export default function TeacherDetailPage() {
     setActivityGroupListLoading(true);
     try {
       const res = await activityGroupService.getAll({ limit: 100 });
-      setActivityGroups(res.data.data);
+      setActivityGroups(res.data.activityGroups);
     } catch (err) {
       console.error("Failed to fetch activity groups:", err);
     } finally {

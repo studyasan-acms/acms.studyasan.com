@@ -113,6 +113,9 @@ model Subject {
   board_id                  Int?
   syllabus                  Json?
   is_course                 Boolean                  @default(false)
+  price                     Float? // Optional pricing for paid subjects/courses
+  currency_id               Int?
+  currency                  Currency?                @relation(fields: [currency_id], references: [id])
   created_at                DateTime                 @default(now())
   updated_at                DateTime                 @updatedAt
   class                     Class?                   @relation(fields: [class_id], references: [id])
@@ -403,13 +406,16 @@ model Message {
 }
 
 model Currency {
-  id        Int       @id @default(autoincrement())
-  code      String    @unique
-  name      String
-  symbol    String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  teachers  Teacher[]
+  id             Int             @id @default(autoincrement())
+  code           String          @unique
+  name           String
+  symbol         String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  teachers       Teacher[]
+  subjects       Subject[]
+  activityGroups ActivityGroup[]
+  testSeries     TestSeries[]
 
   @@map("currency")
 }
@@ -502,15 +508,17 @@ model TeacherAddress {
 
 // Test Series - Independent test collections not tied to class/board/subject
 model TestSeries {
-  id           Int      @id @default(autoincrement())
+  id           Int       @id @default(autoincrement())
   title        String
   description  String?
   cover_image  String?
   price        Int? // Optional pricing for paid test series
-  is_published Boolean  @default(false)
+  currency_id  Int?
+  currency     Currency? @relation(fields: [currency_id], references: [id])
+  is_published Boolean   @default(false)
   created_by   Int
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
   creator           User                        @relation("TestSeriesCreator", fields: [created_by], references: [id])
   tests             Test[]
@@ -564,14 +572,17 @@ enum ActivityType {
 
 // Activity Group - Collection of activities for organizing
 model ActivityGroup {
-  id          Int      @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   description String?
   cover_image String?
-  is_active   Boolean  @default(true)
+  is_active   Boolean   @default(true)
+  price       Float? // Optional pricing for paid activity groups
+  currency_id Int?
+  currency    Currency? @relation(fields: [currency_id], references: [id])
   created_by  Int
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
 
   creator           User                           @relation("ActivityGroupCreator", fields: [created_by], references: [id])
   activities        Activity[]

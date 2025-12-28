@@ -2,8 +2,20 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
+import { Input } from '../../ui/input';
+import { Label } from '../../ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../../ui/select';
 import { activityGroupAPI } from '../../../services/activity.service';
+import { currencyService } from '../../../services/api';
 import type { ActivityGroup, CreateActivityGroupInput } from '../../../types/activity';
+import type { Currency } from '../../../types';
+import { useAuthStore } from '../../../store/authStore';
 import { toast } from 'sonner';
 
 interface Props {
@@ -13,12 +25,22 @@ interface Props {
 }
 
 export default function ActivityGroupForm({ group, onSuccess, onCancel }: Props) {
+  const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === 'ADMIN';
+
   const [formData, setFormData] = useState<CreateActivityGroupInput>({
     name: '',
     description: '',
     cover_image: '',
+    price: null,
+    currency_id: null,
   });
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchCurrencies();
+  }, []);
 
   useEffect(() => {
     if (group) {
@@ -26,9 +48,24 @@ export default function ActivityGroupForm({ group, onSuccess, onCancel }: Props)
         name: group.name,
         description: group.description || '',
         cover_image: group.cover_image || '',
+        price: group.price || null,
+        currency_id: group.currency_id || null,
       });
     }
   }, [group]);
+
+  const fetchCurrencies = async () => {
+    try {
+      const currencies = await currencyService.getAll();
+      setCurrencies(currencies);
+    } catch (err) {
+      console.error('Failed to fetch currencies:', err);
+    }
+  };
+
+  const handleChange = (field: keyof CreateActivityGroupInput, value: any) => {
+    setFormData((prev: CreateActivityGroupInput) => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +143,48 @@ export default function ActivityGroupForm({ group, onSuccess, onCancel }: Props)
               />
             )}
           </div>
+
+          {isAdmin && (
+            <>
+              <div>
+                <Label htmlFor="price" className="block text-sm font-medium mb-2">
+                  Price
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={formData.price ?? ''}
+                  onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="currency_id" className="block text-sm font-medium mb-2">
+                  Currency
+                </Label>
+                <Select
+                  value={formData.currency_id?.toString() ?? ''}
+                  onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
+                  disabled={loading}
+                >
+                  <SelectTrigger id="currency_id">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {currencies.map((currency) => (
+                      <SelectItem key={currency.id} value={currency.id.toString()}>
+                        {currency.name} ({currency.code})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button type="submit" disabled={loading}>

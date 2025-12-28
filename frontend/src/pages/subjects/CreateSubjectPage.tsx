@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { subjectService, boardService, classService } from '@/services/api';
-import type { Board, Class, CreateSubjectData } from '@/types';
+import { subjectService, boardService, classService, currencyService } from '@/services/api';
+import type { Board, Class, CreateSubjectData, Currency } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
 import ErrorModal from '@/components/ui/errorModal';
@@ -26,6 +26,7 @@ export default function CreateSubjectPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [syllabusUnits, setSyllabusUnits] = useState<{ name: string; content: string }[]>([]);
@@ -39,6 +40,8 @@ export default function CreateSubjectPage() {
     board_id: null,
     syllabus: null,
     is_course: false,
+    price: null,
+    currency_id: null,
   });
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export default function CreateSubjectPage() {
     }
     fetchBoards();
     fetchClasses();
+    fetchCurrencies();
   }, [isAdmin, navigate]);
 
   const fetchBoards = async () => {
@@ -65,6 +69,15 @@ export default function CreateSubjectPage() {
       setClasses(response.data.data);
     } catch (err) {
       console.error('Failed to fetch classes:', err);
+    }
+  };
+
+  const fetchCurrencies = async () => {
+    try {
+      const currencies = await currencyService.getAll();
+      setCurrencies(currencies);
+    } catch (err) {
+      console.error('Failed to fetch currencies:', err);
     }
   };
 
@@ -182,6 +195,44 @@ export default function CreateSubjectPage() {
                   Courses are standalone; subjects require class/board
                 </p>
               </div>
+
+              {isAdmin && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className='text-gray-600'>Price</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={formData.price ?? ''}
+                      onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="currency_id" className='text-gray-600'>Currency</Label>
+                    <Select
+                      value={formData.currency_id?.toString() ?? ''}
+                      onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger id="currency_id">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.id} value={currency.id.toString()}>
+                            {currency.name} ({currency.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

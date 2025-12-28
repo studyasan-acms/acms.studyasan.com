@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 // Create Activity Group
 export const createActivityGroup = async (req: Request, res: Response) => {
   try {
-    const { name, description, cover_image } = req.body;
+    const { name, description, cover_image, price, currency_id } = req.body;
     const userId = (req as any).user.id;
 
     const activityGroup = await prisma.activityGroup.create({
@@ -15,6 +15,8 @@ export const createActivityGroup = async (req: Request, res: Response) => {
         name,
         description,
         cover_image,
+        ...(price && { price: parseFloat(price) }),
+        ...(currency_id && { currency_id: parseInt(currency_id) }),
         created_by: userId,
       },
       include: {
@@ -25,6 +27,7 @@ export const createActivityGroup = async (req: Request, res: Response) => {
             email: true,
           },
         },
+        currency: true,
       },
     });
 
@@ -76,6 +79,7 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
               email: true,
             },
           },
+          currency: true,
           teacher_junctions: {
             include: {
               teacher: {
@@ -133,6 +137,7 @@ export const getActivityGroupById = async (req: Request, res: Response) => {
             email: true,
           },
         },
+        currency: true,
         teacher_junctions: {
           include: {
             teacher: {
@@ -175,7 +180,7 @@ export const getActivityGroupById = async (req: Request, res: Response) => {
 export const updateActivityGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, cover_image, is_active } = req.body;
+    const { name, description, cover_image, is_active, price, currency_id } = req.body;
 
     const activityGroup = await prisma.activityGroup.update({
       where: { id: Number(id) },
@@ -184,6 +189,8 @@ export const updateActivityGroup = async (req: Request, res: Response) => {
         description,
         cover_image,
         is_active,
+        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(currency_id !== undefined && { currency_id: currency_id ? parseInt(currency_id) : null }),
       },
       include: {
         creator: {
@@ -193,6 +200,7 @@ export const updateActivityGroup = async (req: Request, res: Response) => {
             email: true,
           },
         },
+        currency: true,
       },
     });
 

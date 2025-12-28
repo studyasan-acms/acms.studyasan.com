@@ -331,10 +331,13 @@ export interface Subject {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  price: number | null;
+  currency_id: number | null;
   created_at: string;
   updated_at: string;
   class: { id: number; name: string } | null;
   board: { id: number; name: string } | null;
+  currency: { id: number; name: string; code: string; symbol: string } | null;
   _count?: { enrollments: number; teacher_subject_junctions: number };
   enrollments?: {
     id: number;
@@ -353,6 +356,8 @@ export interface CreateSubjectData {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  price: number | null;
+  currency_id: number | null;
 }
 
 export interface UpdateSubjectData {
@@ -362,6 +367,8 @@ export interface UpdateSubjectData {
   board_id?: number | null;
   syllabus?: any;
   is_course?: boolean;
+  price?: number | null;
+  currency_id?: number | null;
 }
 
 // ================== ENROLLMENTS ==================
@@ -853,6 +860,8 @@ export interface ActivityGroup {
   description?: string;
   cover_image?: string;
   is_active: boolean;
+  price: number | null;
+  currency_id: number | null;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -861,6 +870,7 @@ export interface ActivityGroup {
     name: string;
     email: string;
   };
+  currency: { id: number; name: string; code: string; symbol: string } | null;
   teacher_junctions?: ActivityGroupTeacherJunction[];
   activities?: any[];
   _count?: {
@@ -895,6 +905,7 @@ export interface TestSeries {
   description?: string;
   cover_image?: string;
   price?: number;
+  currency_id: number | null;
   is_published: boolean;
   created_by: number;
   created_at: string;
@@ -904,6 +915,7 @@ export interface TestSeries {
     name: string;
     email: string;
   };
+  currency: { id: number; name: string; code: string; symbol: string } | null;
   teacher_junctions?: TestSeriesTeacherJunction[];
   tests?: Test[];
   _count?: {

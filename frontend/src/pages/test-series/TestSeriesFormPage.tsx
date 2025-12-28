@@ -13,6 +13,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -20,8 +27,9 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { testSeriesService, teacherService } from "@/services/api";
-import type { TestSeriesTeacherJunction } from "@/types";
+import { testSeriesService, teacherService, currencyService } from "@/services/api";
+import type { TestSeriesTeacherJunction, Currency } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 import { ArrowLeft, Loader2, Save, Users, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,6 +47,8 @@ export default function TestSeriesFormPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditing = !!id;
+    const user = useAuthStore((state) => state.user);
+    const isAdmin = user?.role === 'ADMIN';
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -47,14 +57,17 @@ export default function TestSeriesFormPage() {
     const [allTeachers, setAllTeachers] = useState<TeacherData[]>([]);
     const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
     const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         price: "",
+        currency_id: "",
         is_published: false,
     });
 
     useEffect(() => {
+        fetchCurrencies();
         if (isEditing) {
             fetchTestSeries();
             fetchTeachers();
@@ -70,6 +83,7 @@ export default function TestSeriesFormPage() {
                 title: data.title || "",
                 description: data.description || "",
                 price: data.price?.toString() || "",
+                currency_id: data.currency_id?.toString() || "",
                 is_published: data.is_published || false,
             });
         } catch (error) {
@@ -103,6 +117,15 @@ export default function TestSeriesFormPage() {
         }
     };
 
+    const fetchCurrencies = async () => {
+        try {
+            const currencies = await currencyService.getAll();
+            setCurrencies(currencies);
+        } catch (err) {
+            console.error('Failed to fetch currencies:', err);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
@@ -112,6 +135,7 @@ export default function TestSeriesFormPage() {
                 title: formData.title,
                 description: formData.description || undefined,
                 price: parseInt(formData.price),
+                currency_id: formData.currency_id ? parseInt(formData.currency_id) : undefined,
                 is_published: formData.is_published,
             };
 
@@ -258,6 +282,32 @@ export default function TestSeriesFormPage() {
                                 required
                             />
                         </div>
+
+                        {isAdmin && (
+                            <>
+                                {/* Currency */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="currency_id">Currency</Label>
+                                    <Select
+                                        value={formData.currency_id}
+                                        onValueChange={(value) =>
+                                            setFormData((prev) => ({ ...prev, currency_id: value }))
+                                        }
+                                    >
+                                        <SelectTrigger id="currency_id">
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {currencies.map((currency) => (
+                                                <SelectItem key={currency.id} value={currency.id.toString()}>
+                                                    {currency.name} ({currency.code})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        )}
 
                         {/* Published */}
                         <div className="flex items-center justify-between">
