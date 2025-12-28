@@ -8,7 +8,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { studentService } from "@/services/api";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { studentService, subjectService, testSeriesService } from "@/services/api";
+import { activityEnrollmentAPI } from "@/services/activity.service";
 import { useAuthStore } from "@/store/authStore";
 import type { Student } from "@/types";
 import {
@@ -28,7 +37,9 @@ import {
   Globe,
   Map,
   Hash,
-  Receipt
+  Receipt,
+  Plus,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import InvoiceModal from "@/components/InvoiceModal";
@@ -39,6 +50,24 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  // Enrollment modals
+  const [showSubjectModal, setShowSubjectModal] = useState(false);
+  const [showTestSeriesModal, setShowTestSeriesModal] = useState(false);
+  const [showActivityGroupModal, setShowActivityGroupModal] = useState(false);
+
+  // Data for selects
+  const [subjects, setSubjects] = useState<any[]>([]);
+  const [testSeries, setTestSeries] = useState<any[]>([]);
+  const [activityGroups, setActivityGroups] = useState<any[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [loadingTestSeries, setLoadingTestSeries] = useState(false);
+  const [loadingActivityGroups, setLoadingActivityGroups] = useState(false);
+
+  // Selected items
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);
+  const [selectedTestSeriesId, setSelectedTestSeriesId] = useState<number | null>(null);
+  const [selectedActivityGroupId, setSelectedActivityGroupId] = useState<number | null>(null);
 
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";
@@ -59,6 +88,130 @@ export default function StudentDetailPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Fetch subjects for enrollment
+  const fetchSubjects = async () => {
+    setLoadingSubjects(true);
+    try {
+      const response = await subjectService.getAll({ limit: 100 });
+      setSubjects(response.data.data);
+    } catch (error) {
+      console.error("Failed to fetch subjects:", error);
+    } finally {
+      setLoadingSubjects(false);
+    }
+  };
+
+  // Fetch test series for enrollment
+  const fetchTestSeries = async () => {
+    setLoadingTestSeries(true);
+    try {
+      const response = await testSeriesService.getAll({ limit: 100 });
+      setTestSeries(response.data.data);
+    } catch (error) {
+      console.error("Failed to fetch test series:", error);
+    } finally {
+      setLoadingTestSeries(false);
+    }
+  };
+
+  // Fetch activity groups for enrollment
+  const fetchActivityGroups = async () => {
+    setLoadingActivityGroups(true);
+    try {
+      const response = await import("@/services/api").then(m => m.activityGroupService.getAll({ limit: 100, is_active: true }));
+      setActivityGroups(response.data.activityGroups);
+    } catch (error) {
+      console.error("Failed to fetch activity groups:", error);
+    } finally {
+      setLoadingActivityGroups(false);
+    }
+  };
+
+  // Handle subject enrollment
+  const handleEnrollSubject = async () => {
+    if (!selectedSubjectId || !student) return;
+    
+    // Check if already enrolled
+    const alreadyEnrolled = student.enrollments?.some(e => e.subject.id === selectedSubjectId);
+    if (alreadyEnrolled) {
+      alert('Student is already enrolled in this subject');
+      return;
+    }
+    
+    try {
+      await import("@/services/api").then(m => m.enrollmentService.create({
+        student_id: student.id,
+        subject_id: selectedSubjectId
+      }));
+      setShowSubjectModal(false);
+      setSelectedSubjectId(null);
+      fetchStudent(student.id); // Refresh data
+    } catch (error) {
+      console.error("Failed to enroll in subject:", error);
+      alert('Failed to enroll student in subject');
+    }
+  };
+
+  // Handle test series enrollment
+  const handleEnrollTestSeries = async () => {
+    if (!selectedTestSeriesId || !student) return;
+    
+    // Check if already enrolled
+    const alreadyEnrolled = student.test_series_enrollments?.some(e => e.test_series.id === selectedTestSeriesId);
+    if (alreadyEnrolled) {
+      alert('Student is already enrolled in this test series');
+      return;
+    }
+    
+    try {
+      await testSeriesService.enroll(selectedTestSeriesId, student.id);
+      setShowTestSeriesModal(false);
+      setSelectedTestSeriesId(null);
+      fetchStudent(student.id); // Refresh data
+    } catch (error) {
+      console.error("Failed to enroll in test series:", error);
+      alert('Failed to enroll student in test series');
+    }
+  };
+
+  // Handle activity group enrollment
+  const handleEnrollActivityGroup = async () => {
+    if (!selectedActivityGroupId || !student) return;
+    
+    // Check if already enrolled
+    const alreadyEnrolled = student.activity_enrollments?.some(e => e.activity.group.id === selectedActivityGroupId);
+    if (alreadyEnrolled) {
+      alert('Student is already enrolled in this activity group');
+      return;
+    }
+    
+    try {
+      await activityEnrollmentAPI.enrollToGroup(selectedActivityGroupId, [student.id]);
+      setShowActivityGroupModal(false);
+      setSelectedActivityGroupId(null);
+      fetchStudent(student.id); // Refresh data
+    } catch (error) {
+      console.error("Failed to enroll in activity group:", error);
+      alert('Failed to enroll student in activity group');
+    }
+  };
+
+  // Modal open handlers
+  const openSubjectModal = () => {
+    setShowSubjectModal(true);
+    fetchSubjects();
+  };
+
+  const openTestSeriesModal = () => {
+    setShowTestSeriesModal(true);
+    fetchTestSeries();
+  };
+
+  const openActivityGroupModal = () => {
+    setShowActivityGroupModal(true);
+    fetchActivityGroups();
   };
 
   if (isLoading) {
@@ -379,13 +532,19 @@ export default function StudentDetailPage() {
               <div className="space-y-4">
                 {/* Subject Enrollments */}
                 <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <BookOpen className="h-5 w-5 text-saBlue/50" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        Subject Enrollments ({student._count?.enrollments || 0})
-                      </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <BookOpen className="h-5 w-5 text-saBlue/50" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          Subject Enrollments ({student._count?.enrollments || 0})
+                        </p>
+                      </div>
                     </div>
+                    <Button size="sm" variant="outline" onClick={openSubjectModal}>
+                      <Plus className="mr-1 h-3 w-3" />
+                      Enroll
+                    </Button>
                   </div>
                   {student.enrollments && student.enrollments.length > 0 ? (
                     <div className="ml-8 space-y-1">
@@ -400,16 +559,51 @@ export default function StudentDetailPage() {
                   )}
                 </div>
 
+                {/* Test Series Enrollments */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <FileText className="h-5 w-5 text-saBlue/50" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          Test Series Enrollments ({student._count?.test_series_enrollments || 0})
+                        </p>
+                      </div>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={openTestSeriesModal}>
+                      <Plus className="mr-1 h-3 w-3" />
+                      Enroll
+                    </Button>
+                  </div>
+                  {(student.test_series_enrollments || []).length > 0 ? (
+                    <div className="ml-8 space-y-1">
+                      {(student.test_series_enrollments || []).map((enrollment) => (
+                        <p key={enrollment.id} className="text-sm text-muted-foreground">
+                          • {enrollment.test_series?.title || 'Unknown Test Series'}
+                        </p>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground ml-8">No test series enrollments</p>
+                  )}
+                </div>
+
                 {/* Activity Groups */}
                 <div>
-                  <div className="flex items-center space-x-3 mb-2">
-                    <Users className="h-5 w-5 text-saBlue/50" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">
-                        Activity Groups ({student.activity_enrollments ? 
-                          new Set(student.activity_enrollments.map(e => e.activity.group.id)).size : 0})
-                      </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <Users className="h-5 w-5 text-saBlue/50" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">
+                          Activity Groups ({student.activity_enrollments ? 
+                            new Set(student.activity_enrollments.map(e => e.activity.group.id)).size : 0})
+                        </p>
+                      </div>
                     </div>
+                    <Button size="sm" variant="outline" onClick={openActivityGroupModal}>
+                      <Plus className="mr-1 h-3 w-3" />
+                      Enroll
+                    </Button>
                   </div>
                   {student.activity_enrollments && student.activity_enrollments.length > 0 ? (
                     <div className="ml-8 space-y-1">
@@ -464,6 +658,165 @@ export default function StudentDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ENROLL SUBJECT MODAL */}
+      {showSubjectModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowSubjectModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Enroll in Subject</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="subject-select">Select Subject</Label>
+                <Select
+                  value={selectedSubjectId?.toString() || ""}
+                  onValueChange={(value) => setSelectedSubjectId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingSubjects ? (
+                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                    ) : (
+                      subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id.toString()}>
+                          {subject.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowSubjectModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEnrollSubject}
+                disabled={!selectedSubjectId || loadingSubjects}
+              >
+                Enroll
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLL TEST SERIES MODAL */}
+      {showTestSeriesModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowTestSeriesModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Enroll in Test Series</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="test-series-select">Select Test Series</Label>
+                <Select
+                  value={selectedTestSeriesId?.toString() || ""}
+                  onValueChange={(value) => setSelectedTestSeriesId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose a test series" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingTestSeries ? (
+                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                    ) : (
+                      testSeries.map((ts) => (
+                        <SelectItem key={ts.id} value={ts.id.toString()}>
+                          {ts.title}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowTestSeriesModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEnrollTestSeries}
+                disabled={!selectedTestSeriesId || loadingTestSeries}
+              >
+                Enroll
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ENROLL ACTIVITY GROUP MODAL */}
+      {showActivityGroupModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowActivityGroupModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold mb-4">Enroll in Activity Group</h3>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="activity-group-select">Select Activity Group</Label>
+                <Select
+                  value={selectedActivityGroupId?.toString() || ""}
+                  onValueChange={(value) => setSelectedActivityGroupId(parseInt(value))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose an activity group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingActivityGroups ? (
+                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
+                    ) : (
+                      activityGroups.map((ag) => (
+                        <SelectItem key={ag.id} value={ag.id.toString()}>
+                          {ag.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-6">
+              <Button
+                variant="outline"
+                onClick={() => setShowActivityGroupModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleEnrollActivityGroup}
+                disabled={!selectedActivityGroupId || loadingActivityGroups}
+              >
+                Enroll
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Modal */}
       {student && (

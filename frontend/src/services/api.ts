@@ -975,8 +975,8 @@ export const activityGroupService = {
     limit?: number;
     search?: string;
     is_active?: boolean;
-  }): Promise<PaginatedResponse<ActivityGroup>> => {
-    const response = await api.get<PaginatedResponse<ActivityGroup>>('/activity-groups', { params });
+  }): Promise<{ success: boolean; data: { activityGroups: ActivityGroup[]; pagination: any } }> => {
+    const response = await api.get('/activity-groups', { params });
     return response.data;
   },
 

@@ -106,6 +106,10 @@ export interface Student {
     id: number;
     subject: { id: number; name: string };
   }>;
+  test_series_enrollments?: Array<{
+    id: number;
+    test_series: { id: number; title: string };
+  }>;
   activity_enrollments?: Array<{
     id: number;
     activity: {
@@ -123,6 +127,7 @@ export interface Student {
   };
   _count?: { 
     enrollments: number;
+    test_series_enrollments: number;
     activity_enrollments: number;
   };
   blood_group?: 'A_POS' | 'A_NEG' | 'B_POS' | 'B_NEG' | 'AB_POS' | 'AB_NEG' | 'O_POS' | 'O_NEG' | null;

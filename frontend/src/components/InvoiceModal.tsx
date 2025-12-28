@@ -25,7 +25,7 @@ interface InvoiceModalProps {
 interface InvoiceItem {
   id: string;
   name: string;
-  type: "subject" | "activity_group";
+  type: "subject" | "activity_group" | "test_series";
   price: number;
   selected: boolean;
 }
@@ -56,6 +56,19 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
             id: `subject-${enrollment.id}`,
             name: enrollment.subject.name,
             type: "subject",
+            price: 0, // Default price, user can set
+            selected: true,
+          });
+        });
+      }
+
+      // Add test series enrollments
+      if (student.test_series_enrollments) {
+        student.test_series_enrollments.forEach((enrollment) => {
+          invoiceItems.push({
+            id: `test-series-${enrollment.id}`,
+            name: enrollment.test_series?.title || 'Unknown Test Series',
+            type: "test_series",
             price: 0, // Default price, user can set
             selected: true,
           });
@@ -221,7 +234,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
         const descText = item.name.length > 25 ? item.name.substring(0, 22) + '...' : item.name;
         pdf.text(descText, 25, tableY + 8);
 
-        const typeText = item.type === 'subject' ? 'Subject Enrollment' : 'Activity Group';
+        const typeText = item.type === 'subject' ? 'Subject Enrollment' : item.type === 'test_series' ? 'Test Series' : 'Activity Group';
         pdf.text(typeText, 100, tableY + 8);
 
         pdf.text(`${currencies[currency as keyof typeof currencies].symbol}${item.price.toFixed(2)}`, 165, tableY + 8, { align: 'right' });
@@ -318,8 +331,8 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                       <Label htmlFor={item.id} className="font-medium">
                         {item.name}
                       </Label>
-                      <p className="text-sm text-muted-foreground capitalize">
-                        {item.type.replace('_', ' ')}
+                      <p className="text-sm text-muted-foreground">
+                        {item.type === 'subject' ? 'Subject Enrollment' : item.type === 'test_series' ? 'Test Series' : 'Activity Group'}
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">

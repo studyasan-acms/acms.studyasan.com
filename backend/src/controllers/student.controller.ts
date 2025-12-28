@@ -116,6 +116,7 @@ export const getStudentById = async (req: Request, res: Response) => {
         class: true,
         board: true,
         enrollments: { include: { subject: true } },
+        test_series_enrollments: { include: { test_series: true } },
         address: { include: { country: true, state: true, city: true } },
         activity_enrollments: {
           include: {
@@ -129,6 +130,7 @@ export const getStudentById = async (req: Request, res: Response) => {
         _count: {
           select: {
             enrollments: true,
+            test_series_enrollments: true,
             activity_enrollments: true,
           },
         },
