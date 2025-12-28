@@ -39,10 +39,28 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10, is_active } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
+    const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
 
     const where: any = {};
     if (is_active !== undefined) {
       where.is_active = is_active === 'true';
+    }
+
+    // If user is TEACHER, only show groups they are assigned to
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      where.teacher_junctions = {
+        some: {
+          teacher_id: teacher.id,
+        },
+      };
     }
 
     const [activityGroups, total] = await Promise.all([

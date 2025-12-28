@@ -423,16 +423,16 @@ router.get('/activities/student/available', authenticate, authorize('STUDENT'), 
 router.get('/activities/:id', authenticate, activityController.getActivityById);
 
 // Create activity
-router.post('/activities', authenticate, authorize('ADMIN'), activityController.createActivity);
+router.post('/activities', authenticate, authorize('ADMIN', 'TEACHER'), activityController.createActivity);
 
 // Update activity
-router.put('/activities/:id', authenticate, authorize('ADMIN'), activityController.updateActivity);
+router.put('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.updateActivity);
 
 // Delete activity
-router.delete('/activities/:id', authenticate, authorize('ADMIN'), activityController.deleteActivity);
+router.delete('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.deleteActivity);
 
 // Publish/Unpublish activity
-router.patch('/activities/:id/publish', authenticate, authorize('ADMIN'), activityController.togglePublishActivity);
+router.patch('/activities/:id/publish', authenticate, authorize('ADMIN', 'TEACHER'), activityController.togglePublishActivity);
 
 // Generate activity content with AI
 router.post('/activities/generate-content', authenticate, authorize('ADMIN'), activityController.generateActivityContent);

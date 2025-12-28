@@ -6,6 +6,16 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, ...props }, ref) => {
+    const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+      if (type === "number" && e.target.value === "0") {
+        e.target.value = "";
+        // Trigger change event to update controlled state
+        const event = new Event('input', { bubbles: true });
+        e.target.dispatchEvent(event);
+      }
+      props.onFocus?.(e);
+    };
+
     return (
       <input
         type={type}
@@ -14,6 +24,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           className
         )}
         ref={ref}
+        onFocus={handleFocus}
         {...props}
       />
     )

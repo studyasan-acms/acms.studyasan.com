@@ -85,7 +85,7 @@ const navItems: NavItem[] = [
     title: "Activities",
     href: "/dashboard/activities",
     icon: Gamepad2,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "TEACHER"],
   },
   {
     title: "Learning Games",
