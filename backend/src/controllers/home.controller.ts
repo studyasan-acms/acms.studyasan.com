@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
 // Get all home items (courses, subjects, activity groups, test series)
 export const getHomeItems = async (req: Request, res: Response) => {
     try {
-        const userId = req.user?.id;
+        const userId = (req as any).user?.id;
 
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -30,13 +30,7 @@ export const getHomeItems = async (req: Request, res: Response) => {
             where: {
                 OR: [
                     { is_course: true }, // All courses
-                    {
-                        AND: [
-                            { is_course: false }, // Regular subjects
-                            student.class_id ? { class_id: student.class_id } : {},
-                            student.board_id ? { board_id: student.board_id } : {},
-                        ]
-                    }
+                    { is_course: false } // All regular subjects
                 ]
             },
             include: {

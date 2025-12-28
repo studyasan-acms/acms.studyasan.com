@@ -53,6 +53,7 @@ model User {
   created_activity_groups ActivityGroup[]          @relation("ActivityGroupCreator")
   created_activities      Activity[]               @relation("ActivityCreator")
   quiz_sessions_hosted    QuizSession[]
+  checked_homework        HomeworkResponse[]       @relation("HomeworkChecker")
 
   @@map("user")
 }
@@ -96,6 +97,8 @@ model Student {
   activity_enrollments    ActivityEnrollment[]
   activity_attempts       ActivityAttempt[]
   enquiries               Enquiry[]
+  homework_assignments    HomeworkAssignment[]
+  homework_responses      HomeworkResponse[]
 
   @@map("students")
 }
@@ -126,6 +129,7 @@ model Subject {
   class_sessions            ClassSession[]
   student_progress          StudentModuleProgress[]
   tests                     Test[]
+  homework                  Homework[]
 
   @@map("subjects")
 }
@@ -160,6 +164,7 @@ model Teacher {
   class_sessions            ClassSession[]
   activity_group_junctions  ActivityGroupTeacherJunction[]
   test_series_junctions     TestSeriesTeacherJunction[]
+  created_homework          Homework[]
 
   @@map("teachers")
 }
@@ -772,5 +777,62 @@ model Enquiry {
   @@index([status])
   @@index([item_type, item_id])
   @@map("enquiries")
+}
+
+// Homework - Teacher assigned homework for subjects
+model Homework {
+  id             Int               @id @default(autoincrement())
+  subject_id     Int
+  teacher_id     Int
+  title          String
+  description    String?
+  document_url   String? // URL for uploaded homework document
+  document_type  String? // Type: pdf, doc, docx, etc.
+  due_date       DateTime?
+  created_at     DateTime          @default(now())
+  updated_at     DateTime          @updatedAt
+
+  subject       Subject            @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  teacher       Teacher            @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  assignments   HomeworkAssignment[]
+  responses     HomeworkResponse[]
+
+  @@map("homework")
+}
+
+// Homework Assignment - Links homework to assigned students
+model HomeworkAssignment {
+  id          Int      @id @default(autoincrement())
+  homework_id Int
+  student_id  Int
+  assigned_at DateTime @default(now())
+
+  homework Homework @relation(fields: [homework_id], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@unique([homework_id, student_id])
+  @@map("homework_assignments")
+}
+
+// Homework Response - Student's response to homework
+model HomeworkResponse {
+  id                  Int      @id @default(autoincrement())
+  homework_id         Int
+  student_id          Int
+  response_text       String?
+  response_media_url  String? // URL for uploaded response media
+  response_media_type String? // Type: image, pdf, doc, video, etc.
+  submitted_at        DateTime @default(now())
+  is_checked          Boolean  @default(false)
+  checked_by          Int?
+  checked_at          DateTime?
+  feedback            String?
+
+  homework Homework @relation(fields: [homework_id], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  checker  User?    @relation("HomeworkChecker", fields: [checked_by], references: [id])
+
+  @@unique([homework_id, student_id])
+  @@map("homework_responses")
 }
 

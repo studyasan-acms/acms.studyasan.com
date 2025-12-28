@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export const createEnquiry = async (req: Request, res: Response) => {
     try {
         const { item_type, item_id, student_name, student_email, student_phone, message } = req.body;
-        const userId = req.user?.id;
+        const userId = (req as any).user?.id;
 
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });

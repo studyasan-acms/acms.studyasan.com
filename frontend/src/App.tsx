@@ -85,6 +85,11 @@ import StudentActivitiesPage from '@/pages/activities/StudentActivitiesPage';
 import StudentHomePage from '@/pages/StudentHomePage';
 import AdminEnquiriesPage from '@/pages/AdminEnquiriesPage';
 
+// Homework imports
+import HomeworkPage from '@/pages/homework/HomeworkPage';
+import CreateHomeworkPage from '@/pages/homework/CreateHomeworkPage';
+import HomeworkDetailPage from '@/pages/homework/HomeworkDetailPage';
+
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -210,6 +215,11 @@ function App() {
           <Route path="activity-groups" element={<ActivityGroupsPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="student-activities" element={<StudentActivitiesPage />} />
+
+          {/* Homework Routes */}
+          <Route path="homework" element={<HomeworkPage />} />
+          <Route path="homework/create" element={<CreateHomeworkPage />} />
+          <Route path="homework/:id" element={<HomeworkDetailPage />} />
 
           {/* Student Home Route */}
           <Route path="home" element={<StudentHomePage />} />

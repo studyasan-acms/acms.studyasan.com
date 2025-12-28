@@ -24,6 +24,7 @@ import * as activityEnrollmentController from '../controllers/activityEnrollment
 import * as activityAttemptController from '../controllers/activityAttempt.controller.js';
 import * as homeController from '../controllers/home.controller.js';
 import * as enquiryController from '../controllers/enquiry.controller.js';
+import * as homeworkController from '../controllers/homework.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -536,5 +537,31 @@ router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN'), enquiryC
 
 // Delete enquiry (Admin)
 router.delete('/enquiries/:id', authenticate, authorize('ADMIN'), enquiryController.deleteEnquiry);
+
+// ================== HOMEWORK ROUTES ==================
+
+// Create homework (Teacher/Admin)
+router.post('/homework', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('document'), homeworkController.createHomework);
+
+// Get homework by subject
+router.get('/subjects/:subject_id/homework', authenticate, homeworkController.getHomeworkBySubject);
+
+// Get teacher's homework
+router.get('/homework/teacher', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getTeacherHomework);
+
+// Get student's homework
+router.get('/homework/student', authenticate, authorize('STUDENT'), homeworkController.getStudentHomework);
+
+// Get homework by ID
+router.get('/homework/:id', authenticate, homeworkController.getHomeworkById);
+
+// Submit homework response (Student)
+router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'), upload.single('response_media'), homeworkController.submitHomeworkResponse);
+
+// Get homework responses (Teacher/Admin)
+router.get('/homework/:homework_id/responses', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getHomeworkResponses);
+
+// Check homework response (Teacher/Admin)
+router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.checkHomeworkResponse);
 
 export default router;

@@ -100,6 +100,12 @@ const navItems: NavItem[] = [
     roles: ["STUDENT"],
   },
   {
+    title: "Homework",
+    href: "/dashboard/homework",
+    icon: FileText,
+    roles: ["ADMIN", "TEACHER", "STUDENT"],
+  },
+  {
     title: "Chats",
     href: "/dashboard/chats",
     icon: MessageCircle,
