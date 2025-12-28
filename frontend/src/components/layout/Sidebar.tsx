@@ -34,10 +34,16 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
+    title: "Home",
+    href: "/dashboard/home",
+    icon: Home,
+    roles: ["STUDENT"],
+  },
+  {
     title: "Dashboard",
     href: "/dashboard",
     icon: Home,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
+    roles: ["ADMIN", "TEACHER"],
   },
   {
     title: "Students",
@@ -126,6 +132,12 @@ const navItems: NavItem[] = [
   {
     title: "Enrollments",
     href: "/dashboard/enrollments",
+    icon: GraduationCap,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Enquiries",
+    href: "/dashboard/enquiries",
     icon: GraduationCap,
     roles: ["ADMIN"],
   },

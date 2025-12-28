@@ -22,6 +22,8 @@ import * as activityGroupController from '../controllers/activityGroup.controlle
 import * as activityController from '../controllers/activity.controller.js';
 import * as activityEnrollmentController from '../controllers/activityEnrollment.controller.js';
 import * as activityAttemptController from '../controllers/activityAttempt.controller.js';
+import * as homeController from '../controllers/home.controller.js';
+import * as enquiryController from '../controllers/enquiry.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -513,5 +515,26 @@ router.post('/quiz-sessions/:id/next', authenticate, authorize('ADMIN', 'TEACHER
 
 // End Session (Host)
 router.post('/quiz-sessions/:id/end', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.endSession);
+
+
+// ================== HOME ROUTES (STUDENT) ==================
+
+// Get all home items (courses, subjects, activity groups, test series)
+router.get('/home/items', authenticate, authorize('STUDENT'), homeController.getHomeItems);
+
+
+// ================== ENQUIRY ROUTES ==================
+
+// Create enquiry (Student)
+router.post('/enquiries', authenticate, authorize('STUDENT'), enquiryController.createEnquiry);
+
+// Get all enquiries (Admin)
+router.get('/enquiries', authenticate, authorize('ADMIN'), enquiryController.getAllEnquiries);
+
+// Update enquiry status (Admin)
+router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN'), enquiryController.updateEnquiryStatus);
+
+// Delete enquiry (Admin)
+router.delete('/enquiries/:id', authenticate, authorize('ADMIN'), enquiryController.deleteEnquiry);
 
 export default router;

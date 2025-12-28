@@ -95,6 +95,7 @@ model Student {
   test_series_enrollments TestSeriesEnrollment[]
   activity_enrollments    ActivityEnrollment[]
   activity_attempts       ActivityAttempt[]
+  enquiries               Enquiry[]
 
   @@map("students")
 }
@@ -735,3 +736,41 @@ model ActivityGroupTeacherJunction {
   @@unique([activity_group_id, teacher_id])
   @@map("activity_group_teacher_junction")
 }
+
+// Enquiry Types - What type of item the student is enquiring about
+enum EnquiryItemType {
+  COURSE
+  SUBJECT
+  ACTIVITY_GROUP
+  TEST_SERIES
+}
+
+// Enquiry Status - Current status of the enquiry
+enum EnquiryStatus {
+  PENDING
+  CONTACTED
+  RESOLVED
+}
+
+// Enquiry - Student enquiries for courses, subjects, activity groups, test series
+model Enquiry {
+  id            Int              @id @default(autoincrement())
+  student_id    Int
+  item_type     EnquiryItemType
+  item_id       Int
+  student_name  String
+  student_email String
+  student_phone String
+  message       String?
+  status        EnquiryStatus    @default(PENDING)
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  @@index([student_id])
+  @@index([status])
+  @@index([item_type, item_id])
+  @@map("enquiries")
+}
+

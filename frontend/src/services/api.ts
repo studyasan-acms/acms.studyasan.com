@@ -1043,4 +1043,47 @@ export const activityGroupService = {
   },
 };
 
+// Home service - Get all items for student home page
+export const homeService = {
+  getItems: async (): Promise<{ data: any[]; total: number }> => {
+    const response = await api.get('/home/items');
+    return response.data;
+  },
+};
+
+// Enquiry service - Manage student enquiries
+export const enquiryService = {
+  create: async (data: {
+    item_type: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
+    item_id: number;
+    student_name: string;
+    student_email: string;
+    student_phone: string;
+    message?: string;
+  }): Promise<{ message: string; data: any }> => {
+    const response = await api.post('/enquiries', data);
+    return response.data;
+  },
+
+  getAll: async (params?: {
+    status?: 'PENDING' | 'CONTACTED' | 'RESOLVED';
+    item_type?: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: any[]; pagination: any }> => {
+    const response = await api.get('/enquiries', { params });
+    return response.data;
+  },
+
+  updateStatus: async (id: number, status: 'PENDING' | 'CONTACTED' | 'RESOLVED'): Promise<{ message: string; data: any }> => {
+    const response = await api.patch(`/enquiries/${id}/status`, { status });
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/enquiries/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
