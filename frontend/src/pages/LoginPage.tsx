@@ -39,7 +39,11 @@ export default function LoginPage() {
     try {
       const response = await authService.login(formData);
       setAuth(response.data.user, response.data.token);
-      navigate("/dashboard");
+      if (response.data.user.role === 'STUDENT') {
+        navigate("/dashboard/home");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err: unknown) {
       const apiError = err as ApiErrorResponse;
 

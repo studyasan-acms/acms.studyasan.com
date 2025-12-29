@@ -27,6 +27,7 @@ import * as enquiryController from '../controllers/enquiry.controller.js';
 import * as homeworkController from '../controllers/homework.controller.js';
 import * as videoRoomController from '../controllers/videoRoom.controller.js';
 import * as paymentController from '../controllers/payment.controller.js';
+import * as analyticsController from '../controllers/analytics.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -615,5 +616,20 @@ router.get('/payments', authenticate, authorize('ADMIN'), paymentController.getA
 router.get('/payments/:id', authenticate, authorize('ADMIN'), paymentController.getPaymentById);
 router.put('/payments/:id/mark-paid', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
 router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
+
+// ================== ANALYTICS ROUTES ==================
+
+// Student analytics
+router.get('/analytics/my-analytics', authenticate, authorize('STUDENT'), analyticsController.getMyAnalytics);
+
+// Teacher analytics
+router.get('/analytics/teacher/students', authenticate, authorize('TEACHER'), analyticsController.getTeacherStudentsAnalytics);
+router.get('/analytics/teacher/subject/:subjectId', authenticate, authorize('TEACHER'), analyticsController.getTeacherSubjectAnalytics);
+
+// Admin analytics
+router.get('/analytics/student/:studentId', authenticate, authorize('ADMIN', 'TEACHER'), analyticsController.getStudentAnalytics);
+router.get('/analytics/admin/students', authenticate, authorize('ADMIN'), analyticsController.getAdminStudentsAnalytics);
+router.get('/analytics/admin/teachers', authenticate, authorize('ADMIN'), analyticsController.getAdminTeachersAnalytics);
+router.get('/analytics/admin/business', authenticate, authorize('ADMIN'), analyticsController.getAdminBusinessAnalytics);
 
 export default router;

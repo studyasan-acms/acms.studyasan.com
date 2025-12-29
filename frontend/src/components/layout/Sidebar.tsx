@@ -24,6 +24,7 @@ import {
   Play,
   ClipboardCheck,
   DollarSign,
+  TrendingUp,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -46,6 +47,24 @@ const navItems: NavItem[] = [
     href: "/dashboard",
     icon: Home,
     roles: ["ADMIN", "TEACHER"],
+  },
+  {
+    title: "Analytics",
+    href: "/dashboard/analytics/admin",
+    icon: TrendingUp,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Student Analytics",
+    href: "/dashboard/analytics/teacher",
+    icon: TrendingUp,
+    roles: ["TEACHER"],
+  },
+  {
+    title: "My Analytics",
+    href: "/dashboard/analytics",
+    icon: TrendingUp,
+    roles: ["STUDENT"],
   },
   {
     title: "Students",

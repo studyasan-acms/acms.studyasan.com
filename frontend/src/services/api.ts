@@ -1117,4 +1117,40 @@ export const enquiryService = {
   },
 };
 
+export const analyticsService = {
+  // Student: Get my analytics
+  getMyAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/my-analytics');
+    return response.data;
+  },
+
+  // Teacher: Get students analytics
+  getTeacherStudentsAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/teacher/students');
+    return response.data;
+  },
+
+  // Teacher: Get subject analytics
+  getTeacherSubjectAnalytics: async (subjectId: string): Promise<any> => {
+    const response = await api.get(`/analytics/teacher/subject/${subjectId}`);
+    return response.data;
+  },
+
+  // Admin: Get analytics
+  getAdminStudentsAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/admin/students');
+    return response.data;
+  },
+
+  getAdminTeachersAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/admin/teachers');
+    return response.data;
+  },
+
+  getAdminBusinessAnalytics: async (): Promise<any> => {
+    const response = await api.get('/analytics/admin/business');
+    return response.data;
+  },
+};
+
 export default api;

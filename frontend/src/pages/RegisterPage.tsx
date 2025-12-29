@@ -45,7 +45,11 @@ export default function RegisterPage() {
 
       const response = await authService.register(registerData);
       setAuth(response.data.user, response.data.token);
-      navigate("/dashboard");
+      if (response.data.user.role === 'STUDENT') {
+        navigate("/dashboard/home");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err: unknown) {
       // Type-safe error → fixes "Unexpected any" warning
       const errorMessage =

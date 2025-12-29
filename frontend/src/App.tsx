@@ -100,6 +100,11 @@ import HomeworkPage from '@/pages/homework/HomeworkPage';
 import CreateHomeworkPage from '@/pages/homework/CreateHomeworkPage';
 import HomeworkDetailPage from '@/pages/homework/HomeworkDetailPage';
 
+// Analytics imports
+import StudentAnalyticsPage from '@/pages/analytics/StudentAnalyticsPage';
+import TeacherAnalyticsPage from '@/pages/analytics/TeacherAnalyticsPage';
+import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
+
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -114,9 +119,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 // Public Route Component (redirects to dashboard if authenticated)
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated && user) {
+    if (user.role === 'STUDENT') {
+      return <Navigate to="/dashboard/home" replace />;
+    } else {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -239,6 +249,11 @@ function App() {
 
           {/* Admin Enquiries Route */}
           <Route path="enquiries" element={<AdminEnquiriesPage />} />
+
+          {/* Analytics Routes */}
+          <Route path="analytics" element={<StudentAnalyticsPage />} />
+          <Route path="analytics/teacher" element={<TeacherAnalyticsPage />} />
+          <Route path="analytics/admin" element={<AdminAnalyticsPage />} />
 
           {/* Attendance Routes */}
           <Route path="attendance" element={<AttendanceListPage />} />
