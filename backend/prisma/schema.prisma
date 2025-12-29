@@ -32,28 +32,27 @@ model Class {
 }
 
 model User {
-  id                      Int                      @id @default(autoincrement())
-  name                    String
-  email                   String                   @unique
-  phone                   String
-  password                String
-  role                    Role                     @default(STUDENT)
-  created_at              DateTime                 @default(now())
-  updated_at              DateTime                 @updatedAt
-  student                 Student?
-  teacher                 Teacher?
-  notifications           Notification[]
-  created_sessions        ClassSession[]           @relation("SessionCreator")
-  session_attendances     ClassSessionAttendance[] @relation("SessionAttendances")
-  created_tests           Test[]
-  graded_attempts         TestAttempt[]
-  chat_participations     ChatParticipant[]
-  sent_messages           Message[]
-  created_test_series     TestSeries[]             @relation("TestSeriesCreator")
-  created_activity_groups ActivityGroup[]          @relation("ActivityGroupCreator")
-  created_activities      Activity[]               @relation("ActivityCreator")
-  quiz_sessions_hosted    QuizSession[]
-  checked_homework        HomeworkResponse[]       @relation("HomeworkChecker")
+  id                  Int                      @id @default(autoincrement())
+  name                String
+  email               String                   @unique
+  phone               String
+  password            String
+  role                Role                     @default(STUDENT)
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
+  student             Student?
+  teacher             Teacher?
+  notifications       Notification[]
+  created_sessions    ClassSession[]           @relation("SessionCreator")
+  session_attendances ClassSessionAttendance[] @relation("SessionAttendances")
+  created_tests       Test[]
+  graded_attempts     TestAttempt[]
+  chat_participations ChatParticipant[]
+  sent_messages       Message[]
+  created_test_series TestSeries[]             @relation("TestSeriesCreator")
+  created_activity_groups ActivityGroup[]      @relation("ActivityGroupCreator")
+  created_activities  Activity[]               @relation("ActivityCreator")
+  quiz_sessions_hosted QuizSession[]
 
   @@map("user")
 }
@@ -202,6 +201,7 @@ model ClassSession {
   board           Board?                   @relation(fields: [board_id], references: [id])
   creator         User                     @relation("SessionCreator", fields: [created_by], references: [id])
   attendances     ClassSessionAttendance[]
+  video_room      VideoRoom?
 
   @@map("class_sessions")
 }
@@ -218,6 +218,7 @@ model ClassSessionAttendance {
   updated_at       DateTime       @updatedAt
   class_session    ClassSession   @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
   user             User           @relation("SessionAttendances", fields: [user_id], references: [id], onDelete: Cascade)
+  attendance_logs  VideoRoomAttendanceLog[]
 
   @@unique([class_session_id, user_id])
   @@map("class_session_attendance")
@@ -727,112 +728,3 @@ model QuizSession {
 
   @@map("quiz_sessions")
 }
-
-// Activity Group Teacher Junction - Links teachers to activity groups
-model ActivityGroupTeacherJunction {
-  id                Int      @id @default(autoincrement())
-  activity_group_id Int
-  teacher_id        Int
-  assigned_at       DateTime @default(now())
-
-  activity_group ActivityGroup @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
-  teacher        Teacher       @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
-
-  @@unique([activity_group_id, teacher_id])
-  @@map("activity_group_teacher_junction")
-}
-
-// Enquiry Types - What type of item the student is enquiring about
-enum EnquiryItemType {
-  COURSE
-  SUBJECT
-  ACTIVITY_GROUP
-  TEST_SERIES
-}
-
-// Enquiry Status - Current status of the enquiry
-enum EnquiryStatus {
-  PENDING
-  CONTACTED
-  RESOLVED
-}
-
-// Enquiry - Student enquiries for courses, subjects, activity groups, test series
-model Enquiry {
-  id            Int              @id @default(autoincrement())
-  student_id    Int
-  item_type     EnquiryItemType
-  item_id       Int
-  student_name  String
-  student_email String
-  student_phone String
-  message       String?
-  status        EnquiryStatus    @default(PENDING)
-  created_at    DateTime         @default(now())
-  updated_at    DateTime         @updatedAt
-
-  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
-
-  @@index([student_id])
-  @@index([status])
-  @@index([item_type, item_id])
-  @@map("enquiries")
-}
-
-// Homework - Teacher assigned homework for subjects
-model Homework {
-  id             Int               @id @default(autoincrement())
-  subject_id     Int
-  teacher_id     Int
-  title          String
-  description    String?
-  document_url   String? // URL for uploaded homework document
-  document_type  String? // Type: pdf, doc, docx, etc.
-  due_date       DateTime?
-  created_at     DateTime          @default(now())
-  updated_at     DateTime          @updatedAt
-
-  subject       Subject            @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  teacher       Teacher            @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
-  assignments   HomeworkAssignment[]
-  responses     HomeworkResponse[]
-
-  @@map("homework")
-}
-
-// Homework Assignment - Links homework to assigned students
-model HomeworkAssignment {
-  id          Int      @id @default(autoincrement())
-  homework_id Int
-  student_id  Int
-  assigned_at DateTime @default(now())
-
-  homework Homework @relation(fields: [homework_id], references: [id], onDelete: Cascade)
-  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-
-  @@unique([homework_id, student_id])
-  @@map("homework_assignments")
-}
-
-// Homework Response - Student's response to homework
-model HomeworkResponse {
-  id                  Int      @id @default(autoincrement())
-  homework_id         Int
-  student_id          Int
-  response_text       String?
-  response_media_url  String? // URL for uploaded response media
-  response_media_type String? // Type: image, pdf, doc, video, etc.
-  submitted_at        DateTime @default(now())
-  is_checked          Boolean  @default(false)
-  checked_by          Int?
-  checked_at          DateTime?
-  feedback            String?
-
-  homework Homework @relation(fields: [homework_id], references: [id], onDelete: Cascade)
-  student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  checker  User?    @relation("HomeworkChecker", fields: [checked_by], references: [id])
-
-  @@unique([homework_id, student_id])
-  @@map("homework_responses")
-}
-

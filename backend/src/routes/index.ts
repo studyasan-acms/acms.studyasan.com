@@ -25,6 +25,7 @@ import * as activityAttemptController from '../controllers/activityAttempt.contr
 import * as homeController from '../controllers/home.controller.js';
 import * as enquiryController from '../controllers/enquiry.controller.js';
 import * as homeworkController from '../controllers/homework.controller.js';
+import * as videoRoomController from '../controllers/videoRoom.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -563,5 +564,37 @@ router.get('/homework/:homework_id/responses', authenticate, authorize('ADMIN', 
 
 // Check homework response (Teacher/Admin)
 router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.checkHomeworkResponse);
+
+// ================== VIDEO ROOM ROUTES ==================
+
+// Get or create video room for session
+router.get('/video-rooms/session/:sessionId', authenticate, videoRoomController.getOrCreateRoom);
+
+// Create Janus room (secure endpoint with admin key)
+router.post('/video-rooms/janus/create', authenticate, videoRoomController.createJanusRoom);
+
+// Mark room as created on Janus (called by frontend)
+router.post('/video-rooms/:janusRoomId/created', authenticate, videoRoomController.markRoomCreated);
+
+// Validate access to room
+router.get('/video-rooms/:janusRoomId/access', authenticate, videoRoomController.validateAccess);
+
+// Chat endpoints
+router.get('/video-rooms/:janusRoomId/chat', authenticate, videoRoomController.getChatMessages);
+router.post('/video-rooms/:janusRoomId/chat', authenticate, videoRoomController.sendChatMessage);
+
+// Whiteboard endpoints
+router.get('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.getWhiteboardStrokes);
+router.post('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.addWhiteboardStroke);
+router.delete('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.clearWhiteboard);
+
+// Teacher admin actions
+router.post('/video-rooms/:janusRoomId/participants/:participantId/mute', authenticate, videoRoomController.muteParticipant);
+router.post('/video-rooms/:janusRoomId/participants/:participantId/kick', authenticate, videoRoomController.kickParticipant);
+
+// Attendance tracking
+router.post('/video-rooms/:janusRoomId/join', authenticate, videoRoomController.recordJoin);
+router.post('/video-rooms/:janusRoomId/leave', authenticate, videoRoomController.recordLeave);
+router.get('/class-sessions/:sessionId/attendance', authenticate, videoRoomController.getSessionAttendance);
 
 export default router;

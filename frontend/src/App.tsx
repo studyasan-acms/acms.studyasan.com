@@ -71,6 +71,13 @@ import ClassSessionsPage from '@/pages/class-sessions/ClassSessionsPage';
 import ClassSessionDetailPage from '@/pages/class-sessions/ClassSessionDetailPage';
 import CreateClassSessionPage from '@/pages/class-sessions/CreateClassSessionPage';
 
+// Classroom import (integrated video conferencing)
+import ClassroomPage from '@/pages/classroom/ClassroomPage';
+
+// Attendance imports
+import ClassAttendancePage from '@/pages/attendance/ClassAttendancePage';
+import AttendanceListPage from '@/pages/attendance/AttendanceListPage';
+
 // Test Series imports
 import TestSeriesPage from '@/pages/test-series/TestSeriesPage';
 import TestSeriesFormPage from '@/pages/test-series/TestSeriesFormPage';
@@ -227,6 +234,9 @@ function App() {
           {/* Admin Enquiries Route */}
           <Route path="enquiries" element={<AdminEnquiriesPage />} />
 
+          {/* Attendance Routes */}
+          <Route path="attendance" element={<AttendanceListPage />} />
+
           <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
           <Route path="settings" element={<div>Settings Page - Coming Soon</div>} />
         </Route>
@@ -277,6 +287,26 @@ function App() {
         >
           <Route index element={<GradeTestPage />} />
         </Route>
+
+        {/* Classroom Route - Fullscreen video conferencing */}
+        <Route
+          path="/classroom/:sessionId"
+          element={
+            <ProtectedRoute>
+              <ClassroomPage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Class Attendance Detail Route - Fullscreen */}
+        <Route
+          path="/class-sessions/:sessionId/attendance"
+          element={
+            <ProtectedRoute>
+              <ClassAttendancePage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* 404 Not Found */}
         <Route path="*" element={

@@ -1,0 +1,196 @@
+/**
+ * ClassroomLayout Component
+ * 
+ * Main layout orchestrator for the classroom view.
+ */
+
+import React, { useState } from 'react';
+import { VideoTile } from './VideoTile';
+import { ControlBar } from './ControlBar';
+import { Whiteboard } from './Whiteboard';
+import { Chat } from './Chat';
+import type { Participant, ChatMessage, WhiteboardMessage, LocalUserState } from '@/types/videoRoom';
+
+interface ClassroomLayoutProps {
+    // Connection
+    isConnected: boolean;
+
+    // Local user
+    localStream: MediaStream | null;
+    localUser: LocalUserState;
+
+    // Remote participants
+    participants: Map<string | number, Participant>;
+    remoteStreams: Map<string | number, MediaStream>;
+
+    // Main view
+    mainParticipantId: string | number | null;
+    isScreenSharing: boolean;
+
+    // Actions
+    onToggleMic: () => void;
+    onToggleCamera: () => void;
+    onToggleScreenShare: () => void;
+    onLeave: () => void;
+    onSetMainParticipant: (id: string | number | null) => void;
+
+    // Whiteboard
+    sendWhiteboardMessage: (message: WhiteboardMessage) => void;
+    setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
+
+    // Chat
+    chatMessages: ChatMessage[];
+    onSendChatMessage: (text: string) => void;
+}
+
+export function ClassroomLayout({
+    isConnected,
+    localStream,
+    localUser,
+    participants,
+    remoteStreams,
+    mainParticipantId,
+    isScreenSharing,
+    onToggleMic,
+    onToggleCamera,
+    onToggleScreenShare,
+    onLeave,
+    onSetMainParticipant,
+    sendWhiteboardMessage,
+    setWhiteboardMessageHandler,
+    chatMessages,
+    onSendChatMessage,
+}: ClassroomLayoutProps) {
+    const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
+    const [isChatOpen, setIsChatOpen] = useState(false);
+
+    // Build participant list including local user
+    const localParticipant: Participant = {
+        id: 'local',
+        displayName: localUser.displayName,
+        stream: localStream || undefined,
+        isLocal: true,
+        isMuted: localUser.isMuted,
+        isVideoOff: localUser.isVideoOff,
+        isScreenSharing: localUser.isScreenSharing,
+        isSpeaking: false,
+    };
+
+    const allParticipants = [localParticipant, ...Array.from(participants.values())];
+
+    // Determine main participant (first remote or self if alone)
+    const mainParticipant = mainParticipantId
+        ? participants.get(mainParticipantId) || localParticipant
+        : participants.size > 0
+            ? Array.from(participants.values())[0]
+            : localParticipant;
+
+    const mainStream = mainParticipant.isLocal
+        ? localStream
+        : remoteStreams.get(mainParticipant.id);
+
+    // Strip participants (exclude main)
+    const stripParticipants = allParticipants.filter((p) => p.id !== mainParticipant.id);
+
+    return (
+        <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden">
+            {/* Header */}
+            <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
+                        S
+                    </div>
+                    <span className="font-semibold text-slate-800">StudyAsan Classroom</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+                </div>
+            </header>
+
+            {/* Main content area */}
+            <div className="flex-1 relative flex overflow-hidden">
+                {/* Participant strip - left side */}
+                <div className="w-24 md:w-32 lg:w-40 bg-slate-50 border-r border-slate-200 p-2 flex flex-col gap-2 overflow-y-auto shrink-0">
+                    {stripParticipants.length === 0 && localParticipant && (
+                        <VideoTile
+                            participant={localParticipant}
+                            stream={localStream || undefined}
+                            isLocal
+                            onClick={() => onSetMainParticipant(localParticipant.id)}
+                        />
+                    )}
+                    {stripParticipants.map((participant, index) => {
+                        const stream = participant.isLocal
+                            ? localStream
+                            : remoteStreams.get(participant.id);
+                        const maxShow = 5;
+                        const overflow = index === maxShow - 1 && stripParticipants.length > maxShow
+                            ? stripParticipants.length - maxShow
+                            : undefined;
+
+                        if (index >= maxShow) return null;
+
+                        return (
+                            <VideoTile
+                                key={String(participant.id)}
+                                participant={participant}
+                                stream={stream || undefined}
+                                isLocal={participant.isLocal}
+                                showOverflow={overflow}
+                                onClick={() => onSetMainParticipant(participant.id)}
+                            />
+                        );
+                    })}
+                </div>
+
+                {/* Main video area */}
+                <div className="flex-1 relative p-4">
+                    <div className="w-full h-full rounded-2xl overflow-hidden bg-slate-200 shadow-lg">
+                        <VideoTile
+                            participant={mainParticipant}
+                            stream={mainStream || undefined}
+                            isLocal={mainParticipant.isLocal}
+                            isMain
+                        />
+                    </div>
+
+                    {/* Whiteboard overlay */}
+                    <Whiteboard
+                        isActive={isWhiteboardActive}
+                        onClose={() => setIsWhiteboardActive(false)}
+                        sendMessage={sendWhiteboardMessage}
+                        onRemoteMessage={setWhiteboardMessageHandler}
+                    />
+                </div>
+            </div>
+
+            {/* Control bar - bottom center */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
+                <ControlBar
+                    isMuted={localUser.isMuted}
+                    isVideoOff={localUser.isVideoOff}
+                    isScreenSharing={isScreenSharing}
+                    isWhiteboardActive={isWhiteboardActive}
+                    isChatOpen={isChatOpen}
+                    isConnected={isConnected}
+                    onToggleMic={onToggleMic}
+                    onToggleCamera={onToggleCamera}
+                    onToggleScreenShare={onToggleScreenShare}
+                    onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
+                    onToggleChat={() => setIsChatOpen(!isChatOpen)}
+                    onLeave={onLeave}
+                />
+            </div>
+
+            {/* Chat panel */}
+            <Chat
+                isOpen={isChatOpen}
+                onClose={() => setIsChatOpen(false)}
+                messages={chatMessages}
+                onSendMessage={onSendChatMessage}
+                currentUserName={localUser.displayName}
+            />
+        </div>
+    );
+}

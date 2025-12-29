@@ -110,9 +110,8 @@ export default function ClassSessionDetailPage() {
   };
 
   const handleJoin = () => {
-    if (session?.meeting_link) {
-      window.open(session.meeting_link, '_blank');
-    }
+    // Navigate to integrated classroom instead of external meeting link
+    navigate(`/classroom/${session?.id}`);
   };
 
   const handleDelete = async () => {
@@ -226,7 +225,7 @@ export default function ClassSessionDetailPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <h3 className="font-semibold text-gray-700 border-b pb-2">Schedule</h3>
-              
+
               <div className="flex items-start gap-3">
                 <Calendar className="w-5 h-5 text-saBlue/50 mt-0.5" />
                 <div>
@@ -336,9 +335,16 @@ export default function ClassSessionDetailPage() {
             </div>
           )}
 
-           {/* Actions */}
+          {/* Actions */}
           {canManage && (
             <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
+              >
+                View Detailed Attendance
+              </Button>
               <Button
                 variant="outline"
                 className="flex-1"

@@ -22,6 +22,7 @@ import {
   Gamepad2,
   FolderOpen,
   Play,
+  ClipboardCheck,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -67,6 +68,12 @@ const navItems: NavItem[] = [
     title: "Class Sessions",
     href: "/dashboard/class-sessions",
     icon: Video,
+    roles: ["ADMIN", "TEACHER", "STUDENT"],
+  },
+  {
+    title: "Attendance",
+    href: "/dashboard/attendance",
+    icon: ClipboardCheck,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
   {

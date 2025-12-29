@@ -55,7 +55,7 @@ export default function CreateClassSessionPage() {
     recurrence_rule: null,
     title: '',
     description: '',
-    create_google_meet: true,
+    create_google_meet: false, // Disabled - using integrated classroom
   });
 
   const [recurrenceRule, setRecurrenceRule] = useState<RecurrenceRule>({
@@ -169,7 +169,7 @@ export default function CreateClassSessionPage() {
 
     try {
       setSubmitting(true);
-      
+
       const dataToSubmit = {
         ...formData,
         recurrence_rule: formData.is_recurring ? recurrenceRule : null,
@@ -252,11 +252,10 @@ export default function CreateClassSessionPage() {
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
-                  formData.mode === 'ONLINE'
+                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'ONLINE'
                     ? 'border-saBlue bg-saBlueLight/30'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'ONLINE' }))}
               >
                 <Video className={`w-8 h-8 ${formData.mode === 'ONLINE' ? 'text-saBlue' : 'text-gray-400'}`} />
@@ -266,11 +265,10 @@ export default function CreateClassSessionPage() {
               </button>
               <button
                 type="button"
-                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${
-                  formData.mode === 'OFFLINE'
+                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'OFFLINE'
                     ? 'border-amber-500 bg-amber-50'
                     : 'border-gray-200 hover:border-gray-300'
-                }`}
+                  }`}
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'OFFLINE' }))}
               >
                 <MapPin className={`w-8 h-8 ${formData.mode === 'OFFLINE' ? 'text-amber-500' : 'text-gray-400'}`} />
@@ -385,37 +383,18 @@ export default function CreateClassSessionPage() {
               </div>
             </div>
 
-            {/* Mode-specific fields */}
-            {formData.mode === 'ONLINE' && !isEditing && (
-              <div className="p-4 bg-blue-50 rounded-lg">
+            {/* Integrated Classroom Info */}
+            {formData.mode === 'ONLINE' && (
+              <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
                 <div className="flex items-center gap-3">
-                  <Switch
-                    id="create_google_meet"
-                    checked={formData.create_google_meet}
-                    onCheckedChange={(checked: boolean) => setFormData((prev) => ({ ...prev, create_google_meet: checked }))}
-                  />
-                  <Label htmlFor="create_google_meet" className="flex items-center gap-2 cursor-pointer text-gray-600">
-                    <Video className="w-4 h-4 text-saBlue/50" />
-                    Auto-create Google Meet
-                  </Label>
+                  <Video className="w-5 h-5 text-sky-600" />
+                  <div>
+                    <p className="font-medium text-sky-800">Integrated Video Classroom</p>
+                    <p className="text-xs text-sky-600 mt-1">
+                      A video classroom room will be automatically created. Students can join directly from the session page.
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2 ml-10">
-                  Automatically creates a Google Meet link and invites enrolled students
-                </p>
-              </div>
-            )}
-
-            {formData.mode === 'ONLINE' && !formData.create_google_meet && (
-              <div>
-                <Label htmlFor="meeting_link">Meeting Link</Label>
-                <Input
-                  id="meeting_link"
-                  type="url"
-                  className="mt-1"
-                  placeholder="https://meet.google.com/..."
-                  value={formData.meeting_link || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, meeting_link: e.target.value }))}
-                />
               </div>
             )}
 
@@ -501,7 +480,7 @@ export default function CreateClassSessionPage() {
                         />
                         <span className="text-gray-600">
                           {recurrenceRule.frequency === 'daily' ? 'day(s)' :
-                           recurrenceRule.frequency === 'weekly' ? 'week(s)' : 'month(s)'}
+                            recurrenceRule.frequency === 'weekly' ? 'week(s)' : 'month(s)'}
                         </span>
                       </div>
                     </div>
@@ -514,11 +493,10 @@ export default function CreateClassSessionPage() {
                         {dayNames.map((day, index) => (
                           <label
                             key={day}
-                            className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all ${
-                              recurrenceRule.daysOfWeek?.includes(index)
+                            className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all ${recurrenceRule.daysOfWeek?.includes(index)
                                 ? 'bg-saBlue text-white border-saBlue'
                                 : 'hover:bg-gray-50'
-                            }`}
+                              }`}
                           >
                             <Checkbox
                               checked={recurrenceRule.daysOfWeek?.includes(index)}
@@ -570,7 +548,7 @@ export default function CreateClassSessionPage() {
             </div>
 
             {/* Submit Buttons */}
-             <div className="flex flex-col sm:flex-row gap-3 pt-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button type="button" variant="outline" className="flex-1"
                 onClick={() => navigate('/dashboard/class-sessions')}
               >
