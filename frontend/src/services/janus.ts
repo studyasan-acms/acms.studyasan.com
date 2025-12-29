@@ -71,6 +71,9 @@ export class JanusClient {
         { urls: 'stun:stun1.l.google.com:19302' },
     ];
 
+    // Bound event handler for beforeunload
+    private boundBeforeUnload: (() => void) | null = null;
+
     constructor(config: JanusConfig) {
         this.config = config;
     }
@@ -112,6 +115,7 @@ export class JanusClient {
                         await this.attachVideoRoomPlugin();
                         await this.joinRoom();
                         await this.recordJoinAttendance(); // Track attendance
+                        this.setupBeforeUnloadHandler(); // Handle tab close
                         this.startKeepalive();
                         this.setConnectionState('connected');
                         this.reconnectAttempts = 0;
@@ -152,6 +156,9 @@ export class JanusClient {
             console.log(`[Janus] Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
             setTimeout(() => this.connect().catch(() => { }), delay);
         } else {
+            // Max reconnect attempts reached - record leave attendance
+            console.log('[Janus] Max reconnect attempts reached, recording leave attendance');
+            this.recordLeaveAttendanceSync(); // Use sync version for reliability
             this.setConnectionState('failed');
             this.config.onError?.(new Error('Max reconnection attempts reached'));
         }
@@ -814,11 +821,82 @@ export class JanusClient {
         }
     }
 
+    /**
+     * Record leave attendance synchronously using sendBeacon (for beforeunload)
+     */
+    private recordLeaveAttendanceSync(): void {
+        if (!this.attendanceTracked) {
+            console.log('[Janus] No join was tracked, skipping sync leave');
+            return;
+        }
+
+        try {
+            const roomId = this.getRoomId();
+            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}video-rooms/${roomId}/leave`;
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                console.warn('[Janus] No auth token, skipping sync attendance tracking');
+                return;
+            }
+
+            // Use sendBeacon for reliable delivery on page unload
+            const data = JSON.stringify({});
+            const blob = new Blob([data], { type: 'application/json' });
+
+            // Can't send auth headers with sendBeacon, so use query param as fallback
+            const urlWithToken = `${apiUrl}?token=${encodeURIComponent(token)}`;
+            const sent = navigator.sendBeacon(urlWithToken, blob);
+
+            if (sent) {
+                this.attendanceTracked = false;
+                console.log('[Janus] ✅ Sync leave attendance sent via beacon');
+            } else {
+                console.warn('[Janus] sendBeacon failed');
+            }
+        } catch (error) {
+            console.error('[Janus] Error in sync leave attendance:', error);
+        }
+    }
+
+    /**
+     * Setup beforeunload handler to record leave when tab closes
+     */
+    private setupBeforeUnloadHandler(): void {
+        this.boundBeforeUnload = () => {
+            console.log('[Janus] Page unloading, recording leave attendance');
+            this.recordLeaveAttendanceSync();
+        };
+
+        window.addEventListener('beforeunload', this.boundBeforeUnload);
+
+        // Also handle visibility change (tab hidden/app backgrounded on mobile)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && this.attendanceTracked) {
+                console.log('[Janus] Tab hidden, recording leave attendance');
+                this.recordLeaveAttendanceSync();
+            }
+        });
+    }
+
+    /**
+     * Remove beforeunload handler
+     */
+    private removeBeforeUnloadHandler(): void {
+        if (this.boundBeforeUnload) {
+            window.removeEventListener('beforeunload', this.boundBeforeUnload);
+            this.boundBeforeUnload = null;
+        }
+    }
+
     async disconnect(): Promise<void> {
         console.log('[Janus] Disconnecting...');
 
         // Record leave before disconnecting
         await this.recordLeaveAttendance();
+
+        // Remove beforeunload handler
+        this.removeBeforeUnloadHandler();
 
         this.stopKeepalive();
 

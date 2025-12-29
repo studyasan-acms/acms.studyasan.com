@@ -5,7 +5,7 @@
  * Validates access, initializes connection, and renders the classroom layout.
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Loader2, AlertCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ export function ClassroomPage() {
     const [roomInfo, setRoomInfo] = useState<VideoRoomInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [accessError, setAccessError] = useState<string | null>(null);
+    const hasLeftIntentionally = useRef(false); // Prevent auto-reconnect after leave
 
     // Janus hook - only initialize after we have room info
     const janus = useJanus({
@@ -70,9 +71,9 @@ export function ClassroomPage() {
         initRoom();
     }, [sessionId]);
 
-    // Auto-connect when room info is ready
+    // Auto-connect when room info is ready (but not after intentional leave)
     useEffect(() => {
-        if (roomInfo && janus.connectionState === 'disconnected') {
+        if (roomInfo && janus.connectionState === 'disconnected' && !hasLeftIntentionally.current) {
             janus.connect().catch((err) => {
                 console.error('[ClassroomPage] Connection error:', err);
             });
@@ -81,6 +82,7 @@ export function ClassroomPage() {
 
     // Handle leave
     const handleLeave = async () => {
+        hasLeftIntentionally.current = true; // Prevent auto-reconnect
         await janus.disconnect();
         navigate(-1);
     };
@@ -168,6 +170,11 @@ export function ClassroomPage() {
                 remoteStreams={janus.remoteStreams}
                 mainParticipantId={janus.mainParticipantId}
                 isScreenSharing={janus.isScreenSharing}
+                isBackgroundActive={janus.isBackgroundActive}
+                onToggleBackground={janus.toggleBackground}
+                isTeacher={roomInfo?.isTeacher || false}
+                onMuteParticipant={janus.muteParticipant}
+                onKickParticipant={janus.kickParticipant}
                 onToggleMic={janus.toggleMic}
                 onToggleCamera={janus.toggleCamera}
                 onToggleScreenShare={janus.toggleScreenShare}

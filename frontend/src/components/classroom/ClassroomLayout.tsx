@@ -27,6 +27,15 @@ interface ClassroomLayoutProps {
     mainParticipantId: string | number | null;
     isScreenSharing: boolean;
 
+    // Background
+    isBackgroundActive: boolean;
+    onToggleBackground: () => void;
+
+    // Teacher controls
+    isTeacher: boolean;
+    onMuteParticipant?: (participantId: string | number) => void;
+    onKickParticipant?: (participantId: string | number) => void;
+
     // Actions
     onToggleMic: () => void;
     onToggleCamera: () => void;
@@ -51,6 +60,11 @@ export function ClassroomLayout({
     remoteStreams,
     mainParticipantId,
     isScreenSharing,
+    isBackgroundActive,
+    onToggleBackground,
+    isTeacher,
+    onMuteParticipant,
+    onKickParticipant,
     onToggleMic,
     onToggleCamera,
     onToggleScreenShare,
@@ -95,7 +109,7 @@ export function ClassroomLayout({
     return (
         <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden">
             {/* Header */}
-           <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0">
+            <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-1">
                     <img src="/studyasan-logo.png" alt="StudyAsan" className="h-12" />
                 </div>
@@ -115,6 +129,7 @@ export function ClassroomLayout({
                             stream={localStream || undefined}
                             isLocal
                             onClick={() => onSetMainParticipant(localParticipant.id)}
+                            isTeacher={isTeacher}
                         />
                     )}
                     {stripParticipants.map((participant, index) => {
@@ -136,6 +151,9 @@ export function ClassroomLayout({
                                 isLocal={participant.isLocal}
                                 showOverflow={overflow}
                                 onClick={() => onSetMainParticipant(participant.id)}
+                                isTeacher={isTeacher}
+                                onMuteParticipant={onMuteParticipant}
+                                onKickParticipant={onKickParticipant}
                             />
                         );
                     })}
@@ -149,6 +167,9 @@ export function ClassroomLayout({
                             stream={mainStream || undefined}
                             isLocal={mainParticipant.isLocal}
                             isMain
+                            isTeacher={isTeacher}
+                            onMuteParticipant={onMuteParticipant}
+                            onKickParticipant={onKickParticipant}
                         />
                     </div>
 
@@ -170,12 +191,14 @@ export function ClassroomLayout({
                     isScreenSharing={isScreenSharing}
                     isWhiteboardActive={isWhiteboardActive}
                     isChatOpen={isChatOpen}
+                    isBackgroundActive={isBackgroundActive}
                     isConnected={isConnected}
                     onToggleMic={onToggleMic}
                     onToggleCamera={onToggleCamera}
                     onToggleScreenShare={onToggleScreenShare}
                     onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
                     onToggleChat={() => setIsChatOpen(!isChatOpen)}
+                    onToggleBackground={onToggleBackground}
                     onLeave={onLeave}
                 />
             </div>

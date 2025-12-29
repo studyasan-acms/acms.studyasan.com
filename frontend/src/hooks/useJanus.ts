@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { JanusClient, destroyJanusClient } from '@/services/janus';
 import { useClassroomAPISync } from '@/hooks/useClassroomAPISync';
+import { useBackgroundProcessor } from '@/hooks/useBackgroundProcessor';
 import type {
     ConnectionState,
     Participant,
@@ -62,6 +63,14 @@ interface UseJanusReturn {
     sendChatMessage: (text: string) => void;
     isChatOpen: boolean;
     toggleChat: () => void;
+
+    // Background
+    isBackgroundActive: boolean;
+    toggleBackground: () => void;
+
+    // Teacher controls
+    muteParticipant: (participantId: string | number) => void;
+    kickParticipant: (participantId: string | number) => void;
 }
 
 export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeacher: _isTeacher }: UseJanusOptions): UseJanusReturn {
@@ -90,14 +99,21 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
     // Chat state
     const [isChatOpen, setIsChatOpen] = useState(false);
 
+    // Local stream reference
+    const localStreamRef = useRef<MediaStream | null>(null);
+    const rawStreamRef = useRef<MediaStream | null>(null);
+
+    // Background processor
+    const backgroundProcessor = useBackgroundProcessor();
+
     // Whiteboard message handler
     const whiteboardHandlerRef = useRef<((message: WhiteboardMessage) => void) | null>(null);
 
+    // Kicked callback ref (to call disconnect when kicked)
+    const onKickedCallbackRef = useRef<(() => void) | null>(null);
+
     // Janus client reference
     const janusClientRef = useRef<JanusClient | null>(null);
-
-    // Local stream reference
-    const localStreamRef = useRef<MediaStream | null>(null);
 
     // Use API sync for chat and whiteboard
     const apiSync = useClassroomAPISync({
@@ -167,8 +183,14 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                 },
             });
 
-            setLocalStream(stream);
-            localStreamRef.current = stream;
+            rawStreamRef.current = stream;
+
+            // Get processed stream with background replacement
+            const processedStream = backgroundProcessor.getProcessedStream(stream);
+            const displayStream = processedStream || stream;
+
+            setLocalStream(displayStream);
+            localStreamRef.current = displayStream;
 
             console.log('[useJanus] Creating Janus client...');
 
@@ -181,8 +203,9 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                     setConnectionState(state);
                 },
                 onLocalStream: (newStream) => {
-                    setLocalStream(newStream);
-                    localStreamRef.current = newStream;
+                    // Don't override if we have a processed stream
+                    // The processed stream is based on this raw stream
+                    rawStreamRef.current = newStream;
                 },
                 onRemoteStream: (participantId, remoteStream) => {
                     setRemoteStreams(prev => {
@@ -222,8 +245,34 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                     setMainParticipantId(prevId => prevId === participantId ? null : prevId);
                 },
                 onDataMessage: (message: DataChannelMessage) => {
+                    // Handle whiteboard messages
                     if (message.type === 'whiteboard' && message.whiteboard) {
                         whiteboardHandlerRef.current?.(message.whiteboard);
+                    }
+
+                    // Handle kick message - disconnect if we are the target
+                    if (message.type === 'kick' && message.participantId) {
+                        const myId = janusClientRef.current?.getMyId();
+                        if (myId && message.participantId === myId) {
+                            console.warn('[useJanus] 🚨 You have been removed from the call by the teacher');
+                            alert('You have been removed from the call by the teacher.');
+                            onKickedCallbackRef.current?.();
+                        }
+                    }
+
+                    // Handle mute message - mute audio if we are the target
+                    if (message.type === 'mute' && message.participantId) {
+                        const myId = janusClientRef.current?.getMyId();
+                        if (myId && message.participantId === myId) {
+                            console.warn('[useJanus] 🔇 You have been muted by the teacher');
+                            // Actually mute the local audio
+                            if (localStreamRef.current) {
+                                localStreamRef.current.getAudioTracks().forEach(track => {
+                                    track.enabled = false;
+                                });
+                            }
+                            setLocalUser(prev => ({ ...prev, isMuted: true }));
+                        }
                     }
                 },
                 onError: (err) => {
@@ -255,7 +304,7 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
             }
             janusClientRef.current = null;
         }
-    }, [roomCode, displayName]);
+    }, [roomCode, displayName, backgroundProcessor]);
 
     const toggleMic = useCallback(() => {
         setLocalUser(prev => {
@@ -299,6 +348,55 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
         }
     }, [isScreenSharing]);
 
+    // Mute a participant (teacher only)
+    const muteParticipant = useCallback((participantId: string | number) => {
+        console.log('[useJanus] Muting participant:', participantId);
+        janusClientRef.current?.sendData({
+            type: 'mute',
+            participantId,
+            muted: true,
+        });
+
+        // Update local participant state
+        setParticipants(prev => {
+            const next = new Map(prev);
+            const participant = next.get(participantId);
+            if (participant) {
+                next.set(participantId, { ...participant, isMuted: true });
+            }
+            return next;
+        });
+    }, []);
+
+    // Kick a participant (teacher only)
+    const kickParticipant = useCallback((participantId: string | number) => {
+        console.log('[useJanus] Kicking participant:', participantId);
+        janusClientRef.current?.sendData({
+            type: 'kick',
+            participantId,
+        });
+
+        // Remove from local state
+        setParticipants(prev => {
+            const next = new Map(prev);
+            next.delete(participantId);
+            return next;
+        });
+
+        setRemoteStreams(prev => {
+            const next = new Map(prev);
+            next.delete(participantId);
+            return next;
+        });
+    }, []);
+
+    // Set up the kicked callback to disconnect
+    useEffect(() => {
+        onKickedCallbackRef.current = () => {
+            disconnect();
+        };
+    }, [disconnect]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -328,5 +426,9 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
         sendChatMessage,
         isChatOpen,
         toggleChat,
+        isBackgroundActive: backgroundProcessor.isBackgroundActive,
+        toggleBackground: backgroundProcessor.toggleBackground,
+        muteParticipant,
+        kickParticipant,
     };
 }
