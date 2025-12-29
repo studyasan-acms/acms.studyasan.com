@@ -176,8 +176,16 @@ export default function CreateClassSessionPage() {
     try {
       setSubmitting(true);
 
+      // Convert local datetime to UTC ISO string for backend
+      const convertToUTC = (localDateTimeString: string) => {
+        const localDate = new Date(localDateTimeString);
+        return localDate.toISOString();
+      };
+
       const dataToSubmit = {
         ...formData,
+        start_time: convertToUTC(formData.start_time),
+        end_time: convertToUTC(formData.end_time),
         recurrence_rule: formData.is_recurring ? recurrenceRule : null,
       };
 
