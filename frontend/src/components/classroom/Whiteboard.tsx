@@ -21,9 +21,13 @@ import {
     Highlighter,
     ImageIcon,
     MousePointer,
+    Layers,
+    Shapes,
+    ChevronDown,
+    Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useWhiteboard } from '@/hooks/useWhiteboard';
+import { useWhiteboard, PEN_THICKNESS_RANGE, PEN_THICKNESS_PRESETS } from '@/hooks/useWhiteboard';
 import type { WhiteboardMessage } from '@/types/videoRoom';
 
 interface WhiteboardProps {
@@ -34,15 +38,25 @@ interface WhiteboardProps {
 }
 
 const COLORS = [
-    '#0ea5e9', // sky-500
-    '#0284c7', // sky-600
-    '#3b82f6', // blue-500
-    '#ef4444', // red-500
-    '#10b981', // green-500
-    '#000000', // black
+    '#000000', // Black
+    '#ffffff', // White
+    '#ef4444', // Red
+    '#f97316', // Orange
+    '#eab308', // Yellow
+    '#84cc16', // Lime
+    '#10b981', // Green
+    '#06b6d4', // Cyan
+    '#3b82f6', // Blue
+    '#6366f1', // Indigo
+    '#8b5cf6', // Violet
+    '#d946ef', // Fuchsia
+    '#ec4899', // Pink
+    '#f43f5e', // Rose
+    '#78716c', // Gray
+    '#92400e', // Brown
 ];
 
-const SIZES = [1, 2, 4, 6, 8, 12, 16, 24, 32];
+const PRIMARY_COLORS = ['#000000', '#ef4444', '#3b82f6']; // black, red, blue
 
 export function Whiteboard({
     isActive,
@@ -57,10 +71,13 @@ export function Whiteboard({
         currentTool,
         currentColor,
         currentSize,
+        currentBoard,
         setTool,
         setColor,
         setSize,
+        setBoard,
         clearCanvas,
+        clearBoard,
         handlePointerDown,
         handlePointerMove,
         handlePointerUp,
@@ -78,8 +95,12 @@ export function Whiteboard({
     const [imageUrlInput, setImageUrlInput] = useState('');
     const [showImageDialog, setShowImageDialog] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
+    const [showShapeSelector, setShowShapeSelector] = useState(false);
+    const [showColorSelector, setShowColorSelector] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
+    const shapeSelectorRef = useRef<HTMLDivElement>(null);
+    const colorSelectorRef = useRef<HTMLDivElement>(null);
 
     // Delete handler
     useEffect(() => {
@@ -100,6 +121,32 @@ export function Whiteboard({
             setTimeout(() => textInputRef.current?.focus(), 50);
         }
     }, [showTextInput]);
+
+    // Close shape selector when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (shapeSelectorRef.current && !shapeSelectorRef.current.contains(e.target as Node)) {
+                setShowShapeSelector(false);
+            }
+        };
+        if (showShapeSelector) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showShapeSelector]);
+
+    // Close color selector when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (colorSelectorRef.current && !colorSelectorRef.current.contains(e.target as Node)) {
+                setShowColorSelector(false);
+            }
+        };
+        if (showColorSelector) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showColorSelector]);
 
     const handleCanvasClick = useCallback(
         (e: React.PointerEvent) => {
@@ -166,172 +213,298 @@ export function Whiteboard({
             className="absolute inset-0 flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         >
             {/* Toolbar */}
-            <div className="flex items-center justify-between p-2 md:p-3 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-x-auto">
-                <div className="flex items-center gap-2 min-w-max">
-                    {/* Select & Pen Group */}
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+            <div className="flex items-center justify-between p-1.5 md:p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
+                <div className="flex items-center gap-1 min-w-max overflow-visible">
+                    {/* Drawing Tools */}
+                    <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                         <Button
                             variant={currentTool === 'select' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setTool('select')}
-                            title="Select & Move"
-                            className={currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}
+                            title="Select"
+                            className={`h-7 w-7 p-0 ${currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                         >
-                            <MousePointer className="w-4 h-4" />
+                            <MousePointer className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                             variant={currentTool === 'pen' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setTool('pen')}
                             title="Pen"
-                            className={currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}
+                            className={`h-7 w-7 p-0 ${currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                         >
-                            <Pencil className="w-4 h-4" />
+                            <Pencil className="w-3.5 h-3.5" />
                         </Button>
                         <Button
-                            variant={currentTool === 'rainbow' ? 'default' : 'ghost'}
+                            variant={currentTool === 'eraser' ? 'default' : 'ghost'}
                             size="sm"
-                            onClick={() => setTool('rainbow')}
-                            title="Rainbow Pen"
-                            className={
-                                currentTool === 'rainbow'
-                                    ? 'bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white'
-                                    : 'text-purple-500'
-                            }
+                            onClick={() => setTool('eraser')}
+                            title="Eraser"
+                            className={`h-7 w-7 p-0 ${currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}`}
                         >
-                            <Sparkles className="w-4 h-4" />
-                        </Button>
-                    </div>
-
-                    {/* Shapes Group */}
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
-                        <Button
-                            variant={currentTool === 'rect' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('rect')}
-                            className={currentTool === 'rect' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Square className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'circle' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('circle')}
-                            className={currentTool === 'circle' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Circle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'line' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('line')}
-                            className={currentTool === 'line' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Minus className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'arrow' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('arrow')}
-                            className={currentTool === 'arrow' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <ArrowRight className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'triangle' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('triangle')}
-                            className={currentTool === 'triangle' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Triangle className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'star' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('star')}
-                            className={currentTool === 'star' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Star className="w-4 h-4" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'text' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('text')}
-                            className={currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}
-                        >
-                            <Type className="w-4 h-4" />
+                            <Eraser className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                             variant={currentTool === 'highlight' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setTool('highlight')}
-                            className={currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}
+                            title="Highlight"
+                            className={`h-7 w-7 p-0 ${currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}`}
                         >
-                            <Highlighter className="w-4 h-4" />
+                            <Highlighter className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+
+                    {/* Shapes Selector */}
+                    <div className="relative" ref={shapeSelectorRef}>
+                        <button
+                            onClick={() => setShowShapeSelector(!showShapeSelector)}
+                            className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${
+                                ['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
+                                    ? 'bg-sky-50 border-sky-300'
+                                    : ''
+                            }`}
+                            title="Shapes"
+                        >
+                            {currentTool === 'rect' && <Square className="w-3.5 h-3.5 text-sky-600" />}
+                            {currentTool === 'circle' && <Circle className="w-3.5 h-3.5 text-sky-600" />}
+                            {currentTool === 'line' && <Minus className="w-3.5 h-3.5 text-sky-600" />}
+                            {currentTool === 'arrow' && <ArrowRight className="w-3.5 h-3.5 text-sky-600" />}
+                            {currentTool === 'triangle' && <Triangle className="w-3.5 h-3.5 text-sky-600" />}
+                            {currentTool === 'star' && <Star className="w-3.5 h-3.5 text-sky-600" />}
+                            {!['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool) && (
+                                <Shapes className="w-3.5 h-3.5 text-slate-600" />
+                            )}
+                            <ChevronDown className="w-3 h-3 text-slate-400" />
+                        </button>
+                        
+                        {showShapeSelector && (
+                            <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] min-w-[120px]">
+                                <button
+                                    onClick={() => {
+                                        setTool('rect');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Rectangle"
+                                >
+                                    <Square className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTool('circle');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Circle"
+                                >
+                                    <Circle className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTool('line');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Line"
+                                >
+                                    <Minus className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTool('arrow');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Arrow"
+                                >
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTool('triangle');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Triangle"
+                                >
+                                    <Triangle className="w-4 h-4" />
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setTool('star');
+                                        setShowShapeSelector(false);
+                                    }}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
+                                        currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                    }`}
+                                    title="Star"
+                                >
+                                    <Star className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Text & Image */}
+                    <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                        <Button
+                            variant={currentTool === 'text' ? 'default' : 'ghost'}
+                            size="sm"
+                            onClick={() => setTool('text')}
+                            title="Text"
+                            className={`h-7 w-7 p-0 ${currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
+                        >
+                            <Type className="w-3.5 h-3.5" />
                         </Button>
                         <Button
                             variant={currentTool === 'image' ? 'default' : 'ghost'}
                             size="sm"
                             onClick={() => setTool('image')}
-                            className={currentTool === 'image' ? 'bg-sky-500 hover:bg-sky-600' : ''}
+                            title="Image"
+                            className={`h-7 w-7 p-0 ${currentTool === 'image' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                         >
-                            <ImageIcon className="w-4 h-4" />
+                            <ImageIcon className="w-3.5 h-3.5" />
                         </Button>
                     </div>
 
-                    {/* Eraser */}
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
-                        <Button
-                            variant={currentTool === 'eraser' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('eraser')}
-                            className={currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}
-                        >
-                            <Eraser className="w-4 h-4" />
-                        </Button>
+                    {/* Color Selector */}
+                    <div className="relative" ref={colorSelectorRef}>
+                        <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                            {PRIMARY_COLORS.map((color) => (
+                                <button
+                                    key={color}
+                                    onClick={() => {
+                                        setColor(color);
+                                        if (currentTool === 'rainbow') setTool('pen');
+                                    }}
+                                    className={`w-5 h-5 rounded-full transition-transform border border-slate-200 ${
+                                        currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                    }`}
+                                    style={{ backgroundColor: color }}
+                                    title={color === '#000000' ? 'Black' : color === '#ef4444' ? 'Red' : 'Blue'}
+                                />
+                            ))}
+                            {currentTool === 'rainbow' ? (
+                                <button
+                                    onClick={() => setShowColorSelector(!showColorSelector)}
+                                    className="w-5 h-5 rounded-full border border-slate-200 ring-2 ring-offset-1 ring-sky-400 scale-110 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
+                                    title="Rainbow"
+                                />
+                            ) : (
+                                <button
+                                    onClick={() => setShowColorSelector(!showColorSelector)}
+                                    className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
+                                    title="More colors"
+                                >
+                                    <Palette className="w-3 h-3 text-slate-600" />
+                                </button>
+                            )}
+                        </div>
+                        
+                        {showColorSelector && (
+                            <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] min-w-[140px]">
+                                {COLORS.map((color) => (
+                                    <button
+                                        key={color}
+                                        onClick={() => {
+                                            setColor(color);
+                                            if (currentTool === 'rainbow') setTool('pen');
+                                            setShowColorSelector(false);
+                                        }}
+                                        className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${
+                                            currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                        }`}
+                                        style={{ backgroundColor: color }}
+                                    />
+                                ))}
+                                <button
+                                    onClick={() => {
+                                        setTool('rainbow');
+                                        setShowColorSelector(false);
+                                    }}
+                                    className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${
+                                        currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                    }`}
+                                    title="Rainbow"
+                                >
+                                    <Sparkles className="w-3 h-3 text-white drop-shadow" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    <div className="w-px h-6 bg-slate-200 mx-1" />
+                    {/* Size */}
+                    <div className="flex items-center gap-1.5 bg-white px-1.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                        <input
+                            type="range"
+                            min={PEN_THICKNESS_RANGE.min}
+                            max={PEN_THICKNESS_RANGE.max}
+                            step={PEN_THICKNESS_RANGE.step}
+                            value={currentSize}
+                            onChange={(e) => setSize(Number(e.target.value))}
+                            className="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                            title={`Size: ${currentSize}px`}
+                        />
+                        <span className="text-[10px] text-slate-600 font-medium w-4 text-center">{currentSize}</span>
+                    </div>
 
-                    {/* Colors */}
-                    <div className="hidden md:flex items-center gap-1.5">
-                        {COLORS.map((color) => (
-                            <button
-                                key={color}
-                                onClick={() => setColor(color)}
-                                className={`w-6 h-6 rounded-full transition-transform border border-slate-200 shadow-sm ${currentColor === color ? 'ring-2 ring-offset-2 ring-sky-400 scale-110' : 'hover:scale-110'
+                    {/* Boards */}
+                    <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                        {[1, 2, 3, 4, 5].map((board) => (
+                            <div key={board} className="relative group">
+                                <button
+                                    onClick={() => setBoard(board)}
+                                    className={`flex items-center justify-center w-6 h-6 rounded transition-all ${
+                                        currentBoard === board
+                                            ? 'bg-sky-500 text-white shadow-sm'
+                                            : 'hover:bg-slate-100 text-slate-600'
                                     }`}
-                                style={{ backgroundColor: color }}
-                            />
+                                    title={`Board ${board}`}
+                                >
+                                    <span className="text-[10px] font-semibold">{board}</span>
+                                </button>
+                                {currentBoard === board && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm(`Clear Board ${board}?`)) {
+                                                clearBoard(board);
+                                            }
+                                        }}
+                                        className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 hover:bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                                        title={`Clear Board ${board}`}
+                                    >
+                                        <X className="w-2 h-2" />
+                                    </button>
+                                )}
+                            </div>
                         ))}
                     </div>
 
-                    <div className="hidden md:block w-px h-6 bg-slate-200 mx-1" />
-
-                    {/* Sizes */}
-                    <div className="hidden md:flex items-center gap-1">
-                        {SIZES.slice(0, 5).map((size) => (
-                            <button
-                                key={size}
-                                onClick={() => setSize(size)}
-                                className={`flex items-center justify-center w-8 h-8 rounded-full transition-all ${currentSize === size ? 'bg-slate-200 text-black' : 'hover:bg-slate-100 text-slate-400'
-                                    }`}
-                            >
-                                <div className="rounded-full bg-current" style={{ width: size, height: size }} />
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="w-px h-6 bg-slate-200 mx-1" />
-
-                    {/* Clear */}
+                    {/* Clear All */}
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={clearCanvas}
-                        className="text-red-500 hover:bg-red-50"
+                        onClick={() => {
+                            if (window.confirm('Clear all boards?')) {
+                                clearCanvas();
+                            }
+                        }}
+                        className="text-red-500 hover:bg-red-50 h-7 w-7 p-0"
+                        title="Clear All"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                 </div>
 

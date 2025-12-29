@@ -95,15 +95,12 @@ export function ClassroomLayout({
     return (
         <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden">
             {/* Header */}
-            <header className="h-14 bg-white border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm">
-                        S
-                    </div>
-                    <span className="font-semibold text-slate-800">StudyAsan Classroom</span>
+           <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-1">
+                    <img src="/studyasan-logo.png" alt="StudyAsan" className="h-12" />
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                <div className="flex items-center gap-2 text-sm text-blue-200">
+                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
                     <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
                 </div>
             </header>

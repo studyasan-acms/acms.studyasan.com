@@ -108,6 +108,7 @@ export interface Stroke {
     size: number;
     points: Point[];
     timestamp: number;
+    board?: number; // Board number (1-5)
     text?: string;
     imageUrl?: string;
 }
@@ -115,7 +116,7 @@ export interface Stroke {
 /**
  * Whiteboard message types for DataChannel sync
  */
-export type WhiteboardMessageType = 'stroke' | 'clear' | 'undo' | 'sync-request' | 'sync-response';
+export type WhiteboardMessageType = 'stroke' | 'clear' | 'clear-board' | 'undo' | 'sync-request' | 'sync-response';
 
 /**
  * Whiteboard DataChannel message
@@ -123,6 +124,7 @@ export type WhiteboardMessageType = 'stroke' | 'clear' | 'undo' | 'sync-request'
 export interface WhiteboardMessage {
     type: WhiteboardMessageType;
     data?: Stroke | Stroke[];
+    board?: number; // Board number for clear-board operations
     senderId?: string;
     timestamp: number;
 }
