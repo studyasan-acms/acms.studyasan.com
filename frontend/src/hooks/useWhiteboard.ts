@@ -7,6 +7,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { DrawingTool, Stroke, Point, WhiteboardMessage } from '@/types/videoRoom';
 
+// Pen thickness range configuration
+export const PEN_THICKNESS_RANGE = {
+    min: 1,
+    max: 32,
+    step: 1,
+    default: 4,
+} as const;
+
+// Predefined quick-select pen thickness options
+export const PEN_THICKNESS_PRESETS = [
+    { label: 'Thin', value: 2 },
+    { label: 'Medium', value: 6 },
+    { label: 'Large', value: 12 },
+    { label: 'Extra Large', value: 20 },
+] as const;
+
 interface UseWhiteboardOptions {
     canvasRef: React.RefObject<HTMLCanvasElement | null>;
     sendMessage: (message: WhiteboardMessage) => void;
@@ -16,11 +32,14 @@ interface UseWhiteboardReturn {
     currentTool: DrawingTool;
     currentColor: string;
     currentSize: number;
+    currentBoard: number;
     selectedStrokeId: string | null;
     setTool: (tool: DrawingTool) => void;
     setColor: (color: string) => void;
     setSize: (size: number) => void;
+    setBoard: (board: number) => void;
     clearCanvas: () => void;
+    clearBoard: (board: number) => void;
     handlePointerDown: (e: React.PointerEvent) => void;
     handlePointerMove: (e: React.PointerEvent) => void;
     handlePointerUp: (e: React.PointerEvent) => void;
@@ -35,19 +54,56 @@ function generateStrokeId(): string {
     return `stroke_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 }
 
+function interpolateColor(color1: string, color2: string, fraction: number): string {
+    // Convert hex to RGB
+    const hex2rgb = (hex: string) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return { r, g, b };
+    };
+
+    const c1 = hex2rgb(color1);
+    const c2 = hex2rgb(color2);
+
+    const r = Math.round(c1.r + (c2.r - c1.r) * fraction);
+    const g = Math.round(c1.g + (c2.g - c1.g) * fraction);
+    const b = Math.round(c1.b + (c2.b - c1.b) * fraction);
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
+
 export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions): UseWhiteboardReturn {
     const [currentTool, setCurrentTool] = useState<DrawingTool>('pen');
     const [currentColor, setCurrentColor] = useState('#0ea5e9');
     const [currentSize, setCurrentSize] = useState(4);
+    const [currentBoard, setCurrentBoard] = useState(1);
     const [isActive, setIsActive] = useState(false);
     const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
 
     const strokes = useRef<Map<string, Stroke>>(new Map());
     const currentStroke = useRef<Stroke | null>(null);
     const isDrawing = useRef(false);
-    const rainbowHue = useRef(0);
+    const rainbowIndex = useRef(0);
     const shapeStartPoint = useRef<Point | null>(null);
     const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
+    const isDragging = useRef(false);
+    const dragStartPoint = useRef<Point | null>(null);
+    const dragStartStrokePoints = useRef<Point[]>([]);
+    const resizeHandle = useRef<'tl' | 'tr' | 'bl' | 'br' | null>(null);
+    const resizeStartPoint = useRef<Point | null>(null);
+    const resizeStartStrokePoints = useRef<Point[]>([]);
+
+    // VIBGYOR rainbow colors
+    const rainbowColors = [
+        '#8B00FF', // Violet
+        '#4B0082', // Indigo
+        '#0000FF', // Blue
+        '#00FF00', // Green
+        '#FFFF00', // Yellow
+        '#FF7F00', // Orange
+        '#FF0000', // Red
+    ];
 
     const getCanvasPoint = useCallback((e: React.PointerEvent): Point | null => {
         const canvas = canvasRef.current;
@@ -74,8 +130,13 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, rect.width, rect.height);
 
-        // Draw all strokes
+        // Draw all strokes for the current board
         strokes.current.forEach((stroke, strokeId) => {
+            // Only draw strokes from the current board (or legacy strokes without a board)
+            if (stroke.board !== undefined && stroke.board !== currentBoard) {
+                return;
+            }
+
             const isSelected = strokeId === selectedStrokeId;
 
             ctx.save();
@@ -118,6 +179,19 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                         ctx.lineWidth = 2;
                         ctx.setLineDash([5, 5]);
                         ctx.strokeRect(x - 4, y - 4, width + 8, height + 8);
+                        
+                        // Draw resize handles
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = '#0ea5e9';
+                        const handleSize = 8;
+                        // Top-left
+                        ctx.fillRect(x - 4 - handleSize / 2, y - 4 - handleSize / 2, handleSize, handleSize);
+                        // Top-right
+                        ctx.fillRect(x + width + 4 - handleSize / 2, y - 4 - handleSize / 2, handleSize, handleSize);
+                        // Bottom-left
+                        ctx.fillRect(x - 4 - handleSize / 2, y + height + 4 - handleSize / 2, handleSize, handleSize);
+                        // Bottom-right
+                        ctx.fillRect(x + width + 4 - handleSize / 2, y + height + 4 - handleSize / 2, handleSize, handleSize);
                     }
                 }
             } else if (stroke.tool === 'highlight') {
@@ -140,24 +214,51 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 drawShape(ctx, stroke, rect);
             } else {
                 // Pen, rainbow, eraser
-                ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color;
-                ctx.lineWidth = stroke.size;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
+                if (stroke.tool === 'rainbow' && stroke.points.length > 1) {
+                    // Draw rainbow with VIBGYOR gradient
+                    ctx.lineWidth = stroke.size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
 
-                if (stroke.points.length > 0) {
-                    ctx.beginPath();
-                    ctx.moveTo(stroke.points[0].x * rect.width, stroke.points[0].y * rect.height);
-                    stroke.points.forEach(p => {
-                        ctx.lineTo(p.x * rect.width, p.y * rect.height);
-                    });
-                    ctx.stroke();
+                    const totalPoints = stroke.points.length;
+                    for (let i = 0; i < totalPoints - 1; i++) {
+                        const progress = i / Math.max(totalPoints - 1, 1);
+                        const colorIndex = progress * (rainbowColors.length - 1);
+                        const lowerIndex = Math.floor(colorIndex);
+                        const upperIndex = Math.min(lowerIndex + 1, rainbowColors.length - 1);
+                        const fraction = colorIndex - lowerIndex;
+
+                        // Interpolate between two rainbow colors
+                        const color1 = rainbowColors[lowerIndex];
+                        const color2 = rainbowColors[upperIndex];
+                        ctx.strokeStyle = interpolateColor(color1, color2, fraction);
+
+                        ctx.beginPath();
+                        ctx.moveTo(stroke.points[i].x * rect.width, stroke.points[i].y * rect.height);
+                        ctx.lineTo(stroke.points[i + 1].x * rect.width, stroke.points[i + 1].y * rect.height);
+                        ctx.stroke();
+                    }
+                } else {
+                    // Regular pen or eraser
+                    ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color;
+                    ctx.lineWidth = stroke.size;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+
+                    if (stroke.points.length > 0) {
+                        ctx.beginPath();
+                        ctx.moveTo(stroke.points[0].x * rect.width, stroke.points[0].y * rect.height);
+                        stroke.points.forEach(p => {
+                            ctx.lineTo(p.x * rect.width, p.y * rect.height);
+                        });
+                        ctx.stroke();
+                    }
                 }
             }
 
             ctx.restore();
         });
-    }, [canvasRef, selectedStrokeId]);
+    }, [canvasRef, selectedStrokeId, currentBoard]);
 
     const drawShape = useCallback((
         ctx: CanvasRenderingContext2D,
@@ -247,9 +348,101 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         if (!point) return;
 
         if (currentTool === 'select') {
-            // Find stroke at point
-            // Simplified hit detection - expand later
-            setSelectedStrokeId(null);
+            // Hit detection for selecting strokes
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const clickX = point.x * rect.width;
+            const clickY = point.y * rect.height;
+
+            // Check if clicking on resize handle of selected stroke
+            if (selectedStrokeId) {
+                const selectedStroke = strokes.current.get(selectedStrokeId);
+                if (selectedStroke?.tool === 'image' && selectedStroke.points.length >= 1) {
+                    const x = selectedStroke.points[0].x * rect.width;
+                    const y = selectedStroke.points[0].y * rect.height;
+                    const width = selectedStroke.points.length > 1
+                        ? (selectedStroke.points[1].x - selectedStroke.points[0].x) * rect.width
+                        : 200;
+                    const height = selectedStroke.points.length > 1
+                        ? (selectedStroke.points[1].y - selectedStroke.points[0].y) * rect.height
+                        : 200;
+                    
+                    const handleSize = 8;
+                    const tolerance = 6;
+                    
+                    // Check each resize handle
+                    const handles = [
+                        { name: 'tl' as const, x: x - 4, y: y - 4 },
+                        { name: 'tr' as const, x: x + width + 4, y: y - 4 },
+                        { name: 'bl' as const, x: x - 4, y: y + height + 4 },
+                        { name: 'br' as const, x: x + width + 4, y: y + height + 4 },
+                    ];
+                    
+                    for (const handle of handles) {
+                        if (Math.abs(clickX - handle.x) <= handleSize + tolerance &&
+                            Math.abs(clickY - handle.y) <= handleSize + tolerance) {
+                            resizeHandle.current = handle.name;
+                            resizeStartPoint.current = point;
+                            resizeStartStrokePoints.current = [...selectedStroke.points];
+                            return;
+                        }
+                    }
+                }
+            }
+
+            let foundStrokeId: string | null = null;
+
+            // Check strokes in reverse order (top to bottom)
+            const strokesArray = Array.from(strokes.current.entries()).reverse();
+            
+            for (const [strokeId, stroke] of strokesArray) {
+                if (stroke.tool === 'image' && stroke.points.length >= 1) {
+                    const x = stroke.points[0].x * rect.width;
+                    const y = stroke.points[0].y * rect.height;
+                    const width = stroke.points.length > 1
+                        ? (stroke.points[1].x - stroke.points[0].x) * rect.width
+                        : 200;
+                    const height = stroke.points.length > 1
+                        ? (stroke.points[1].y - stroke.points[0].y) * rect.height
+                        : 200;
+
+                    if (clickX >= x && clickX <= x + width && clickY >= y && clickY <= y + height) {
+                        foundStrokeId = strokeId;
+                        break;
+                    }
+                } else if (stroke.tool === 'text' && stroke.text && stroke.points.length >= 1) {
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) continue;
+                    
+                    const x = stroke.points[0].x * rect.width;
+                    const y = stroke.points[0].y * rect.height;
+                    ctx.font = `${stroke.size * 4}px Arial`;
+                    const metrics = ctx.measureText(stroke.text);
+                    const textWidth = metrics.width;
+                    const textHeight = stroke.size * 4;
+
+                    if (clickX >= x - 4 && clickX <= x + textWidth + 4 && 
+                        clickY >= y - textHeight && clickY <= y + 8) {
+                        foundStrokeId = strokeId;
+                        break;
+                    }
+                }
+            }
+
+            if (foundStrokeId) {
+                setSelectedStrokeId(foundStrokeId);
+                isDragging.current = true;
+                dragStartPoint.current = point;
+                const stroke = strokes.current.get(foundStrokeId);
+                if (stroke) {
+                    dragStartStrokePoints.current = [...stroke.points];
+                }
+            } else {
+                setSelectedStrokeId(null);
+            }
+            redrawCanvas();
             return;
         }
 
@@ -264,13 +457,14 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 color: currentColor,
                 size: currentSize,
                 points: [point, point],
+                board: currentBoard,
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
         } else {
             const strokeId = generateStrokeId();
             const color = currentTool === 'rainbow'
-                ? `hsl(${rainbowHue.current}, 100%, 50%)`
+                ? rainbowColors[0] // Start with violet, gradient will be applied during render
                 : currentColor;
 
             currentStroke.current = {
@@ -279,6 +473,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 color,
                 size: currentSize,
                 points: [point],
+                board: currentBoard,
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
@@ -288,26 +483,89 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
     }, [currentTool, currentColor, currentSize, getCanvasPoint, redrawCanvas]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
-        if (!isDrawing.current || !currentStroke.current) return;
-
         const point = getCanvasPoint(e);
         if (!point) return;
+
+        // Handle resizing
+        if (resizeHandle.current && resizeStartPoint.current && selectedStrokeId) {
+            const stroke = strokes.current.get(selectedStrokeId);
+            if (!stroke || stroke.tool !== 'image') return;
+
+            const dx = point.x - resizeStartPoint.current.x;
+            const dy = point.y - resizeStartPoint.current.y;
+            const startPoints = resizeStartStrokePoints.current;
+
+            if (startPoints.length >= 2) {
+                const newPoints = [...startPoints];
+                
+                switch (resizeHandle.current) {
+                    case 'tl':
+                        newPoints[0] = { x: startPoints[0].x + dx, y: startPoints[0].y + dy };
+                        break;
+                    case 'tr':
+                        newPoints[0] = { x: startPoints[0].x, y: startPoints[0].y + dy };
+                        newPoints[1] = { x: startPoints[1].x + dx, y: newPoints[1].y };
+                        break;
+                    case 'bl':
+                        newPoints[0] = { x: startPoints[0].x + dx, y: startPoints[0].y };
+                        newPoints[1] = { x: newPoints[1].x, y: startPoints[1].y + dy };
+                        break;
+                    case 'br':
+                        newPoints[1] = { x: startPoints[1].x + dx, y: startPoints[1].y + dy };
+                        break;
+                }
+                
+                stroke.points = newPoints;
+                strokes.current.set(selectedStrokeId, stroke);
+                redrawCanvas();
+            }
+            return;
+        }
+
+        // Handle dragging
+        if (isDragging.current && dragStartPoint.current && selectedStrokeId) {
+            const stroke = strokes.current.get(selectedStrokeId);
+            if (!stroke) return;
+
+            const dx = point.x - dragStartPoint.current.x;
+            const dy = point.y - dragStartPoint.current.y;
+
+            stroke.points = dragStartStrokePoints.current.map(p => ({
+                x: p.x + dx,
+                y: p.y + dy,
+            }));
+
+            strokes.current.set(selectedStrokeId, stroke);
+            redrawCanvas();
+            return;
+        }
+
+        // Handle drawing
+        if (!isDrawing.current || !currentStroke.current) return;
 
         if (['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)) {
             currentStroke.current.points[1] = point;
         } else {
-            if (currentTool === 'rainbow') {
-                rainbowHue.current = (rainbowHue.current + 2) % 360;
-                currentStroke.current.color = `hsl(${rainbowHue.current}, 100%, 50%)`;
-            }
             currentStroke.current.points.push(point);
         }
 
         strokes.current.set(currentStroke.current.id, currentStroke.current);
         redrawCanvas();
-    }, [currentTool, getCanvasPoint, redrawCanvas]);
+    }, [currentTool, getCanvasPoint, redrawCanvas, selectedStrokeId]);
 
     const handlePointerUp = useCallback(() => {
+        // Send drag/resize updates
+        if ((isDragging.current || resizeHandle.current) && selectedStrokeId) {
+            const stroke = strokes.current.get(selectedStrokeId);
+            if (stroke) {
+                sendMessage({
+                    type: 'stroke',
+                    data: stroke,
+                    timestamp: Date.now(),
+                });
+            }
+        }
+
         if (currentStroke.current) {
             sendMessage({
                 type: 'stroke',
@@ -319,7 +577,13 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         isDrawing.current = false;
         currentStroke.current = null;
         shapeStartPoint.current = null;
-    }, [sendMessage]);
+        isDragging.current = false;
+        dragStartPoint.current = null;
+        dragStartStrokePoints.current = [];
+        resizeHandle.current = null;
+        resizeStartPoint.current = null;
+        resizeStartStrokePoints.current = [];
+    }, [sendMessage, selectedStrokeId]);
 
     const handleRemoteMessage = useCallback((message: WhiteboardMessage) => {
         if (message.type === 'stroke' && message.data) {
@@ -329,6 +593,15 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         } else if (message.type === 'clear') {
             strokes.current.clear();
             loadedImages.current.clear();
+            redrawCanvas();
+        } else if (message.type === 'clear-board' && message.board !== undefined) {
+            // Clear all strokes from the specified board
+            const strokesArray = Array.from(strokes.current.entries());
+            for (const [strokeId, stroke] of strokesArray) {
+                if (stroke.board === message.board) {
+                    strokes.current.delete(strokeId);
+                }
+            }
             redrawCanvas();
         }
     }, [redrawCanvas]);
@@ -343,6 +616,22 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         });
     }, [redrawCanvas, sendMessage]);
 
+    const clearBoard = useCallback((board: number) => {
+        // Clear all strokes from the specified board
+        const strokesArray = Array.from(strokes.current.entries());
+        for (const [strokeId, stroke] of strokesArray) {
+            if (stroke.board === board) {
+                strokes.current.delete(strokeId);
+            }
+        }
+        redrawCanvas();
+        sendMessage({
+            type: 'clear-board',
+            board,
+            timestamp: Date.now(),
+        });
+    }, [redrawCanvas, sendMessage]);
+
     const addTextStroke = useCallback((text: string, position: Point) => {
         const strokeId = generateStrokeId();
         const stroke: Stroke = {
@@ -351,6 +640,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
             color: currentColor,
             size: currentSize,
             points: [position],
+            board: currentBoard,
             text,
             timestamp: Date.now(),
         };
@@ -361,7 +651,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
             data: stroke,
             timestamp: Date.now(),
         });
-    }, [currentColor, currentSize, redrawCanvas, sendMessage]);
+    }, [currentColor, currentSize, currentBoard, redrawCanvas, sendMessage]);
 
     const addImageStroke = useCallback((imageUrl: string, position: Point) => {
         const strokeId = generateStrokeId();
@@ -371,6 +661,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
             color: '',
             size: 0,
             points: [position, { x: position.x + 0.2, y: position.y + 0.15 }],
+            board: currentBoard,
             imageUrl,
             timestamp: Date.now(),
         };
@@ -381,7 +672,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
             data: stroke,
             timestamp: Date.now(),
         });
-    }, [redrawCanvas, sendMessage]);
+    }, [currentBoard, redrawCanvas, sendMessage]);
 
     const deleteSelected = useCallback(() => {
         if (selectedStrokeId) {
@@ -409,11 +700,14 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         currentTool,
         currentColor,
         currentSize,
+        currentBoard,
         selectedStrokeId,
         setTool,
         setColor: setCurrentColor,
         setSize: setCurrentSize,
+        setBoard: setCurrentBoard,
         clearCanvas,
+        clearBoard,
         handlePointerDown,
         handlePointerMove,
         handlePointerUp,
