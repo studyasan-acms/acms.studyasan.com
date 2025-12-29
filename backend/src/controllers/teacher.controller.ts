@@ -188,7 +188,27 @@ export const createTeacher = async (req: Request, res: Response) => {
 export const updateTeacher = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { salary, salary_currency_id, qualification, gender, experience, address } = req.body;
+    const { salary, salary_currency_id, qualification, gender, experience, address, name, email, phone } = req.body;
+
+    const existingTeacher = await prisma.teacher.findUnique({
+      where: { id: parseInt(id!) },
+    });
+
+    if (!existingTeacher) {
+      return sendError(res, 'Teacher not found', 404);
+    }
+
+    // Update user information if provided
+    if (name !== undefined || email !== undefined || phone !== undefined) {
+      await prisma.user.update({
+        where: { id: existingTeacher.user_id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(email !== undefined && { email }),
+          ...(phone !== undefined && { phone }),
+        },
+      });
+    }
 
     const salaryCurrencyIdNumUp = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
 

@@ -67,6 +67,9 @@ export default function EditTeacherPage() {
     stateId: null as number | null,
     cityId: null as number | null,
     postalCode: null as string | null,
+    name: null as string | null,
+    email: null as string | null,
+    phone: null as string | null,
   });
 
   // ================= FETCH DATA =================
@@ -97,6 +100,9 @@ export default function EditTeacherPage() {
         stateId: null as number | null,
         cityId: null as number | null,
         postalCode: null as string | null,
+        name: teacherData.user.name,
+        email: teacherData.user.email,
+        phone: teacherData.user.phone,
       };
 
       // If teacher has address, load it
@@ -243,6 +249,9 @@ export default function EditTeacherPage() {
         qualification: formData.qualification,
         gender: formData.gender,
         experience: formData.experience,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
         address: hasAllAddressFields ? {
           addressLine: formData.addressLine || '',
           countryId: formData.countryId || 0,
@@ -351,24 +360,33 @@ export default function EditTeacherPage() {
           <Card className="w-full">
             <CardHeader>
               <CardTitle className="text-xl text-gray-600">User Information</CardTitle>
-              <CardDescription>Account information (read-only)</CardDescription>
+              <CardDescription>Account information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-gray-600">Full Name</Label>
-                <Input value={teacher.user.name} disabled />
+                <Input 
+                  value={formData.name || ""} 
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Email</Label>
-                <Input value={teacher.user.email} disabled />
+                <Input 
+                  value={formData.email || ""} 
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Phone</Label>
-                <Input value={teacher.user.phone} disabled />
+                <Input 
+                  value={formData.phone || ""} 
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
-              <p className="text-xs text-muted-foreground">
-                User account details cannot be edited here.
-              </p>
             </CardContent>
           </Card>
 

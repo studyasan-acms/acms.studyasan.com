@@ -75,7 +75,7 @@ export default function EditStudentPage() {
 
   const [successOpen, setSuccessOpen] = useState(false);
 
-  const [formData, setFormData] = useState<UpdateStudentData>({
+  const [formData, setFormData] = useState<UpdateStudentData & { name?: string; email?: string; phone?: string }>({
     class_id: null,
     board_id: null,
     date_of_birth: null,
@@ -87,6 +87,9 @@ export default function EditStudentPage() {
     stateId: undefined,
     cityId: undefined,
     postalCode: undefined,
+    name: undefined,
+    email: undefined,
+    phone: undefined,
   });
 
   useEffect(() => {
@@ -118,7 +121,7 @@ export default function EditStudentPage() {
       }
 
       // Set initial form data from student
-      const initialData: UpdateStudentData = {
+      const initialData: UpdateStudentData & { name?: string; email?: string; phone?: string } = {
         class_id: response.data.class_id,
         board_id: response.data.board_id,
         date_of_birth: formattedDateOfBirth, // Use the formatted date
@@ -130,6 +133,9 @@ export default function EditStudentPage() {
         stateId: undefined,
         cityId: undefined,
         postalCode: undefined,
+        name: response.data.user.name,
+        email: response.data.user.email,
+        phone: response.data.user.phone,
       };
 
       // If student has address, load it
@@ -332,12 +338,12 @@ Object.entries(transformedData).forEach(([key, value]) => {
     }
   };
 
-  const handleChange = (field: keyof UpdateStudentData, value: any) => {
+  const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]:
         value === ""
-          ? field === "addressLine" || field === "postalCode"
+          ? field === "addressLine" || field === "postalCode" || field === "name" || field === "email" || field === "phone"
             ? ""
             : null
           : value,
@@ -427,24 +433,33 @@ Object.entries(transformedData).forEach(([key, value]) => {
               <CardTitle className="text-xl text-gray-600">
                 User Information
               </CardTitle>
-              <CardDescription>Account information (read-only)</CardDescription>
+              <CardDescription>Account information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-gray-600">Full Name</Label>
-                <Input value={student.user.name} disabled />
+                <Input 
+                  value={formData.name || ""} 
+                  onChange={(e) => handleChange("name", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Email</Label>
-                <Input value={student.user.email} disabled />
+                <Input 
+                  value={formData.email || ""} 
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Phone</Label>
-                <Input value={student.user.phone} disabled />
+                <Input 
+                  value={formData.phone || ""} 
+                  onChange={(e) => handleChange("phone", e.target.value)}
+                  disabled={isSaving}
+                />
               </div>
-              <p className="text-xs text-muted-foreground">
-                User account details cannot be edited here.
-              </p>
             </CardContent>
           </Card>
 

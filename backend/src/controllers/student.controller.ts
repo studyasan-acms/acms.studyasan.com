@@ -237,6 +237,9 @@ export const updateStudent = async (req: Request, res: Response) => {
       stateId,
       cityId,
       postalCode,
+      name,
+      email,
+      phone,
     } = req.body;
 
     const existingStudent = await prisma.student.findUnique({
@@ -246,6 +249,18 @@ export const updateStudent = async (req: Request, res: Response) => {
 
     if (!existingStudent) {
       return sendError(res, 'Student not found', 404);
+    }
+
+    // Update user information if provided
+    if (name !== undefined || email !== undefined || phone !== undefined) {
+      await prisma.user.update({
+        where: { id: existingStudent.user_id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(email !== undefined && { email }),
+          ...(phone !== undefined && { phone }),
+        },
+      });
     }
 
     const hasAnyAddressField =
