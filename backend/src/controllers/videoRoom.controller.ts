@@ -681,10 +681,14 @@ export const recordJoin = async (req: AuthRequest, res: Response) => {
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
+    if (!janusRoomId) {
+      return sendError(res, 'Room ID is required', 400);
+    }
+
     console.log(`[Attendance] User ${userId} (${userRole}) joining room ${janusRoomId}`);
 
     // Strip "room-" prefix if present and convert to BigInt
-    const numericRoomId = janusRoomId.replace(/^room-/, '');
+    const numericRoomId = BigInt(janusRoomId.replace(/^room-/, ''));
 
     const videoRoom = await prisma.videoRoom.findUnique({
       where: { janus_room_id: numericRoomId },
@@ -741,10 +745,14 @@ export const recordLeave = async (req: AuthRequest, res: Response) => {
     const { janusRoomId } = req.params;
     const userId = req.user!.id;
 
+    if (!janusRoomId) {
+      return sendError(res, 'Room ID is required', 400);
+    }
+
     console.log(`[Attendance] User ${userId} leaving room ${janusRoomId}`);
 
     // Strip "room-" prefix if present and convert to BigInt
-    const numericRoomId = janusRoomId.replace(/^room-/, '');
+    const numericRoomId = BigInt(janusRoomId.replace(/^room-/, ''));
 
     const videoRoom = await prisma.videoRoom.findUnique({
       where: { janus_room_id: numericRoomId },
@@ -829,6 +837,10 @@ export const getSessionAttendance = async (req: AuthRequest, res: Response) => {
     const { sessionId } = req.params;
     const userId = req.user!.id;
     const userRole = req.user!.role;
+
+    if (!sessionId) {
+      return sendError(res, 'Session ID is required', 400);
+    }
 
     const classSession = await prisma.classSession.findUnique({
       where: { id: parseInt(sessionId) },
