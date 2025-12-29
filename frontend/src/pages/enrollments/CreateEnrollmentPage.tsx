@@ -29,6 +29,10 @@ const CreateEnrollmentPage: React.FC = () => {
   const [formData, setFormData] = useState<CreateEnrollmentData>({
     student_id: 0,
     subject_id: 0,
+    price: null,
+    is_recurring: false,
+    frequency: null,
+    end_date: null,
   });
 
   const [errors, setErrors] = useState<Partial<CreateEnrollmentData>>({});
@@ -87,6 +91,16 @@ const CreateEnrollmentPage: React.FC = () => {
 
     if (!formData.student_id) newErrors.student_id = 0;
     if (!formData.subject_id) newErrors.subject_id = 0;
+
+    // If recurring is enabled, price and frequency are required
+    if (formData.is_recurring) {
+      if (!formData.price || formData.price <= 0) {
+        newErrors.price = 0;
+      }
+      if (!formData.frequency) {
+        newErrors.frequency = '';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -245,6 +259,80 @@ const CreateEnrollmentPage: React.FC = () => {
 
               {errors.subject_id && (
                 <p className="text-red-600 text-sm mt-1">Please select a subject</p>
+              )}
+            </div>
+
+            {/* Payment Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-gray-900">Payment Settings</h3>
+
+              {/* Recurring Payment Toggle */}
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_recurring"
+                  checked={formData.is_recurring}
+                  onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
+                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="is_recurring" className="text-sm font-medium text-gray-700">
+                  Enable Recurring Payments
+                </label>
+              </div>
+
+              {formData.is_recurring && (
+                <>
+                  {/* Price Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Price (₹) *</label>
+                    <input
+                      type="number"
+                      value={formData.price || ''}
+                      onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || null })}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Enter price per period"
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors.price && (
+                      <p className="text-red-600 text-sm mt-1">Please enter a valid price</p>
+                    )}
+                  </div>
+
+                  {/* Frequency Selection */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Frequency *</label>
+                    <Select
+                      value={formData.frequency || ''}
+                      onValueChange={(value) => setFormData({ ...formData, frequency: value })}
+                    >
+                      <SelectTrigger className={`${errors.frequency ? 'border-red-500' : ''} h-11`}>
+                        <SelectValue placeholder="Select payment frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {errors.frequency && (
+                      <p className="text-red-600 text-sm mt-1">Please select a frequency</p>
+                    )}
+                  </div>
+
+                  {/* End Date (Optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">End Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={formData.end_date || ''}
+                      onChange={(e) => setFormData({ ...formData, end_date: e.target.value || null })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Leave empty for ongoing payments</p>
+                  </div>
+                </>
               )}
             </div>
 

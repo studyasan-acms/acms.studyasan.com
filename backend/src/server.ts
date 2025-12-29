@@ -5,6 +5,7 @@ import { createServer } from 'http';
 import { initSocket } from './socket/socket.js';
 import routes from './routes/index.js';
 import { errorHandler } from './middleware/error.middleware.js';
+import { NotificationProcessorService } from './services/notificationProcessor.service.js';
 
 dotenv.config();
 
@@ -41,6 +42,9 @@ app.use((req, res) => {
 
 // Initialize Socket.IO
 initSocket(httpServer);
+
+// Start notification processor
+NotificationProcessorService.start();
 
 httpServer.listen(PORT, () => {
   console.log(` Server is running on port ${PORT}`);

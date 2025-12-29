@@ -44,6 +44,9 @@ import CreateEnrollmentPage from '@/pages/enrollments/CreateEnrollmentPage';
 import BulkEnrollmentPage from '@/pages/enrollments/BulkEnrollmentPage';
 import EnrollmentDetailPage from '@/pages/enrollments/EnrollmentDetailPage';
 
+// Payment imports
+import PaymentsPage from '@/pages/PaymentsPage';
+
 // Board imports
 import BoardsPage from '@/pages/boards/BoardsPage';
 import CreateBoardPage from '@/pages/boards/CreateBoardPage';
@@ -190,6 +193,9 @@ function App() {
           <Route path="enrollments/new" element={<CreateEnrollmentPage />} />
           <Route path="enrollments/bulk" element={<BulkEnrollmentPage />} />
           <Route path="enrollments/:id" element={<EnrollmentDetailPage />} />
+
+          {/* Payment Routes */}
+          <Route path="payments" element={<PaymentsPage />} />
 
           {/* Board Routes */}
           <Route path="boards" element={<BoardsPage />} />

@@ -376,6 +376,10 @@ export interface Enrollment {
   id: number;
   student_id: number;
   subject_id: number;
+  price: number | null;
+  is_recurring: boolean;
+  frequency: string | null;
+  end_date: string | null;
   created_on: string;
   updated_on: string;
   student: {
@@ -391,11 +395,29 @@ export interface Enrollment {
     class: { id: number; name: string } | null;
     board: { id: number; name: string } | null;
   };
+  payments?: EnrollmentPayment[];
+}
+
+export interface EnrollmentPayment {
+  id: number;
+  enrollment_id: number;
+  period: string;
+  due_date: string;
+  amount: number;
+  is_paid: boolean;
+  paid_date: string | null;
+  created_at: string;
+  updated_at: string;
+  enrollment: Enrollment;
 }
 
 export interface CreateEnrollmentData {
   student_id: number;
   subject_id: number;
+  price?: number | null;
+  is_recurring?: boolean;
+  frequency?: string | null;
+  end_date?: string | null;
 }
 
 export interface BulkEnrollmentData {

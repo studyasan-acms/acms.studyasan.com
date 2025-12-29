@@ -19,6 +19,7 @@ import type {
   UpdateSubjectData,
   TeacherSubjectAssignment,
   Enrollment,
+  EnrollmentPayment,
   CreateEnrollmentData,
   BulkEnrollmentData,
   CreateBoardData,
@@ -461,6 +462,36 @@ export const enrollmentService = {
 
   delete: async (id: number): Promise<void> => {
     await api.delete(`/enrollments/${id}`);
+  },
+};
+
+export const paymentService = {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    is_paid?: string;
+    enrollment_id?: number;
+    search?: string;
+  }): Promise<PaginatedResponse<EnrollmentPayment>> => {
+    const response = await api.get<PaginatedResponse<EnrollmentPayment>>('/payments', {
+      params,
+    });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<{ success: boolean; data: EnrollmentPayment }> => {
+    const response = await api.get(`/payments/${id}`);
+    return response.data;
+  },
+
+  markAsPaid: async (id: number, paidDate?: string): Promise<{ success: boolean; data: EnrollmentPayment }> => {
+    const response = await api.put(`/payments/${id}/mark-paid`, { paid_date: paidDate });
+    return response.data;
+  },
+
+  getOverdue: async (): Promise<{ success: boolean; data: EnrollmentPayment[] }> => {
+    const response = await api.get('/payments/overdue');
+    return response.data;
   },
 };
 

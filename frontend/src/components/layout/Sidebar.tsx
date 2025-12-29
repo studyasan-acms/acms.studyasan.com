@@ -23,6 +23,7 @@ import {
   FolderOpen,
   Play,
   ClipboardCheck,
+  DollarSign,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -146,6 +147,12 @@ const navItems: NavItem[] = [
     title: "Enrollments",
     href: "/dashboard/enrollments",
     icon: GraduationCap,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Payments",
+    href: "/dashboard/payments",
+    icon: DollarSign,
     roles: ["ADMIN"],
   },
   {

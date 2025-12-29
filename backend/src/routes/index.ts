@@ -26,6 +26,7 @@ import * as homeController from '../controllers/home.controller.js';
 import * as enquiryController from '../controllers/enquiry.controller.js';
 import * as homeworkController from '../controllers/homework.controller.js';
 import * as videoRoomController from '../controllers/videoRoom.controller.js';
+import * as paymentController from '../controllers/payment.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -76,6 +77,12 @@ router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments)
 router.get('/enrollments/:id', authenticate, enrollmentController.getEnrollmentById);
 router.post('/enrollments', authenticate, enrollmentController.createEnrollment);
 router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'STUDENT'), enrollmentController.deleteEnrollment);
+
+// Payment routes
+router.get('/payments', authenticate, paymentController.getAllPayments);
+router.get('/payments/:id', authenticate, paymentController.getPaymentById);
+router.put('/payments/:id/pay', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
+router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 
 // Teacher routes
 router.get('/teachers', authenticate, teacherController.getAllTeachers);
@@ -596,5 +603,17 @@ router.post('/video-rooms/:janusRoomId/participants/:participantId/kick', authen
 router.post('/video-rooms/:janusRoomId/join', authenticate, videoRoomController.recordJoin);
 router.post('/video-rooms/:janusRoomId/leave', authenticate, videoRoomController.recordLeave);
 router.get('/class-sessions/:sessionId/attendance', authenticate, videoRoomController.getSessionAttendance);
+
+// ================== ENROLLMENT ROUTES ==================
+router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);
+router.get('/enrollments/:id', authenticate, enrollmentController.getEnrollmentById);
+router.post('/enrollments', authenticate, authorize('ADMIN'), enrollmentController.createEnrollment);
+router.delete('/enrollments/:id', authenticate, authorize('ADMIN'), enrollmentController.deleteEnrollment);
+
+// ================== PAYMENT ROUTES ==================
+router.get('/payments', authenticate, authorize('ADMIN'), paymentController.getAllPayments);
+router.get('/payments/:id', authenticate, authorize('ADMIN'), paymentController.getPaymentById);
+router.put('/payments/:id/mark-paid', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
+router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 
 export default router;
