@@ -58,6 +58,11 @@ import type {
   Currency,
   State,
   City,
+  ActivityGroup,
+  ActivityGroupTeacherJunction,
+  TestSeries,
+  TestSeriesTeacherJunction,
+  TestSeriesEnrollment,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
@@ -387,6 +392,8 @@ export const subjectService = {
     if (data.syllabus !== null) formData.append('syllabus', JSON.stringify(data.syllabus));
     formData.append('is_course', data.is_course.toString());
     if (data.cover_image) formData.append('cover_image', data.cover_image);
+    if (data.price !== null && data.price !== undefined) formData.append('price', data.price.toString());
+    if (data.currency_id !== null && data.currency_id !== undefined) formData.append('currency_id', data.currency_id.toString());
 
     const response = await api.post('/subjects', formData, {
       headers: {
@@ -407,6 +414,8 @@ export const subjectService = {
     if (data.syllabus !== undefined) formData.append('syllabus', JSON.stringify(data.syllabus));
     if (data.is_course !== undefined) formData.append('is_course', data.is_course.toString());
     if (data.cover_image !== undefined && data.cover_image) formData.append('cover_image', data.cover_image);
+    if (data.price !== undefined) formData.append('price', data.price !== null ? data.price.toString() : '');
+    if (data.currency_id !== undefined) formData.append('currency_id', data.currency_id !== null ? data.currency_id.toString() : '');
 
     const response = await api.put(`/subjects/${id}`, formData, {
       headers: {
@@ -604,9 +613,29 @@ export const testService = {
     return response.data;
   },
 
+  // Add question with media upload
+  addQuestionWithMedia: async (testId: number, formData: FormData): Promise<{ success: boolean; data: Question }> => {
+    const response = await api.post(`/tests/${testId}/questions`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
   // Update question
   updateQuestion: async (questionId: number, data: UpdateQuestionData): Promise<{ success: boolean; data: Question }> => {
     const response = await api.put(`/questions/${questionId}`, data);
+    return response.data;
+  },
+
+  // Update question with media upload
+  updateQuestionWithMedia: async (questionId: number, formData: FormData): Promise<{ success: boolean; data: Question }> => {
+    const response = await api.put(`/questions/${questionId}`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -633,6 +662,16 @@ export const testAttemptService = {
   // Submit answer
   submitAnswer: async (attemptId: number, data: SubmitAnswerData): Promise<{ success: boolean; data: Answer }> => {
     const response = await api.post(`/test-attempts/${attemptId}/answers`, data);
+    return response.data;
+  },
+
+  // Submit answer with media upload
+  submitAnswerWithMedia: async (attemptId: number, formData: FormData): Promise<{ success: boolean; data: Answer }> => {
+    const response = await api.post(`/test-attempts/${attemptId}/answers`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   },
 
@@ -842,40 +881,6 @@ export const currencyService = {
 };
 
 
-// Test Series Service
-export interface TestSeries {
-  id: number;
-  title: string;
-  description?: string;
-  cover_image?: string;
-  price?: number;
-  is_published: boolean;
-  created_by: number;
-  created_at: string;
-  updated_at: string;
-  creator?: {
-    id: number;
-    name: string;
-    email: string;
-  };
-  tests?: Test[];
-  _count?: {
-    tests: number;
-    enrollments: number;
-  };
-  is_enrolled?: boolean;
-  enrolled_at?: string;
-}
-
-export interface TestSeriesEnrollment {
-  id: number;
-  test_series_id: number;
-  student_id: number;
-  enrolled_at: string;
-  test_series?: TestSeries;
-  student?: Student;
-}
-
 export const testSeriesService = {
   // Get all test series
   getAll: async (params?: {
@@ -900,6 +905,7 @@ export const testSeriesService = {
     description?: string;
     cover_image?: string;
     price?: number;
+    currency_id?: number | null;
     is_published?: boolean;
   }): Promise<{ success: boolean; data: TestSeries }> => {
     const response = await api.post('/test-series', data);
@@ -914,6 +920,7 @@ export const testSeriesService = {
       description?: string;
       cover_image?: string;
       price?: number;
+      currency_id?: number | null;
       is_published?: boolean;
     }
   ): Promise<{ success: boolean; data: TestSeries }> => {
@@ -948,7 +955,135 @@ export const testSeriesService = {
     const response = await api.get(`/test-series/${id}/enrollments`);
     return response.data;
   },
+
+  // Assign teacher to test series
+  assignTeacher: async (data: { test_series_id: number; teacher_id: number }): Promise<{ success: boolean; data: TestSeriesTeacherJunction }> => {
+    const response = await api.post('/test-series/assign-teacher', data);
+    return response.data;
+  },
+
+  // Remove teacher from test series
+  removeTeacher: async (junctionId: number): Promise<void> => {
+    await api.delete(`/test-series/remove-teacher/${junctionId}`);
+  },
+
+  // Get teachers by test series
+  getTeachers: async (id: number): Promise<{ success: boolean; data: TestSeriesTeacherJunction[] }> => {
+    const response = await api.get(`/test-series/${id}/teachers`);
+    return response.data;
+  },
 };
 
+export const activityGroupService = {
+  // Get all activity groups
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    is_active?: boolean;
+  }): Promise<{ success: boolean; message: string; data: { activityGroups: ActivityGroup[]; pagination: any } }> => {
+    const response = await api.get('/activity-groups', { params });
+    return response.data;
+  },
+
+  // Get activity group by ID
+  getById: async (id: number): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.get(`/activity-groups/${id}`);
+    return response.data;
+  },
+
+  // Create activity group
+  create: async (data: {
+    name: string;
+    description?: string;
+    cover_image?: string;
+    price?: number | null;
+    currency_id?: number | null;
+  }): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.post('/activity-groups', data);
+    return response.data;
+  },
+
+  // Update activity group
+  update: async (
+    id: number,
+    data: {
+      name?: string;
+      description?: string;
+      cover_image?: string;
+      is_active?: boolean;
+      price?: number | null;
+      currency_id?: number | null;
+    }
+  ): Promise<{ success: boolean; data: ActivityGroup }> => {
+    const response = await api.put(`/activity-groups/${id}`, data);
+    return response.data;
+  },
+
+  // Delete activity group
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/activity-groups/${id}`);
+  },
+
+  // Assign teacher to activity group
+  assignTeacher: async (data: { activity_group_id: number; teacher_id: number }): Promise<{ success: boolean; data: ActivityGroupTeacherJunction }> => {
+    const response = await api.post('/activity-groups/assign-teacher', data);
+    return response.data;
+  },
+
+  // Remove teacher from activity group
+  removeTeacher: async (junctionId: number): Promise<void> => {
+    await api.delete(`/activity-groups/remove-teacher/${junctionId}`);
+  },
+
+  // Get teachers by activity group
+  getTeachers: async (id: number): Promise<{ success: boolean; data: ActivityGroupTeacherJunction[] }> => {
+    const response = await api.get(`/activity-groups/${id}/teachers`);
+    return response.data;
+  },
+};
+
+// Home service - Get all items for student home page
+export const homeService = {
+  getItems: async (): Promise<{ data: any[]; total: number }> => {
+    const response = await api.get('/home/items');
+    return response.data;
+  },
+};
+
+// Enquiry service - Manage student enquiries
+export const enquiryService = {
+  create: async (data: {
+    item_type: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
+    item_id: number;
+    student_name: string;
+    student_email: string;
+    student_phone: string;
+    message?: string;
+  }): Promise<{ message: string; data: any }> => {
+    const response = await api.post('/enquiries', data);
+    return response.data;
+  },
+
+  getAll: async (params?: {
+    status?: 'PENDING' | 'CONTACTED' | 'RESOLVED';
+    item_type?: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
+    page?: number;
+    limit?: number;
+  }): Promise<{ data: any[]; pagination: any }> => {
+    const response = await api.get('/enquiries', { params });
+    return response.data;
+  },
+
+  updateStatus: async (id: number, status: 'PENDING' | 'CONTACTED' | 'RESOLVED'): Promise<{ message: string; data: any }> => {
+    const response = await api.patch(`/enquiries/${id}/status`, { status });
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/enquiries/${id}`);
+    return response.data;
+  },
+};
 
 export default api;

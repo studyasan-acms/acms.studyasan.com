@@ -44,12 +44,30 @@ export interface Activity {
   };
 }
 
+export interface ActivityGroupTeacherJunction {
+  id: number;
+  activity_group_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+}
+
 export interface ActivityGroup {
   id: number;
   name: string;
   description?: string;
   cover_image?: string;
   is_active: boolean;
+  price: number | null;
+  currency_id: number | null;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -58,6 +76,8 @@ export interface ActivityGroup {
     name: string;
     email: string;
   };
+  currency: { id: number; name: string; code: string; symbol: string } | null;
+  teacher_junctions?: ActivityGroupTeacherJunction[];
   activities?: Activity[];
   _count?: {
     activities: number;
@@ -117,6 +137,8 @@ export interface CreateActivityGroupInput {
   name: string;
   description?: string;
   cover_image?: string;
+  price?: number | null;
+  currency_id?: number | null;
 }
 
 export interface CreateActivityInput {

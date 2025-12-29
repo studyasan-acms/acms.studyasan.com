@@ -20,6 +20,27 @@ export const createActivity = async (req: Request, res: Response) => {
       items,
     } = req.body;
     const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
+
+    // If user is TEACHER, check if they are assigned to the group
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      const isAssigned = await prisma.activityGroupTeacherJunction.findFirst({
+        where: {
+          activity_group_id: Number(group_id),
+          teacher_id: teacher.id,
+        },
+      });
+      if (!isAssigned) {
+        return sendError(res, 'You are not assigned to this activity group', 403);
+      }
+    }
 
     const activity = await prisma.activity.create({
       data: {
@@ -69,12 +90,31 @@ export const getAllActivities = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10, group_id, activity_type, difficulty, is_published } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
+    const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
 
     const where: any = {};
     if (group_id) where.group_id = Number(group_id);
     if (activity_type) where.activity_type = activity_type;
     if (difficulty) where.difficulty = difficulty;
     if (is_published !== undefined) where.is_published = is_published === 'true';
+
+    // If user is TEACHER, only show activities from groups they are assigned to
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      const teacherGroups = await prisma.activityGroupTeacherJunction.findMany({
+        where: { teacher_id: teacher.id },
+        select: { activity_group_id: true },
+      });
+      const groupIds = teacherGroups.map(tg => tg.activity_group_id);
+      where.group_id = { in: groupIds };
+    }
 
     const [activities, total] = await Promise.all([
       prisma.activity.findMany({
@@ -163,6 +203,39 @@ export const getActivityById = async (req: Request, res: Response) => {
 export const updateActivity = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
+
+    // Get the activity to check group
+    const existingActivity = await prisma.activity.findUnique({
+      where: { id: Number(id) },
+      select: { group_id: true },
+    });
+
+    if (!existingActivity) {
+      return sendError(res, 'Activity not found', 404);
+    }
+
+    // If user is TEACHER, check if they are assigned to the group
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      const isAssigned = await prisma.activityGroupTeacherJunction.findFirst({
+        where: {
+          activity_group_id: existingActivity.group_id,
+          teacher_id: teacher.id,
+        },
+      });
+      if (!isAssigned) {
+        return sendError(res, 'You are not assigned to this activity group', 403);
+      }
+    }
+
     const {
       title,
       description,
@@ -232,6 +305,38 @@ export const updateActivity = async (req: Request, res: Response) => {
 export const deleteActivity = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
+
+    // Get the activity to check group
+    const existingActivity = await prisma.activity.findUnique({
+      where: { id: Number(id) },
+      select: { group_id: true },
+    });
+
+    if (!existingActivity) {
+      return sendError(res, 'Activity not found', 404);
+    }
+
+    // If user is TEACHER, check if they are assigned to the group
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      const isAssigned = await prisma.activityGroupTeacherJunction.findFirst({
+        where: {
+          activity_group_id: existingActivity.group_id,
+          teacher_id: teacher.id,
+        },
+      });
+      if (!isAssigned) {
+        return sendError(res, 'You are not assigned to this activity group', 403);
+      }
+    }
 
     await prisma.activity.delete({
       where: { id: Number(id) },
@@ -248,6 +353,38 @@ export const togglePublishActivity = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { is_published } = req.body;
+    const userId = (req as any).user.id;
+    const userRole = (req as any).user.role;
+
+    // Get the activity to check group
+    const existingActivity = await prisma.activity.findUnique({
+      where: { id: Number(id) },
+      select: { group_id: true },
+    });
+
+    if (!existingActivity) {
+      return sendError(res, 'Activity not found', 404);
+    }
+
+    // If user is TEACHER, check if they are assigned to the group
+    if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        select: { id: true },
+      });
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+      const isAssigned = await prisma.activityGroupTeacherJunction.findFirst({
+        where: {
+          activity_group_id: existingActivity.group_id,
+          teacher_id: teacher.id,
+        },
+      });
+      if (!isAssigned) {
+        return sendError(res, 'You are not assigned to this activity group', 403);
+      }
+    }
 
     const activity = await prisma.activity.update({
       where: { id: Number(id) },
@@ -282,12 +419,29 @@ export const getActivitiesForStudent = async (req: Request, res: Response) => {
       return sendError(res, 'Student not found', 404);
     }
 
+    // Find groups where student is enrolled in at least one published activity
+    const enrolledGroups = await prisma.activityEnrollment.findMany({
+      where: {
+        student_id: student.id,
+        activity: {
+          is_published: true,
+        },
+      },
+      select: {
+        activity: {
+          select: {
+            group_id: true,
+          },
+        },
+      },
+    });
+
+    const groupIds = [...new Set(enrolledGroups.map(eg => eg.activity.group_id))];
+
     const where: any = {
       is_published: true,
-      enrollments: {
-        some: {
-          student_id: student.id,
-        },
+      group_id: {
+        in: groupIds,
       },
     };
     if (activity_type) where.activity_type = activity_type;

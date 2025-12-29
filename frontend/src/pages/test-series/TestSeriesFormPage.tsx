@@ -12,27 +12,65 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { testSeriesService } from "@/services/api";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import { testSeriesService, teacherService, currencyService } from "@/services/api";
+import type { TestSeriesTeacherJunction, Currency } from "@/types";
+import { useAuthStore } from "@/store/authStore";
+import { ArrowLeft, Loader2, Save, Users, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
+
+interface TeacherData {
+    id: number;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        phone?: string;
+    };
+}
 
 export default function TestSeriesFormPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditing = !!id;
+    const user = useAuthStore((state) => state.user);
+    const isAdmin = user?.role === 'ADMIN';
 
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [teachers, setTeachers] = useState<TestSeriesTeacherJunction[]>([]);
+    const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false);
+    const [allTeachers, setAllTeachers] = useState<TeacherData[]>([]);
+    const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
+    const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
+    const [currencies, setCurrencies] = useState<Currency[]>([]);
     const [formData, setFormData] = useState({
         title: "",
         description: "",
         price: "",
+        currency_id: "",
         is_published: false,
     });
 
     useEffect(() => {
+        fetchCurrencies();
         if (isEditing) {
             fetchTestSeries();
+            fetchTeachers();
         }
     }, [id]);
 
@@ -45,6 +83,7 @@ export default function TestSeriesFormPage() {
                 title: data.title || "",
                 description: data.description || "",
                 price: data.price?.toString() || "",
+                currency_id: data.currency_id?.toString() || "",
                 is_published: data.is_published || false,
             });
         } catch (error) {
@@ -53,6 +92,37 @@ export default function TestSeriesFormPage() {
             navigate("/dashboard/test-series");
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const fetchTeachers = async () => {
+        if (!isEditing) return;
+        try {
+            const response = await testSeriesService.getTeachers(parseInt(id!));
+            setTeachers(response.data);
+        } catch (error) {
+            console.error("Failed to fetch teachers:", error);
+        }
+    };
+
+    const fetchAllTeachers = async () => {
+        setIsLoadingTeachers(true);
+        try {
+            const response = await teacherService.getAll({ limit: 100 });
+            setAllTeachers(response.data.data);
+        } catch (error) {
+            console.error("Failed to fetch teachers:", error);
+        } finally {
+            setIsLoadingTeachers(false);
+        }
+    };
+
+    const fetchCurrencies = async () => {
+        try {
+            const currencies = await currencyService.getAll();
+            setCurrencies(currencies);
+        } catch (err) {
+            console.error('Failed to fetch currencies:', err);
         }
     };
 
@@ -65,6 +135,7 @@ export default function TestSeriesFormPage() {
                 title: formData.title,
                 description: formData.description || undefined,
                 price: parseInt(formData.price),
+                currency_id: formData.currency_id ? parseInt(formData.currency_id) : undefined,
                 is_published: formData.is_published,
             };
 
@@ -90,6 +161,43 @@ export default function TestSeriesFormPage() {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
+
+    const handleAssignTeacher = async (teacherId: number) => {
+        if (!isEditing) return;
+        try {
+            await testSeriesService.assignTeacher({ test_series_id: parseInt(id!), teacher_id: teacherId });
+            toast.success("Teacher assigned successfully");
+            fetchTeachers();
+            setIsTeacherDialogOpen(false);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to assign teacher");
+        }
+    };
+
+    const handleRemoveTeacher = async (junctionId: number) => {
+        if (!confirm("Are you sure you want to remove this teacher?")) return;
+        try {
+            await testSeriesService.removeTeacher(junctionId);
+            toast.success("Teacher removed successfully");
+            fetchTeachers();
+        } catch (error) {
+            toast.error("Failed to remove teacher");
+        }
+    };
+
+    const openTeacherDialog = () => {
+        fetchAllTeachers();
+        setIsTeacherDialogOpen(true);
+    };
+
+    const assignedTeacherIds = teachers.map((t) => t.teacher.id);
+    const availableTeachers = allTeachers.filter(
+        (t) =>
+            !assignedTeacherIds.includes(t.id) &&
+            (teacherSearchTerm === "" ||
+                t.user?.name.toLowerCase().includes(teacherSearchTerm.toLowerCase()) ||
+                t.user?.email.toLowerCase().includes(teacherSearchTerm.toLowerCase()))
+    );
 
     if (isLoading) {
         return (
@@ -174,6 +282,32 @@ export default function TestSeriesFormPage() {
                                 required
                             />
                         </div>
+
+                        {isAdmin && (
+                            <>
+                                {/* Currency */}
+                                <div className="space-y-2">
+                                    <Label htmlFor="currency_id">Currency</Label>
+                                    <Select
+                                        value={formData.currency_id}
+                                        onValueChange={(value) =>
+                                            setFormData((prev) => ({ ...prev, currency_id: value }))
+                                        }
+                                    >
+                                        <SelectTrigger id="currency_id">
+                                            <SelectValue placeholder="Select currency" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {currencies.map((currency) => (
+                                                <SelectItem key={currency.id} value={currency.id.toString()}>
+                                                    {currency.name} ({currency.code})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
+                        )}
 
                         {/* Published */}
                         <div className="flex items-center justify-between">

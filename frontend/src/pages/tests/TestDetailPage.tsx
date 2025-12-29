@@ -12,6 +12,8 @@ import {
   Trash2,
   Pencil,
   BookOpen,
+  Image as ImageIcon,
+  Video,
 } from "lucide-react";
 import { testService, testAttemptService } from "@/services/api";
 import type { Test, Question, UpdateQuestionData, QuestionType } from "@/types";
@@ -22,6 +24,7 @@ import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import ConfirmModal from "@/components/ui/confirmationModal";
+import MediaUpload from "@/components/ui/MediaUpload";
 
 export default function TestDetailPage() {
   const { testId } = useParams<{ testId: string }>();
@@ -54,6 +57,11 @@ export default function TestDetailPage() {
     correct_answer: "",
     marks: 2,
   });
+  const [editQuestionMediaFile, setEditQuestionMediaFile] = useState<File | null>(null);
+  const [editQuestionMediaUrl, setEditQuestionMediaUrl] = useState<string | null>(null);
+  const [editQuestionMediaType, setEditQuestionMediaType] = useState<string | null>(null);
+  const [removeQuestionMedia, setRemoveQuestionMedia] = useState(false);
+  const [removeOptionMedia, setRemoveOptionMedia] = useState<{ [key: number]: boolean }>({});
 
   const fetchTest = useCallback(async () => {
     if (!testId) return;
@@ -170,6 +178,11 @@ export default function TestDetailPage() {
       correct_answer: question.correct_answer || "",
       marks: question.marks,
     });
+    setEditQuestionMediaFile(null);
+    setEditQuestionMediaUrl(question.media_url || null);
+    setEditQuestionMediaType(question.media_type || null);
+    setRemoveQuestionMedia(false);
+    setRemoveOptionMedia({});
     setEditModalOpen(true);
   };
 
@@ -178,7 +191,35 @@ export default function TestDetailPage() {
 
     try {
       setLoading(true);
-      await testService.updateQuestion(editingQuestion.id, editFormData);
+      
+      // If there's a media file or media removal, use FormData
+      if (editQuestionMediaFile || removeQuestionMedia) {
+        const formData = new FormData();
+        formData.append("question_text", editFormData.question_text || "");
+        formData.append("correct_answer", editFormData.correct_answer || "");
+        formData.append("marks", (editFormData.marks || 2).toString());
+        
+        if (editFormData.options) {
+          formData.append("options", JSON.stringify(editFormData.options));
+        }
+        
+        if (removeQuestionMedia) {
+          formData.append("media_url", "");
+          formData.append("media_type", "");
+        } else if (editQuestionMediaFile) {
+          formData.append("media", editQuestionMediaFile);
+        } else if (editQuestionMediaUrl) {
+          formData.append("media_url", editQuestionMediaUrl);
+          if (editQuestionMediaType) {
+            formData.append("media_type", editQuestionMediaType);
+          }
+        }
+        
+        await testService.updateQuestionWithMedia(editingQuestion.id, formData);
+      } else {
+        await testService.updateQuestion(editingQuestion.id, editFormData);
+      }
+      
       setSuccessMessage("Question updated successfully!");
       setSuccessOpen(true);
       setEditModalOpen(false);
@@ -402,9 +443,11 @@ export default function TestDetailPage() {
             {test.questions.map((question: Question, index: number) => (
               <div key={question.id} className="border-b pb-4 last:border-b-0">
                 <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-2 gap-2 sm:gap-0">
-                  <p className="font-medium text-sm sm:text-base">
-                    {index + 1}. {question.question_text}
-                  </p>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm sm:text-base">
+                      {index + 1}. {question.question_text || <span className="text-gray-400 italic">(No question text)</span>}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{question.marks} marks</Badge>
                     <Button
@@ -418,7 +461,7 @@ export default function TestDetailPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteQuestion(question.id, question.question_text)}
+                      onClick={() => handleDeleteQuestion(question.id, question.question_text || `Question ${index + 1}`)}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -429,20 +472,74 @@ export default function TestDetailPage() {
                   Type: {question.question_type.replace("_", " ")}
                 </p>
 
-                {question.question_type === "MCQ" && question.options && question.options.length > 0 && (
-                  <div className="ml-4 space-y-1">
-                    {question.options.map((option: string, optIndex: number) => (
-                      <p
-                        key={optIndex}
-                        className={`text-sm ${option === question.correct_answer
-                          ? "text-green-600 font-medium"
-                          : "text-gray-700"
-                          }`}
+                {/* Question Media Display */}
+                {question.media_url && (
+                  <div className="ml-4 mb-3 border rounded-lg p-2 bg-gray-50 max-w-md">
+                    {question.media_type === 'image' && (
+                      <img 
+                        src={question.media_url} 
+                        alt="Question" 
+                        className="max-w-full max-h-48 rounded"
+                      />
+                    )}
+                    {question.media_type === 'pdf' && (
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-6 h-6 text-red-500" />
+                        <div>
+                          <p className="text-sm font-medium">PDF Document</p>
+                          <a 
+                            href={question.media_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View PDF
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {question.media_type === 'video' && (
+                      <video 
+                        src={question.media_url} 
+                        controls 
+                        className="max-w-full max-h-48 rounded"
                       >
-                        {String.fromCharCode(65 + optIndex)}. {option}
-                        {option === question.correct_answer && " ✓"}
-                      </p>
-                    ))}
+                        Your browser does not support the video tag.
+                      </video>
+                    )}
+                  </div>
+                )}
+
+                {question.question_type === "MCQ" && question.options && question.options.length > 0 && (
+                  <div className="ml-4 space-y-2">
+                    {(question.options as any[]).map((option: any, optIndex: number) => {
+                      const optionText = typeof option === 'string' ? option : option?.text || '';
+                      const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
+                      const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
+                      const optionLetter = String.fromCharCode(65 + optIndex);
+                      // Check if correct answer matches text OR letter (for image-only options)
+                      const isCorrect = optionText === question.correct_answer || 
+                                       optionLetter === question.correct_answer ||
+                                       (optionText === '' && question.correct_answer === optionLetter);
+                      
+                      return (
+                        <div key={optIndex} className={`p-2 rounded ${isCorrect ? 'bg-green-50' : ''}`}>
+                          <p
+                            className={`text-sm ${isCorrect ? "text-green-600 font-medium" : "text-gray-700"}`}
+                          >
+                            {optionLetter}. {optionText}
+                            {isCorrect && " ✓"}
+                          </p>
+                          {optionMediaUrl && optionMediaType === 'image' && (
+                            <img 
+                              src={optionMediaUrl} 
+                              alt={`Option ${String.fromCharCode(65 + optIndex)}`}
+                              className="mt-1 ml-4 max-w-xs max-h-24 rounded border"
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -509,26 +606,128 @@ export default function TestDetailPage() {
                   />
                 </div>
 
-                {/* Options for MCQ */}
+                {/* Question Media Upload/Remove */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium">Question Media (Optional)</label>
+                    {(editQuestionMediaUrl || editingQuestion.media_url) && !removeQuestionMedia && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRemoveQuestionMedia(true);
+                          setEditQuestionMediaFile(null);
+                          setEditQuestionMediaUrl(null);
+                          setEditQuestionMediaType(null);
+                        }}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Remove Media
+                      </Button>
+                    )}
+                  </div>
+                  {!removeQuestionMedia && (
+                    <div>
+                      <MediaUpload
+                        label=""
+                        value={editQuestionMediaUrl}
+                        mediaType={editQuestionMediaType}
+                        onChange={(file, url, type) => {
+                          setEditQuestionMediaFile(file);
+                          setEditQuestionMediaUrl(url);
+                          setEditQuestionMediaType(type);
+                          setRemoveQuestionMedia(false);
+                        }}
+                      />
+                    </div>
+                  )}
+                  {removeQuestionMedia && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                      <p className="text-sm text-red-600">Media will be removed when you save changes.</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setRemoveQuestionMedia(false);
+                          setEditQuestionMediaUrl(editingQuestion.media_url || null);
+                          setEditQuestionMediaType(editingQuestion.media_type || null);
+                        }}
+                        className="mt-2"
+                      >
+                        Undo Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+
                 {editingQuestion.question_type === "MCQ" && (
                   <div>
                     <label className="block text-sm font-medium mb-2">Options *</label>
-                    <div className="space-y-2">
-                      {editFormData.options?.map((option, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-sm font-medium w-6">{String.fromCharCode(65 + idx)}.</span>
-                          <input
-                            type="text"
-                            value={option}
-                            onChange={(e) => {
-                              const newOptions = [...(editFormData.options || [])];
-                              newOptions[idx] = e.target.value;
-                              setEditFormData({ ...editFormData, options: newOptions });
-                            }}
-                            className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
-                          />
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      {editFormData.options?.map((option: any, idx) => {
+                        const optionText = typeof option === 'string' ? option : option?.text || '';
+                        const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
+                        const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
+                        const hasMedia = optionMediaUrl && !removeOptionMedia[idx];
+                        
+                        return (
+                          <div key={idx} className="border rounded-lg p-3 bg-gray-50">
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                <span className="text-sm font-medium w-6">{String.fromCharCode(65 + idx)}.</span>
+                                <input
+                                  type="text"
+                                  value={optionText}
+                                  onChange={(e) => {
+                                    const newOptions = [...(editFormData.options || [])];
+                                    if (typeof option === 'object' && option !== null) {
+                                      newOptions[idx] = { ...option, text: e.target.value };
+                                    } else {
+                                      newOptions[idx] = e.target.value;
+                                    }
+                                    setEditFormData({ ...editFormData, options: newOptions });
+                                  }}
+                                  className="flex-1 px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Option text (optional if using image)"
+                                />
+                              </div>
+                              {hasMedia && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setRemoveOptionMedia({ ...removeOptionMedia, [idx]: true });
+                                    const newOptions = [...(editFormData.options || [])];
+                                    if (typeof option === 'object' && option !== null) {
+                                      newOptions[idx] = { ...option, media_url: null, media_type: null };
+                                      setEditFormData({ ...editFormData, options: newOptions });
+                                    }
+                                  }}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  Remove Image
+                                </Button>
+                              )}
+                            </div>
+                            {hasMedia && optionMediaType === 'image' && (
+                              <img 
+                                src={optionMediaUrl} 
+                                alt={`Option ${String.fromCharCode(65 + idx)}`}
+                                className="ml-8 max-w-xs max-h-24 rounded border mt-2"
+                              />
+                            )}
+                            {removeOptionMedia[idx] && (
+                              <div className="ml-8 p-2 bg-red-50 border border-red-200 rounded-md mt-2">
+                                <p className="text-sm text-red-600">Image will be removed when you save changes.</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -551,11 +750,17 @@ export default function TestDetailPage() {
                       className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Select correct answer</option>
-                      {editFormData.options?.map((option, idx) => (
-                        <option key={idx} value={option}>
-                          {String.fromCharCode(65 + idx)}. {option}
-                        </option>
-                      ))}
+                      {editFormData.options?.map((option: any, idx) => {
+                        const optionText = typeof option === 'string' ? option : option?.text || '';
+                        const optionLetter = String.fromCharCode(65 + idx);
+                        const optionValue = optionText || optionLetter;
+                        const displayText = optionText || '(Image only)';
+                        return (
+                          <option key={idx} value={optionValue}>
+                            {optionLetter}. {displayText}
+                          </option>
+                        );
+                      })}
                     </select>
                   ) : editingQuestion.question_type === "TRUE_FALSE" ? (
                     <select

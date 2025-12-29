@@ -79,6 +79,15 @@ export interface TeacherSubjectJunctionType {
   subject: SubjectType;
 }
 
+/** Activity Group Teacher junction type */
+export interface ActivityGroupTeacherJunctionType {
+  id: number;
+  activityGroupId: number;
+  teacherId: number;
+  assignedAt: Date;
+  teacher: TeacherType;
+}
+
 /** User type for frontend */
 export interface UserType {
   id: number;

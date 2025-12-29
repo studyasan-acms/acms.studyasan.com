@@ -81,6 +81,15 @@ import ActivityGroupsPage from '@/pages/activities/ActivityGroupsPage';
 import ActivitiesPage from '@/pages/activities/ActivitiesPage';
 import StudentActivitiesPage from '@/pages/activities/StudentActivitiesPage';
 
+// Home and Enquiry imports
+import StudentHomePage from '@/pages/StudentHomePage';
+import AdminEnquiriesPage from '@/pages/AdminEnquiriesPage';
+
+// Homework imports
+import HomeworkPage from '@/pages/homework/HomeworkPage';
+import CreateHomeworkPage from '@/pages/homework/CreateHomeworkPage';
+import HomeworkDetailPage from '@/pages/homework/HomeworkDetailPage';
+
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -206,6 +215,17 @@ function App() {
           <Route path="activity-groups" element={<ActivityGroupsPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
           <Route path="student-activities" element={<StudentActivitiesPage />} />
+
+          {/* Homework Routes */}
+          <Route path="homework" element={<HomeworkPage />} />
+          <Route path="homework/create" element={<CreateHomeworkPage />} />
+          <Route path="homework/:id" element={<HomeworkDetailPage />} />
+
+          {/* Student Home Route */}
+          <Route path="home" element={<StudentHomePage />} />
+
+          {/* Admin Enquiries Route */}
+          <Route path="enquiries" element={<AdminEnquiriesPage />} />
 
           <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
           <Route path="settings" element={<div>Settings Page - Coming Soon</div>} />

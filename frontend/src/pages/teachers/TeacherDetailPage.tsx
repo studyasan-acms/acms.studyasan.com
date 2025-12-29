@@ -9,8 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { teacherService, subjectService } from "@/services/api";
-import type { Teacher, Subject } from "@/types";
+import { teacherService, subjectService, testSeriesService, activityGroupService } from "@/services/api";
+import type { Teacher, Subject, TestSeries, ActivityGroup } from "@/types";
 import {
   ArrowLeft,
   Edit,
@@ -31,6 +31,7 @@ import {
   X,
   IndianRupee,
   Users,
+  FileText,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -78,6 +79,22 @@ export default function TeacherDetailPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteJunctionId, setDeleteJunctionId] = useState<number | null>(null);
 
+  // Test Series Assignment
+  const [showTestSeriesModal, setShowTestSeriesModal] = useState(false);
+  const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
+  const [selectedTestSeries, setSelectedTestSeries] = useState<string>("");
+  const [testSeriesLoading, setTestSeriesLoading] = useState(false);
+  const [testSeriesError, setTestSeriesError] = useState("");
+  const [testSeriesListLoading, setTestSeriesListLoading] = useState(false);
+
+  // Activity Group Assignment
+  const [showActivityGroupModal, setShowActivityGroupModal] = useState(false);
+  const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
+  const [selectedActivityGroup, setSelectedActivityGroup] = useState<string>("");
+  const [activityGroupLoading, setActivityGroupLoading] = useState(false);
+  const [activityGroupError, setActivityGroupError] = useState("");
+  const [activityGroupListLoading, setActivityGroupListLoading] = useState(false);
+
   // Fetch teacher
   useEffect(() => {
     if (id) fetchTeacher(parseInt(id));
@@ -93,6 +110,32 @@ export default function TeacherDetailPage() {
       console.error("Failed to fetch teacher:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchTestSeries = async () => {
+    setTestSeriesListLoading(true);
+    try {
+      const response = await testSeriesService.getAll();
+      setTestSeries(response.data.data);
+    } catch (error) {
+      console.error("Failed to fetch test series:", error);
+      setTestSeriesError("Failed to load test series");
+    } finally {
+      setTestSeriesListLoading(false);
+    }
+  };
+
+  const fetchActivityGroups = async () => {
+    setActivityGroupListLoading(true);
+    try {
+      const response = await activityGroupService.getAll();
+      setActivityGroups(response.data.activityGroups);
+    } catch (error) {
+      console.error("Failed to fetch activity groups:", error);
+      setActivityGroupError("Failed to load activity groups");
+    } finally {
+      setActivityGroupListLoading(false);
     }
   };
 
@@ -150,6 +193,102 @@ export default function TeacherDetailPage() {
       fetchTeacher(teacher!.id);
     } catch (err) {
       console.error("Failed to remove subject:", err);
+    }
+  };
+
+  // ============= TEST SERIES ASSIGNMENT LOGIC ==================
+
+  const openTestSeriesModal = async () => {
+    setShowTestSeriesModal(true);
+    setTestSeriesError("");
+    setSelectedTestSeries("");
+
+    setTestSeriesListLoading(true);
+    try {
+      const res = await testSeriesService.getAll({ limit: 100 });
+      setTestSeries(res.data.data);
+    } catch (err) {
+      console.error("Failed to fetch test series:", err);
+    } finally {
+      setTestSeriesListLoading(false);
+    }
+  };
+
+  const handleAssignTestSeries = async () => {
+    if (!selectedTestSeries) {
+      setTestSeriesError("Please select a test series");
+      return;
+    }
+
+    setTestSeriesLoading(true);
+    setTestSeriesError("");
+
+    try {
+      await testSeriesService.assignTeacher({ test_series_id: parseInt(selectedTestSeries), teacher_id: teacher!.id });
+      setShowTestSeriesModal(false);
+      fetchTeacher(teacher!.id);
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      setTestSeriesError(err.response?.data?.message || "Failed to assign test series");
+    } finally {
+      setTestSeriesLoading(false);
+    }
+  };
+
+  const handleRemoveTestSeries = async (junctionId: number) => {
+    try {
+      await testSeriesService.removeTeacher(junctionId);
+      fetchTeacher(teacher!.id);
+    } catch (err) {
+      console.error("Failed to remove test series:", err);
+    }
+  };
+
+  // ============= ACTIVITY GROUP ASSIGNMENT LOGIC ==================
+
+  const openActivityGroupModal = async () => {
+    setShowActivityGroupModal(true);
+    setActivityGroupError("");
+    setSelectedActivityGroup("");
+
+    setActivityGroupListLoading(true);
+    try {
+      const res = await activityGroupService.getAll({ limit: 100 });
+      setActivityGroups(res.data.activityGroups);
+    } catch (err) {
+      console.error("Failed to fetch activity groups:", err);
+    } finally {
+      setActivityGroupListLoading(false);
+    }
+  };
+
+  const handleAssignActivityGroup = async () => {
+    if (!selectedActivityGroup) {
+      setActivityGroupError("Please select an activity group");
+      return;
+    }
+
+    setActivityGroupLoading(true);
+    setActivityGroupError("");
+
+    try {
+      await activityGroupService.assignTeacher({ activity_group_id: parseInt(selectedActivityGroup), teacher_id: teacher!.id });
+      setShowActivityGroupModal(false);
+      fetchTeacher(teacher!.id);
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      setActivityGroupError(err.response?.data?.message || "Failed to assign activity group");
+    } finally {
+      setActivityGroupLoading(false);
+    }
+  };
+
+  const handleRemoveActivityGroup = async (junctionId: number) => {
+    try {
+      await activityGroupService.removeTeacher(junctionId);
+      fetchTeacher(teacher!.id);
+    } catch (err) {
+      console.error("Failed to remove activity group:", err);
     }
   };
 
@@ -555,6 +694,151 @@ export default function TeacherDetailPage() {
         </CardContent>
       </Card>
 
+      {/* Assigned Test Series Detailed View */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div>
+              <CardTitle className="text-xl text-gray-600">Assigned Test Series</CardTitle>
+              <CardDescription>
+                {teacher.test_series_junctions?.length || 0} test series assigned
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={openTestSeriesModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              Assign Test Series
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {teacher.test_series_junctions?.length ? (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {teacher.test_series_junctions.map((junction) => (
+                <Card key={junction.id} className="border-saBlue/20">
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between">
+                      <div className="flex items-start space-x-3">
+                        <FileText className="h-5 w-5 text-saBlue/50 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-gray-600">{junction.test_series.title}</p>
+                          <Badge 
+                            variant={junction.test_series.is_published ? "default" : "secondary"}
+                            className="mt-1"
+                          >
+                            {junction.test_series.is_published ? "Published" : "Draft"}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Assigned on: {safeFormat(junction.assigned_at, "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveTestSeries(junction.id)}
+                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">No test series assigned yet.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={openTestSeriesModal}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Assign First Test Series
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Assigned Activity Groups Detailed View */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
+            <div>
+              <CardTitle className="text-xl text-gray-600">Assigned Activity Groups</CardTitle>
+              <CardDescription>
+                {teacher.activity_group_junctions?.length || 0} activity groups assigned
+              </CardDescription>
+            </div>
+            <Button size="sm" onClick={openActivityGroupModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              Assign Activity Group
+            </Button>
+          </div>
+        </CardHeader>
+
+        <CardContent>
+          {teacher.activity_group_junctions?.length ? (
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {teacher.activity_group_junctions.map((junction) => (
+                <Card key={junction.id} className="border-saBlue/20">
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between">
+                      <div className="flex items-start space-x-3">
+                        <Users className="h-5 w-5 text-saBlue/50 mt-0.5" />
+                        <div>
+                          <p className="font-medium text-gray-600">{junction.activity_group.name}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {junction.activity_group.description || "No description"}
+                          </p>
+                          <Badge 
+                            variant={junction.activity_group.is_active ? "default" : "secondary"}
+                            className="mt-1"
+                          >
+                            {junction.activity_group.is_active ? "Active" : "Inactive"}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Assigned on: {safeFormat(junction.assigned_at, "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveActivityGroup(junction.id)}
+                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p className="text-gray-500">No activity groups assigned yet.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={openActivityGroupModal}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Assign First Activity Group
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ASSIGN SUBJECT MODAL */}
       {showAssignModal && (
         <div
@@ -632,6 +916,174 @@ export default function TeacherDetailPage() {
                   </>
                 ) : (
                   "Assign Subject"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ASSIGN TEST SERIES MODAL */}
+      {showTestSeriesModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowTestSeriesModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowTestSeriesModal(false)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <h2 className="text-xl font-semibold text-gray-800">Assign Test Series</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Select a test series to assign to {teacher.user.name}.
+            </p>
+
+            {/* Error */}
+            {testSeriesError && (
+              <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md mt-3">
+                {testSeriesError}
+              </div>
+            )}
+
+            {/* Test Series Selection */}
+            <div className="mt-5">
+              <Label className="font-medium">Test Series</Label>
+
+              {testSeriesListLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Select
+                  value={selectedTestSeries}
+                  onValueChange={setSelectedTestSeries}
+                  disabled={testSeriesLoading}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select test series" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {testSeries.map((series) => (
+                      <SelectItem key={series.id} value={series.id.toString()}>
+                        {series.title} {series.is_published ? "(Published)" : "(Draft)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-6 flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowTestSeriesModal(false)}
+                disabled={testSeriesLoading}
+              >
+                Cancel
+              </Button>
+
+              <Button onClick={handleAssignTestSeries} disabled={testSeriesLoading}>
+                {testSeriesLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  "Assign Test Series"
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ASSIGN ACTIVITY GROUP MODAL */}
+      {showActivityGroupModal && (
+        <div
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+          onClick={() => setShowActivityGroupModal(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setShowActivityGroupModal(false)}
+              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            {/* Header */}
+            <h2 className="text-xl font-semibold text-gray-800">Assign Activity Group</h2>
+            <p className="text-sm text-gray-500 mt-1">
+              Select an activity group to assign to {teacher.user.name}.
+            </p>
+
+            {/* Error */}
+            {activityGroupError && (
+              <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md mt-3">
+                {activityGroupError}
+              </div>
+            )}
+
+            {/* Activity Group Selection */}
+            <div className="mt-5">
+              <Label className="font-medium">Activity Group</Label>
+
+              {activityGroupListLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Select
+                  value={selectedActivityGroup}
+                  onValueChange={setSelectedActivityGroup}
+                  disabled={activityGroupLoading}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select activity group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activityGroups.map((group) => (
+                      <SelectItem key={group.id} value={group.id.toString()}>
+                        {group.name} {group.is_active ? "(Active)" : "(Inactive)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-6 flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowActivityGroupModal(false)}
+                disabled={activityGroupLoading}
+              >
+                Cancel
+              </Button>
+
+              <Button onClick={handleAssignActivityGroup} disabled={activityGroupLoading}>
+                {activityGroupLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  "Assign Activity Group"
                 )}
               </Button>
             </div>

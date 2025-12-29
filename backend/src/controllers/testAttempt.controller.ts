@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { uploadToS3, getFileType } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
@@ -172,7 +173,14 @@ export const submitAnswer = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Attempt ID is required', 400);
     }
 
-    const { question_id, answer_text } = req.body;
+    const { question_id, answer_text, answer_media_url, answer_media_type } = req.body;
+    const file = req.file;
+
+    // Parse question_id to ensure it's a number
+    const parsedQuestionId = parseInt(question_id);
+    if (isNaN(parsedQuestionId)) {
+      return sendError(res, 'Invalid question ID', 400);
+    }
 
     // Verify the attempt exists and belongs to the user
     const userId = (req as any).user!.id;
@@ -206,7 +214,7 @@ export const submitAnswer = async (req: AuthRequest, res: Response) => {
     // Check if question belongs to this test
     const question = await prisma.question.findFirst({
       where: {
-        id: question_id,
+        id: parsedQuestionId,
         test_id: attempt.test_id,
       },
     });
@@ -215,21 +223,35 @@ export const submitAnswer = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Question not found', 404);
     }
 
+    // Handle file upload if present
+    let answerMediaUrl = answer_media_url || null;
+    let answerMediaType = answer_media_type || null;
+
+    if (file) {
+      const uploadResult = await uploadToS3(file, 'test-answers');
+      answerMediaUrl = uploadResult.url;
+      answerMediaType = getFileType(uploadResult.filename);
+    }
+
     // Create or update answer
     const answer = await prisma.answer.upsert({
       where: {
         test_attempt_id_question_id: {
           test_attempt_id: parseInt(attemptId),
-          question_id: question_id,
+          question_id: parsedQuestionId,
         },
       },
       update: {
         answer_text,
+        answer_media_url: answerMediaUrl,
+        answer_media_type: answerMediaType,
       },
       create: {
         test_attempt_id: parseInt(attemptId),
-        question_id: question_id,
+        question_id: parsedQuestionId,
         answer_text,
+        answer_media_url: answerMediaUrl,
+        answer_media_type: answerMediaType,
       },
     });
 

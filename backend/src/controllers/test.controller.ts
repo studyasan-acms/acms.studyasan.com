@@ -2,6 +2,7 @@ import type { Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import { PrismaClient, QuestionType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { uploadToS3, getFileType } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
@@ -279,7 +280,8 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test ID is required', 400);
     }
 
-    const { question_type, question_text, options, correct_answer, marks } = req.body;
+    const { question_type, question_text, options, correct_answer, marks, media_url, media_type } = req.body;
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     const test = await prisma.test.findUnique({
       where: { id: parseInt(testId) },
@@ -287,6 +289,40 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
 
     if (!test) {
       return sendError(res, 'Test not found', 404);
+    }
+
+    // Handle file upload if present
+    let questionMediaUrl = media_url || null;
+    let questionMediaType = media_type || null;
+
+    // Check for question media in files['media']
+    const questionMediaFile = files?.['media']?.[0];
+    if (questionMediaFile) {
+      const uploadResult = await uploadToS3(questionMediaFile, 'test-questions');
+      questionMediaUrl = uploadResult.url;
+      questionMediaType = getFileType(uploadResult.filename);
+    }
+
+    // Parse options if it's a JSON string and handle option media
+    let parsedOptions = null;
+    if (options) {
+      parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+      
+      // If options have media, upload the files
+      if (Array.isArray(parsedOptions) && files) {
+        parsedOptions = await Promise.all(parsedOptions.map(async (option: any, index: number) => {
+          const optionFile = files[`option_media_${index}`]?.[0];
+          if (optionFile) {
+            const uploadResult = await uploadToS3(optionFile, 'test-questions');
+            return {
+              ...option,
+              media_url: uploadResult.url,
+              media_type: getFileType(uploadResult.filename),
+            };
+          }
+          return option;
+        }));
+      }
     }
 
     // Get the current max order
@@ -302,9 +338,11 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
         test_id: parseInt(testId),
         question_type: question_type as QuestionType,
         question_text,
-        options: options || null,
+        media_url: questionMediaUrl,
+        media_type: questionMediaType,
+        options: parsedOptions,
         correct_answer,
-        marks,
+        marks: parseInt(marks),
         order,
       },
     });
@@ -325,16 +363,42 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Question ID is required', 400);
     }
 
-    const { question_text, options, correct_answer, marks } = req.body;
+    const { question_text, options, correct_answer, marks, media_url, media_type } = req.body;
+    const file = req.file;
+
+    // Handle file upload if present
+    let questionMediaUrl = media_url || undefined;
+    let questionMediaType = media_type || undefined;
+
+    if (file) {
+      const uploadResult = await uploadToS3(file, 'test-questions');
+      questionMediaUrl = uploadResult.url;
+      questionMediaType = getFileType(uploadResult.filename);
+    }
+
+    // Parse options if it's a JSON string
+    let parsedOptions = undefined;
+    if (options !== undefined) {
+      parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
+    }
+
+    const updateData: any = {
+      question_text,
+      options: parsedOptions,
+      correct_answer,
+      marks: marks ? parseInt(marks) : undefined,
+    };
+
+    if (questionMediaUrl !== undefined) {
+      updateData.media_url = questionMediaUrl;
+    }
+    if (questionMediaType !== undefined) {
+      updateData.media_type = questionMediaType;
+    }
 
     const question = await prisma.question.update({
       where: { id: parseInt(questionId) },
-      data: {
-        question_text,
-        options: options || null,
-        correct_answer,
-        marks,
-      },
+      data: updateData,
     });
 
     return sendSuccess(res, question, 'Question updated successfully');

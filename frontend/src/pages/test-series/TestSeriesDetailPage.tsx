@@ -8,8 +8,8 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { testSeriesService, studentService } from "@/services/api";
-import type { TestSeries } from "@/services/api";
+import { testSeriesService, studentService, teacherService } from "@/services/api";
+import type { TestSeries, TestSeriesTeacherJunction } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 import {
     ArrowLeft,
@@ -44,6 +44,16 @@ interface StudentData {
     };
 }
 
+interface TeacherData {
+    id: number;
+    user?: {
+        id: number;
+        name: string;
+        email: string;
+        phone?: string;
+    };
+}
+
 interface EnrolledStudent {
     id: number;
     student_id: number;
@@ -58,18 +68,24 @@ export default function TestSeriesDetailPage() {
     const isAdmin = user?.role === "ADMIN";
 
     const [testSeries, setTestSeries] = useState<TestSeries | null>(null);
+    const [teachers, setTeachers] = useState<TestSeriesTeacherJunction[]>([]);
     const [enrollments, setEnrollments] = useState<EnrolledStudent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isTeacherDialogOpen, setIsTeacherDialogOpen] = useState(false);
     const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false);
     const [allStudents, setAllStudents] = useState<StudentData[]>([]);
+    const [allTeachers, setAllTeachers] = useState<TeacherData[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
+    const [teacherSearchTerm, setTeacherSearchTerm] = useState("");
     const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+    const [isLoadingTeachers, setIsLoadingTeachers] = useState(false);
 
     useEffect(() => {
         if (id) {
             fetchTestSeries();
             if (isAdmin) {
                 fetchEnrollments();
+                fetchTeachers();
             }
         }
     }, [id, isAdmin]);
@@ -97,6 +113,15 @@ export default function TestSeriesDetailPage() {
         }
     };
 
+    const fetchTeachers = async () => {
+        try {
+            const response = await testSeriesService.getTeachers(parseInt(id!));
+            setTeachers(response.data);
+        } catch (error) {
+            console.error("Failed to fetch teachers:", error);
+        }
+    };
+
     const fetchStudents = async () => {
         setIsLoadingStudents(true);
         try {
@@ -106,6 +131,18 @@ export default function TestSeriesDetailPage() {
             console.error("Failed to fetch students:", error);
         } finally {
             setIsLoadingStudents(false);
+        }
+    };
+
+    const fetchAllTeachers = async () => {
+        setIsLoadingTeachers(true);
+        try {
+            const response = await teacherService.getAll({ limit: 100 });
+            setAllTeachers(response.data.data);
+        } catch (error) {
+            console.error("Failed to fetch teachers:", error);
+        } finally {
+            setIsLoadingTeachers(false);
         }
     };
 
@@ -131,9 +168,36 @@ export default function TestSeriesDetailPage() {
         }
     };
 
+    const handleAssignTeacher = async (teacherId: number) => {
+        try {
+            await testSeriesService.assignTeacher({ test_series_id: parseInt(id!), teacher_id: teacherId });
+            toast.success("Teacher assigned successfully");
+            fetchTeachers();
+            setIsTeacherDialogOpen(false);
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || "Failed to assign teacher");
+        }
+    };
+
+    const handleRemoveTeacher = async (junctionId: number) => {
+        if (!confirm("Are you sure you want to remove this teacher?")) return;
+        try {
+            await testSeriesService.removeTeacher(junctionId);
+            toast.success("Teacher removed successfully");
+            fetchTeachers();
+        } catch (error) {
+            toast.error("Failed to remove teacher");
+        }
+    };
+
     const openEnrollDialog = () => {
         fetchStudents();
         setIsEnrollDialogOpen(true);
+    };
+
+    const openTeacherDialog = () => {
+        fetchAllTeachers();
+        setIsTeacherDialogOpen(true);
     };
 
     const enrolledStudentIds = enrollments.map((e) => e.student?.id).filter((id): id is number => id !== undefined);
@@ -143,6 +207,15 @@ export default function TestSeriesDetailPage() {
             (searchTerm === "" ||
                 s.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 s.user?.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const assignedTeacherIds = teachers.map((t) => t.teacher.id);
+    const availableTeachers = allTeachers.filter(
+        (t) =>
+            !assignedTeacherIds.includes(t.id) &&
+            (teacherSearchTerm === "" ||
+                t.user?.name.toLowerCase().includes(teacherSearchTerm.toLowerCase()) ||
+                t.user?.email.toLowerCase().includes(teacherSearchTerm.toLowerCase()))
     );
 
     if (isLoading) {
@@ -346,6 +419,114 @@ export default function TestSeriesDetailPage() {
                                             size="icon"
                                             className="text-red-600 hover:text-red-800"
                                             onClick={() => enrollment.student && handleUnenrollStudent(enrollment.student.id)}
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Assigned Teachers - Admin Only */}
+            {isAdmin && (
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle className="text-xl text-gray-600">
+                                    Assigned Teachers ({teachers.length})
+                                </CardTitle>
+                                <CardDescription>
+                                    Manage teacher assignments for this test series
+                                </CardDescription>
+                            </div>
+                            <Dialog open={isTeacherDialogOpen} onOpenChange={setIsTeacherDialogOpen}>
+                                <DialogTrigger asChild>
+                                    <Button onClick={openTeacherDialog}>
+                                        <UserPlus className="h-4 w-4 mr-2" />
+                                        Assign Teacher
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Assign Teacher</DialogTitle>
+                                        <DialogDescription>
+                                            Select a teacher to assign to this test series
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4">
+                                        <Input
+                                            placeholder="Search teachers..."
+                                            value={teacherSearchTerm}
+                                            onChange={(e) => setTeacherSearchTerm(e.target.value)}
+                                        />
+                                        {isLoadingTeachers ? (
+                                            <div className="flex justify-center py-4">
+                                                <Loader2 className="h-6 w-6 animate-spin" />
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-64 overflow-y-auto space-y-2">
+                                                {availableTeachers.length === 0 ? (
+                                                    <p className="text-center text-muted-foreground py-4">
+                                                        No teachers available
+                                                    </p>
+                                                ) : (
+                                                    availableTeachers.map((teacher) => (
+                                                        <div
+                                                            key={teacher.id}
+                                                            className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
+                                                        >
+                                                            <div>
+                                                                <p className="font-medium">{teacher.user?.name}</p>
+                                                                <p className="text-sm text-muted-foreground">
+                                                                    {teacher.user?.email}
+                                                                </p>
+                                                            </div>
+                                                            <Button
+                                                                size="sm"
+                                                                onClick={() => handleAssignTeacher(teacher.id)}
+                                                            >
+                                                                Assign
+                                                            </Button>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        {teachers.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                <p>No teachers assigned yet</p>
+                                <p className="text-sm">Click "Assign Teacher" to assign teachers</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {teachers.map((assignment) => (
+                                    <div
+                                        key={assignment.id}
+                                        className="flex items-center justify-between p-3 border rounded-lg"
+                                    >
+                                        <div>
+                                            <p className="font-medium">{assignment.teacher.user?.name}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                                {assignment.teacher.user?.email} • Assigned{" "}
+                                                {new Date(assignment.assigned_at).toLocaleDateString()}
+                                            </p>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-red-600 hover:text-red-800"
+                                            onClick={() => handleRemoveTeacher(assignment.id)}
                                         >
                                             <X className="h-4 w-4" />
                                         </Button>

@@ -106,6 +106,10 @@ export interface Student {
     id: number;
     subject: { id: number; name: string };
   }>;
+  test_series_enrollments?: Array<{
+    id: number;
+    test_series: { id: number; title: string };
+  }>;
   activity_enrollments?: Array<{
     id: number;
     activity: {
@@ -123,6 +127,7 @@ export interface Student {
   };
   _count?: { 
     enrollments: number;
+    test_series_enrollments: number;
     activity_enrollments: number;
   };
   blood_group?: 'A_POS' | 'A_NEG' | 'B_POS' | 'B_NEG' | 'AB_POS' | 'AB_NEG' | 'O_POS' | 'O_NEG' | null;
@@ -242,7 +247,7 @@ export interface Teacher {
     email: string;
     phone: string;
   };
-  _count?: { teacher_subject_junctions: number };
+  _count?: { teacher_subject_junctions: number; test_series_junctions: number; activity_group_junctions: number };
   teacher_subject_junctions?: {
     id: number;
     subject_id: number;
@@ -252,6 +257,27 @@ export interface Teacher {
       id: number;
       name: string;
       class: { id: number; name: string } | null;
+    };
+  }[];
+  test_series_junctions?: {
+    id: number;
+    test_series_id: number;
+    assigned_at: string;
+    test_series: {
+      id: number;
+      title: string;
+      is_published: boolean;
+    };
+  }[];
+  activity_group_junctions?: {
+    id: number;
+    activity_group_id: number;
+    assigned_at: string;
+    activity_group: {
+      id: number;
+      name: string;
+      description?: string;
+      is_active: boolean;
     };
   }[];
 }
@@ -305,10 +331,13 @@ export interface Subject {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  price: number | null;
+  currency_id: number | null;
   created_at: string;
   updated_at: string;
   class: { id: number; name: string } | null;
   board: { id: number; name: string } | null;
+  currency: { id: number; name: string; code: string; symbol: string } | null;
   _count?: { enrollments: number; teacher_subject_junctions: number };
   enrollments?: {
     id: number;
@@ -327,6 +356,8 @@ export interface CreateSubjectData {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  price: number | null;
+  currency_id: number | null;
 }
 
 export interface UpdateSubjectData {
@@ -336,6 +367,8 @@ export interface UpdateSubjectData {
   board_id?: number | null;
   syllabus?: any;
   is_course?: boolean;
+  price?: number | null;
+  currency_id?: number | null;
 }
 
 // ================== ENROLLMENTS ==================
@@ -590,6 +623,8 @@ export interface Question {
   test_id: number;
   question_type: QuestionType;
   question_text: string;
+  media_url?: string | null;
+  media_type?: string | null;
   options: string[] | null;
   correct_answer: string | null;
   marks: number;
@@ -639,6 +674,10 @@ export interface Answer {
   test_attempt_id: number;
   question_id: number;
   answer_text: string | null;
+  answer_media_url?: string | null;
+  answer_media_type?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   marks_obtained: number | null;
   is_correct: boolean | null;
   created_at: string;
@@ -712,6 +751,8 @@ export interface GenerateQuestionsData {
 export interface CreateQuestionData {
   question_type: QuestionType;
   question_text: string;
+  media_url?: string;
+  media_type?: string;
   options?: string[];
   correct_answer: string;
   marks: number;
@@ -719,6 +760,8 @@ export interface CreateQuestionData {
 
 export interface UpdateQuestionData {
   question_text?: string;
+  media_url?: string;
+  media_type?: string;
   options?: string[];
   correct_answer?: string;
   marks?: number;
@@ -727,6 +770,8 @@ export interface UpdateQuestionData {
 export interface SubmitAnswerData {
   question_id: number;
   answer_text: string;
+  answer_media_url?: string;
+  answer_media_type?: string;
 }
 
 export interface GradeAnswerData {
@@ -806,4 +851,103 @@ export interface ChatMessagesResponse {
       pages: number;
     };
   };
+}
+
+// ================== ACTIVITY GROUP TYPES ==================
+export interface ActivityGroup {
+  id: number;
+  name: string;
+  description?: string;
+  cover_image?: string;
+  is_active: boolean;
+  price: number | null;
+  currency_id: number | null;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  currency: { id: number; name: string; code: string; symbol: string } | null;
+  teacher_junctions?: ActivityGroupTeacherJunction[];
+  activities?: any[];
+  _count?: {
+    activities: number;
+  };
+}
+
+export interface ActivityGroupTeacherJunction {
+  id: number;
+  activity_group_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+  activity_group?: {
+    id: number;
+    name: string;
+  };
+}
+
+// ================== TEST SERIES TYPES ==================
+export interface TestSeries {
+  id: number;
+  title: string;
+  description?: string;
+  cover_image?: string;
+  price?: number;
+  currency_id: number | null;
+  is_published: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  currency: { id: number; name: string; code: string; symbol: string } | null;
+  teacher_junctions?: TestSeriesTeacherJunction[];
+  tests?: Test[];
+  _count?: {
+    tests: number;
+    enrollments: number;
+  };
+  is_enrolled?: boolean;
+  enrolled_at?: string;
+}
+
+export interface TestSeriesTeacherJunction {
+  id: number;
+  test_series_id: number;
+  teacher_id: number;
+  assigned_at: string;
+  teacher: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
+}
+
+// ================== TEST SERIES ENROLLMENT TYPES ==================
+export interface TestSeriesEnrollment {
+  id: number;
+  test_series_id: number;
+  student_id: number;
+  enrolled_at: string;
+  test_series?: TestSeries;
+  student?: Student;
 }

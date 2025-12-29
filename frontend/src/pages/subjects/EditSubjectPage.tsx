@@ -13,8 +13,8 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-import { subjectService, boardService, classService } from '@/services/api';
-import type { Board, Class, Subject, UpdateSubjectData } from '@/types';
+import { subjectService, boardService, classService, currencyService } from '@/services/api';
+import type { Board, Class, Subject, UpdateSubjectData, Currency } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 
 import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
@@ -33,6 +33,7 @@ export default function EditSubjectPage() {
 
   const [boards, setBoards] = useState<Board[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
   const [subject, setSubject] = useState<Subject | null>(null);
 
   const [error, setError] = useState('');
@@ -49,6 +50,8 @@ export default function EditSubjectPage() {
     board_id: null,
     syllabus: null,
     is_course: false,
+    price: null,
+    currency_id: null,
   });
 
   useEffect(() => {
@@ -58,6 +61,7 @@ export default function EditSubjectPage() {
     }
     fetchBoards();
     fetchClasses();
+    fetchCurrencies();
     if (id) fetchSubject(Number(id));
   }, [id, isAdmin, navigate]);
 
@@ -77,6 +81,8 @@ export default function EditSubjectPage() {
         board_id: data.board_id ?? null,
         syllabus: data.syllabus ?? null,
         is_course: data.is_course ?? false,
+        price: data.price ?? null,
+        currency_id: data.currency_id ?? null,
       });
 
       if (data.syllabus?.units) {
@@ -101,6 +107,15 @@ export default function EditSubjectPage() {
       const res = await classService.getAll({ limit: 100 });
       setClasses(res.data.data);
     } catch {}
+  };
+
+  const fetchCurrencies = async () => {
+    try {
+      const currencies = await currencyService.getAll();
+      setCurrencies(currencies);
+    } catch (err) {
+      console.error('Failed to fetch currencies:', err);
+    }
   };
 
   const addUnit = () => {
@@ -250,6 +265,49 @@ export default function EditSubjectPage() {
                   Courses are standalone; subjects require class & board.
                 </p>
               </div>
+
+              {isAdmin && (
+                <>
+                  {/* Price */}
+                  <div className="space-y-2">
+                    <Label htmlFor="price" className="text-gray-600">
+                      Price
+                    </Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price ?? ''}
+                      onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
+                      disabled={isSaving}
+                    />
+                  </div>
+
+                  {/* Currency */}
+                  <div className="space-y-2">
+                    <Label htmlFor="currency_id" className="text-gray-600">
+                      Currency
+                    </Label>
+                    <Select
+                      value={formData.currency_id?.toString() ?? ''}
+                      onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
+                      disabled={isSaving}
+                    >
+                      <SelectTrigger id="currency_id">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.id} value={currency.id.toString()}>
+                            {currency.name} ({currency.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

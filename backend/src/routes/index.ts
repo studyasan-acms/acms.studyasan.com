@@ -22,6 +22,9 @@ import * as activityGroupController from '../controllers/activityGroup.controlle
 import * as activityController from '../controllers/activity.controller.js';
 import * as activityEnrollmentController from '../controllers/activityEnrollment.controller.js';
 import * as activityAttemptController from '../controllers/activityAttempt.controller.js';
+import * as homeController from '../controllers/home.controller.js';
+import * as enquiryController from '../controllers/enquiry.controller.js';
+import * as homeworkController from '../controllers/homework.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -270,11 +273,17 @@ router.delete('/tests/:testId', authenticate, authorize('ADMIN', 'TEACHER'), tes
 // Generate questions using AI
 router.post('/tests/:testId/generate-questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.generateTestQuestions);
 
-// Add manual question
-router.post('/tests/:testId/questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.addQuestion);
+// Add manual question (with optional file upload for question and options)
+router.post('/tests/:testId/questions', authenticate, authorize('ADMIN', 'TEACHER'), upload.fields([
+  { name: 'media', maxCount: 1 },
+  { name: 'option_media_0', maxCount: 1 },
+  { name: 'option_media_1', maxCount: 1 },
+  { name: 'option_media_2', maxCount: 1 },
+  { name: 'option_media_3', maxCount: 1 }
+]), testController.addQuestion);
 
-// Update question
-router.put('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), testController.updateQuestion);
+// Update question (with optional file upload)
+router.put('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('media'), testController.updateQuestion);
 
 // Delete question
 router.delete('/questions/:questionId', authenticate, authorize('ADMIN', 'TEACHER'), testController.deleteQuestion);
@@ -286,8 +295,8 @@ router.post('/tests/:testId/start', authenticate, authorize('STUDENT'), testAtte
 // Start practice attempt (students) - for closed/already-attempted tests
 router.post('/tests/:testId/practice', authenticate, authorize('STUDENT'), testAttemptController.startPracticeAttempt);
 
-// Submit answer for a question
-router.post('/test-attempts/:attemptId/answers', authenticate, authorize('STUDENT'), testAttemptController.submitAnswer);
+// Submit answer for a question (with optional file upload)
+router.post('/test-attempts/:attemptId/answers', authenticate, authorize('STUDENT'), upload.single('answer_media'), testAttemptController.submitAnswer);
 
 // Submit entire test
 router.post('/test-attempts/:attemptId/submit', authenticate, authorize('STUDENT'), testAttemptController.submitTest);
@@ -351,7 +360,7 @@ router.get('/test-series/my-enrollments', authenticate, testSeriesController.get
 router.get('/test-series/:id', authenticate, testSeriesController.getTestSeriesById);
 
 // Get test series enrollments (admin)
-router.get('/test-series/:id/enrollments', authenticate, authorize('ADMIN'), testSeriesController.getTestSeriesEnrollments);
+router.get('/test-series/:id/enrollments', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.getTestSeriesEnrollments);
 
 // Create test series
 router.post('/test-series', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.createTestSeries);
@@ -367,6 +376,15 @@ router.post('/test-series/:id/enroll', authenticate, testSeriesController.enroll
 
 // Unenroll from test series
 router.delete('/test-series/:id/enroll', authenticate, testSeriesController.unenrollFromTestSeries);
+
+// Assign teacher to test series
+router.post('/test-series/assign-teacher', authenticate, authorize('ADMIN'), testSeriesController.assignTeacherToTestSeries);
+
+// Remove teacher from test series
+router.delete('/test-series/remove-teacher/:id', authenticate, authorize('ADMIN'), testSeriesController.removeTeacherFromTestSeries);
+
+// Get teachers by test series
+router.get('/test-series/:id/teachers', authenticate, authorize('ADMIN', 'TEACHER'), testSeriesController.getTeachersByTestSeries);
 
 
 // ================== ACTIVITY GROUP ROUTES ==================
@@ -386,6 +404,15 @@ router.put('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGro
 // Delete activity group
 router.delete('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGroupController.deleteActivityGroup);
 
+// Assign teacher to activity group
+router.post('/activity-groups/assign-teacher', authenticate, authorize('ADMIN'), activityGroupController.assignTeacherToActivityGroup);
+
+// Remove teacher from activity group
+router.delete('/activity-groups/remove-teacher/:id', authenticate, authorize('ADMIN'), activityGroupController.removeTeacherFromActivityGroup);
+
+// Get teachers by activity group
+router.get('/activity-groups/:id/teachers', authenticate, activityGroupController.getTeachersByActivityGroup);
+
 
 // ================== ACTIVITY ROUTES ==================
 
@@ -399,16 +426,16 @@ router.get('/activities/student/available', authenticate, authorize('STUDENT'), 
 router.get('/activities/:id', authenticate, activityController.getActivityById);
 
 // Create activity
-router.post('/activities', authenticate, authorize('ADMIN'), activityController.createActivity);
+router.post('/activities', authenticate, authorize('ADMIN', 'TEACHER'), activityController.createActivity);
 
 // Update activity
-router.put('/activities/:id', authenticate, authorize('ADMIN'), activityController.updateActivity);
+router.put('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.updateActivity);
 
 // Delete activity
-router.delete('/activities/:id', authenticate, authorize('ADMIN'), activityController.deleteActivity);
+router.delete('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.deleteActivity);
 
 // Publish/Unpublish activity
-router.patch('/activities/:id/publish', authenticate, authorize('ADMIN'), activityController.togglePublishActivity);
+router.patch('/activities/:id/publish', authenticate, authorize('ADMIN', 'TEACHER'), activityController.togglePublishActivity);
 
 // Generate activity content with AI
 router.post('/activities/generate-content', authenticate, authorize('ADMIN'), activityController.generateActivityContent);
@@ -489,5 +516,52 @@ router.post('/quiz-sessions/:id/next', authenticate, authorize('ADMIN', 'TEACHER
 
 // End Session (Host)
 router.post('/quiz-sessions/:id/end', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.endSession);
+
+
+// ================== HOME ROUTES (STUDENT) ==================
+
+// Get all home items (courses, subjects, activity groups, test series)
+router.get('/home/items', authenticate, authorize('STUDENT'), homeController.getHomeItems);
+
+
+// ================== ENQUIRY ROUTES ==================
+
+// Create enquiry (Student)
+router.post('/enquiries', authenticate, authorize('STUDENT'), enquiryController.createEnquiry);
+
+// Get all enquiries (Admin)
+router.get('/enquiries', authenticate, authorize('ADMIN'), enquiryController.getAllEnquiries);
+
+// Update enquiry status (Admin)
+router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN'), enquiryController.updateEnquiryStatus);
+
+// Delete enquiry (Admin)
+router.delete('/enquiries/:id', authenticate, authorize('ADMIN'), enquiryController.deleteEnquiry);
+
+// ================== HOMEWORK ROUTES ==================
+
+// Create homework (Teacher/Admin)
+router.post('/homework', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('document'), homeworkController.createHomework);
+
+// Get homework by subject
+router.get('/subjects/:subject_id/homework', authenticate, homeworkController.getHomeworkBySubject);
+
+// Get teacher's homework
+router.get('/homework/teacher', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getTeacherHomework);
+
+// Get student's homework
+router.get('/homework/student', authenticate, authorize('STUDENT'), homeworkController.getStudentHomework);
+
+// Get homework by ID
+router.get('/homework/:id', authenticate, homeworkController.getHomeworkById);
+
+// Submit homework response (Student)
+router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'), upload.single('response_media'), homeworkController.submitHomeworkResponse);
+
+// Get homework responses (Teacher/Admin)
+router.get('/homework/:homework_id/responses', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getHomeworkResponses);
+
+// Check homework response (Teacher/Admin)
+router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.checkHomeworkResponse);
 
 export default router;
