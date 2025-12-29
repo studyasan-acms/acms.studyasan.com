@@ -15,6 +15,7 @@ import {
     PhoneOff,
     MessageSquare,
     PenTool,
+    PersonStanding,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -24,12 +25,14 @@ interface ControlBarProps {
     isScreenSharing: boolean;
     isWhiteboardActive: boolean;
     isChatOpen: boolean;
+    isBackgroundActive: boolean;
     isConnected: boolean;
     onToggleMic: () => void;
     onToggleCamera: () => void;
     onToggleScreenShare: () => void;
     onToggleWhiteboard: () => void;
     onToggleChat: () => void;
+    onToggleBackground: () => void;
     onLeave: () => void;
 }
 
@@ -39,12 +42,14 @@ export function ControlBar({
     isScreenSharing,
     isWhiteboardActive,
     isChatOpen,
+    isBackgroundActive,
     isConnected,
     onToggleMic,
     onToggleCamera,
     onToggleScreenShare,
     onToggleWhiteboard,
     onToggleChat,
+    onToggleBackground,
     onLeave,
 }: ControlBarProps) {
     return (
@@ -54,8 +59,8 @@ export function ControlBar({
                 variant={isMuted ? 'destructive' : 'outline'}
                 size="icon"
                 className={`h-10 w-10 rounded-full transition-all ${!isMuted
-                        ? 'hover:bg-slate-100 text-slate-700 border-slate-200'
-                        : 'bg-red-500 hover:bg-red-600 border-red-500'
+                    ? 'hover:bg-slate-100 text-slate-700 border-slate-200'
+                    : 'bg-red-500 hover:bg-red-600 border-red-500'
                     }`}
                 onClick={onToggleMic}
                 disabled={!isConnected}
@@ -69,14 +74,29 @@ export function ControlBar({
                 variant={isVideoOff ? 'destructive' : 'outline'}
                 size="icon"
                 className={`h-10 w-10 rounded-full transition-all ${!isVideoOff
-                        ? 'hover:bg-slate-100 text-slate-700 border-slate-200'
-                        : 'bg-red-500 hover:bg-red-600 border-red-500'
+                    ? 'hover:bg-slate-100 text-slate-700 border-slate-200'
+                    : 'bg-red-500 hover:bg-red-600 border-red-500'
                     }`}
                 onClick={onToggleCamera}
                 disabled={!isConnected}
                 title={isVideoOff ? 'Turn On Camera' : 'Turn Off Camera'}
             >
                 {isVideoOff ? <VideoOff className="h-4 w-4" /> : <Video className="h-4 w-4" />}
+            </Button>
+
+            {/* Background Toggle */}
+            <Button
+                variant={isBackgroundActive ? 'default' : 'ghost'}
+                size="icon"
+                className={`h-10 w-10 rounded-full ${isBackgroundActive
+                    ? 'bg-gray-500 hover:bg-gray-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                onClick={onToggleBackground}
+                disabled={!isConnected}
+                title={isBackgroundActive ? 'Remove Background' : 'Gray Background'}
+            >
+                <PersonStanding className="h-4 w-4" />
             </Button>
 
             {/* Separator */}
@@ -87,8 +107,8 @@ export function ControlBar({
                 variant={isScreenSharing ? 'default' : 'ghost'}
                 size="icon"
                 className={`h-10 w-10 rounded-full ${isScreenSharing
-                        ? 'bg-green-500 hover:bg-green-600 text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-green-500 hover:bg-green-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 onClick={onToggleScreenShare}
                 disabled={!isConnected}
@@ -102,8 +122,8 @@ export function ControlBar({
                 variant={isWhiteboardActive ? 'default' : 'ghost'}
                 size="icon"
                 className={`h-10 w-10 rounded-full relative ${isWhiteboardActive
-                        ? 'bg-sky-500 hover:bg-sky-600 text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 onClick={onToggleWhiteboard}
                 disabled={!isConnected}
@@ -120,8 +140,8 @@ export function ControlBar({
                 variant={isChatOpen ? 'default' : 'ghost'}
                 size="icon"
                 className={`h-10 w-10 rounded-full ${isChatOpen
-                        ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
+                    ? 'bg-indigo-500 hover:bg-indigo-600 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
                     }`}
                 onClick={onToggleChat}
                 disabled={!isConnected}

@@ -156,7 +156,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick';
 
 /**
  * Generic DataChannel message
@@ -165,6 +165,9 @@ export interface DataChannelMessage {
     type: DataChannelMessageType;
     chat?: ChatMessage;
     whiteboard?: WhiteboardMessage;
+    // Teacher control properties
+    participantId?: string | number;
+    muted?: boolean;
 }
 
 // ============ Room Types ============
