@@ -291,6 +291,56 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
             prisma.enrollment.count({ where: { created_on: { gte: thirtyDaysAgo } } })
         ]);
 
+        // Activity group enrollments
+        const [totalActivityEnrollments, activityEnrollmentsLast30Days] = await Promise.all([
+            prisma.activityEnrollment.count(),
+            prisma.activityEnrollment.count({ where: { enrolled_at: { gte: thirtyDaysAgo } } })
+        ]);
+
+        // Test series enrollments
+        const [totalTestSeriesEnrollments, testSeriesEnrollmentsLast30Days] = await Promise.all([
+            prisma.testSeriesEnrollment.count(),
+            prisma.testSeriesEnrollment.count({ where: { enrolled_at: { gte: thirtyDaysAgo } } })
+        ]);
+
+        // Calculate potential revenue from activity groups and test series
+        const activityGroupRevenue = await prisma.activityEnrollment.findMany({
+            where: { enrolled_at: { gte: thirtyDaysAgo } },
+            include: {
+                activity: {
+                    include: {
+                        group: {
+                            include: { currency: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        const testSeriesRevenue = await prisma.testSeriesEnrollment.findMany({
+            where: { enrolled_at: { gte: thirtyDaysAgo } },
+            include: {
+                test_series: {
+                    include: { currency: true }
+                }
+            }
+        });
+
+        let activityGroupRevenueTotal = 0;
+        let testSeriesRevenueTotal = 0;
+
+        activityGroupRevenue.forEach(enrollment => {
+            if (enrollment.activity.group.price) {
+                activityGroupRevenueTotal += enrollment.activity.group.price;
+            }
+        });
+
+        testSeriesRevenue.forEach(enrollment => {
+            if (enrollment.test_series.price) {
+                testSeriesRevenueTotal += enrollment.test_series.price;
+            }
+        });
+
         // Get new students by day for the last 30 days
         const newStudentsByDay = await prisma.$queryRaw<Array<{ date: Date; count: bigint }>>`
       SELECT DATE(created_at) as date, COUNT(*) as count
@@ -334,6 +384,16 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
             enrollments: {
                 total: totalEnrollments,
                 last30Days: enrollmentsLast30Days
+            },
+            activityGroups: {
+                totalEnrollments: totalActivityEnrollments,
+                enrollmentsLast30Days: activityEnrollmentsLast30Days,
+                revenueLast30Days: activityGroupRevenueTotal
+            },
+            testSeries: {
+                totalEnrollments: totalTestSeriesEnrollments,
+                enrollmentsLast30Days: testSeriesEnrollmentsLast30Days,
+                revenueLast30Days: testSeriesRevenueTotal
             }
         });
     } catch (error) {

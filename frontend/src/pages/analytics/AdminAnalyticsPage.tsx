@@ -59,6 +59,16 @@ interface BusinessAnalytics {
         total: number;
         last30Days: number;
     };
+    activityGroups: {
+        totalEnrollments: number;
+        enrollmentsLast30Days: number;
+        revenueLast30Days: number;
+    };
+    testSeries: {
+        totalEnrollments: number;
+        enrollmentsLast30Days: number;
+        revenueLast30Days: number;
+    };
 }
 
 export default function AdminAnalyticsPage() {
@@ -291,6 +301,30 @@ export default function AdminAnalyticsPage() {
                                     icon={CreditCard}
                                     description={`${businessAnalytics.payments.paidCount} paid`}
                                 />
+                                <StatCard
+                                    title="Activity Group Enrollments"
+                                    value={businessAnalytics.activityGroups.totalEnrollments}
+                                    icon={BookOpen}
+                                    description={`+${businessAnalytics.activityGroups.enrollmentsLast30Days} last 30 days`}
+                                />
+                                <StatCard
+                                    title="Test Series Enrollments"
+                                    value={businessAnalytics.testSeries.totalEnrollments}
+                                    icon={GraduationCap}
+                                    description={`+${businessAnalytics.testSeries.enrollmentsLast30Days} last 30 days`}
+                                />
+                                <StatCard
+                                    title="Activity Revenue (30d)"
+                                    value={`₹${businessAnalytics.activityGroups.revenueLast30Days.toLocaleString()}`}
+                                    icon={DollarSign}
+                                    description="From activity groups"
+                                />
+                                <StatCard
+                                    title="Test Series Revenue (30d)"
+                                    value={`₹${businessAnalytics.testSeries.revenueLast30Days.toLocaleString()}`}
+                                    icon={DollarSign}
+                                    description="From test series"
+                                />
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -316,7 +350,7 @@ export default function AdminAnalyticsPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                                 <Card>
                                     <CardHeader>
                                         <CardTitle className="text-lg">Student Growth</CardTitle>
@@ -369,6 +403,46 @@ export default function AdminAnalyticsPage() {
                                         <div className="flex justify-between">
                                             <span className="text-muted-foreground">Last 30 Days</span>
                                             <span className="font-semibold">{businessAnalytics.enrollments.last30Days}</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Activity Groups</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Total Enrollments</span>
+                                            <span className="font-semibold">{businessAnalytics.activityGroups.totalEnrollments}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Last 30 Days</span>
+                                            <span className="font-semibold">{businessAnalytics.activityGroups.enrollmentsLast30Days}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Revenue (30d)</span>
+                                            <span className="font-semibold text-green-600">₹{businessAnalytics.activityGroups.revenueLast30Days.toLocaleString()}</span>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Test Series</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Total Enrollments</span>
+                                            <span className="font-semibold">{businessAnalytics.testSeries.totalEnrollments}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Last 30 Days</span>
+                                            <span className="font-semibold">{businessAnalytics.testSeries.enrollmentsLast30Days}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Revenue (30d)</span>
+                                            <span className="font-semibold text-green-600">₹{businessAnalytics.testSeries.revenueLast30Days.toLocaleString()}</span>
                                         </div>
                                     </CardContent>
                                 </Card>
