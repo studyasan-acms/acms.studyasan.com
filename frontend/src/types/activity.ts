@@ -116,7 +116,15 @@ export interface ActivityAttempt {
   created_at: string;
   updated_at: string;
   activity?: Activity;
-  student?: any;
+  student?: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+    };
+  };
   responses?: ActivityResponse[];
 }
 

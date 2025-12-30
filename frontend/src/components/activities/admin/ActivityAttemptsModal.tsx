@@ -121,15 +121,15 @@ export default function ActivityAttemptsModal({ activity, onClose }: Props) {
                 >
                   <div className="col-span-3 flex items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-bold text-sm">
-                      {attempt.student?.name?.[0]?.toUpperCase() || 'S'}
+                      {attempt.student?.user?.name?.[0]?.toUpperCase() || 'S'}
                     </div>
                     <div>
                       <p className="font-semibold text-sm">
-                        {attempt.student?.name || `Student #${attempt.student_id}`}
+                        {attempt.student?.user?.name || `Student #${attempt.student_id}`}
                       </p>
-                      {attempt.student?.email && (
+                      {attempt.student?.user?.email && (
                         <p className="text-xs text-gray-500">
-                          {attempt.student.email}
+                          {attempt.student.user.email}
                         </p>
                       )}
                     </div>

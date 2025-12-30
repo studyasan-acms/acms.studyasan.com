@@ -9,7 +9,7 @@ import { useSound } from '../../../hooks/useSound';
 
 interface Props {
   activity: Activity;
-  attemptId: number;
+  attemptId: number | null;
   onComplete: (score: number, timeTaken: number) => void;
   onCancel: () => void;
   // Live mode props
@@ -68,15 +68,17 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
     }
 
     // Submit response
-    try {
-      await activityAttemptAPI.submitResponse({
-        attempt_id: attemptId,
-        item_id: question.id,
-        response: { answer },
-        is_correct: correct,
-      });
-    } catch (error) {
-      console.error('Failed to submit response', error);
+    if (attemptId) {
+      try {
+        await activityAttemptAPI.submitResponse({
+          attempt_id: attemptId,
+          item_id: question.id,
+          response: { answer },
+          is_correct: correct,
+        });
+      } catch (error) {
+        console.error('Failed to submit response', error);
+      }
     }
 
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);

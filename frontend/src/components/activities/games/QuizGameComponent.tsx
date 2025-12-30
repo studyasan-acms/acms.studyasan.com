@@ -9,7 +9,7 @@ import { useSound } from '../../../hooks/useSound';
 
 interface Props {
   activity: Activity;
-  attemptId: number;
+  attemptId: number | null;
   onComplete: (score: number, timeTaken: number) => void;
   onCancel: () => void;
 }
@@ -91,18 +91,20 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
     }
 
     // Submit response
-    try {
-      await activityAttemptAPI.submitResponse({
-        attempt_id: attemptId,
-        item_id: question.id,
-        response: {
-          answer: selectedAnswer,
-        },
-        is_correct: correct,
-        time_taken: timeTaken,
-      });
-    } catch (error) {
-      console.error('Failed to submit response', error);
+    if (attemptId) {
+      try {
+        await activityAttemptAPI.submitResponse({
+          attempt_id: attemptId,
+          item_id: question.id,
+          response: {
+            answer: selectedAnswer,
+          },
+          is_correct: correct,
+          time_taken: timeTaken,
+        });
+      } catch (error) {
+        console.error('Failed to submit response', error);
+      }
     }
 
     // Auto advance after 2 seconds

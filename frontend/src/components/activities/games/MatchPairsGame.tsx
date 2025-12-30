@@ -9,7 +9,7 @@ import { useSound } from '../../../hooks/useSound';
 
 interface Props {
   activity: Activity;
-  attemptId: number;
+  attemptId: number | null;
   onComplete: (score: number, timeTaken: number) => void;
   onCancel: () => void;
 }
@@ -112,6 +112,7 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
   };
 
   const submitResponse = async (leftIndex: number, rightIndex: number, isCorrect: boolean) => {
+    if (!attemptId) return; // Skip submission for preview mode
     try {
       await activityAttemptAPI.submitResponse({
         attempt_id: attemptId,

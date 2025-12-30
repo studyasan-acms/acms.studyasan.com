@@ -9,7 +9,7 @@ import { useSound } from '../../../hooks/useSound';
 
 interface Props {
   activity: Activity;
-  attemptId: number;
+  attemptId: number | null;
   onComplete: (score: number, timeTaken: number) => void;
   onCancel: () => void;
   // Live mode props
@@ -37,6 +37,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [currentItem, setCurrentItem] = useState(0);
 
   const { playSound, stopSound, stopAll } = useSound();
 
@@ -55,16 +56,17 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
   }, [isMuted]);
 
   useEffect(() => {
-    if (activity.items && activity.items.length > 0) {
-      const content = activity.items[0].content as WordSearchContent;
+    if (activity.items && activity.items.length > 0 && activity.items[currentItem]) {
+      const content = activity.items[currentItem].content as WordSearchContent;
       const wordList = content.words || [];
       const size = content.gridSize || 10;
 
       setWords(wordList);
       setGridSize(size);
       setGrid(generateGrid(wordList, size));
+      setFoundWords(new Set()); // Reset found words for new grid
     }
-  }, [activity]);
+  }, [activity, currentItem]);
 
   const generateGrid = (wordList: string[], size: number): GridCell[][] => {
     const grid: GridCell[][] = Array(size).fill(null).map(() =>
@@ -236,7 +238,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
       newFoundWords.add(matchedWord);
       setFoundWords(newFoundWords);
 
-      const points = activity.items?.[0]?.points || 10;
+      const points = activity.items?.[currentItem]?.points || 10;
       const newScore = score + points;
       setScore(newScore);
 
@@ -256,13 +258,19 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
         origin: { y: 0.6 }
       });
 
-      // Check if all words are found
-      // In live mode, we might wait for teacher to select next word, so we don't complete strictly?
-      // But if we found all words in list, we could complete.
+      // Check if all words are found in current item
       if (newFoundWords.size === words.length) {
-        setTimeout(() => {
-          handleComplete(newScore);
-        }, 1000);
+        if (currentItem < (activity.items?.length || 1) - 1) {
+          // More items to go
+          setTimeout(() => {
+            setCurrentItem(currentItem + 1);
+          }, 2000); // Show celebration then advance
+        } else {
+          // All items completed
+          setTimeout(() => {
+            handleComplete(newScore);
+          }, 1000);
+        }
       }
     } else if (matchedWord) {
       // Word already found
@@ -291,10 +299,11 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
   };
 
   const submitResponse = async (word: string, isCorrect: boolean) => {
+    if (!attemptId) return; // Skip submission for preview mode
     try {
       await activityAttemptAPI.submitResponse({
         attempt_id: attemptId,
-        item_id: activity.items![0].id,
+        item_id: activity.items![currentItem].id,
         response: { word },
         is_correct: isCorrect,
       });
@@ -347,6 +356,11 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
           <h2 className="text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
             {activity.title}
           </h2>
+          {activity.items && activity.items.length > 1 && (
+            <div className="text-sm text-gray-400">
+              Grid {currentItem + 1} of {activity.items.length}
+            </div>
+          )}
           <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
             {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
           </button>
@@ -381,7 +395,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
           {/* Word Search Grid */}
           <div className="lg:col-span-2 flex flex-col">
             <Card className="gamified-card p-6 flex-1 flex flex-col">
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex-1 flex items-center justify-center overflow-auto">
                 <div
                   className="inline-block"
                   onMouseUp={handleMouseUp}
@@ -398,8 +412,8 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
                         <div
                           key={`${rowIndex}-${colIndex}`}
                           className={`
-                            w-10 h-10 flex items-center justify-center
-                            border-2 font-bold text-lg cursor-pointer
+                            w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 flex items-center justify-center
+                            border-2 font-bold text-xs xs:text-sm sm:text-base md:text-lg cursor-pointer
                             transition-all duration-200
                             select-none rounded-lg
                             ${isCellInFoundWord(rowIndex, colIndex)

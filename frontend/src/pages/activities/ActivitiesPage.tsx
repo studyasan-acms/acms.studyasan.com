@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Play, Users, Trophy, Radio, Presentation } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Users, Trophy, Radio, Presentation, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { activityAPI, activityGroupAPI } from '../../services/activity.service';
@@ -7,6 +7,10 @@ import type { Activity, ActivityGroup, ActivityType } from '../../types/activity
 import ActivityForm from '../../components/activities/admin/ActivityForm.tsx';
 import ActivityAttemptsModal from '../../components/activities/admin/ActivityAttemptsModal.tsx';
 import TeacherQuizHost from '../../components/activities/admin/TeacherQuizHost.tsx';
+import MatchPairsGame from '../../components/activities/games/MatchPairsGame.tsx';
+import QuizGameComponent from '../../components/activities/games/QuizGameComponent.tsx';
+import WordSearchGame from '../../components/activities/games/WordSearchGame.tsx';
+import TrueFalseGame from '../../components/activities/games/TrueFalseGame.tsx';
 import { toast } from 'sonner';
 
 const getRandomGradient = () => {
@@ -33,6 +37,8 @@ export default function ActivitiesPage() {
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [viewingAttempts, setViewingAttempts] = useState<Activity | null>(null);
   const [hostingActivity, setHostingActivity] = useState<Activity | null>(null);
+  const [playingActivity, setPlayingActivity] = useState<Activity | null>(null);
+  const [playingActivityData, setPlayingActivityData] = useState<Activity | null>(null);
   const [filters, setFilters] = useState({
     group_id: '',
     activity_type: '',
@@ -132,6 +138,41 @@ export default function ActivitiesPage() {
     return labels[type];
   };
 
+  const renderPreviewGame = (activity: Activity) => {
+    const gameProps = {
+      activity: playingActivityData || activity,
+      attemptId: null, // No attempt ID for preview (won't save data)
+      onComplete: () => {
+        setPlayingActivity(null);
+        setPlayingActivityData(null);
+      }, // Just close on complete
+      onCancel: () => {
+        setPlayingActivity(null);
+        setPlayingActivityData(null);
+      },
+    };
+
+    switch (activity.activity_type) {
+      case 'MATCH_PAIRS':
+        return <MatchPairsGame {...gameProps} />;
+      case 'QUIZ_GAME':
+        return <QuizGameComponent {...gameProps} />;
+      case 'WORD_SEARCH':
+        return <WordSearchGame {...gameProps} />;
+      case 'TRUE_FALSE':
+        return <TrueFalseGame {...gameProps} />;
+      default:
+        return (
+          <div className="text-center py-12">
+            <p className="text-gray-500">This game type is not available for preview</p>
+            <Button onClick={() => setPlayingActivity(null)} className="mt-4">
+              Close
+            </Button>
+          </div>
+        );
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -141,22 +182,22 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Activities</h1>
-        <Button onClick={handleCreate}>
+    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold">Activities</h1>
+        <Button onClick={handleCreate} className="w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Create Activity
         </Button>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <Card className="p-3 sm:p-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <div>
             <label className="block text-sm font-medium mb-2">Group</label>
             <select
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.group_id}
               onChange={(e) => setFilters({ ...filters, group_id: e.target.value })}
             >
@@ -172,7 +213,7 @@ export default function ActivitiesPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Type</label>
             <select
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.activity_type}
               onChange={(e) =>
                 setFilters({ ...filters, activity_type: e.target.value })
@@ -189,7 +230,7 @@ export default function ActivitiesPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Difficulty</label>
             <select
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.difficulty}
               onChange={(e) =>
                 setFilters({ ...filters, difficulty: e.target.value })
@@ -205,7 +246,7 @@ export default function ActivitiesPage() {
           <div>
             <label className="block text-sm font-medium mb-2">Status</label>
             <select
-              className="w-full px-4 py-2 border rounded-lg"
+              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.is_published}
               onChange={(e) =>
                 setFilters({ ...filters, is_published: e.target.value })
@@ -238,32 +279,33 @@ export default function ActivitiesPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {activities.map((activity) => (
-          <Card key={activity.id} className="p-6 hover:shadow-lg transition-shadow">
+          <Card key={activity.id} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
             <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-xl font-semibold mb-1">{activity.title}</h3>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-semibold mb-1 truncate">{activity.title}</h3>
                 <p className="text-sm text-gray-500">
                   {getActivityTypeLabel(activity.activity_type)}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(activity)}>
-                  <Edit className="w-4 h-4" />
+              <div className="flex gap-1 ml-2">
+                <Button variant="ghost" size="sm" onClick={() => handleEdit(activity)} className="p-1 sm:p-2">
+                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleDelete(activity.id)}
+                  className="p-1 sm:p-2"
                 >
-                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
                 </Button>
               </div>
             </div>
 
-            <div className={`w-full h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
-              <h3 className="text-2xl font-bold text-white text-center px-4">
+            <div className={`w-full h-32 sm:h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
+              <h3 className="text-lg sm:text-2xl font-bold text-white text-center px-4">
                 {activity.title}
               </h3>
             </div>
@@ -274,52 +316,73 @@ export default function ActivitiesPage() {
               </p>
             )}
 
-            <div className="flex gap-2 mb-3">
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+            <div className="flex flex-wrap gap-2 mb-3">
+              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                 {activity.difficulty}
               </span>
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
                 {activity.points} points
               </span>
             </div>
 
             <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
               <div className="flex items-center">
-                <Users className="w-4 h-4 mr-1" />
-                {activity._count?.enrollments || 0}
+                <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="text-xs sm:text-sm">{activity._count?.enrollments || 0}</span>
               </div>
               <div className="flex items-center">
-                <Play className="w-4 h-4 mr-1" />
-                {activity._count?.attempts || 0}
+                <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                <span className="text-xs sm:text-sm">{activity._count?.attempts || 0}</span>
               </div>
             </div>
 
-            <div className="flex gap-2 pt-3 border-t">
+            <div className="flex flex-wrap gap-1 sm:gap-2 pt-3 border-t">
               <Button
                 variant={activity.is_published ? 'outline' : 'default'}
                 size="sm"
                 onClick={() =>
                   handleTogglePublish(activity.id, activity.is_published)
                 }
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
-                {activity.is_published ? 'Unpublish' : 'Publish'}
+                <span className="hidden sm:inline">{activity.is_published ? 'Unpublish' : 'Publish'}</span>
+                <span className="sm:hidden">{activity.is_published ? 'Unpub' : 'Pub'}</span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setViewingAttempts(activity)}
+                className="text-xs sm:text-sm px-2 sm:px-3"
               >
                 <Trophy className="w-3 h-3 mr-1" />
-                Scores
+                <span className="hidden sm:inline">Scores</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={async () => {
+                  try {
+                    const response = await activityAPI.getById(activity.id);
+                    setPlayingActivityData(response.data.data);
+                    setPlayingActivity(activity);
+                  } catch (error: any) {
+                    toast.error('Failed to load activity details');
+                  }
+                }}
+                className="text-xs sm:text-sm px-2 sm:px-3"
+              >
+                <Play className="w-3 h-3 mr-1" />
+                <span className="hidden sm:inline">Play</span>
               </Button>
               <Button
                 variant="default"
                 size="sm"
                 onClick={() => setHostingActivity(activity)}
-                className="bg-purple-600 hover:bg-purple-700"
+                className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm px-2 sm:px-3"
               >
                 <Presentation className="w-3 h-3 mr-1" />
-                Host Game
+                <span className="hidden sm:inline">Host Game</span>
+                <span className="sm:hidden">Host</span>
               </Button>
             </div>
           </Card>
@@ -327,15 +390,15 @@ export default function ActivitiesPage() {
       </div>
 
       {activities.length === 0 && (
-        <div className="text-center py-12">
-          <Play className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-xl font-semibold text-gray-600 mb-2">
+        <div className="text-center py-8 sm:py-12">
+          <Play className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
             No Activities Yet
           </h3>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-500 mb-4 px-4">
             Create your first activity to get started
           </p>
-          <Button onClick={handleCreate}>
+          <Button onClick={handleCreate} className="w-full sm:w-auto">
             <Plus className="w-4 h-4 mr-2" />
             Create Activity
           </Button>
@@ -348,6 +411,26 @@ export default function ActivitiesPage() {
           activity={viewingAttempts}
           onClose={() => setViewingAttempts(null)}
         />
+      )}
+
+      {/* Play Activity Modal */}
+      {playingActivity && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl sm:max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+            <div className="flex justify-between items-center p-3 sm:p-4 border-b">
+              <h2 className="text-lg sm:text-xl font-bold truncate pr-2">Preview: {playingActivity.title}</h2>
+              <Button variant="ghost" onClick={() => {
+                setPlayingActivity(null);
+                setPlayingActivityData(null);
+              }} className="p-1 sm:p-2">
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+              </Button>
+            </div>
+            <div className="p-2 sm:p-4 max-h-[calc(95vh-60px)] sm:max-h-[calc(90vh-80px)] overflow-auto">
+              {renderPreviewGame(playingActivity)}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
