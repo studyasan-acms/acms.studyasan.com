@@ -872,6 +872,8 @@ model HomeworkResponse {
   checked_by          Int?
   checked_at          DateTime?
   feedback            String?
+  feedback_media_url  String? // URL for uploaded feedback media
+  feedback_media_type String? // Type: pdf, doc, image, video, etc.
 
   homework Homework @relation(fields: [homework_id], references: [id], onDelete: Cascade)
   student  Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)

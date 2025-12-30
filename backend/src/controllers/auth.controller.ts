@@ -37,6 +37,15 @@ export const register = async (req: Request, res: Response) => {
       },
     });
 
+    // Create student record if role is STUDENT
+    if (user.role === 'STUDENT') {
+      await prisma.student.create({
+        data: {
+          user_id: user.id,
+        },
+      });
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET!,

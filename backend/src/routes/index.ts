@@ -571,7 +571,7 @@ router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'
 router.get('/homework/:homework_id/responses', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getHomeworkResponses);
 
 // Check homework response (Teacher/Admin)
-router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.checkHomeworkResponse);
+router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('feedback_media'), homeworkController.checkHomeworkResponse);
 
 // ================== VIDEO ROOM ROUTES ==================
 

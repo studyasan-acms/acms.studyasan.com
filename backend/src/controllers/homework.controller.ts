@@ -602,15 +602,36 @@ export const checkHomeworkResponse = async (req: Request, res: Response) => {
       return sendError(res, 'Access denied', 403);
     }
 
+    // Handle feedback media upload if provided
+    let feedback_media_url = null;
+    let feedback_media_type = null;
+
+    if (req.file) {
+      const uploadResult = await uploadToS3(req.file, 'homework-feedback');
+      feedback_media_url = uploadResult.url;
+      feedback_media_type = req.file.mimetype;
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      is_checked: is_checked !== undefined ? (is_checked === 'true' || is_checked === true) : true,
+      checked_by: user_role === 'ADMIN' ? user_id : teacher!.user_id,
+      checked_at: new Date(),
+    };
+
+    if (feedback !== undefined) {
+      updateData.feedback = feedback;
+    }
+
+    if (feedback_media_url) {
+      updateData.feedback_media_url = feedback_media_url;
+      updateData.feedback_media_type = feedback_media_type;
+    }
+
     // Update the response
     const updatedResponse = await prisma.homeworkResponse.update({
       where: { id: parsedResponseId },
-      data: {
-        is_checked: is_checked !== undefined ? is_checked : true,
-        checked_by: user_role === 'ADMIN' ? user_id : teacher!.user_id,
-        checked_at: new Date(),
-        feedback
-      },
+      data: updateData,
       include: {
         student: {
           include: {
