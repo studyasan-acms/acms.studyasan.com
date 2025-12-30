@@ -35,6 +35,13 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
   const [discount, setDiscount] = useState(0);
   const [currency, setCurrency] = useState('INR');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [invoiceNumber, setInvoiceNumber] = useState(() => `#${String(Math.floor(Math.random() * 100000)).padStart(6, '0')}`);
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(() => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
+  const [taxAmount, setTaxAmount] = useState(0);
+  const [amountPaid, setAmountPaid] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
+  const [applyDiscountOnTax, setApplyDiscountOnTax] = useState(false);
 
   const currencies = {
     INR: { symbol: '₹', name: 'Indian Rupee' },
@@ -113,189 +120,231 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
 
   const selectedItems = items.filter(item => item.selected);
   const subtotal = selectedItems.reduce((sum, item) => sum + item.price, 0);
-  const discountAmount = (subtotal * discount) / 100;
-  const total = subtotal - discountAmount;
+  // discount can apply to subtotal or to (subtotal + tax) depending on toggle
+  const discountBase = applyDiscountOnTax ? (subtotal + Number(taxAmount || 0)) : subtotal;
+  const discountAmount = (discountBase * discount) / 100;
+  const totalBeforeTax = applyDiscountOnTax ? subtotal + Number(taxAmount || 0) - discountAmount : subtotal - discountAmount;
+  const finalTotal = applyDiscountOnTax ? subtotal + Number(taxAmount || 0) - discountAmount : subtotal - discountAmount + Number(taxAmount || 0);
+  const balanceDue = finalTotal - Number(amountPaid || 0);
+
+  const formatAmount = (val: number) => {
+    if (currency === 'INR') {
+      return `${currencies.INR.symbol}${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+    return `${(currencies as any)[currency]?.symbol || ''}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const generatePDF = async () => {
     setIsGenerating(true);
     try {
-      const pdf = new jsPDF();
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
 
-      // Set up colors and fonts
-      const primaryColor: [number, number, number] = [41, 128, 185]; // Blue
-      const secondaryColor: [number, number, number] = [52, 73, 94]; // Dark gray
-      const accentColor: [number, number, number] = [149, 165, 166]; // Light gray
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
 
-      // Header with company info
-      pdf.setFillColor(...primaryColor);
-      pdf.rect(0, 0, 210, 40, 'F'); // Increased height to accommodate centered layout
+      // Colors to match sample
+      const headerBlue: [number, number, number] = [13, 100, 164];
+      const darkText: [number, number, number] = [34, 40, 49];
+      const lightGrey: [number, number, number] = [230, 235, 240];
 
-      // Try to add logo
-      try {
-        const logoResponse = await fetch('/studyasan-logo.png');
-        if (logoResponse.ok) {
-          const logoBlob = await logoResponse.blob();
-          const logoDataUrl = await new Promise<string>((resolve, reject) => {
+      // (formatAmount is defined outside and reused)
+
+      // Try to load logo from public folder
+      const toDataURL = async (url: string) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          const blob = await res.blob();
+          return await new Promise<string>((resolve) => {
             const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(logoBlob);
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
           });
-          // Center the logo (210mm page width / 2 - logo width / 2 = center position)
-          pdf.addImage(logoDataUrl, 'PNG', 75, 5, 60, 30); // Centered at x=90, width=30
+        } catch (err) {
+          return null;
         }
-      } catch (error) {
-        console.log('Logo loading failed, using text logo');
-        // Fallback to text logo
-        pdf.setFillColor(255, 255, 255);
-        pdf.circle(105, 15, 8, 'F'); // Centered
-        pdf.setTextColor(...primaryColor);
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('AMS', 101, 18); // Centered
+      };
+
+      const logoUrl = await toDataURL('/logo.jpg') || await toDataURL('/studyasan-logo.png') || await toDataURL('/studyasan-logo-lady.png');
+
+      // Place logo at top-left and company info below it (no blue background)
+      const logoY = 12;
+      if (logoUrl) {
+        try {
+          pdf.addImage(logoUrl, 'PNG', margin, logoY, 36, 36);
+        } catch (e) {
+          // ignore
+        }
       }
 
-      // Company details - centered below company name
+      // Company name & contact below logo
+      const companyInfoY = logoY + 42;
+      pdf.setFontSize(12);
+      pdf.setTextColor(...darkText);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('StudyAsan', margin, companyInfoY);
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Phone: +91 7983758633 | Email: studyasaneducation@gmail.com', 105, 35, { align: 'center' });
+      pdf.text('Uttarakhand, India', margin, companyInfoY + 6);
+      pdf.text('info@studyasan.com | +91 7983758633', margin, companyInfoY + 12);
 
-      // Invoice details box
-      pdf.setFillColor(248, 249, 250);
-      pdf.rect(120, 75, 70, 25, 'F');
-      pdf.setDrawColor(...accentColor);
-      pdf.rect(120, 75, 70, 25, 'S');
+      // Invoice meta box (top-right)
+      const metaW = 78;
+      const metaX = pageWidth - margin - metaW;
+      const metaY = 12;
+      pdf.setFillColor(245, 247, 249);
+      pdf.roundedRect(metaX, metaY, metaW, 34, 2, 2, 'F');
+      pdf.setDrawColor(...lightGrey);
+      pdf.roundedRect(metaX, metaY, metaW, 34, 2, 2, 'S');
 
-      // Invoice details
-      pdf.setTextColor(...secondaryColor);
+      // use editable invoice fields from state
+      const invoiceDate = new Date(issueDate).toLocaleDateString();
+      const dueDateText = new Date(dueDate).toLocaleDateString();
+
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Invoice Number:', 125, 82);
-      pdf.text('Invoice Date:', 125, 89);
-      pdf.text('Due Date:', 125, 96);
-
+      pdf.setTextColor(...darkText);
+      pdf.text('Invoice Number:', metaX + 6, metaY + 10);
       pdf.setFont('helvetica', 'normal');
-      const invoiceNumber = `INV-${Date.now()}`;
-      const invoiceDate = new Date().toLocaleDateString();
-      const dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString();
+      pdf.text(invoiceNumber, metaX + 6, metaY + 16);
+      pdf.setFontSize(9);
+      pdf.text(`Issue Date: ${invoiceDate}`, metaX + 6, metaY + 23);
+      pdf.text(`Due Date: ${dueDateText}`, metaX + 6, metaY + 30);
 
-      pdf.text(invoiceNumber, 155, 82);
-      pdf.text(invoiceDate, 155, 89);
-      pdf.text(dueDate, 155, 96);
+      // Horizontal rule under header/company info
+      pdf.setDrawColor(...lightGrey);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, companyInfoY + 18, pageWidth - margin, companyInfoY + 18);
 
-      // Bill To section
-      pdf.setFontSize(12);
+      // Billing info
+      let cursorY = companyInfoY + 26;
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Bill To:', 20, 110);
-
+      pdf.setTextColor(...darkText);
+      pdf.text('Bill To:', margin, cursorY);
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(11);
-      pdf.text(student.user.name, 20, 120);
-      pdf.text(`Email: ${student.user.email}`, 20, 128);
-      pdf.text(`Phone: ${student.user.phone}`, 20, 136);
-      if (student.class) {
-        pdf.text(`Class: ${student.class.name}`, 20, 144);
-      }
+      pdf.setFontSize(9);
+      pdf.text(student.user.name || '-', margin, cursorY + 6);
+      pdf.text(`Email: ${student.user.email || '-'}`, margin, cursorY + 11);
+      pdf.text(`Phone: ${student.user.phone || '-'}`, margin, cursorY + 16);
+      if (student.class) pdf.text(`Class: ${student.class.name}`, margin, cursorY + 21);
 
-      // Items table - manual drawing
-      let tableY = 160;
+      // Additional customer info on right side of billing
+      const infoX = pageWidth / 2 + 10;
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Additional Customer Info:', infoX, cursorY);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(student.user.email || '-', infoX, cursorY + 6);
+      pdf.text(`Phone: ${student.user.phone || '-'}`, infoX, cursorY + 11);
 
       // Table header
-      pdf.setFillColor(...primaryColor);
-      pdf.rect(20, tableY, 170, 12, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(11);
+      const tableTop = cursorY + 32;
+      const tableLeft = margin;
+      const tableWidth = pageWidth - margin * 2;
+      // Columns: description, qty, price (no line total)
+      const colQty = tableLeft + tableWidth * 0.65;
+      const colPrice = tableLeft + tableWidth * 0.85;
+
+      // Header background
+      pdf.setFillColor(224, 236, 249);
+      pdf.rect(tableLeft, tableTop, tableWidth, 12, 'F');
+      pdf.setFontSize(9);
+      pdf.setTextColor(...darkText);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Description', 25, tableY + 8);
-      pdf.text('Type', 100, tableY + 8);
-      pdf.text('Amount', 165, tableY + 8, { align: 'right' });
+      pdf.text('Product or Service', tableLeft + 6, tableTop + 8);
+      pdf.text('Quantity', colQty, tableTop + 8);
+      pdf.text('Price', colPrice, tableTop + 8);
 
-      tableY += 12;
-
-      // Table rows
-      pdf.setTextColor(...secondaryColor);
+      // Rows
+      let y = tableTop + 12;
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
+      selectedItems.forEach((item, idx) => {
+        const rowH = 14;
+        if (idx % 2 === 0) {
+          pdf.setFillColor(250, 250, 250);
+          pdf.rect(tableLeft, y, tableWidth, rowH, 'F');
+        }
 
-      selectedItems.forEach((item, index) => {
-        const rowHeight = 12;
-        const fillColor = index % 2 === 0 ? [248, 249, 250] : [255, 255, 255];
+        const qty = 1;
+        const lineTotal = item.price * qty;
 
-        // Row background
-        pdf.setFillColor(...(fillColor as [number, number, number]));
-        pdf.rect(20, tableY, 170, rowHeight, 'F');
+        pdf.setTextColor(...darkText);
+        const desc = item.name.length > 80 ? item.name.substring(0, 77) + '...' : item.name;
+        pdf.text(desc, tableLeft + 6, y + 9);
+        pdf.text(String(qty), colQty, y + 9);
+        pdf.text(formatAmount(item.price), colPrice, y + 9);
 
-        // Row border
-        pdf.setDrawColor(...accentColor);
-        pdf.rect(20, tableY, 170, rowHeight, 'S');
-
-        // Content with better alignment
-        const maxDescWidth = 65; // Max width for description
-        const descText = item.name.length > 25 ? item.name.substring(0, 22) + '...' : item.name;
-        pdf.text(descText, 25, tableY + 8);
-
-        const typeText = item.type === 'subject' ? 'Subject Enrollment' : item.type === 'test_series' ? 'Test Series' : 'Activity Group';
-        pdf.text(typeText, 100, tableY + 8);
-
-        pdf.text(`${currencies[currency as keyof typeof currencies].symbol}${item.price.toFixed(2)}`, 165, tableY + 8, { align: 'right' });
-
-        tableY += rowHeight;
+        y += rowH;
       });
 
-      // Table border
-      pdf.setDrawColor(...secondaryColor);
-      pdf.setLineWidth(0.5);
-      pdf.rect(20, 148, 170, tableY - 148, 'S');
+      // Light border under table
+      pdf.setDrawColor(...lightGrey);
+      pdf.setLineWidth(0.4);
+      pdf.line(tableLeft, y, tableLeft + tableWidth, y);
 
-      // Totals section
-      const finalY = tableY + 10;
-
-      // Subtotal
-      pdf.setFontSize(11);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Subtotal:`, 140, finalY);
-      pdf.text(`${currencies[currency as keyof typeof currencies].symbol}${subtotal.toFixed(2)}`, 180, finalY, { align: 'right' });
-
-      let currentY = finalY + 8;
-
-      // Discount
-      if (discount > 0) {
-        pdf.setTextColor(34, 197, 94); // Green
-        pdf.text(`Discount (${discount}%):`, 140, currentY);
-        pdf.text(`-${currencies[currency as keyof typeof currencies].symbol}${discountAmount.toFixed(2)}`, 180, currentY, { align: 'right' });
-        currentY += 8;
-        pdf.setTextColor(...secondaryColor);
-      }
-
-      // Total
-      pdf.setDrawColor(...primaryColor);
-      pdf.setLineWidth(0.5);
-      pdf.line(120, currentY - 2, 190, currentY - 2);
-
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setTextColor(...primaryColor);
-      pdf.text('TOTAL:', 140, currentY + 8);
-      pdf.text(`${currencies[currency as keyof typeof currencies].symbol}${total.toFixed(2)}`, 180, currentY + 8, { align: 'right' });
-
-      // Footer
-      const footerY = currentY + 30;
-      pdf.setTextColor(...secondaryColor);
+      // Totals box on the right
+      const totalsX = pageWidth - margin - 78;
+      let totalsY = y + 8;
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
+      pdf.text('Subtotal', totalsX, totalsY);
+      pdf.text(formatAmount(subtotal), pageWidth - margin, totalsY, { align: 'right' });
+      totalsY += 6;
 
-      // Thank you message
-      pdf.text('Thank you for your business!', 105, footerY, { align: 'center' });
+      // Discount (show negative)
+      pdf.text(`Discount (${discount}%)`, totalsX, totalsY);
+      pdf.text(`-${formatAmount(discountAmount)}`, pageWidth - margin, totalsY, { align: 'right' });
+      totalsY += 6;
 
-      // Payment terms
-      pdf.setFontSize(9);
-      pdf.text('Payment is due within 30 days. Please include the invoice number on your payment.', 105, footerY + 8, { align: 'center' });
+      // Taxes (left-aligned next to label)
+      pdf.text('Taxes', totalsX, totalsY);
+      pdf.text(formatAmount(Number(taxAmount || 0)), pageWidth - margin, totalsY, { align: 'right' });
+      totalsY += 8;
 
-      // Terms and conditions
+      pdf.setDrawColor(...headerBlue);
+      pdf.setLineWidth(0.6);
+      pdf.line(totalsX, totalsY, pageWidth - margin, totalsY);
+      totalsY += 6;
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...darkText);
+      pdf.text('Invoice Total', totalsX, totalsY);
+      pdf.text(formatAmount(finalTotal), pageWidth - margin, totalsY, { align: 'right' });
+      totalsY += 10;
+
+      // Amount Paid
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(...darkText);
+      pdf.text('Amount Paid', totalsX, totalsY);
+      pdf.text(formatAmount(Number(amountPaid || 0)), pageWidth - margin, totalsY, { align: 'right' });
+      totalsY += 10;
+
+      // Balance due highlighted
+      pdf.setFillColor(237, 246, 255);
+      pdf.roundedRect(totalsX - 2, totalsY - 6, 82, 14, 2, 2, 'F');
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(...headerBlue);
+      pdf.text('Balance Due', totalsX, totalsY + 4);
+      pdf.text(formatAmount(balanceDue), pageWidth - margin, totalsY + 4, { align: 'right' });
+
+      // Footer notes and terms (small) at bottom
+      const footerStart = pageHeight - 48;
       pdf.setFontSize(8);
-      pdf.text('Terms & Conditions: All sales are final. Late payments may incur additional charges.', 105, footerY + 20, { align: 'center' });
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(120, 125, 130);
+      pdf.text('Thank you for choosing StudyAsan!', margin, footerStart);
+      pdf.text('Payment is due within 30 days. Please include the invoice number on your payment.', margin, footerStart + 6);
+      pdf.text('This invoice is valid for the enrolled courses/activities as per the selected package.', margin, footerStart + 12);
 
-      // Download
+      pdf.setFontSize(8);
+      const terms = [
+        'The fee submitted shall not be refunded/reversed under any circumstances for any refund/reversal/chargeback or other reasons.'
+      ];
+      terms.forEach((t, i) => pdf.text(t, margin, footerStart + 18 + (i * 5)));
+
+      // Save
       pdf.save(`invoice-${student.user.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
@@ -315,6 +364,112 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
         </DialogHeader>
 
         <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col space-y-2">
+              <Label className="text-sm">Invoice Number</Label>
+              <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex flex-col">
+                <Label className="text-sm">Issue Date</Label>
+                <Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} />
+              </div>
+              <div className="flex flex-col">
+                <Label className="text-sm">Due Date</Label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex flex-col">
+                <Label className="text-sm">Tax Amount</Label>
+                <Input type="number" min="0" step="0.01" value={taxAmount} onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)} className="w-40" />
+              </div>
+              <div className="flex flex-col">
+                <Label className="text-sm">Amount Paid</Label>
+                <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)} className="w-40" />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2">
+                <input id="applyDiscountOnTax" type="checkbox" checked={applyDiscountOnTax} onChange={(e) => setApplyDiscountOnTax(e.target.checked)} />
+                <Label htmlFor="applyDiscountOnTax" className="text-sm">Apply discount on taxed amount</Label>
+              </div>
+            </div>
+            <div className="flex items-end">
+              <Button variant="ghost" onClick={() => setShowPreview((s) => !s)}>
+                {showPreview ? 'Hide Preview' : 'Show Preview'}
+              </Button>
+            </div>
+          </div>
+
+          {showPreview && (
+            <div className="border rounded p-4 bg-white">
+              {/* Simple HTML preview of the invoice using current editable values */}
+              <div className="flex justify-between items-start">
+                <div className="flex items-start space-x-4">
+                  <img src="/studyasan-logo.png" alt="logo" className="h-16 w-16 object-contain" />
+                  <div>
+                    <div className="font-bold">StudyAsan</div>
+                    <div className="text-sm">Uttarakhand, India</div>
+                    <div className="text-sm">info@studyasan.com | +91 7983758633</div>
+                  </div>
+                </div>
+                <div className="bg-gray-100 rounded p-3 text-sm">
+                  <div className="font-semibold">Invoice</div>
+                  <div>{invoiceNumber}</div>
+                  <div>Issue: {new Date(issueDate).toLocaleDateString()}</div>
+                  <div>Due: {new Date(dueDate).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <hr className="my-4" />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="font-semibold">Bill To:</div>
+                  <div>{student.user.name}</div>
+                  <div className="text-sm">Email: {student.user.email}</div>
+                  <div className="text-sm">Phone: {student.user.phone}</div>
+                </div>
+                <div>
+                  <div className="font-semibold">Additional Customer Info:</div>
+                  <div className="text-sm">{student.user.email}</div>
+                  <div className="text-sm">Phone: {student.user.phone}</div>
+                </div>
+              </div>
+
+              <table className="w-full mt-4 table-auto">
+                <thead>
+                  <tr className="bg-slate-100 text-left">
+                    <th className="px-2 py-2">Product or Service</th>
+                    <th className="px-2 py-2 text-right">Quantity</th>
+                    <th className="px-2 py-2 text-right">Price</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedItems.map((it) => (
+                    <tr key={it.id} className="border-t">
+                      <td className="px-2 py-3">{it.name}</td>
+                      <td className="px-2 py-3 text-right">1</td>
+                      <td className="px-2 py-3 text-right">{formatAmount(it.price)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="flex justify-end mt-4">
+                <div className="w-64">
+                  <div className="flex justify-between"><div>Subtotal</div><div>{formatAmount(subtotal)}</div></div>
+                  <div className="flex justify-between"><div>Discount ({discount}%)</div><div>-{formatAmount(discountAmount)}</div></div>
+                  <div className="flex justify-between"><div>Taxes</div><div>{formatAmount(Number(taxAmount || 0))}</div></div>
+                  <hr className="my-2" />
+                  <div className="flex justify-between font-bold text-lg"><div>Invoice Total</div><div>{formatAmount(finalTotal)}</div></div>
+                  <div className="flex justify-between mt-2"><div>Amount Paid</div><div>{formatAmount(Number(amountPaid || 0))}</div></div>
+                  <div className="bg-slate-100 rounded p-2 mt-3 flex justify-between"><div>Balance Due</div><div className="font-semibold">{formatAmount(balanceDue)}</div></div>
+                </div>
+              </div>
+            </div>
+          )}
           {/* Items List */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Enrollments</h3>
@@ -404,18 +559,30 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>{currencies[currency as keyof typeof currencies].symbol}{subtotal.toFixed(2)}</span>
+                  <span>{formatAmount(subtotal)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>Discount ({discount}%):</span>
-                    <span>-{currencies[currency as keyof typeof currencies].symbol}{discountAmount.toFixed(2)}</span>
+                    <span>-{formatAmount(discountAmount)}</span>
                   </div>
                 )}
+                <div className="flex justify-between">
+                  <span>Taxes:</span>
+                  <span>{formatAmount(Number(taxAmount || 0))}</span>
+                </div>
                 <hr className="my-2" />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total:</span>
-                  <span>{currencies[currency as keyof typeof currencies].symbol}{total.toFixed(2)}</span>
+                  <span>{formatAmount(finalTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Amount Paid:</span>
+                  <span>{formatAmount(Number(amountPaid || 0))}</span>
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="font-semibold">Balance Due:</span>
+                  <span className="font-semibold">{formatAmount(balanceDue)}</span>
                 </div>
               </div>
             </CardContent>
@@ -428,7 +595,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
             </Button>
             <Button
               onClick={generatePDF}
-              disabled={selectedItems.length === 0 || isGenerating}
+              disabled={selectedItems.length === 0 || isGenerating || !showPreview}
             >
               <Download className="mr-2 h-4 w-4" />
               {isGenerating ? 'Generating...' : 'Download PDF'}
