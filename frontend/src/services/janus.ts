@@ -353,7 +353,7 @@ export class JanusClient {
 
         try {
             // Use backend API to securely create room with admin key
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}video-rooms/janus/create`;
+            const apiUrl = `${import.meta.env.VITE_API_URL || '/api/'}video-rooms/janus/create`;
             console.log(`[Janus] Creating room via backend API: ${apiUrl}`);
 
             const token = localStorage.getItem('token');
@@ -754,7 +754,7 @@ export class JanusClient {
 
         try {
             const roomId = this.getRoomId();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}video-rooms/${roomId}/join`;
+            const apiUrl = `${import.meta.env.VITE_API_URL || '/api/'}video-rooms/${roomId}/join`;
             const token = localStorage.getItem('token');
 
             if (!token) {
@@ -793,7 +793,7 @@ export class JanusClient {
 
         try {
             const roomId = this.getRoomId();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}video-rooms/${roomId}/leave`;
+            const apiUrl = `${import.meta.env.VITE_API_URL || '/api/'}video-rooms/${roomId}/leave`;
             const token = localStorage.getItem('token');
 
             if (!token) {

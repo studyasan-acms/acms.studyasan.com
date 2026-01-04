@@ -52,7 +52,7 @@ export default function AttendanceListPage() {
 
       // Fetch past sessions (where attendance would be recorded)
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}class-sessions/past`,
+        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/past`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,

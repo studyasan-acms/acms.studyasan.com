@@ -63,7 +63,7 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
 
             // Connect to socket
             // Ensure we connect to root, strip /api if present in env
-            const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace('/api', '');
+            const baseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
             const newSocket = io(baseUrl);
             setSocket(newSocket);
 

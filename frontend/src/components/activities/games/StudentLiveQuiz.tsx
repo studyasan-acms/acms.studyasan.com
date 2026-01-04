@@ -70,7 +70,7 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
             setCurrentQuestionIndex(sessionData.current_question_index);
 
             // Connect socket
-            const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace('/api', '');
+            const baseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
             const newSocket = io(baseUrl);
             setSocket(newSocket);
 

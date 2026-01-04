@@ -67,7 +67,7 @@ export default function ClassAttendancePage() {
       setError(null);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}class-sessions/${sessionId}/attendance`,
+        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/${sessionId}/attendance`,
         {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,

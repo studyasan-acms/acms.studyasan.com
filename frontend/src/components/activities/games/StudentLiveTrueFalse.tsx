@@ -129,7 +129,7 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
     };
 
     const connectSocket = (sId: number, sName: string) => {
-        const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000').replace('/api', '');
+        const baseUrl = (import.meta.env.VITE_API_URL || '').replace('/api', '');
         console.log('Connecting to socket at:', baseUrl);
         const newSocket = io(baseUrl);
         setSocket(newSocket);
