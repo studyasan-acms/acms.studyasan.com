@@ -19,7 +19,7 @@ import type {
 } from '@/types/videoRoom';
 
 // Default Janus server URL
-const JANUS_URL = import.meta.env.VITE_JANUS_URL || 'wss://janus.xdastechnology.com/janus';
+const JANUS_URL = import.meta.env.VITE_JANUS_URL;
 
 interface UseJanusOptions {
     roomCode: string;

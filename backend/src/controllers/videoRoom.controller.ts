@@ -17,8 +17,8 @@ export const createJanusRoom = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Room ID is required', 400);
     }
 
-    const janusApiUrl = process.env.JANUS_HTTP_API || 'https://janus.xdastechnology.com/api';
-    const adminKey = process.env.JANUS_ADMIN_KEY || 'CHANGE_THIS_TO_A_STRONG_SECRET';
+    const janusApiUrl = process.env.JANUS_HTTP_API || '';
+    const adminKey = process.env.JANUS_ADMIN_KEY;
 
     console.log(`[Backend] Creating Janus room: ${roomId}`);
     console.log(`[Backend] Janus API URL: ${janusApiUrl}`);

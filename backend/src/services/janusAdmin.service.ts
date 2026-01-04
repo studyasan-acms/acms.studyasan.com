@@ -9,7 +9,7 @@
 import axios from 'axios';
 
 // Regular Janus API for plugin operations
-const JANUS_API_URL = process.env.JANUS_API_URL || 'https://janus.xdastechnology.com/api';
+const JANUS_API_URL = process.env.JANUS_API_URL || '';
 
 /**
  * Generate a unique transaction ID for Janus requests
