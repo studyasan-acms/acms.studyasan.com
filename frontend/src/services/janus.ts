@@ -832,7 +832,7 @@ export class JanusClient {
 
         try {
             const roomId = this.getRoomId();
-            const apiUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:3000/api/'}video-rooms/${roomId}/leave`;
+            const apiUrl = `${import.meta.env.VITE_API_URL || '/api/'}video-rooms/${roomId}/leave`;
             const token = localStorage.getItem('token');
 
             if (!token) {
