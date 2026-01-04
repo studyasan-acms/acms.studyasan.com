@@ -53,6 +53,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB limit
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
         runtimeCaching: [
           {
@@ -122,9 +123,55 @@ export default defineConfig({
   },
   build: {
     outDir: 'dist',
+    chunkSizeWarningLimit: 1000, // 1000 KB warning limit
     rollupOptions: {
       output: {
-        manualChunks: undefined,
+        manualChunks: (id) => {
+          // Core React libraries
+          if (id.includes('node_modules/react/') || id.includes('node_modules/react-dom/')) {
+            return 'react-vendor';
+          }
+          // React Router
+          if (id.includes('node_modules/react-router')) {
+            return 'router';
+          }
+          // Radix UI components
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'radix-ui';
+          }
+          // Charting library
+          if (id.includes('node_modules/recharts') || id.includes('node_modules/d3')) {
+            return 'charts';
+          }
+          // PDF generation
+          if (id.includes('node_modules/jspdf')) {
+            return 'pdf';
+          }
+          // Lottie animations
+          if (id.includes('node_modules/@lottiefiles') || id.includes('node_modules/lottie')) {
+            return 'lottie';
+          }
+          // Lucide icons
+          if (id.includes('node_modules/lucide-react')) {
+            return 'icons';
+          }
+          // Socket.io
+          if (id.includes('node_modules/socket.io')) {
+            return 'socket';
+          }
+          // State management
+          if (id.includes('node_modules/zustand')) {
+            return 'state';
+          }
+          // Date utilities
+          if (id.includes('node_modules/date-fns')) {
+            return 'date-utils';
+          }
+          // Other node_modules
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        },
       },
     },
   },
