@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
+import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
 import DashboardLayout from '@/components/layout/DashboardLayout';
@@ -339,6 +340,7 @@ function App() {
           </div>
         } />
       </Routes>
+      <PWAUpdatePrompt />
       <Toaster />
     </Router>
   );
