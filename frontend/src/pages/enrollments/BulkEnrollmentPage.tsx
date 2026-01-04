@@ -11,11 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
 
 const BulkEnrollmentPage: React.FC = () => {
+  usePageTitle("Bulk Enrollment");
   const navigate = useNavigate();
   const { user } = useAuthStore();
 

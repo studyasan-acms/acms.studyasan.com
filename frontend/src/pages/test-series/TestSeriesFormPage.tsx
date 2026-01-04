@@ -32,6 +32,7 @@ import type { TestSeriesTeacherJunction, Currency } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 import { ArrowLeft, Loader2, Save, Users, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface TeacherData {
     id: number;
@@ -44,6 +45,7 @@ interface TeacherData {
 }
 
 export default function TestSeriesFormPage() {
+    usePageTitle("Test Series");
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditing = !!id;

@@ -96,7 +96,10 @@ const testimonials = [
     },
 ];
 
+import { usePageTitle } from "@/hooks/usePageTitle";
+
 export default function HomePage() {
+    usePageTitle("Home");
     return (
         <div className="overflow-hidden">
             {/* Hero Section */}

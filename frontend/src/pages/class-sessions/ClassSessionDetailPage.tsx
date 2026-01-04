@@ -8,8 +8,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ClassSessionDetailPage() {
+  usePageTitle("Session Details");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [session, setSession] = useState<ClassSession | null>(null);

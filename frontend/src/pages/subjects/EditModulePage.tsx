@@ -8,8 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft, Upload, FileText, Trash2, Image, Video, File } from 'lucide-react';
 import { moduleService } from '@/services/api';
 import type { Module, UpdateModuleData } from '@/types';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function EditModulePage() {
+  usePageTitle("Edit Module");
   const { subjectId, moduleId } = useParams<{ subjectId: string; moduleId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -272,15 +274,15 @@ export default function EditModulePage() {
                   <Label>Existing Content ({module.content.length} items)</Label>
                   <div className="space-y-2 mt-3">
                     {module.content.map((content) => (
-                      <div 
-                        key={content.content_id} 
+                      <div
+                        key={content.content_id}
                         className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center gap-3 flex-1">
                           {getContentIcon(content.type)}
                           <div className="flex-1 min-w-0">
                             <p className="font-medium truncate">
-                              {content.type === 'text' 
+                              {content.type === 'text'
                                 ? (content.text_content?.substring(0, 60) + (content.text_content && content.text_content.length > 60 ? '...' : ''))
                                 : content.file_name || 'Untitled'}
                             </p>

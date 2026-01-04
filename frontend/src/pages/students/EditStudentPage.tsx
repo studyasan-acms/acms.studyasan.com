@@ -42,8 +42,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function EditStudentPage() {
+  usePageTitle("Edit Student");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
@@ -318,11 +320,11 @@ export default function EditStudentPage() {
       // Remove undefined values
       const cleanData: UpdateStudentData = {};
 
-Object.entries(transformedData).forEach(([key, value]) => {
-  if (value !== undefined && value !== null) {
-    (cleanData as any)[key] = value ?? null;
-  }
-});
+      Object.entries(transformedData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          (cleanData as any)[key] = value ?? null;
+        }
+      });
 
       console.log("Updating student with data:", cleanData);
 
@@ -438,24 +440,24 @@ Object.entries(transformedData).forEach(([key, value]) => {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-gray-600">Full Name</Label>
-                <Input 
-                  value={formData.name || ""} 
+                <Input
+                  value={formData.name || ""}
                   onChange={(e) => handleChange("name", e.target.value)}
                   disabled={isSaving}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Email</Label>
-                <Input 
-                  value={formData.email || ""} 
+                <Input
+                  value={formData.email || ""}
                   onChange={(e) => handleChange("email", e.target.value)}
                   disabled={isSaving}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Phone</Label>
-                <Input 
-                  value={formData.phone || ""} 
+                <Input
+                  value={formData.phone || ""}
                   onChange={(e) => handleChange("phone", e.target.value)}
                   disabled={isSaving}
                 />

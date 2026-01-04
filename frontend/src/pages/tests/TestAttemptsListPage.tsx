@@ -6,11 +6,14 @@ import type { Test, TestAttempt } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TestAttemptsListPage() {
+
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const [test, setTest] = useState<Test | null>(null);
+  usePageTitle(test ? `Test Attempts: ${test.title}` : "Test Attempts");
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,25 +48,25 @@ export default function TestAttemptsListPage() {
 
   return (
     <div className="space-y-6">
-{/* Header */}
-<div className="flex flex-col gap-3">
-  <div
-    onClick={() => navigate(`/tests/${testId}`)}
-    className="inline-flex items-center text-sm sm:text-base text-blue-600 hover:underline cursor-pointer"
-  >
-    <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
-    Back to Test
-  </div>
+      {/* Header */}
+      <div className="flex flex-col gap-3">
+        <div
+          onClick={() => navigate(`/tests/${testId}`)}
+          className="inline-flex items-center text-sm sm:text-base text-blue-600 hover:underline cursor-pointer"
+        >
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-1" />
+          Back to Test
+        </div>
 
-  <div>
-    <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Test Attempts</h1>
-    <p className="text-gray-400 mt-1 text-sm sm:text-base">
-      View all student attempts for this test
-    </p>
-  </div>
-</div>
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Test Attempts</h1>
+          <p className="text-gray-400 mt-1 text-sm sm:text-base">
+            View all student attempts for this test
+          </p>
+        </div>
+      </div>
 
-<p className="text-gray-600 text-sm sm:text-base md:text-lg mb-6 font-semibold">{test?.title}</p>
+      <p className="text-gray-600 text-sm sm:text-base md:text-lg mb-6 font-semibold">{test?.title}</p>
 
 
       {loading ? (

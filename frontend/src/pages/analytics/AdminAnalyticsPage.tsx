@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentAnalytics {
     studentId: number;
@@ -72,6 +73,7 @@ interface BusinessAnalytics {
 }
 
 export default function AdminAnalyticsPage() {
+    usePageTitle("Admin Analytics");
     const [studentsAnalytics, setStudentsAnalytics] = useState<StudentAnalytics[]>([]);
     const [teachersAnalytics, setTeachersAnalytics] = useState<TeacherAnalytics[]>([]);
     const [businessAnalytics, setBusinessAnalytics] = useState<BusinessAnalytics | null>(null);

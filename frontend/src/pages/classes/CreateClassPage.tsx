@@ -10,8 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
 import type { AxiosError } from 'axios';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CreateClassPage: React.FC = () => {
+  usePageTitle("Add Class");
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<CreateClassData>({ name: '' });

@@ -90,7 +90,10 @@ const categories = [
     'Personality Development',
 ];
 
+import { usePageTitle } from "@/hooks/usePageTitle";
+
 export default function BlogPage() {
+    usePageTitle("Blog");
     const [blogs, setBlogs] = useState(sampleBlogs);
     const [filteredBlogs, setFilteredBlogs] = useState(sampleBlogs);
     const [searchQuery, setSearchQuery] = useState('');
@@ -176,8 +179,8 @@ export default function BlogPage() {
                                     key={category}
                                     onClick={() => setSelectedCategory(category)}
                                     className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${selectedCategory === category
-                                            ? 'bg-blue-600 text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
                                     {category}
@@ -326,8 +329,8 @@ export default function BlogPage() {
                                             key={i}
                                             onClick={() => setCurrentPage(i + 1)}
                                             className={`w-10 h-10 rounded-lg font-medium transition-colors ${currentPage === i + 1
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'border border-gray-200 hover:bg-gray-50'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'border border-gray-200 hover:bg-gray-50'
                                                 }`}
                                         >
                                             {i + 1}

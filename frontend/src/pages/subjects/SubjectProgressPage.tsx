@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { ArrowLeft, Users, BookOpen, CheckCircle, Clock } from 'lucide-react';
 import { progressService, subjectService, moduleService } from '@/services/api';
 import type { Subject, Module, StudentModuleProgress } from '@/types';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentProgress {
   student_id: number;
@@ -20,6 +21,7 @@ interface StudentProgress {
 }
 
 export default function SubjectProgressPage() {
+  usePageTitle("Subject Progress");
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -46,7 +48,7 @@ export default function SubjectProgressPage() {
       setSubject(subjectResponse.data);
       const moduleData = modulesResponse.data;
       setModules(Array.isArray(moduleData) ? moduleData : []);
-      
+
       // Backend returns { data: { students: [...] } }
       const studentsData = progressResponse.data?.students || [];
       setStudentProgress(Array.isArray(studentsData) ? studentsData : []);
@@ -157,7 +159,7 @@ export default function SubjectProgressPage() {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Completed All Modules</p>
                     <p className="text-2xl font-bold">
-                      {Array.isArray(studentProgress) 
+                      {Array.isArray(studentProgress)
                         ? studentProgress.filter(sp => sp.completed_modules === sp.total_modules && sp.total_modules > 0).length
                         : 0}
                     </p>

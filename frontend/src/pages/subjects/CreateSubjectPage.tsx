@@ -17,8 +17,10 @@ import { useAuthStore } from '@/store/authStore';
 import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateSubjectPage() {
+  usePageTitle("Add New Subject");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'ADMIN';

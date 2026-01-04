@@ -12,8 +12,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { MessageCircle, Search, Send, Paperclip, File, Image, Video, FileText, X, UserPlus, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const ChatsPageNew = () => {
+  usePageTitle("Messages");
   const { chatId: chatIdParam } = useParams<{ chatId?: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -360,9 +362,8 @@ const ChatsPageNew = () => {
                 {chats.map((chat) => (
                   <div
                     key={chat.id}
-                    className={`p-3 cursor-pointer hover:bg-muted transition-colors ${
-                      selectedChat?.id === chat.id ? 'bg-muted' : ''
-                    }`}
+                    className={`p-3 cursor-pointer hover:bg-muted transition-colors ${selectedChat?.id === chat.id ? 'bg-muted' : ''
+                      }`}
                     onClick={() => selectChat(chat)}
                   >
                     <div className="flex items-start space-x-3">
@@ -445,16 +446,14 @@ const ChatsPageNew = () => {
                     {messages.map((message) => (
                       <div
                         key={message.id}
-                        className={`flex ${
-                          message.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                        }`}
+                        className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'
+                          }`}
                       >
                         <div
-                          className={`flex space-x-2 max-w-[70%] ${
-                            message.sender_id === user?.id
+                          className={`flex space-x-2 max-w-[70%] ${message.sender_id === user?.id
                               ? 'flex-row-reverse space-x-reverse'
                               : ''
-                          }`}
+                            }`}
                         >
                           <Avatar className="h-8 w-8">
                             <AvatarFallback className="text-xs">
@@ -463,11 +462,10 @@ const ChatsPageNew = () => {
                           </Avatar>
 
                           <div
-                            className={`rounded-lg p-3 ${
-                              message.sender_id === user?.id
+                            className={`rounded-lg p-3 ${message.sender_id === user?.id
                                 ? 'bg-primary text-primary-foreground'
                                 : 'bg-muted'
-                            }`}
+                              }`}
                           >
                             {message.sender_id !== user?.id && (
                               <div className="text-xs font-medium mb-1">

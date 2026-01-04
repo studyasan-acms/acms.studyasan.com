@@ -12,6 +12,7 @@ import QuizGameComponent from '../../components/activities/games/QuizGameCompone
 import WordSearchGame from '../../components/activities/games/WordSearchGame.tsx';
 import TrueFalseGame from '../../components/activities/games/TrueFalseGame.tsx';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const getRandomGradient = () => {
   const gradients = [
@@ -30,6 +31,7 @@ const getRandomGradient = () => {
 };
 
 export default function ActivitiesPage() {
+  usePageTitle("Activities");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
   const [loading, setLoading] = useState(true);

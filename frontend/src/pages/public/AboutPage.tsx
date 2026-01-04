@@ -11,6 +11,7 @@ import {
     Clock
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const missionPoints = [
     'To become one of the most effective agencies in India to promote quality education.',
@@ -53,6 +54,7 @@ const values = [
 ];
 
 export default function AboutPage() {
+    usePageTitle("About Us");
     return (
         <div>
             {/* Hero Section */}

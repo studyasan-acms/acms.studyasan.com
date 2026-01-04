@@ -8,6 +8,7 @@ import { authService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { Loader2, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Define the expected API error shape
 interface ApiErrorResponse {
@@ -19,6 +20,7 @@ interface ApiErrorResponse {
 }
 
 export default function LoginPage() {
+  usePageTitle("Login");
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 

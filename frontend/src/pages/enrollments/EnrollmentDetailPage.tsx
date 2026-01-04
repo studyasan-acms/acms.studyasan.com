@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const EnrollmentDetailPage: React.FC = () => {
+  usePageTitle("Enrollment Details");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -258,10 +260,10 @@ const EnrollmentDetailPage: React.FC = () => {
           {/* Quick Actions */}
           <Card>
             <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-xl text-gray-600">
+              <CardTitle className="flex items-center gap-2 text-xl text-gray-600">
                 <Clock className="h-5 w-5" /> Quick Actions
               </CardTitle>
-          
+
             </CardHeader>
             <CardContent className="space-y-2">
               <Link to={`/dashboard/students/${enrollment.student.id}`}>

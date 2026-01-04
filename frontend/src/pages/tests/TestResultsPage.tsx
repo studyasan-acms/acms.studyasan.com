@@ -6,11 +6,14 @@ import type { TestAttempt } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TestResultsPage() {
+
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
+  usePageTitle(attempt ? `Test Results: ${attempt.test?.title || ""}` : "Test Results");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -90,9 +93,8 @@ export default function TestResultsPage() {
               <div className="mt-4">
                 <div className="w-full bg-gray-200 rounded-full h-4">
                   <div
-                    className={`h-4 rounded-full ${
-                      attempt.is_passed ? 'bg-green-500' : 'bg-red-500'
-                    }`}
+                    className={`h-4 rounded-full ${attempt.is_passed ? 'bg-green-500' : 'bg-red-500'
+                      }`}
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
@@ -159,8 +161,8 @@ export default function TestResultsPage() {
                             <p className="text-sm">{answer.answer_text}</p>
                           )}
                           {answer.answer_media_url && answer.answer_media_type === 'image' && (
-                            <img 
-                              src={answer.answer_media_url} 
+                            <img
+                              src={answer.answer_media_url}
                               alt="Your answer"
                               className="mt-2 max-w-md max-h-48 rounded border"
                             />

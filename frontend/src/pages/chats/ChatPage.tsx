@@ -9,8 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Paperclip, Send, File, Image, Video, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const ChatPage = () => {
+  usePageTitle("Chat");
   const { chatId } = useParams<{ chatId: string }>();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ const ChatPage = () => {
       setLoading(false);
       return;
     }
-    
+
     loadMessages();
   }, [chatId]);
 
@@ -50,20 +52,20 @@ const ChatPage = () => {
       setLoading(false);
       return;
     }
-    
+
     try {
       setError(null);
       const response: ChatMessagesResponse = await chatService.getChatMessages(
-        parseInt(chatId), 
+        parseInt(chatId),
         { page, limit: pagination.limit }
       );
-      
+
       if (page === 1) {
         setMessages(response.data.messages);
       } else {
         setMessages(prev => [...response.data.messages, ...prev]);
       }
-      
+
       setPagination(response.data.pagination);
     } catch (error: any) {
       console.error('Error loading messages:', error);
@@ -88,7 +90,7 @@ const ChatPage = () => {
       };
 
       await chatService.sendMessage(parseInt(chatId), messageData, selectedFile || undefined);
-      
+
       setMessageText('');
       setSelectedFile(null);
       await loadMessages(1); // Reload messages to show the new one
@@ -133,9 +135,9 @@ const ChatPage = () => {
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(dateString).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   };
 
@@ -181,8 +183,8 @@ const ChatPage = () => {
                 </div>
               ) : (
                 messages.map((message) => (
-                  <div 
-                    key={message.id} 
+                  <div
+                    key={message.id}
                     className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
                   >
                     <div className={`flex space-x-2 max-w-[70%] ${message.sender_id === user?.id ? 'flex-row-reverse space-x-reverse' : ''}`}>
@@ -191,33 +193,32 @@ const ChatPage = () => {
                           {message.sender.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      
-                      <div className={`rounded-lg p-3 ${
-                        message.sender_id === user?.id 
-                          ? 'bg-primary text-primary-foreground' 
+
+                      <div className={`rounded-lg p-3 ${message.sender_id === user?.id
+                          ? 'bg-primary text-primary-foreground'
                           : 'bg-muted'
-                      }`}>
+                        }`}>
                         {message.sender_id !== user?.id && (
                           <div className="text-xs font-medium mb-1">
                             {message.sender.name}
                           </div>
                         )}
-                        
+
                         {message.content && (
                           <div className="text-sm mb-2">{message.content}</div>
                         )}
-                        
+
                         {message.attachment_url && (
                           <div className="mb-2">
                             {message.message_type === 'IMAGE' ? (
-                              <img 
-                                src={message.attachment_url} 
-                                alt="Attachment" 
+                              <img
+                                src={message.attachment_url}
+                                alt="Attachment"
                                 className="max-w-full h-auto rounded cursor-pointer"
                                 onClick={() => window.open(message.attachment_url!, '_blank')}
                               />
                             ) : (
-                              <div 
+                              <div
                                 className="flex items-center space-x-2 p-2 bg-background rounded cursor-pointer hover:bg-muted/50"
                                 onClick={() => window.open(message.attachment_url!, '_blank')}
                               >
@@ -229,7 +230,7 @@ const ChatPage = () => {
                             )}
                           </div>
                         )}
-                        
+
                         <div className="text-xs opacity-70">
                           {formatTime(message.created_at)}
                         </div>
@@ -250,16 +251,16 @@ const ChatPage = () => {
                   {getFileIcon(getMessageType(selectedFile))}
                   <span className="text-sm truncate">{selectedFile.name}</span>
                 </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setSelectedFile(null)}
                 >
                   ×
                 </Button>
               </div>
             )}
-            
+
             <div className="flex space-x-2">
               <Input
                 placeholder="Type a message..."
@@ -268,7 +269,7 @@ const ChatPage = () => {
                 onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                 disabled={sending}
               />
-              
+
               <input
                 type="file"
                 ref={fileInputRef}
@@ -276,18 +277,18 @@ const ChatPage = () => {
                 accept="image/*,video/*,.pdf,.doc,.docx,.txt"
                 className="hidden"
               />
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 size="icon"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={sending}
               >
                 <Paperclip className="h-4 w-4" />
               </Button>
-              
-              <Button 
-                onClick={handleSendMessage} 
+
+              <Button
+                onClick={handleSendMessage}
                 disabled={sending || (!messageText.trim() && !selectedFile)}
               >
                 <Send className="h-4 w-4" />

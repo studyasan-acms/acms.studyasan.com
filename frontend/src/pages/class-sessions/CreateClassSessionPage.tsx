@@ -14,8 +14,10 @@ import { useAuthStore } from '@/store/authStore';
 // Import your modals
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateClassSessionPage() {
+  usePageTitle("Schedule Session");
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -267,8 +269,8 @@ export default function CreateClassSessionPage() {
               <button
                 type="button"
                 className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'ONLINE'
-                    ? 'border-saBlue bg-saBlueLight/30'
-                    : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-saBlue bg-saBlueLight/30'
+                  : 'border-gray-200 hover:border-gray-300'
                   }`}
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'ONLINE' }))}
               >
@@ -280,8 +282,8 @@ export default function CreateClassSessionPage() {
               <button
                 type="button"
                 className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'OFFLINE'
-                    ? 'border-amber-500 bg-amber-50'
-                    : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-amber-500 bg-amber-50'
+                  : 'border-gray-200 hover:border-gray-300'
                   }`}
                 onClick={() => setFormData((prev) => ({ ...prev, mode: 'OFFLINE' }))}
               >
@@ -508,8 +510,8 @@ export default function CreateClassSessionPage() {
                           <label
                             key={day}
                             className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all ${recurrenceRule.daysOfWeek?.includes(index)
-                                ? 'bg-saBlue text-white border-saBlue'
-                                : 'hover:bg-gray-50'
+                              ? 'bg-saBlue text-white border-saBlue'
+                              : 'hover:bg-gray-50'
                               }`}
                           >
                             <Checkbox

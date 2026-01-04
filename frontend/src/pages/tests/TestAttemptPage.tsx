@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import MediaUpload from '@/components/ui/MediaUpload';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TestAttemptPage() {
+
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
+  usePageTitle(attempt ? `Test Attempt: ${attempt.test?.title || ""}` : "Test Attempt");
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: number]: string }>({});
@@ -131,7 +134,7 @@ export default function TestAttemptPage() {
         const formData = new FormData();
         formData.append("question_id", questionId.toString());
         formData.append("answer_text", answerText || "");
-        
+
         if (mediaFile) {
           formData.append("answer_media", mediaFile);
           setAnswerMediaFiles({ ...answerMediaFiles, [questionId]: mediaFile });
@@ -139,7 +142,7 @@ export default function TestAttemptPage() {
           formData.append("answer_media_url", mediaUrl);
           setAnswerMediaUrls({ ...answerMediaUrls, [questionId]: mediaUrl });
         }
-        
+
         await testAttemptService.submitAnswerWithMedia(parseInt(attemptId!), formData);
       } else {
         await testAttemptService.submitAnswer(parseInt(attemptId!), {
@@ -250,9 +253,9 @@ export default function TestAttemptPage() {
             {currentQuestion.media_url && (
               <div className="mb-6 border rounded-lg p-3 bg-gray-50">
                 {currentQuestion.media_type === 'image' && (
-                  <img 
-                    src={currentQuestion.media_url} 
-                    alt="Question" 
+                  <img
+                    src={currentQuestion.media_url}
+                    alt="Question"
                     className="max-w-full max-h-96 mx-auto rounded"
                   />
                 )}
@@ -261,9 +264,9 @@ export default function TestAttemptPage() {
                     <FileText className="w-8 h-8 text-red-500" />
                     <div>
                       <p className="font-medium">PDF Document</p>
-                      <a 
-                        href={currentQuestion.media_url} 
-                        target="_blank" 
+                      <a
+                        href={currentQuestion.media_url}
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-blue-600 hover:underline"
                       >
@@ -273,9 +276,9 @@ export default function TestAttemptPage() {
                   </div>
                 )}
                 {currentQuestion.media_type === 'video' && (
-                  <video 
-                    src={currentQuestion.media_url} 
-                    controls 
+                  <video
+                    src={currentQuestion.media_url}
+                    controls
                     className="max-w-full max-h-96 mx-auto rounded"
                   >
                     Your browser does not support the video tag.
@@ -294,7 +297,7 @@ export default function TestAttemptPage() {
                   const optionLetter = String.fromCharCode(65 + index);
                   // Use option text if available, otherwise use letter for image-only options
                   const optionValue = optionText || optionLetter;
-                  
+
                   return (
                     <label
                       key={index}
@@ -313,13 +316,13 @@ export default function TestAttemptPage() {
                           {optionLetter}. {optionText}
                         </span>
                       </div>
-                      
+
                       {/* Option Media */}
                       {optionMediaUrl && (
                         <div className="ml-8 mt-2">
                           {optionMediaType === 'image' && (
-                            <img 
-                              src={optionMediaUrl} 
+                            <img
+                              src={optionMediaUrl}
                               alt={`Option ${optionLetter}`}
                               className="max-w-xs max-h-32 rounded border"
                             />
@@ -363,7 +366,7 @@ export default function TestAttemptPage() {
                   className="w-full p-4 border rounded-lg min-h-[150px]"
                   placeholder="Type your answer here..."
                 />
-                
+
                 <MediaUpload
                   label="Upload Answer Media (Optional)"
                   value={answerMediaUrls[currentQuestion.id]}
@@ -395,13 +398,12 @@ export default function TestAttemptPage() {
               <button
                 key={index}
                 onClick={() => setCurrentQuestionIndex(index)}
-                className={`w-10 h-10 rounded-full ${
-                  index === currentQuestionIndex
-                    ? 'bg-blue-600 text-white'
-                    : answers[questions[index].id]
+                className={`w-10 h-10 rounded-full ${index === currentQuestionIndex
+                  ? 'bg-blue-600 text-white'
+                  : answers[questions[index].id]
                     ? 'bg-green-500 text-white'
                     : 'bg-gray-200'
-                }`}
+                  }`}
               >
                 {index + 1}
               </button>

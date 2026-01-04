@@ -46,8 +46,10 @@ import {
 
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function SubjectsPage() {
+  usePageTitle("Subjects");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
 

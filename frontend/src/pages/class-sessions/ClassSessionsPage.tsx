@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import {  useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Video, MapPin, Clock, Calendar, Users, RefreshCw, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
 import { classSessionService, subjectService, teacherService } from '@/services/api';
 import type { ClassSession, Subject, Teacher } from '@/types';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface SessionParams {
   subject_id?: number;
@@ -16,6 +17,7 @@ interface SessionParams {
 }
 
 export default function ClassSessionsPage() {
+  usePageTitle("Class Sessions");
   const [sessions, setSessions] = useState<ClassSession[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -168,123 +170,123 @@ export default function ClassSessionsPage() {
     }
   };
 
-const renderSessionCard = (session: ClassSession) => {
-  const status = getSessionStatus(session);
-  return (
-    <Card
-      key={session.id}
-      className="shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden flex flex-col"
-    >
-      <div className={`relative ${session.mode === 'ONLINE' ? 'bg-saBlueLight/60' : 'bg-saBlueLight/60'} text-gray-600 p-4 sm:p-5`}>
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-2">
-            {session.mode === 'ONLINE' ? <Video className="w-5 h-5 text-saBlue/50" /> : <BookOpen className="w-5 h-5 text-saVividOrange" />}
-            <CardTitle className="text-md sm:text-lg font-semibold">
-              {session.subject?.name || 'Class Session'}
-            </CardTitle>
-          </div>
-          <div className="flex flex-col items-end gap-1">
-            <Badge className={`text-white text-xs font-medium px-2 py-1 rounded-full ${status.color}`}>
-              {status.label}
-            </Badge>
-            {session.is_recurring && (
-              <Badge variant="outline" className="text-xs flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" /> Recurring
+  const renderSessionCard = (session: ClassSession) => {
+    const status = getSessionStatus(session);
+    return (
+      <Card
+        key={session.id}
+        className="shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden flex flex-col"
+      >
+        <div className={`relative ${session.mode === 'ONLINE' ? 'bg-saBlueLight/60' : 'bg-saBlueLight/60'} text-gray-600 p-4 sm:p-5`}>
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-2">
+              {session.mode === 'ONLINE' ? <Video className="w-5 h-5 text-saBlue/50" /> : <BookOpen className="w-5 h-5 text-saVividOrange" />}
+              <CardTitle className="text-md sm:text-lg font-semibold">
+                {session.subject?.name || 'Class Session'}
+              </CardTitle>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <Badge className={`text-white text-xs font-medium px-2 py-1 rounded-full ${status.color}`}>
+                {status.label}
               </Badge>
-            )}
+              {session.is_recurring && (
+                <Badge variant="outline" className="text-xs flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Recurring
+                </Badge>
+              )}
+            </div>
           </div>
+          <p className="text-xs sm:text-sm mt-1 opacity-80">
+            by {session.teacher?.user?.name || 'Unknown Teacher'}
+          </p>
         </div>
-        <p className="text-xs sm:text-sm mt-1 opacity-80">
-          by {session.teacher?.user?.name || 'Unknown Teacher'}
-        </p>
-      </div>
 
-      <CardContent className="bg-gray-100 rounded-b-2xl pt-6 p-4 sm:p-5 space-y-3 text-gray-700 flex-1 flex flex-col justify-between">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-saBlue/50" />
-            <span>{formatDate(session.start_time)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-saBlue/50" />
-            <span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span>
-          </div>
-          {session.class && (
+        <CardContent className="bg-gray-100 rounded-b-2xl pt-6 p-4 sm:p-5 space-y-3 text-gray-700 flex-1 flex flex-col justify-between">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-saBlue/50" />
+              <span>{formatDate(session.start_time)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-saBlue/50" />
+              <span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span>
+            </div>
+            {session.class && (
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-saBlue/50" />
+                <span>Class {session.class.name}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-saBlue/50" />
-              <span>Class {session.class.name}</span>
+              <span>{session._count?.attendances || 0} Attendees</span>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-saBlue/50" />
-            <span>{session._count?.attendances || 0} Attendees</span>
           </div>
-        </div>
 
-        {session.mode === 'OFFLINE' && session.location && (
-          <p className="text-xs text-gray-500 flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> {session.location}
-          </p>
-        )}
+          {session.mode === 'OFFLINE' && session.location && (
+            <p className="text-xs text-gray-500 flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> {session.location}
+            </p>
+          )}
 
-        <div className="pt-3 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
-          {/* View Button */}
-          <Button
-            size="sm"
-            variant={'outline'}
-            className="text-gray-600 flex-1 border"
-            onClick={() => handleJoinSession(session)}
-          >
-            View
-          </Button>
-
-          {/* Online Join button */}
-          {status.canJoin && session.mode === 'ONLINE' && session.meeting_link && (
+          <div className="pt-3 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
+            {/* View Button */}
             <Button
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white flex-1"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleJoinSession(session);
-              }}
+              variant={'outline'}
+              className="text-gray-600 flex-1 border"
+              onClick={() => handleJoinSession(session)}
             >
-              <Video className="w-4 h-4 mr-2" />
-              Join Now
+              View
             </Button>
-          )}
 
-          {/* Edit/Delete for Admin/Teacher */}
-          {canManage && (
-            <>
+            {/* Online Join button */}
+            {status.canJoin && session.mode === 'ONLINE' && session.meeting_link && (
               <Button
                 size="sm"
-                variant="outline"
-                className="flex-1"
+                className="bg-green-600 hover:bg-green-700 text-white flex-1"
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/dashboard/class-sessions/${session.id}/edit`);
+                  handleJoinSession(session);
                 }}
               >
-                Edit
+                <Video className="w-4 h-4 mr-2" />
+                Join Now
               </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                className="flex-1"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteSession(session);
-                }}
-              >
-                Delete
-              </Button>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
+            )}
+
+            {/* Edit/Delete for Admin/Teacher */}
+            {canManage && (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/dashboard/class-sessions/${session.id}/edit`);
+                  }}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteSession(session);
+                  }}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
 
   const renderWeeklyView = () => {
@@ -325,10 +327,9 @@ const renderSessionCard = (session: ClassSession) => {
                     return (
                       <div
                         key={session.id}
-                        className={`p-2 rounded cursor-pointer hover:bg-gray-50 border-l-4 ${
-                          status.label === 'Live Now' ? 'border-green-500 bg-green-50' :
-                          status.label === 'Upcoming' ? 'border-blue-500' : 'border-gray-300'
-                        }`}
+                        className={`p-2 rounded cursor-pointer hover:bg-gray-50 border-l-4 ${status.label === 'Live Now' ? 'border-green-500 bg-green-50' :
+                            status.label === 'Upcoming' ? 'border-blue-500' : 'border-gray-300'
+                          }`}
                         onClick={() => navigate(`/dashboard/class-sessions/${session.id}`)}
                       >
                         <p className="font-medium text-sm text-gray-800">{session.subject?.name}</p>

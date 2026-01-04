@@ -25,11 +25,14 @@ import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import ConfirmModal from "@/components/ui/confirmationModal";
 import MediaUpload from "@/components/ui/MediaUpload";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TestDetailPage() {
+
   const { testId } = useParams<{ testId: string }>();
   const navigate = useNavigate();
   const [test, setTest] = useState<Test | null>(null);
+  usePageTitle(test ? `Test Details: ${test.title}` : "Test Details");
   const [loading, setLoading] = useState(true);
   const [hasAttempted, setHasAttempted] = useState(false); // Track if student already attempted
   const { user } = useAuthStore();
@@ -191,18 +194,18 @@ export default function TestDetailPage() {
 
     try {
       setLoading(true);
-      
+
       // If there's a media file or media removal, use FormData
       if (editQuestionMediaFile || removeQuestionMedia) {
         const formData = new FormData();
         formData.append("question_text", editFormData.question_text || "");
         formData.append("correct_answer", editFormData.correct_answer || "");
         formData.append("marks", (editFormData.marks || 2).toString());
-        
+
         if (editFormData.options) {
           formData.append("options", JSON.stringify(editFormData.options));
         }
-        
+
         if (removeQuestionMedia) {
           formData.append("media_url", "");
           formData.append("media_type", "");
@@ -214,12 +217,12 @@ export default function TestDetailPage() {
             formData.append("media_type", editQuestionMediaType);
           }
         }
-        
+
         await testService.updateQuestionWithMedia(editingQuestion.id, formData);
       } else {
         await testService.updateQuestion(editingQuestion.id, editFormData);
       }
-      
+
       setSuccessMessage("Question updated successfully!");
       setSuccessOpen(true);
       setEditModalOpen(false);
@@ -476,9 +479,9 @@ export default function TestDetailPage() {
                 {question.media_url && (
                   <div className="ml-4 mb-3 border rounded-lg p-2 bg-gray-50 max-w-md">
                     {question.media_type === 'image' && (
-                      <img 
-                        src={question.media_url} 
-                        alt="Question" 
+                      <img
+                        src={question.media_url}
+                        alt="Question"
                         className="max-w-full max-h-48 rounded"
                       />
                     )}
@@ -487,9 +490,9 @@ export default function TestDetailPage() {
                         <FileText className="w-6 h-6 text-red-500" />
                         <div>
                           <p className="text-sm font-medium">PDF Document</p>
-                          <a 
-                            href={question.media_url} 
-                            target="_blank" 
+                          <a
+                            href={question.media_url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-xs text-blue-600 hover:underline"
                           >
@@ -499,9 +502,9 @@ export default function TestDetailPage() {
                       </div>
                     )}
                     {question.media_type === 'video' && (
-                      <video 
-                        src={question.media_url} 
-                        controls 
+                      <video
+                        src={question.media_url}
+                        controls
                         className="max-w-full max-h-48 rounded"
                       >
                         Your browser does not support the video tag.
@@ -518,10 +521,10 @@ export default function TestDetailPage() {
                       const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
                       const optionLetter = String.fromCharCode(65 + optIndex);
                       // Check if correct answer matches text OR letter (for image-only options)
-                      const isCorrect = optionText === question.correct_answer || 
-                                       optionLetter === question.correct_answer ||
-                                       (optionText === '' && question.correct_answer === optionLetter);
-                      
+                      const isCorrect = optionText === question.correct_answer ||
+                        optionLetter === question.correct_answer ||
+                        (optionText === '' && question.correct_answer === optionLetter);
+
                       return (
                         <div key={optIndex} className={`p-2 rounded ${isCorrect ? 'bg-green-50' : ''}`}>
                           <p
@@ -531,8 +534,8 @@ export default function TestDetailPage() {
                             {isCorrect && " ✓"}
                           </p>
                           {optionMediaUrl && optionMediaType === 'image' && (
-                            <img 
-                              src={optionMediaUrl} 
+                            <img
+                              src={optionMediaUrl}
                               alt={`Option ${String.fromCharCode(65 + optIndex)}`}
                               className="mt-1 ml-4 max-w-xs max-h-24 rounded border"
                             />
@@ -672,7 +675,7 @@ export default function TestDetailPage() {
                         const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
                         const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
                         const hasMedia = optionMediaUrl && !removeOptionMedia[idx];
-                        
+
                         return (
                           <div key={idx} className="border rounded-lg p-3 bg-gray-50">
                             <div className="flex items-center justify-between gap-2 mb-2">
@@ -714,8 +717,8 @@ export default function TestDetailPage() {
                               )}
                             </div>
                             {hasMedia && optionMediaType === 'image' && (
-                              <img 
-                                src={optionMediaUrl} 
+                              <img
+                                src={optionMediaUrl}
                                 alt={`Option ${String.fromCharCode(65 + idx)}`}
                                 className="ml-8 max-w-xs max-h-24 rounded border mt-2"
                               />

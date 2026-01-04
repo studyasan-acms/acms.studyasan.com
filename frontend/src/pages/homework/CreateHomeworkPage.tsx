@@ -25,6 +25,7 @@ import { subjectService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 
 import type { Subject } from "@/types";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 import { ArrowLeft, Upload, Loader2, Users } from "lucide-react";
 
@@ -38,6 +39,7 @@ interface Student {
 }
 
 export default function CreateHomeworkPage() {
+  usePageTitle("Create Homework");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);

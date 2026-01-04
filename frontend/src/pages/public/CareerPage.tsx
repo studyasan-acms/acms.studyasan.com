@@ -94,7 +94,10 @@ const benefits = [
     },
 ];
 
+import { usePageTitle } from "@/hooks/usePageTitle";
+
 export default function CareerPage() {
+    usePageTitle("Careers");
     return (
         <div>
             {/* Hero Section */}

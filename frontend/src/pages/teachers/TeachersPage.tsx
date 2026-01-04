@@ -37,8 +37,10 @@ import {
   UserCheck,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TeachersPage() {
+  usePageTitle("Teachers");
   const navigate = useNavigate();
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState(true);

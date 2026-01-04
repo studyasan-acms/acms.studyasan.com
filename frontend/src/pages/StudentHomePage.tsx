@@ -15,11 +15,12 @@ import {
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 // Slider Component
-const ItemSlider = ({ title, items, icon: Icon, onItemClick }: { 
-    title: string; 
-    items: any[]; 
+const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
+    title: string;
+    items: any[];
     icon: React.ElementType;
     onItemClick: (item: any) => void;
 }) => {
@@ -61,7 +62,7 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
                     </div>
                 )}
             </div>
-            
+
             {/* Mobile: Grid layout, Desktop: Horizontal scroll */}
             <div className="block md:hidden">
                 {items.length === 0 ? (
@@ -81,7 +82,7 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
                     </div>
                 )}
             </div>
-            
+
             <div className="hidden md:block">
                 <div
                     id={`slider-${title}`}
@@ -109,6 +110,7 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
 };
 
 export default function StudentHomePage() {
+    usePageTitle("Home");
     const { user } = useAuthStore();
     const [items, setItems] = useState<any[]>([]);
     const [filteredItems, setFilteredItems] = useState<any[]>([]);

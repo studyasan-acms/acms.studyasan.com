@@ -8,6 +8,7 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface FetchParams {
   user_id?: number;
@@ -16,6 +17,7 @@ interface FetchParams {
 }
 
 export default function TestsPage() {
+  usePageTitle("Tests");
   const [tests, setTests] = useState<Test[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -184,15 +186,14 @@ export default function TestsPage() {
                       {test.title}
                     </CardTitle>
                     <Badge
-                      className={`text-white text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full ${
-                        status.color === "bg-gray-500"
+                      className={`text-white text-xs sm:text-sm font-medium px-2 sm:px-3 py-1 rounded-full ${status.color === "bg-gray-500"
                           ? "bg-gray-600"
                           : status.color === "bg-blue-400"
-                          ? "bg-saBlueLight"
-                          : status.color === "bg-red-500"
-                          ? "bg-red-600"
-                          : "bg-green-600"
-                      }`}
+                            ? "bg-saBlueLight"
+                            : status.color === "bg-red-500"
+                              ? "bg-red-600"
+                              : "bg-green-600"
+                        }`}
                     >
                       {status.label}
                     </Badge>

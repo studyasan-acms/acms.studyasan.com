@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuthStore } from "@/store/authStore";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface FetchParams {
   page: number;
@@ -16,6 +17,7 @@ interface FetchParams {
 }
 
 const BoardsPage: React.FC = () => {
+  usePageTitle("Boards");
   const { user } = useAuthStore();
   const [boards, setBoards] = useState<Board[]>([]);
   const [loading, setLoading] = useState(true);

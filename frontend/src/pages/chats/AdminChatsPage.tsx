@@ -7,6 +7,7 @@ import type { Chat, User } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 /* ---------------------------
    Custom StatsCard (Lite)
@@ -47,6 +48,7 @@ function StatsCardLite({
    Admin Chats Page
 ---------------------------- */
 export default function AdminChatsPage() {
+  usePageTitle("Support Chats");
   const [chats, setChats] = useState<Chat[]>([]);
   const [filteredChats, setFilteredChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
@@ -186,11 +188,11 @@ export default function AdminChatsPage() {
                 onClick={() => navigate(`/dashboard/chats?chatId=${chat.id}`)}
               >
 
-{/* Header */}
-<div className="bg-saBlueLight/60 p-4 sm:p-5 flex justify-between items-center text-gray-700 font-semibold">
-  <span>Chat #{chat.id}</span>
-  <span>{timeAgo}</span>
-</div>
+                {/* Header */}
+                <div className="bg-saBlueLight/60 p-4 sm:p-5 flex justify-between items-center text-gray-700 font-semibold">
+                  <span>Chat #{chat.id}</span>
+                  <span>{timeAgo}</span>
+                </div>
 
 
                 {/* Body */}

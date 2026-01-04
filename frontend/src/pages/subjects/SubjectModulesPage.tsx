@@ -7,8 +7,10 @@ import { Plus, Edit, Trash2, BookOpen, ArrowLeft, Clock, FileText } from 'lucide
 import { moduleService, subjectService } from '@/services/api';
 import type { Module, Subject } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function SubjectModulesPage() {
+  usePageTitle("Subject Modules");
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -73,7 +75,7 @@ export default function SubjectModulesPage() {
         <Card className="border-red-200 bg-red-50">
           <CardContent className="pt-6">
             <p className="text-red-600">{error}</p>
-            <Button 
+            <Button
               onClick={() => navigate('/dashboard/subjects')}
               variant="outline"
               className="mt-4"
@@ -97,7 +99,7 @@ export default function SubjectModulesPage() {
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Subjects
         </Button>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">{subject?.name}</h1>

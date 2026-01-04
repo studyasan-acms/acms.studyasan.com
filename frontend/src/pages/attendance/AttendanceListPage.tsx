@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, ChevronRight, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface ClassSession {
   id: number;
@@ -33,6 +34,7 @@ interface ClassSession {
 }
 
 export default function AttendanceListPage() {
+  usePageTitle("Attendance");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [sessions, setSessions] = useState<ClassSession[]>([]);

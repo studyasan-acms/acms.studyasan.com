@@ -8,8 +8,10 @@ import { authService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { Loader2 } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function RegisterPage() {
+  usePageTitle("Register");
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 

@@ -19,25 +19,27 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Routes
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'ACMS StudyAsan API',
-    version: '1.0.0',
-  });
-});
+
+
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// Define dirname manually for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 app.use('/api', routes);
+
+// Serve static files from the frontend build
+const frontendPath = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendPath));
 
 // Error handling
 app.use(errorHandler);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
+// SPA Fallback: Serve index.html for any unknown route NOT starting with /api
+app.get(/.*/, (req, res) => {
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // Initialize Socket.IO

@@ -23,10 +23,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Gender = "M" | "F" | "OTHER" | null;
 
 export default function CreateStudentPage() {
+  usePageTitle("Add New Student");
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);
@@ -163,27 +165,27 @@ export default function CreateStudentPage() {
     try {
       console.log('Form data being sent:', formData);
 
-const bloodGroupMap: Record<string, "A_POS" | "A_NEG" | "B_POS" | "B_NEG" | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG"> = {
-  'A+': 'A_POS',
-  'A-': 'A_NEG',
-  'B+': 'B_POS',
-  'B-': 'B_NEG',
-  'AB+': 'AB_POS',
-  'AB-': 'AB_NEG',
-  'O+': 'O_POS',
-  'O-': 'O_NEG',
-};
+      const bloodGroupMap: Record<string, "A_POS" | "A_NEG" | "B_POS" | "B_NEG" | "AB_POS" | "AB_NEG" | "O_POS" | "O_NEG"> = {
+        'A+': 'A_POS',
+        'A-': 'A_NEG',
+        'B+': 'B_POS',
+        'B-': 'B_NEG',
+        'AB+': 'AB_POS',
+        'AB-': 'AB_NEG',
+        'O+': 'O_POS',
+        'O-': 'O_NEG',
+      };
 
-const transformedData = {
-  ...formData,
-  blood_group: formData.blood_group ? bloodGroupMap[formData.blood_group] : null,
-  addressLine: formData.addressLine || '',
-  school: formData.school || '',
-  countryId: formData.countryId || 0, // ensure number
-  stateId: formData.stateId || 0,     // ensure number
-  cityId: formData.cityId || 0,       // ensure number
-   postalCode: formData.postalCode || '',
-};
+      const transformedData = {
+        ...formData,
+        blood_group: formData.blood_group ? bloodGroupMap[formData.blood_group] : null,
+        addressLine: formData.addressLine || '',
+        school: formData.school || '',
+        countryId: formData.countryId || 0, // ensure number
+        stateId: formData.stateId || 0,     // ensure number
+        cityId: formData.cityId || 0,       // ensure number
+        postalCode: formData.postalCode || '',
+      };
 
 
 

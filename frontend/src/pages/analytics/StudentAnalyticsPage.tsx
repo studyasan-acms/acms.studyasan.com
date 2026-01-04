@@ -14,6 +14,7 @@ import {
     TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentAnalytics {
     classes: {
@@ -43,6 +44,7 @@ interface StudentAnalytics {
 }
 
 export default function StudentAnalyticsPage() {
+    usePageTitle("My Analytics");
     const [analytics, setAnalytics] = useState<StudentAnalytics | null>(null);
     const [loading, setLoading] = useState(true);
     // const token = useAuthStore((state) => state.token);

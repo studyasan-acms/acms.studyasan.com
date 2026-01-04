@@ -37,8 +37,10 @@ import StudentLiveQuiz from '../../components/activities/games/StudentLiveQuiz.t
 import StudentLiveMatchPairs from '../../components/activities/games/StudentLiveMatchPairs.tsx';
 import StudentLiveWordSearch from '../../components/activities/games/StudentLiveWordSearch.tsx';
 import StudentLiveTrueFalse from '../../components/activities/games/StudentLiveTrueFalse.tsx';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudentActivitiesPage() {
+  usePageTitle("Student Activities");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);

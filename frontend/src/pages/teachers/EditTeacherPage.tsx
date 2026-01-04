@@ -23,10 +23,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Gender = "M" | "F" | "OTHER" | null;
 
 export default function EditTeacherPage() {
+  usePageTitle("Edit Teacher");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
@@ -365,24 +367,24 @@ export default function EditTeacherPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-gray-600">Full Name</Label>
-                <Input 
-                  value={formData.name || ""} 
+                <Input
+                  value={formData.name || ""}
                   onChange={(e) => handleChange("name", e.target.value)}
                   disabled={isSaving}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Email</Label>
-                <Input 
-                  value={formData.email || ""} 
+                <Input
+                  value={formData.email || ""}
                   onChange={(e) => handleChange("email", e.target.value)}
                   disabled={isSaving}
                 />
               </div>
               <div className="space-y-2">
                 <Label className="text-gray-600">Phone</Label>
-                <Input 
-                  value={formData.phone || ""} 
+                <Input
+                  value={formData.phone || ""}
                   onChange={(e) => handleChange("phone", e.target.value)}
                   disabled={isSaving}
                 />

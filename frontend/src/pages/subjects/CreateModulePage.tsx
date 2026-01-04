@@ -8,8 +8,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { ArrowLeft } from 'lucide-react';
 import { moduleService } from '@/services/api';
 import type { CreateModuleData } from '@/types';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateModulePage() {
+  usePageTitle("Add Module");
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);

@@ -23,8 +23,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { useAuthStore } from "@/store/authStore";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function SubjectDetailPage() {
+  usePageTitle("Subject Details");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore((state) => state.user);

@@ -19,8 +19,10 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import StatsCard from "@/components/dashboard/StatsCard";
 import QuickActions from '@/components/dashboard/QuickActions';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function DashboardPage() {
+  usePageTitle("Dashboard");
   const { user } = useAuthStore();
   const [stats, setStats] = useState({
     students: 0,
@@ -139,7 +141,7 @@ export default function DashboardPage() {
       {/* Recent Activity + Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-  <QuickActions />
+        <QuickActions />
       </div>
     </div>
   );

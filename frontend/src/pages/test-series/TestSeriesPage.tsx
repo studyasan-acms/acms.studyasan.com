@@ -26,8 +26,10 @@ import {
     XCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TestSeriesPage() {
+    usePageTitle("Test Series");
     const navigate = useNavigate();
     const { user } = useAuthStore();
     const isAdmin = user?.role === "ADMIN";

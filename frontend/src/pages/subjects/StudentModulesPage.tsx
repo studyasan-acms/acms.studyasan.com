@@ -8,8 +8,10 @@ import { BookOpen, CheckCircle, Clock, Play } from 'lucide-react';
 import { moduleService, progressService, subjectService } from '@/services/api';
 import type { Module, Subject, StudentModuleProgress } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudentModulesPage() {
+  usePageTitle("My Modules");
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -154,7 +156,7 @@ export default function StudentModulesPage() {
                     >
                       <Play className="w-4 h-4 mr-2" />
                       {status === 'NOT_STARTED' ? 'Start Learning' :
-                       status === 'IN_PROGRESS' ? 'Continue Learning' : 'Review Module'}
+                        status === 'IN_PROGRESS' ? 'Continue Learning' : 'Review Module'}
                     </Button>
                   </CardContent>
                 </Card>

@@ -33,6 +33,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentData {
     id: number;
@@ -62,6 +63,7 @@ interface EnrolledStudent {
 }
 
 export default function TestSeriesDetailPage() {
+    usePageTitle("Test Series Details");
     const navigate = useNavigate();
     const { id } = useParams();
     const { user } = useAuthStore();

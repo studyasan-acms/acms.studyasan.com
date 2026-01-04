@@ -60,7 +60,10 @@ const faqs = [
     },
 ];
 
+import { usePageTitle } from "@/hooks/usePageTitle";
+
 export default function ContactPage() {
+    usePageTitle("Contact Us");
     const [formData, setFormData] = useState({
         name: '',
         email: '',

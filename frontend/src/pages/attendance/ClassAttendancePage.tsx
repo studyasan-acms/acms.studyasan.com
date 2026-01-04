@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Calendar, Clock, User, Users } from 'lucide-react';
 import { format } from 'date-fns';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface AttendanceLog {
   id: number;
@@ -47,6 +48,7 @@ interface AttendanceData {
 }
 
 export default function ClassAttendancePage() {
+  usePageTitle("Class Attendance");
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();

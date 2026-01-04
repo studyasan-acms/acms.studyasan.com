@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentAnalytics {
     studentId: number;
@@ -38,6 +39,7 @@ interface Subject {
 }
 
 export default function TeacherAnalyticsPage() {
+    usePageTitle("Teacher Analytics");
     const [studentsAnalytics, setStudentsAnalytics] = useState<StudentAnalytics[]>([]);
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedSubject, setSelectedSubject] = useState<string>('all');

@@ -43,8 +43,10 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import InvoiceModal from "@/components/InvoiceModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudentDetailPage() {
+  usePageTitle("Student Details");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [student, setStudent] = useState<Student | null>(null);
@@ -132,14 +134,14 @@ export default function StudentDetailPage() {
   // Handle subject enrollment
   const handleEnrollSubject = async () => {
     if (!selectedSubjectId || !student) return;
-    
+
     // Check if already enrolled
     const alreadyEnrolled = student.enrollments?.some(e => e.subject.id === selectedSubjectId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this subject');
       return;
     }
-    
+
     try {
       await import("@/services/api").then(m => m.enrollmentService.create({
         student_id: student.id,
@@ -157,14 +159,14 @@ export default function StudentDetailPage() {
   // Handle test series enrollment
   const handleEnrollTestSeries = async () => {
     if (!selectedTestSeriesId || !student) return;
-    
+
     // Check if already enrolled
     const alreadyEnrolled = student.test_series_enrollments?.some(e => e.test_series.id === selectedTestSeriesId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this test series');
       return;
     }
-    
+
     try {
       await testSeriesService.enroll(selectedTestSeriesId, student.id);
       setShowTestSeriesModal(false);
@@ -179,14 +181,14 @@ export default function StudentDetailPage() {
   // Handle activity group enrollment
   const handleEnrollActivityGroup = async () => {
     if (!selectedActivityGroupId || !student) return;
-    
+
     // Check if already enrolled
     const alreadyEnrolled = student.activity_enrollments?.some(e => e.activity.group.id === selectedActivityGroupId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this activity group');
       return;
     }
-    
+
     try {
       await activityEnrollmentAPI.enrollToGroup(selectedActivityGroupId, [student.id]);
       setShowActivityGroupModal(false);
@@ -595,7 +597,7 @@ export default function StudentDetailPage() {
                       <Users className="h-5 w-5 text-saBlue/50" />
                       <div>
                         <p className="text-sm font-medium text-gray-600">
-                          Activity Groups ({student.activity_enrollments ? 
+                          Activity Groups ({student.activity_enrollments ?
                             new Set(student.activity_enrollments.map(e => e.activity.group.id)).size : 0})
                         </p>
                       </div>
@@ -609,10 +611,10 @@ export default function StudentDetailPage() {
                     <div className="ml-8 space-y-1">
                       {Array.from(new Set(student.activity_enrollments.map(e => e.activity.group.name)))
                         .map((groupName) => (
-                        <p key={groupName} className="text-sm text-muted-foreground">
-                          • {groupName}
-                        </p>
-                      ))}
+                          <p key={groupName} className="text-sm text-muted-foreground">
+                            • {groupName}
+                          </p>
+                        ))}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground ml-8">No activity group enrollments</p>

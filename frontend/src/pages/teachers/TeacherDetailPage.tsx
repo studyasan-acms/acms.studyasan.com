@@ -59,8 +59,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TeacherDetailPage() {
+  usePageTitle("Teacher Details");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [teacher, setTeacher] = useState<Teacher | null>(null);
@@ -301,7 +303,7 @@ export default function TeacherDetailPage() {
     if (!salary) return "-";
     const currencyCode = teacher?.salary_currency?.code || "USD";
     const currencySymbol = teacher?.salary_currency?.symbol || "$";
-    
+
     return `${currencySymbol} ${salary.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -604,7 +606,7 @@ export default function TeacherDetailPage() {
               <span className="text-sm text-muted-foreground">
                 Account Created
               </span>
-                <span className="text-sm font-medium text-muted-foreground">
+              <span className="text-sm font-medium text-muted-foreground">
                 {safeFormat(teacher.created_at, "PPP")}
               </span>
             </div>
@@ -647,8 +649,8 @@ export default function TeacherDetailPage() {
                         <div>
                           <p className="font-medium text-gray-600">{junction.subject.name}</p>
                           {junction.subject.class && (
-                            <Badge 
-                              variant="outline" 
+                            <Badge
+                              variant="outline"
                               className="mt-1 border-saBlue/50 text-saBlue"
                             >
                               {junction.subject.class.name}
@@ -722,7 +724,7 @@ export default function TeacherDetailPage() {
                         <FileText className="h-5 w-5 text-saBlue/50 mt-0.5" />
                         <div>
                           <p className="font-medium text-gray-600">{junction.test_series.title}</p>
-                          <Badge 
+                          <Badge
                             variant={junction.test_series.is_published ? "default" : "secondary"}
                             className="mt-1"
                           >
@@ -796,7 +798,7 @@ export default function TeacherDetailPage() {
                           <p className="text-sm text-muted-foreground mt-1">
                             {junction.activity_group.description || "No description"}
                           </p>
-                          <Badge 
+                          <Badge
                             variant={junction.activity_group.is_active ? "default" : "secondary"}
                             className="mt-1"
                           >

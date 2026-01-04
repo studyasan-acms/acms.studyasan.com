@@ -38,6 +38,7 @@ import {
   Users,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface StudentQueryParams {
   page: number;
@@ -51,6 +52,7 @@ interface StudentQueryParams {
 }
 
 export default function StudentsPage() {
+  usePageTitle("Students");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";

@@ -14,8 +14,10 @@ import { useJanus } from '@/hooks/useJanus';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api';
 import type { VideoRoomInfo } from '@/types/videoRoom';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export function ClassroomPage() {
+    usePageTitle("Classroom");
     const { sessionId } = useParams<{ sessionId: string }>();
     const navigate = useNavigate();
     const { user } = useAuthStore();

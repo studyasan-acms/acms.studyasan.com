@@ -29,6 +29,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const statusColors = {
     PENDING: 'bg-yellow-500',
@@ -44,6 +45,7 @@ const typeLabels = {
 };
 
 export default function AdminEnquiriesPage() {
+    usePageTitle("Enquiries");
     const [enquiries, setEnquiries] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterStatus, setFilterStatus] = useState<string>('ALL');

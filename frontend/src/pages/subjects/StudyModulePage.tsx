@@ -7,8 +7,10 @@ import { ArrowLeft, CheckCircle, FileText, Clock } from 'lucide-react';
 import { moduleService, progressService } from '@/services/api';
 import type { Module, StudentModuleProgress, UpdateProgressData } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudyModulePage() {
+  usePageTitle("Study Module");
   const { subjectId, moduleId } = useParams<{ subjectId: string; moduleId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -101,7 +103,7 @@ export default function StudyModulePage() {
     if (currentContentIndex < (module?.content.length || 0) - 1) {
       const newIndex = currentContentIndex + 1;
       setCurrentContentIndex(newIndex);
-      
+
       // Update progress based on content viewed
       if (module && !progress?.is_completed) {
         const progressPercent = Math.round(((newIndex + 1) / module.content.length) * 100);
@@ -171,7 +173,7 @@ export default function StudyModulePage() {
                 {content.filename || content.file_name || 'PDF Document'}
               </p>
               <p className="text-gray-600 mb-6">PDF Document - View Only</p>
-              
+
               {/* Embed PDF viewer */}
               <div className="w-full h-[600px] border rounded-lg overflow-hidden">
                 <iframe
@@ -199,7 +201,7 @@ export default function StudyModulePage() {
               <p className="text-gray-600 mb-4">
                 {content.type ? content.type.toUpperCase() : 'Document'} - View Only
               </p>
-              
+
               {/* For other document types, try to display in iframe */}
               {(content.s3_url || content.url) && (
                 <div className="w-full h-[600px] border rounded-lg overflow-hidden">
@@ -323,13 +325,12 @@ export default function StudyModulePage() {
                   {module.content.map((_, index) => (
                     <div
                       key={index}
-                      className={`h-2 rounded-full transition-all ${
-                        index < currentContentIndex
+                      className={`h-2 rounded-full transition-all ${index < currentContentIndex
                           ? 'w-8 bg-green-500'
                           : index === currentContentIndex
-                          ? 'w-10 bg-blue-500'
-                          : 'w-6 bg-gray-300'
-                      }`}
+                            ? 'w-10 bg-blue-500'
+                            : 'w-6 bg-gray-300'
+                        }`}
                     />
                   ))}
                 </div>
@@ -365,7 +366,7 @@ export default function StudyModulePage() {
                 )}
 
                 {currentContentIndex === module.content.length - 1 && progress?.is_completed && (
-                  <Button 
+                  <Button
                     onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
                     size="lg"
                   >

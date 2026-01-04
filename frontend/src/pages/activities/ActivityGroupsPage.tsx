@@ -23,8 +23,10 @@ import ActivityGroupForm from '../../components/activities/admin/ActivityGroupFo
 import EnrollStudentsToGroupModal from '../../components/activities/admin/EnrollStudentsToGroupModal.tsx';
 import AssignTeachersToGroupModal from '../../components/activities/admin/AssignTeachersToGroupModal.tsx';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function ActivityGroupsPage() {
+  usePageTitle("Activity Groups");
   const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -154,13 +156,13 @@ export default function ActivityGroupsPage() {
                 </Button>
               </div>
             </div>
-            
+
             <div className={`w-full h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
               <h3 className="text-3xl font-bold text-white text-center px-4">
                 {group.name}
               </h3>
             </div>
-            
+
             {group.description && (
               <p className="text-gray-600 text-sm mb-3">{group.description}</p>
             )}
@@ -196,11 +198,10 @@ export default function ActivityGroupsPage() {
 
             <div className="flex justify-between items-center">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                  group.is_active
+                className={`px-3 py-1 rounded-full text-xs font-semibold ${group.is_active
                     ? 'bg-green-100 text-green-800'
                     : 'bg-gray-100 text-gray-800'
-                }`}
+                  }`}
               >
                 {group.is_active ? 'Active' : 'Inactive'}
               </span>

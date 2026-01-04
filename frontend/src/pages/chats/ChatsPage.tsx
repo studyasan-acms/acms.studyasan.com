@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, Users } from 'lucide-react';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const ChatsPage = () => {
+  usePageTitle("Chats");
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuthStore();
@@ -48,10 +50,10 @@ const ChatsPage = () => {
 
   const getLastMessage = (chat: Chat) => {
     if (chat.messages.length === 0) return 'No messages yet';
-    
+
     const lastMessage = chat.messages[0];
     const senderName = lastMessage.sender_id === user?.id ? 'You' : lastMessage.sender.name;
-    
+
     if (lastMessage.message_type === 'TEXT') {
       return `${senderName}: ${lastMessage.content}`;
     } else {
@@ -96,8 +98,8 @@ const ChatsPage = () => {
       ) : (
         <div className="grid gap-4">
           {chats.map((chat) => (
-            <Card 
-              key={chat.id} 
+            <Card
+              key={chat.id}
               className="cursor-pointer hover:shadow-md transition-shadow"
               onClick={() => navigate(`/dashboard/chats/${chat.id}`)}
             >
@@ -108,7 +110,7 @@ const ChatsPage = () => {
                       {getChatAvatar(chat)}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold truncate">
@@ -118,11 +120,11 @@ const ChatsPage = () => {
                         {new Date(chat.updated_at).toLocaleDateString()}
                       </span>
                     </div>
-                    
+
                     <p className="text-sm text-muted-foreground truncate mt-1">
                       {getLastMessage(chat)}
                     </p>
-                    
+
                     <div className="flex items-center mt-2">
                       <Badge variant="secondary" className="text-xs">
                         {chat._count.messages} messages

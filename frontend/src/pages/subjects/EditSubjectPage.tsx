@@ -1,4 +1,4 @@
-import { useState, useEffect} from 'react';
+import { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,10 @@ import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
 
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function EditSubjectPage() {
+  usePageTitle("Edit Subject");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore((state) => state.user);
@@ -99,14 +101,14 @@ export default function EditSubjectPage() {
     try {
       const res = await boardService.getAll({ limit: 100 });
       setBoards(res.data.data);
-    } catch {}
+    } catch { }
   };
 
   const fetchClasses = async () => {
     try {
       const res = await classService.getAll({ limit: 100 });
       setClasses(res.data.data);
-    } catch {}
+    } catch { }
   };
 
   const fetchCurrencies = async () => {

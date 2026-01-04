@@ -20,8 +20,10 @@ import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const EnrollmentsPage: React.FC = () => {
+  usePageTitle("Enrollments");
   const { user } = useAuthStore();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -42,24 +44,24 @@ const EnrollmentsPage: React.FC = () => {
   const isStudent = user?.role === "STUDENT";
 
   useEffect(() => {
-const fetchEnrollments = async () => {
-  try {
-    setLoading(true);
-    const params: Record<string, string | number> = { page: currentPage, limit: 10 };
-    if (searchTerm) params.search = searchTerm;
-    if (studentFilter !== "all") params.student_id = parseInt(studentFilter);
-    if (subjectFilter !== "all") params.subject_id = parseInt(subjectFilter);
-    if (isStudent) params.student_id = user?.id || 0;
+    const fetchEnrollments = async () => {
+      try {
+        setLoading(true);
+        const params: Record<string, string | number> = { page: currentPage, limit: 10 };
+        if (searchTerm) params.search = searchTerm;
+        if (studentFilter !== "all") params.student_id = parseInt(studentFilter);
+        if (subjectFilter !== "all") params.subject_id = parseInt(subjectFilter);
+        if (isStudent) params.student_id = user?.id || 0;
 
-    const response = await enrollmentService.getAll(params);
-    setEnrollments(response.data.data);
-    setTotalPages(response.data.pagination.totalPages);
-  } catch (error) {
-    console.error("Error fetching enrollments:", error);
-  } finally {
-    setLoading(false);
-  }
-};
+        const response = await enrollmentService.getAll(params);
+        setEnrollments(response.data.data);
+        setTotalPages(response.data.pagination.totalPages);
+      } catch (error) {
+        console.error("Error fetching enrollments:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
 
     const fetchStudents = async () => {
@@ -71,19 +73,19 @@ const fetchEnrollments = async () => {
       }
     };
 
-const fetchSubjects = async () => {
-  try {
-    const params: Record<string, string | number> = { limit: 100 };
-    if (isTeacher && user?.id) {
-      params.user_id = user.id;
-      // Optional: params.role = user.role; // if your API expects a string
-    }
-    const response = await subjectService.getAll(params);
-    setSubjects(response.data.data);
-  } catch (error) {
-    console.error("Error fetching subjects:", error);
-  }
-};
+    const fetchSubjects = async () => {
+      try {
+        const params: Record<string, string | number> = { limit: 100 };
+        if (isTeacher && user?.id) {
+          params.user_id = user.id;
+          // Optional: params.role = user.role; // if your API expects a string
+        }
+        const response = await subjectService.getAll(params);
+        setSubjects(response.data.data);
+      } catch (error) {
+        console.error("Error fetching subjects:", error);
+      }
+    };
     fetchEnrollments();
     fetchStudents();
     fetchSubjects();
@@ -327,82 +329,82 @@ const fetchSubjects = async () => {
         </div>
       )}
 
-<DeleteConfirmationModal
-  open={deleteModalOpen}
-  onClose={() => setDeleteModalOpen(false)}
-  onCancel={() => setDeleteModalOpen(false)}
-  title={
-    selectedEnrollment
-      ? `Delete Enrollment for ${selectedEnrollment.student.user.name}?`
-      : "Delete Enrollment"
-  }
-  message={
-    selectedEnrollment && (
-      <div className="grid grid-cols-2 gap-3 text-left text-xs sm:text-sm text-gray-700">
-        {/* Column 1: Student Info */}
-        <div className="space-y-1">
-          <p className="font-medium text-gray-600">Student</p>
-          <p className="font-semibold text-gray-600">
-            {selectedEnrollment.student.user.name}
-          </p>
-          <p className="text-gray-500">{selectedEnrollment.student.user.email}</p>
+      <DeleteConfirmationModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onCancel={() => setDeleteModalOpen(false)}
+        title={
+          selectedEnrollment
+            ? `Delete Enrollment for ${selectedEnrollment.student.user.name}?`
+            : "Delete Enrollment"
+        }
+        message={
+          selectedEnrollment && (
+            <div className="grid grid-cols-2 gap-3 text-left text-xs sm:text-sm text-gray-700">
+              {/* Column 1: Student Info */}
+              <div className="space-y-1">
+                <p className="font-medium text-gray-600">Student</p>
+                <p className="font-semibold text-gray-600">
+                  {selectedEnrollment.student.user.name}
+                </p>
+                <p className="text-gray-500">{selectedEnrollment.student.user.email}</p>
 
-          <p className="font-medium text-gray-600 mt-2">Class</p>
-          <p className="font-semibold text-gray-600">
-            {selectedEnrollment.student.class?.name || "N/A"}
-          </p>
+                <p className="font-medium text-gray-600 mt-2">Class</p>
+                <p className="font-semibold text-gray-600">
+                  {selectedEnrollment.student.class?.name || "N/A"}
+                </p>
 
-          <p className="font-medium text-gray-600 mt-2">Board</p>
-          <p className="font-semibold text-gray-600">
-            {selectedEnrollment.student.board?.name || "N/A"}
-          </p>
-        </div>
+                <p className="font-medium text-gray-600 mt-2">Board</p>
+                <p className="font-semibold text-gray-600">
+                  {selectedEnrollment.student.board?.name || "N/A"}
+                </p>
+              </div>
 
-        {/* Column 2: Subject Info */}
-        <div className="space-y-1">
-          <p className="font-medium text-gray-600">Subject</p>
-          <p className="font-semibold text-gray-600">{selectedEnrollment.subject.name}</p>
-          <div className="flex gap-1 flex-wrap mt-1">
-            <Badge variant="secondary" className="text-[10px] sm:text-xs">
-              Class: {selectedEnrollment.subject.class?.name || "N/A"}
-            </Badge>
-            {selectedEnrollment.subject.is_course && (
-              <Badge variant="outline" className="text-[10px] sm:text-xs">
-                Course
-              </Badge>
-            )}
+              {/* Column 2: Subject Info */}
+              <div className="space-y-1">
+                <p className="font-medium text-gray-600">Subject</p>
+                <p className="font-semibold text-gray-600">{selectedEnrollment.subject.name}</p>
+                <div className="flex gap-1 flex-wrap mt-1">
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs">
+                    Class: {selectedEnrollment.subject.class?.name || "N/A"}
+                  </Badge>
+                  {selectedEnrollment.subject.is_course && (
+                    <Badge variant="outline" className="text-[10px] sm:text-xs">
+                      Course
+                    </Badge>
+                  )}
+                </div>
+
+                <p className="font-medium text-gray-600 mt-2">Enrolled On</p>
+                <p className="font-semibold text-gray-600 text-[10px] sm:text-sm">
+                  {new Date(selectedEnrollment.created_on).toLocaleDateString("en-US", {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </p>
+              </div>
+            </div>
+          )
+        }
+        footer={
+          <div className="flex justify-end gap-3 mt-6">
+            <button
+              onClick={() => setDeleteModalOpen(false)}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmDelete}
+              className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
           </div>
-
-          <p className="font-medium text-gray-600 mt-2">Enrolled On</p>
-          <p className="font-semibold text-gray-600 text-[10px] sm:text-sm">
-            {new Date(selectedEnrollment.created_on).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </p>
-        </div>
-      </div>
-    )
-  }
-  footer={
-    <div className="flex justify-end gap-3 mt-6">
-      <button
-        onClick={() => setDeleteModalOpen(false)}
-        className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100"
-      >
-        Cancel
-      </button>
-      <button
-        onClick={confirmDelete}
-        className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 flex items-center gap-2"
-      >
-        <Trash2 className="h-4 w-4" />
-        Delete
-      </button>
-    </div>
-  }
-/>
+        }
+      />
 
     </div>
   );

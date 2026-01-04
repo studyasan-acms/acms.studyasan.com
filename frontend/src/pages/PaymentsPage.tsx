@@ -11,8 +11,10 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const PaymentsPage: React.FC = () => {
+  usePageTitle("Payments");
   const navigate = useNavigate();
   const { user } = useAuthStore();
 

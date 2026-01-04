@@ -10,8 +10,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 const CreateEnrollmentPage: React.FC = () => {
+  usePageTitle("New Enrollment");
   const navigate = useNavigate();
   const { user } = useAuthStore();
 

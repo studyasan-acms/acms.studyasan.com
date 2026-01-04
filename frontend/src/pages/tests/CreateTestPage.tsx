@@ -18,12 +18,14 @@ import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import MediaUpload from "@/components/ui/MediaUpload";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateTestPage() {
   const navigate = useNavigate();
 
   const { testId: paramTestId } = useParams();
   const isEditing = !!paramTestId;
+
 
   const { user } = useAuthStore();
 
@@ -48,6 +50,8 @@ export default function CreateTestPage() {
     is_published: false,
   });
 
+  usePageTitle(isEditing ? (formData.title ? `Edit Test: ${formData.title}` : "Edit Test") : "Create Test");
+
   const [aiTopic, setAiTopic] = useState("");
   const [aiQuestions, setAiQuestions] = useState({
     mcq: 5,
@@ -67,7 +71,7 @@ export default function CreateTestPage() {
   const [questionMediaFile, setQuestionMediaFile] = useState<File | null>(null);
   const [questionMediaUrl, setQuestionMediaUrl] = useState<string | null>(null);
   const [questionMediaType, setQuestionMediaType] = useState<string | null>(null);
-  
+
   const [optionMedia, setOptionMedia] = useState<{
     [index: number]: { file: File | null; url: string | null; type: string | null };
   }>({});
@@ -287,7 +291,7 @@ export default function CreateTestPage() {
       for (let pair of formData.entries()) {
         console.log(pair[0], pair[1]);
       }
-      
+
       await testService.addQuestionWithMedia(testId, formData);
 
       setSuccessMessage("Question added successfully!");

@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function MyResultsPage() {
+  usePageTitle("My Results");
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export default function MyResultsPage() {
       setLoading(true);
       const params: any = {};
       if (selectedSubject) params.subject_id = selectedSubject;
-      
+
       const response = await testAttemptService.getMyAttempts(params);
       setAttempts(response.data);
     } catch (error) {
@@ -187,9 +189,8 @@ export default function MyResultsPage() {
                       <div className="mt-4">
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
-                            className={`h-2 rounded-full ${
-                              attempt.is_passed ? 'bg-green-500' : 'bg-red-500'
-                            }`}
+                            className={`h-2 rounded-full ${attempt.is_passed ? 'bg-green-500' : 'bg-red-500'
+                              }`}
                             style={{ width: `${getPercentage(attempt)}%` }}
                           />
                         </div>

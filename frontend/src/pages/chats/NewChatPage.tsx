@@ -9,12 +9,14 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { MessageCircle, BookOpen, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface SubjectWithTeachers extends Subject {
   teachers: Teacher[];
 }
 
 const NewChatPage = () => {
+  usePageTitle("New Chat");
   const [subjects, setSubjects] = useState<SubjectWithTeachers[]>([]);
   const [loading, setLoading] = useState(true);
   const [startingChat, setStartingChat] = useState(false);
@@ -44,14 +46,14 @@ const NewChatPage = () => {
               subjectService.getById(subjectId),
               teacherService.getBySubject(subjectId)
             ]);
-            
+
             return {
               ...subjectResponse.data,
               teachers: teachersResponse.data
             };
           })
         );
-        
+
         setSubjects(subjectsWithTeachers);
       }
     } catch (error) {
@@ -86,7 +88,7 @@ const NewChatPage = () => {
 
   const startChatWithTeacher = async (teacherId: number) => {
     if (startingChat) return;
-    
+
     setStartingChat(true);
     try {
       const response = await chatService.startChat({

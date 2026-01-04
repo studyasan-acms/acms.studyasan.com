@@ -23,10 +23,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Gender = "M" | "F" | "OTHER" | null;
 
 export default function CreateTeacherPage() {
+  usePageTitle("Add New Teacher");
   const navigate = useNavigate();
 
   const [isLoading, setIsLoading] = useState(false);

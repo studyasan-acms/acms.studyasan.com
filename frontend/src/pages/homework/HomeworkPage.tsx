@@ -53,6 +53,7 @@ import {
   Clock,
   User,
 } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface Homework {
   id: number;
@@ -93,6 +94,7 @@ interface Homework {
 }
 
 export default function HomeworkPage() {
+  usePageTitle("Homework");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [homework, setHomework] = useState<Homework[]>([]);
@@ -129,7 +131,7 @@ export default function HomeworkPage() {
       if (response.ok) {
         const data = await response.json();
         let homeworkData = data.data.data || [];
-        
+
         // For student homework, normalize the structure to match teacher homework
         if (user?.role === 'STUDENT') {
           homeworkData = homeworkData.map((item: any) => ({
@@ -138,7 +140,7 @@ export default function HomeworkPage() {
             student: item.student
           }));
         }
-        
+
         setHomework(homeworkData);
         setTotalPages(data.data.totalPages || 1);
       }

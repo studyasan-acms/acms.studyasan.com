@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function GradeTestPage() {
+
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
+  usePageTitle(attempt ? `Grade Attempt: ${attempt.test?.title || ""} - ${attempt.student?.user?.name || ""}` : "Grade Attempt");
   const [grades, setGrades] = useState<{ [answerId: number]: GradeAnswerData }>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -50,7 +53,7 @@ export default function GradeTestPage() {
   const handleGradeChange = (answerId: number, marks: number, maxMarks: number) => {
     const isCorrect = marks > 0;
     const validMarks = Math.min(Math.max(0, marks), maxMarks);
-    
+
     setGrades({
       ...grades,
       [answerId]: {
@@ -194,25 +197,24 @@ export default function GradeTestPage() {
                         const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
                         const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
                         const optionLetter = String.fromCharCode(65 + optIndex);
-                        const isCorrect = optionText === question.correct_answer || 
-                                         optionLetter === question.correct_answer ||
-                                         (optionText === '' && question.correct_answer === optionLetter);
-                        
+                        const isCorrect = optionText === question.correct_answer ||
+                          optionLetter === question.correct_answer ||
+                          (optionText === '' && question.correct_answer === optionLetter);
+
                         return (
                           <div key={optIndex}>
                             <p
-                              className={`text-sm ${
-                                isCorrect
-                                  ? 'text-green-600 font-medium'
-                                  : 'text-gray-700'
-                              }`}
+                              className={`text-sm ${isCorrect
+                                ? 'text-green-600 font-medium'
+                                : 'text-gray-700'
+                                }`}
                             >
                               {optionLetter}. {optionText}
                               {isCorrect && ' ✓ (Correct)'}
                             </p>
                             {optionMediaUrl && optionMediaType === 'image' && (
-                              <img 
-                                src={optionMediaUrl} 
+                              <img
+                                src={optionMediaUrl}
                                 alt={`Option ${optionLetter}`}
                                 className="mt-1 ml-4 max-w-xs max-h-24 rounded border"
                               />
@@ -237,8 +239,8 @@ export default function GradeTestPage() {
                               <p className="text-sm">{answer.answer_text}</p>
                             )}
                             {answer.answer_media_url && answer.answer_media_type === 'image' && (
-                              <img 
-                                src={answer.answer_media_url} 
+                              <img
+                                src={answer.answer_media_url}
                                 alt="Student answer"
                                 className="mt-2 max-w-md max-h-48 rounded border"
                               />

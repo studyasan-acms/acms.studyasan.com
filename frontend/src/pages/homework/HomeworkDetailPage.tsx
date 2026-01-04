@@ -35,6 +35,7 @@ import {
   Eye,
   Calendar,
 } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface Homework {
   id: number;
@@ -88,6 +89,7 @@ interface Homework {
 }
 
 export default function HomeworkDetailPage() {
+  usePageTitle("Homework Details");
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuthStore();
@@ -183,7 +185,7 @@ export default function HomeworkDetailPage() {
   const handleCheckResponse = async (responseId: number, feedback: string, isChecked: boolean, file?: File) => {
     try {
       let response;
-      
+
       if (file) {
         // Use FormData for file upload
         const formData = new FormData();
