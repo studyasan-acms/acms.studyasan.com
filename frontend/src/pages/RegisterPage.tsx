@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,17 +6,29 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { authService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
-import { Loader2 } from "lucide-react";
+import { Loader2, Check, X, Eye, EyeOff, ArrowLeft, Mail, RefreshCw } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+
+interface PasswordStrength {
+  isValid: boolean;
+  score: number;
+  errors: string[];
+  suggestions: string[];
+}
+
+type RegistrationStep = "form" | "otp";
 
 export default function RegisterPage() {
   usePageTitle("Register");
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
 
+  const [step, setStep] = useState<RegistrationStep>("form");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -24,6 +36,65 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
   });
+
+  // OTP state
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Password strength state
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
+    isValid: false,
+    score: 0,
+    errors: [],
+    suggestions: [],
+  });
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+
+  // Debounced password validation
+  const validatePasswordDebounced = useCallback(async (password: string) => {
+    if (password.length < 3) {
+      setPasswordStrength({
+        isValid: false,
+        score: 0,
+        errors: [],
+        suggestions: [],
+      });
+      return;
+    }
+
+    setIsCheckingPassword(true);
+    try {
+      const response = await authService.checkPasswordStrength(password);
+      setPasswordStrength(response.data);
+    } catch {
+      // Fallback to local validation if API fails
+      setPasswordStrength({
+        isValid: password.length >= 8,
+        score: Math.min(4, Math.floor(password.length / 3)),
+        errors: password.length < 8 ? ["Password must be at least 8 characters"] : [],
+        suggestions: [],
+      });
+    } finally {
+      setIsCheckingPassword(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (formData.password) {
+        validatePasswordDebounced(formData.password);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [formData.password, validatePasswordDebounced]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +105,14 @@ export default function RegisterPage() {
       return;
     }
 
+    if (!passwordStrength.isValid) {
+      setError("Please create a stronger password");
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      // DO NOT extract confirmPassword → fixes ESLint warning
       const registerData = {
         name: formData.name,
         email: formData.email,
@@ -45,23 +120,99 @@ export default function RegisterPage() {
         password: formData.password,
       };
 
-      const response = await authService.register(registerData);
+      await authService.requestOtp(registerData);
+      setStep("otp");
+      setResendCooldown(30);
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to send verification code. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otpCode = otp.join("");
+    if (otpCode.length !== 6) {
+      setError("Please enter the complete 6-digit code");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await authService.verifyOtp({
+        email: formData.email,
+        otp: otpCode,
+      });
       setAuth(response.data.user, response.data.token);
-      if (response.data.user.role === 'STUDENT') {
+      if (response.data.user.role === "STUDENT") {
         navigate("/dashboard/home");
       } else {
         navigate("/dashboard");
       }
     } catch (err: unknown) {
-      // Type-safe error → fixes "Unexpected any" warning
       const errorMessage =
         (err as { response?: { data?: { message?: string } } })?.response?.data
-          ?.message || "Failed to register. Please try again.";
-
+          ?.message || "Invalid verification code. Please try again.";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      await authService.resendOtp(formData.email);
+      setResendCooldown(30);
+      setOtp(["", "", "", "", "", ""]);
+    } catch (err: unknown) {
+      const errorMessage =
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to resend code. Please try again.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const newOtp = [...otp];
+    for (let i = 0; i < pastedData.length; i++) {
+      newOtp[i] = pastedData[i];
+    }
+    setOtp(newOtp);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,6 +220,67 @@ export default function RegisterPage() {
       ...prev,
       [e.target.name]: e.target.value,
     }));
+  };
+
+  const getStrengthColor = (score: number) => {
+    switch (score) {
+      case 0:
+        return "bg-red-500";
+      case 1:
+        return "bg-orange-500";
+      case 2:
+        return "bg-yellow-500";
+      case 3:
+        return "bg-lime-500";
+      case 4:
+        return "bg-green-500";
+      default:
+        return "bg-gray-300";
+    }
+  };
+
+  const getStrengthLabel = (score: number) => {
+    switch (score) {
+      case 0:
+        return "Very Weak";
+      case 1:
+        return "Weak";
+      case 2:
+        return "Fair";
+      case 3:
+        return "Strong";
+      case 4:
+        return "Very Strong";
+      default:
+        return "";
+    }
+  };
+
+  const renderPasswordRequirements = () => {
+    const requirements = [
+      { label: "At least 8 characters", met: formData.password.length >= 8 },
+      { label: "One uppercase letter", met: /[A-Z]/.test(formData.password) },
+      { label: "One lowercase letter", met: /[a-z]/.test(formData.password) },
+      { label: "One number", met: /[0-9]/.test(formData.password) },
+      { label: "One special character", met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) },
+    ];
+
+    return (
+      <div className="mt-2 space-y-1">
+        {requirements.map((req, index) => (
+          <div key={index} className="flex items-center gap-2 text-xs">
+            {req.met ? (
+              <Check className="h-3 w-3 text-green-500" />
+            ) : (
+              <X className="h-3 w-3 text-gray-400" />
+            )}
+            <span className={req.met ? "text-green-600" : "text-gray-500"}>
+              {req.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -80,7 +292,6 @@ export default function RegisterPage() {
         <div className="absolute top-1/2 left-1/3 w-14 h-14 border-4 border-[#0076CE] -rotate-12"></div>
         <div className="absolute bottom-32 left-20 w-16 h-16 border-4 border-[#0076CE] rounded-lg"></div>
         <div className="absolute top-32 right-32 w-20 h-20 border-4 border-[#0076CE] rounded-full"></div>
-
         <div className="absolute top-1/4 right-1/4 w-12 h-12 border-4 border-[#0099FF] rounded-lg rotate-12"></div>
         <div className="absolute bottom-10 left-1/2 w-16 h-16 border-4 border-[#00A3FF] rounded-full rotate-45"></div>
         <div className="absolute top-3/4 left-1/3 w-20 h-20 border-4 border-[#0076CE] rounded-lg -rotate-30"></div>
@@ -103,7 +314,7 @@ export default function RegisterPage() {
         <DotLottieReact src="/lottie/Login-Lady.lottie" loop autoplay />
       </div>
 
-      {/* RIGHT SIDE (Register Form) */}
+      {/* RIGHT SIDE (Register Form / OTP Verification) */}
       <div className="flex w-full md:w-1/2 items-center justify-center p-4 relative z-10">
         <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border-0 overflow-hidden">
           {/* Header */}
@@ -114,47 +325,32 @@ export default function RegisterPage() {
               className="h-20 mx-auto mb-3 object-contain"
             />
             <p className="text-blue-100 text-sm">
-              Create your account and start learning
+              {step === "form"
+                ? "Create your account and start learning"
+                : "Verify your email address"}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <CardContent className="p-6 space-y-4">
-              {error && (
-                <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md border border-red-200">
-                  {error}
-                </div>
-              )}
+          {step === "form" ? (
+            <form onSubmit={handleSubmit}>
+              <CardContent className="p-6 space-y-4">
+                {error && (
+                  <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md border border-red-200">
+                    {error}
+                  </div>
+                )}
 
-              {/* Full Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-700 text-sm">
-                  Full Name
-                </Label>
-                <Input
-                  id="name"
-                  name="name"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                  className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
-                />
-              </div>
-
-              {/* Email & Phone */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Full Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-gray-700 text-sm">
-                    Email
+                  <Label htmlFor="name" className="text-gray-700 text-sm">
+                    Full Name
                   </Label>
                   <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="John Doe"
+                    value={formData.name}
                     onChange={handleChange}
                     required
                     disabled={isLoading}
@@ -162,41 +358,102 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-gray-700 text-sm">
-                    Phone
-                  </Label>
-                  <Input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
-                  />
-                </div>
-              </div>
+                {/* Email & Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-gray-700 text-sm">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
+                    />
+                  </div>
 
-              {/* Password & Confirm */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-gray-700 text-sm">
+                      Phone
+                    </Label>
+                    <Input
+                      id="phone"
+                      name="phone"
+                      type="tel"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
+                    />
+                  </div>
+                </div>
+
+                {/* Password */}
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-gray-700 text-sm">
                     Password
                   </Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      name="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE] pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Password strength indicator */}
+                  {formData.password && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex gap-1">
+                          {[0, 1, 2, 3, 4].map((index) => (
+                            <div
+                              key={index}
+                              className={`h-1.5 flex-1 rounded-full transition-colors ${index <= passwordStrength.score
+                                  ? getStrengthColor(passwordStrength.score)
+                                  : "bg-gray-200"
+                                }`}
+                            />
+                          ))}
+                        </div>
+                        <span
+                          className={`text-xs font-medium ${passwordStrength.score >= 3
+                              ? "text-green-600"
+                              : passwordStrength.score >= 2
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                            }`}
+                        >
+                          {isCheckingPassword ? "..." : getStrengthLabel(passwordStrength.score)}
+                        </span>
+                      </div>
+                      {renderPasswordRequirements()}
+                    </div>
+                  )}
                 </div>
 
+                {/* Confirm Password */}
                 <div className="space-y-2">
                   <Label
                     htmlFor="confirmPassword"
@@ -204,47 +461,162 @@ export default function RegisterPage() {
                   >
                     Confirm Password
                   </Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    disabled={isLoading}
-                    className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                      disabled={isLoading}
+                      className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE] pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                    <p className="text-xs text-red-500 flex items-center gap-1">
+                      <X className="h-3 w-3" /> Passwords do not match
+                    </p>
+                  )}
+                  {formData.confirmPassword && formData.password === formData.confirmPassword && (
+                    <p className="text-xs text-green-600 flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Passwords match
+                    </p>
+                  )}
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
 
-            <CardFooter className="flex flex-col space-y-4 p-6 pt-0">
-              <Button
-                type="submit"
-                disabled={isLoading}
-                className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
-                  </>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-
-              <p className="text-sm text-center text-gray-600">
-                Already have an account?{" "}
-                <Link
-                  to="/login"
-                  className="text-[#0076CE] hover:text-[#0055a3] hover:underline"
+              <CardFooter className="flex flex-col space-y-4 p-6 pt-0">
+                <Button
+                  type="submit"
+                  disabled={isLoading || !passwordStrength.isValid}
+                  className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
                 >
-                  Sign in
-                </Link>
-              </p>
-            </CardFooter>
-          </form>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending verification code...
+                    </>
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+
+                <p className="text-sm text-center text-gray-600">
+                  Already have an account?{" "}
+                  <Link
+                    to="/login"
+                    className="text-[#0076CE] hover:text-[#0055a3] hover:underline"
+                  >
+                    Sign in
+                  </Link>
+                </p>
+              </CardFooter>
+            </form>
+          ) : (
+            /* OTP Verification Step */
+            <div>
+              <CardContent className="p-6 space-y-6">
+                {/* Back button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("form");
+                    setOtp(["", "", "", "", "", ""]);
+                    setError("");
+                  }}
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to registration
+                </button>
+
+                {error && (
+                  <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md border border-red-200">
+                    {error}
+                  </div>
+                )}
+
+                {/* Email info */}
+                <div className="bg-blue-50 rounded-lg p-4 flex items-start gap-3">
+                  <Mail className="h-5 w-5 text-[#0076CE] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm text-gray-700">
+                      We've sent a 6-digit verification code to:
+                    </p>
+                    <p className="text-sm font-semibold text-gray-900 mt-1">
+                      {formData.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* OTP Input */}
+                <div>
+                  <Label className="text-gray-700 text-sm block mb-3">
+                    Enter verification code
+                  </Label>
+                  <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                    {otp.map((digit, index) => (
+                      <Input
+                        key={index}
+                        id={`otp-${index}`}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        disabled={isLoading}
+                        className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Resend button */}
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0 || isLoading}
+                    className="inline-flex items-center gap-2 text-sm text-[#0076CE] hover:text-[#0055a3] disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                  </button>
+                </div>
+              </CardContent>
+
+              <CardFooter className="flex flex-col space-y-4 p-6 pt-0">
+                <Button
+                  type="button"
+                  onClick={handleVerifyOtp}
+                  disabled={isLoading || otp.join("").length !== 6}
+                  className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify & Create Account"
+                  )}
+                </Button>
+              </CardFooter>
+            </div>
+          )}
         </Card>
       </div>
 

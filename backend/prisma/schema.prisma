@@ -77,6 +77,23 @@ enum BloodGroup {
   O_NEG
 }
 
+// OTP Verification - For email verification during signup
+model OtpVerification {
+  id          Int      @id @default(autoincrement())
+  email       String   
+  otp_hash    String   // Hashed OTP for security
+  name        String   // Store user's name temporarily
+  phone       String   // Store user's phone temporarily
+  password    String   // Store hashed password temporarily
+  expires_at  DateTime
+  verified    Boolean  @default(false)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([email])
+  @@map("otp_verification")
+}
+
 model Student {
   id                      Int                     @id @default(autoincrement())
   user_id                 Int                     @unique

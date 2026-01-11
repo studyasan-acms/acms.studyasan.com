@@ -120,7 +120,37 @@ export const authService = {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },
+
+  // OTP-based registration methods
+  requestOtp: async (data: RegisterData): Promise<{ success: boolean; data: { email: string }; message: string }> => {
+    const response = await api.post('/auth/request-otp', data);
+    return response.data;
+  },
+
+  verifyOtp: async (data: { email: string; otp: string }): Promise<AuthResponse> => {
+    const response = await api.post<AuthResponse>('/auth/verify-otp', data);
+    return response.data;
+  },
+
+  resendOtp: async (email: string): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/resend-otp', { email });
+    return response.data;
+  },
+
+  checkPasswordStrength: async (password: string): Promise<{
+    success: boolean;
+    data: {
+      isValid: boolean;
+      score: number;
+      errors: string[];
+      suggestions: string[]
+    }
+  }> => {
+    const response = await api.post('/auth/check-password-strength', { password });
+    return response.data;
+  },
 };
+
 
 export const notificationService = {
   getAll: async (params?: {

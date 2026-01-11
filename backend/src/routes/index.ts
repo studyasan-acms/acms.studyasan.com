@@ -45,6 +45,12 @@ const router = express.Router();
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 
+// OTP verification routes for signup
+router.post('/auth/request-otp', authController.requestOTP);
+router.post('/auth/verify-otp', authController.verifyOTP);
+router.post('/auth/resend-otp', authController.resendOTP);
+router.post('/auth/check-password-strength', authController.checkPasswordStrength);
+
 // Board routes
 router.get('/boards', boardController.getAllBoards);
 router.get('/boards/:id', boardController.getBoardById);
