@@ -42,7 +42,10 @@ export default function DashboardPage() {
 
       const [studentsRes, teachersRes, subjectsRes, enrollmentsRes] =
         await Promise.all([
-          studentService.getAll({ limit: 1 }),
+          studentService.getAll({
+            limit: 1,
+            ...(isTeacher && { user_id: user?.id, role: 'TEACHER' }),
+          }),
           teacherService.getAll({ limit: 1 }),
           subjectService.getAll({
             limit: 1,
