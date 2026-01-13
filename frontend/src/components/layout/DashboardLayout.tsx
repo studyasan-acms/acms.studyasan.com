@@ -14,10 +14,6 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const fetchNotifications = useNotificationStore(
-    (state) => state.fetchNotifications
-  );
-
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // NEW: sidebar collapsed state managed here
@@ -27,9 +23,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!isAuthenticated) {
       navigate("/login");
     } else {
-      fetchNotifications();
+      // Call the store's method directly to avoid effect re-running if
+      // the function reference identity changes on every render.
+      useNotificationStore.getState().fetchNotifications();
     }
-  }, [isAuthenticated, navigate, fetchNotifications]);
+  }, [isAuthenticated, navigate]);
 
   if (!isAuthenticated) return null;
 

@@ -1,6 +1,6 @@
 // ---------------- DashboardPage.tsx ----------------
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,11 +36,7 @@ export default function DashboardPage() {
   const isTeacher = user?.role === "TEACHER";
   const isStudent = user?.role === "STUDENT";
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -70,7 +66,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isTeacher, isStudent, user?.id]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const statsCards = [
     {

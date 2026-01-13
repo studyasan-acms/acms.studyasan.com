@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { enquiryService } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,11 +54,7 @@ export default function AdminEnquiriesPage() {
     const [pagination, setPagination] = useState<any>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
 
-    useEffect(() => {
-        fetchEnquiries();
-    }, [filterStatus, filterType, page]);
-
-    const fetchEnquiries = async () => {
+    const fetchEnquiries = useCallback(async () => {
         try {
             setLoading(true);
             const params: any = { page, limit: 10 };
@@ -74,32 +70,38 @@ export default function AdminEnquiriesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterStatus, filterType, page]);
 
-    const handleStatusChange = async (id: number, status: string) => {
+    useEffect(() => {
+        fetchEnquiries();
+    }, [fetchEnquiries]);
+
+    const handleStatusChange = useCallback(async (id: number, status: string) => {
         try {
             await enquiryService.updateStatus(id, status as any);
             toast.success('Status updated successfully');
-            fetchEnquiries();
+            // Refetch after status change
+            await fetchEnquiries();
         } catch (error: any) {
             console.error('Error updating status:', error);
             toast.error(error.response?.data?.error || 'Failed to update status');
         }
-    };
+    }, [fetchEnquiries]);
 
-    const handleDelete = async () => {
+    const handleDelete = useCallback(async () => {
         if (!deleteId) return;
 
         try {
             await enquiryService.delete(deleteId);
             toast.success('Enquiry deleted successfully');
             setDeleteId(null);
-            fetchEnquiries();
+            // Refetch after delete
+            await fetchEnquiries();
         } catch (error: any) {
             console.error('Error deleting enquiry:', error);
             toast.error(error.response?.data?.error || 'Failed to delete enquiry');
         }
-    };
+    }, [deleteId, fetchEnquiries]);
 
     if (loading && enquiries.length === 0) {
         return (

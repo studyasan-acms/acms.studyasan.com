@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { analyticsService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
@@ -79,14 +79,9 @@ export default function AdminAnalyticsPage() {
     const [businessAnalytics, setBusinessAnalytics] = useState<BusinessAnalytics | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
-    // Remove token requirement
-    // const token = useAuthStore((state) => state.token);
+    const hasInitiallyFetched = useRef(false);
 
-    useEffect(() => {
-        fetchAllAnalytics();
-    }, []);
-
-    const fetchAllAnalytics = async () => {
+    const fetchAllAnalytics = useCallback(async () => {
         try {
             setLoading(true);
             const [studentsData, teachersData, businessData] = await Promise.all([
@@ -104,7 +99,15 @@ export default function AdminAnalyticsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        // Only fetch once when component mounts
+        if (!hasInitiallyFetched.current) {
+            hasInitiallyFetched.current = true;
+            fetchAllAnalytics();
+        }
+    }, []);
 
     const filteredStudents = studentsAnalytics.filter(s =>
         s.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||

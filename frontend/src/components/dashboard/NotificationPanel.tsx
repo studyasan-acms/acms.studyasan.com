@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +33,21 @@ export default function NotificationPanel({
     deleteNotification,
   } = useNotificationStore();
 
+  // Track if notifications have been fetched in this session
+  const hasInitiallyFetched = useRef(false);
+
   useEffect(() => {
-    if (isOpen) fetchNotifications();
-  }, [isOpen, fetchNotifications]);
+    // Only fetch notifications once when panel opens, not on every render
+    if (isOpen && !hasInitiallyFetched.current) {
+      hasInitiallyFetched.current = true;
+      fetchNotifications();
+    }
+
+    // Reset flag when panel closes to allow fresh fetch on next open
+    if (!isOpen) {
+      hasInitiallyFetched.current = false;
+    }
+  }, [isOpen]);
 
   const getIcon = (type: Notification["type"]) => {
     const style = "h-5 w-5";
@@ -77,9 +89,10 @@ export default function NotificationPanel({
       {/* Sliding Panel */}
       <div
         className={cn(
-          "fixed top-16 right-0 h-[calc(100vh-4rem)] w-full sm:w-96",
+          "fixed top-16 right-0 bottom-0 w-full sm:w-96",
           "bg-white shadow-xl border-l rounded-tl-2xl",
           "transform transition-transform duration-300 ease-in-out z-50",
+          "will-change-transform",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
