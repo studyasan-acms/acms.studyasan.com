@@ -5,6 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
+import DashboardSkeleton from "@/components/DashboardSkeleton";
 import { cn } from "@/lib/utils";
 
 interface DashboardLayoutProps {
@@ -14,20 +15,23 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-
-  // NEW: sidebar collapsed state managed here
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isAuthLoading && !isAuthenticated) {
       navigate("/login");
-    } else {
-      // Call the store's method directly to avoid effect re-running if
-      // the function reference identity changes on every render.
+    } else if (!isAuthLoading && isAuthenticated) {
+      // Only fetch notifications after auth is fully loaded
       useNotificationStore.getState().fetchNotifications();
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthLoading, isAuthenticated, navigate]);
+
+  // Show skeleton while auth is hydrating from localStorage
+  if (isAuthLoading) {
+    return <DashboardSkeleton />;
+  }
 
   if (!isAuthenticated) return null;
 

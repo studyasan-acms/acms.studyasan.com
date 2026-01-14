@@ -6,16 +6,19 @@ interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  isAuthLoading: boolean;
   setAuth: (user: User, token: string) => void;
   clearAuth: () => void;
+  setAuthLoading: (loading: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set)=> ({
+    (set) => ({
       user: null,
       token: null,
       isAuthenticated: false,
+      isAuthLoading: true,
       setAuth: (user, token) => {
         localStorage.setItem('token', token);
         localStorage.setItem('user', JSON.stringify(user));
@@ -26,9 +29,17 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('user');
         set({ user: null, token: null, isAuthenticated: false });
       },
+      setAuthLoading: (loading) => {
+        set({ isAuthLoading: loading });
+      },
     }),
     {
       name: 'auth-storage',
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isAuthLoading = false;
+        }
+      },
     }
   )
 );
