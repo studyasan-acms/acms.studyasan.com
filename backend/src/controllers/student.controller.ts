@@ -30,8 +30,6 @@ export const getAllStudents = async (req: Request, res: Response) => {
 
     // Filter by teacher's subjects if user_id and role are provided
     if (user_id && role === 'TEACHER') {
-      console.log('🔍 [GET_ALL_STUDENTS] Filtering for teacher, user_id:', user_id, 'role:', role);
-
       // Find the teacher by user_id
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: parseInt(user_id as string) },
@@ -42,12 +40,9 @@ export const getAllStudents = async (req: Request, res: Response) => {
         }
       });
 
-      console.log('🔍 [GET_ALL_STUDENTS] Teacher found:', teacher);
-
       if (teacher && teacher.teacher_subject_junctions.length > 0) {
         // Get subject IDs the teacher teaches
         const subjectIds = teacher.teacher_subject_junctions.map(j => j.subject_id);
-        console.log('🔍 [GET_ALL_STUDENTS] Teacher subject IDs:', subjectIds);
 
         // Filter students who are enrolled in any of these subjects
         where.enrollments = {
@@ -56,13 +51,10 @@ export const getAllStudents = async (req: Request, res: Response) => {
           }
         };
       } else {
-        console.log('❌ [GET_ALL_STUDENTS] Teacher has no subjects assigned');
         // Teacher has no subjects assigned, return empty list
         const response = createPaginatedResponse([], 0, page, limit);
         return sendSuccess(res, response);
       }
-    } else {
-      console.log('🔍 [GET_ALL_STUDENTS] Not filtering by teacher, user_id:', user_id, 'role:', role);
     }
 
     const [students, total] = await Promise.all([

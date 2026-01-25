@@ -121,6 +121,16 @@ export const authService = {
     localStorage.removeItem('user');
   },
 
+  /**
+   * Verify token validity on app startup
+   * Validates stored JWT token before rendering dashboard
+   * Prevents flickering by catching expired tokens early
+   */
+  verifyToken: async (): Promise<{ user: any }> => {
+    const response = await api.get<{ user: any }>('/auth/verify');
+    return response.data;
+  },
+
   // OTP-based registration methods
   requestOtp: async (data: RegisterData): Promise<{ success: boolean; data: { email: string }; message: string }> => {
     const response = await api.post('/auth/request-otp', data);

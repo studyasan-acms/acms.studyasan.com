@@ -44,6 +44,7 @@ const router = express.Router();
 // Auth routes
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
+router.get('/auth/verify', authenticate, authController.verifyToken);
 
 // OTP verification routes for signup
 router.post('/auth/request-otp', authController.requestOTP);

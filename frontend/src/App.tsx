@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
+import { authService } from '@/services/api';
 import { PWAUpdatePrompt } from '@/components/PWAUpdatePrompt';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
@@ -109,6 +111,12 @@ import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
+
+  // Don't render children until auth state is fully determined
+  if (isAuthLoading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -134,6 +142,39 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const setAuthLoading = useAuthStore((state) => state.setAuthLoading);
+
+  /**
+   * Verify stored auth token on app startup
+   * This prevents the dashboard from rendering with an expired token
+   * Catches auth issues early before the user sees the flickering dashboard
+   */
+  useEffect(() => {
+    const verifyAuth = async () => {
+      // Only verify if we have a token and auth is marked as authenticated
+      if (isAuthenticated && isAuthLoading) {
+        try {
+          // Call the verify endpoint - this will fail with 401 if token is expired
+          await authService.verifyToken();
+          // Token is valid, hydration is complete
+          setAuthLoading(false);
+        } catch (error: any) {
+          // Token is invalid/expired - clear auth to redirect to login
+          clearAuth();
+          setAuthLoading(false);
+        }
+      } else if (!isAuthenticated && isAuthLoading) {
+        // No auth stored, hydration complete
+        setAuthLoading(false);
+      }
+    };
+
+    verifyAuth();
+  }, []);
+
   return (
     <Router>
       <Routes>

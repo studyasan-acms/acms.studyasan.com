@@ -1,6 +1,6 @@
 // ---------------- DashboardPage.tsx ----------------
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -36,17 +36,16 @@ export default function DashboardPage() {
   const isTeacher = user?.role === "TEACHER";
   const isStudent = user?.role === "STUDENT";
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
 
       const [studentsRes, teachersRes, subjectsRes, enrollmentsRes] =
         await Promise.all([
-          studentService.getAll({ limit: 1 }),
+          studentService.getAll({
+            limit: 1,
+            ...(isTeacher && { user_id: user?.id, role: 'TEACHER' }),
+          }),
           teacherService.getAll({ limit: 1 }),
           subjectService.getAll({
             limit: 1,
@@ -70,7 +69,11 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isTeacher, isStudent, user?.id]);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   const statsCards = [
     {

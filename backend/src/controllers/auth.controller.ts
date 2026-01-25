@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -359,6 +360,42 @@ export const login = async (req: Request, res: Response) => {
     const { password: _, ...userWithoutPassword } = user;
 
     sendSuccess(res, { user: userWithoutPassword, token }, 'Login successful');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+
+/**
+ * Verify JWT token validity
+ * Used by frontend on app startup to validate stored token before rendering dashboard
+ * Prevents flickering caused by rendering with expired tokens
+ */
+export const verifyToken = async (req: AuthRequest, res: Response) => {
+  try {
+    // If we reach here, middleware has already validated the token
+    if (!req.user) {
+      return sendError(res, 'Invalid token', 401);
+    }
+
+    // Fetch fresh user data from database to ensure role is current
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        created_at: true,
+        updated_at: true,
+      },
+    });
+
+    if (!user) {
+      return sendError(res, 'User not found', 404);
+    }
+
+    sendSuccess(res, { user }, 'Token verified successfully');
   } catch (error: any) {
     sendError(res, error.message, 500);
   }
