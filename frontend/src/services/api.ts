@@ -97,8 +97,10 @@ api.interceptors.response.use(
     const isAuthEndpoint = error.config?.url?.includes('/auth/');
 
     if (error.response?.status === 401 && !isAuthEndpoint) {
+      // Token expired or invalid - clear auth and redirect to login
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      localStorage.removeItem('auth-storage'); // Clear Zustand persisted state
       window.location.href = '/login';
     }
     return Promise.reject(error);
