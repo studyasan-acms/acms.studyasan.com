@@ -145,7 +145,6 @@ function App() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
   const clearAuth = useAuthStore((state) => state.clearAuth);
-  const setAuthLoading = useAuthStore((state) => state.setAuthLoading);
 
   /**
    * Verify stored auth token on app startup
@@ -154,33 +153,35 @@ function App() {
    */
   useEffect(() => {
     const verifyAuth = async () => {
+      // Wait for rehydration to complete before verifying
+      if (isAuthLoading) {
+        return; // Will re-run when isAuthLoading changes
+      }
+
       // Only verify if we have a token and auth is marked as authenticated
-      if (isAuthenticated && isAuthLoading) {
+      if (isAuthenticated) {
         try {
           // Call the verify endpoint - this will fail with 401 if token is expired
           await authService.verifyToken();
-          // Token is valid, hydration is complete
-          setAuthLoading(false);
+          // Token is valid, no action needed
         } catch (error: any) {
           // Token is invalid/expired - clear auth to redirect to login
           clearAuth();
-          setAuthLoading(false);
         }
-      } else if (!isAuthenticated && isAuthLoading) {
-        // No auth stored, hydration complete
-        setAuthLoading(false);
       }
     };
 
     verifyAuth();
-  }, []);
+  }, [isAuthLoading, isAuthenticated, clearAuth]);
 
   return (
     <Router>
       <Routes>
+        {/* Redirect home page to login */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        
         {/* Public Website Routes */}
-        <Route path="/" element={<PublicLayout />}>
-          <Route index element={<HomePage />} />
+        <Route element={<PublicLayout />}>
           <Route path="about" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />

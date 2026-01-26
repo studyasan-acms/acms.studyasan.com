@@ -93,15 +93,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiError>) => {
-    // Don't redirect on 401 for auth endpoints (login/register)
+    // Don't redirect on 401 for auth endpoints (login/register/verify)
     const isAuthEndpoint = error.config?.url?.includes('/auth/');
 
     if (error.response?.status === 401 && !isAuthEndpoint) {
       // Token expired or invalid - clear auth and redirect to login
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      localStorage.removeItem('auth-storage'); // Clear Zustand persisted state
-      window.location.href = '/login';
+      // Only redirect if not already on login page to prevent loops
+      if (!window.location.pathname.includes('/login')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('auth-storage'); // Clear Zustand persisted state
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
