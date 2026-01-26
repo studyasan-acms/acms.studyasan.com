@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      onRehydrateStorage: () => (state, error) => {
+      onRehydrateStorage: () => (_state, _error) => {
         // Use setTimeout to ensure the store is fully initialized before updating
         setTimeout(() => {
           useAuthStore.getState().setAuthLoading(false);
