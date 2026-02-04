@@ -58,6 +58,10 @@ export default function EditTeacherPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successOpen, setSuccessOpen] = useState(false);
 
+  // Profile image state
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+
   const [formData, setFormData] = useState({
     salary: null as number | null,
     salary_currency_id: null as number | null,
@@ -215,6 +219,31 @@ export default function EditTeacherPage() {
     }
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setErrorMessage('Image must be less than 5MB');
+        setErrorOpen(true);
+        return;
+      }
+      
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setErrorMessage('Please select a valid image file (JPEG, PNG, WebP)');
+        setErrorOpen(true);
+        return;
+      }
+
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -271,7 +300,7 @@ export default function EditTeacherPage() {
         }
       });
 
-      if (Object.keys(cleanData).length === 0) {
+      if (Object.keys(cleanData).length === 0 && !profileImage) {
         setErrorMessage('No changes to save.');
         setErrorOpen(true);
         setIsSaving(false);
@@ -280,7 +309,20 @@ export default function EditTeacherPage() {
 
       console.log('Updating teacher with data:', cleanData);
 
-      await teacherService.update(parseInt(id), cleanData);
+      // If there's a profile image, use FormData
+      if (profileImage) {
+        const formData = new FormData();
+        Object.entries(cleanData).forEach(([key, value]) => {
+          if (value !== null && value !== undefined) {
+            formData.append(key, value.toString());
+          }
+        });
+        formData.append('profileImage', profileImage);
+        
+        await teacherService.update(parseInt(id), formData);
+      } else {
+        await teacherService.update(parseInt(id), cleanData);
+      }
       setSuccessOpen(true);
     } catch (err: any) {
       console.error('Error updating teacher:', err);
@@ -365,6 +407,39 @@ export default function EditTeacherPage() {
               <CardDescription>Account information</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Profile Picture */}
+              <div className="space-y-2">
+                <Label className="text-gray-600">Profile Picture</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={imagePreview || teacher.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=96`}
+                      alt={teacher.user.name}
+                      className="w-16 h-16 rounded-full object-cover border border-gray-300"
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
+                      onChange={handleImageChange}
+                      className="hidden"
+                      id="profile-image-upload"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('profile-image-upload')?.click()}
+                      disabled={isSaving}
+                    >
+                      Change Picture
+                    </Button>
+                    <p className="text-xs text-gray-500 mt-1">Max 5MB (JPEG, PNG, WebP)</p>
+                  </div>
+                </div>
+              </div>
+              
               <div className="space-y-2">
                 <Label className="text-gray-600">Full Name</Label>
                 <Input

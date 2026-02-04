@@ -347,16 +347,25 @@ export default function TeacherDetailPage() {
           </button>
         </div>
 
-        {/* Second Row: Name + Edit button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-          {/* Teacher Name */}
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
-              {teacher.user.name}
-            </h1>
-            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-              Teacher profile and details
-            </p>
+        {/* Second Row: Profile Picture + Name + Edit button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          {/* Profile Picture and Teacher Name */}
+          <div className="flex items-center space-x-4">
+            <div className="flex-shrink-0">
+              <img
+                src={teacher.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=80`}
+                alt={teacher.user.name}
+                className="w-20 h-20 rounded-full object-cover border border-gray-300"
+              />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
+                {teacher.user.name}
+              </h1>
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                Teacher profile and details
+              </p>
+            </div>
           </div>
 
           {/* Edit Button */}

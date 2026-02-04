@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { teacherService } from "@/services/api";
 import type { Teacher, Currency } from "@/types";
 import {
@@ -108,6 +109,14 @@ export default function TeachersPage() {
     const text = gender === "M" ? "Male" : gender === "F" ? "Female" : "Other";
     return <span className="text-gray-700 font-medium">{text}</span>;
   };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
   const formatSalary = (salary: number | null, currency?: Currency | null) => {
     if (!salary) return "-";
@@ -247,7 +256,21 @@ export default function TeachersPage() {
                           }
                         >
                           <TableCell className="font-medium">
-                            {teacher.user.name}
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage 
+                                  src={teacher.user.profile_url} 
+                                  alt={teacher.user.name}
+                                  onError={() => {
+                                    console.log('Teacher table avatar failed:', teacher.user.name, teacher.user.profile_url);
+                                  }}
+                                />
+                                <AvatarFallback className="bg-saVividOrange text-white text-xs">
+                                  {getInitials(teacher.user.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{teacher.user.name}</span>
+                            </div>
                           </TableCell>
                           <TableCell>{teacher.qualification || "-"}</TableCell>
                           <TableCell>{teacher.experience || "-"}</TableCell>
@@ -304,8 +327,22 @@ export default function TeachersPage() {
                       className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-md duration-200"
                     >
                       <div className="bg-saBlueLight/60 p-4 flex justify-between items-center">
-                        <div className="font-semibold text-lg text-gray-900 truncate">
-                          {teacher.user.name}
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage 
+                              src={teacher.user.profile_url} 
+                              alt={teacher.user.name}
+                              onError={() => {
+                                console.log('Teacher card avatar failed:', teacher.user.name, teacher.user.profile_url);
+                              }}
+                            />
+                            <AvatarFallback className="bg-saVividOrange text-white text-sm">
+                              {getInitials(teacher.user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="font-semibold text-lg text-gray-900 truncate">
+                            {teacher.user.name}
+                          </div>
                         </div>
                         <div className="flex space-x-2">
                           <Button

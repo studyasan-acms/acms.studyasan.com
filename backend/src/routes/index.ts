@@ -28,6 +28,7 @@ import * as homeworkController from '../controllers/homework.controller.js';
 import * as videoRoomController from '../controllers/videoRoom.controller.js';
 import * as paymentController from '../controllers/payment.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
+import * as profileController from '../controllers/profile.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -52,6 +53,12 @@ router.post('/auth/verify-otp', authController.verifyOTP);
 router.post('/auth/resend-otp', authController.resendOTP);
 router.post('/auth/check-password-strength', authController.checkPasswordStrength);
 
+// Profile routes
+router.get('/profile', authenticate, profileController.getProfile);
+router.put('/profile', authenticate, upload.single('profileImage'), profileController.updateProfile);
+router.put('/profile/student', authenticate, authorize('STUDENT'), profileController.updateStudentDetails);
+router.put('/profile/teacher', authenticate, authorize('TEACHER'), profileController.updateTeacherDetails);
+
 // Board routes
 router.get('/boards', boardController.getAllBoards);
 router.get('/boards/:id', boardController.getBoardById);
@@ -69,8 +76,8 @@ router.delete('/classes/:id', authenticate, authorize('ADMIN'), classController.
 // Student routes
 router.get('/students', authenticate, studentController.getAllStudents);
 router.get('/students/:id', authenticate, studentController.getStudentById);
-router.post('/students', authenticate, authorize('ADMIN'), studentController.createStudent);
-router.put('/students/:id', authenticate, authorize('ADMIN', 'STUDENT'), studentController.updateStudent);
+router.post('/students', authenticate, authorize('ADMIN'), upload.single('profileImage'), studentController.createStudent);
+router.put('/students/:id', authenticate, authorize('ADMIN', 'STUDENT'), upload.single('profileImage'), studentController.updateStudent);
 router.delete('/students/:id', authenticate, authorize('ADMIN'), studentController.deleteStudent);
 
 // Subject routes
@@ -95,8 +102,8 @@ router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentControl
 // Teacher routes
 router.get('/teachers', authenticate, teacherController.getAllTeachers);
 router.get('/teachers/:id', authenticate, teacherController.getTeacherById);
-router.post('/teachers', authenticate, authorize('ADMIN'), teacherController.createTeacher);
-router.put('/teachers/:id', authenticate, authorize('ADMIN', 'TEACHER'), teacherController.updateTeacher);
+router.post('/teachers', authenticate, authorize('ADMIN'), upload.single('profileImage'), teacherController.createTeacher);
+router.put('/teachers/:id', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('profileImage'), teacherController.updateTeacher);
 router.delete('/teachers/:id', authenticate, authorize('ADMIN'), teacherController.deleteTeacher);
 router.post('/teachers/assign-subject', authenticate, authorize('ADMIN'), teacherController.assignSubjectToTeacher);
 router.delete('/teachers/remove-subject/:id', authenticate, authorize('ADMIN'), teacherController.removeSubjectFromTeacher);

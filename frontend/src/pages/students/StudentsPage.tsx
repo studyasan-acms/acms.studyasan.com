@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { studentService, boardService, classService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import type { Student, Board, Class } from "@/types";
@@ -160,6 +161,14 @@ export default function StudentsPage() {
     const label = gender === "M" ? "Male" : gender === "F" ? "Female" : "Other";
     return <span>{label}</span>;
   };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
 
   return (
     <div className="space-y-6">
@@ -344,7 +353,21 @@ export default function StudentsPage() {
                           }
                         >
                           <TableCell className="font-medium">
-                            {student.user.name}
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage 
+                                  src={student.user.profile_url} 
+                                  alt={student.user.name}
+                                  onError={() => {
+                                    console.log('Student table avatar failed:', student.user.name, student.user.profile_url);
+                                  }}
+                                />
+                                <AvatarFallback className="bg-saVividOrange text-white text-xs">
+                                  {getInitials(student.user.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{student.user.name}</span>
+                            </div>
                           </TableCell>
                           <TableCell>
                             {student.class ? student.class.name : "-"}
@@ -411,8 +434,22 @@ export default function StudentsPage() {
                       className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-md duration-200"
                     >
                       <div className="bg-saBlueLight/60 p-4 flex justify-between items-center">
-                        <div className="font-semibold text-lg text-gray-900 truncate">
-                          {student.user.name}
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage 
+                              src={student.user.profile_url} 
+                              alt={student.user.name}
+                              onError={() => {
+                                console.log('Student card avatar failed:', student.user.name, student.user.profile_url);
+                              }}
+                            />
+                            <AvatarFallback className="bg-saVividOrange text-white text-sm">
+                              {getInitials(student.user.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="font-semibold text-lg text-gray-900 truncate">
+                            {student.user.name}
+                          </div>
                         </div>
                         <div className="flex space-x-2">
                           <Button

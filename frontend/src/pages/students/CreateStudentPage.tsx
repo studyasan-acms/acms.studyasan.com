@@ -11,9 +11,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { studentService, boardService, classService, locationService } from '@/services/api';
 import type { Board, Class, Country, State, City } from '@/types';
-import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown, Upload, Camera } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
@@ -54,6 +55,10 @@ export default function CreateStudentPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const [successOpen, setSuccessOpen] = useState(false);
+
+  // Profile image states
+  const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -181,15 +186,28 @@ export default function CreateStudentPage() {
         blood_group: formData.blood_group ? bloodGroupMap[formData.blood_group] : null,
         addressLine: formData.addressLine || '',
         school: formData.school || '',
-        countryId: formData.countryId || 0, // ensure number
-        stateId: formData.stateId || 0,     // ensure number
-        cityId: formData.cityId || 0,       // ensure number
+        countryId: formData.countryId || 0,
+        stateId: formData.stateId || 0,
+        cityId: formData.cityId || 0,
         postalCode: formData.postalCode || '',
       };
 
+      // Use FormData to handle file upload
+      const submitFormData = new FormData();
+      
+      // Add all form fields to FormData
+      Object.entries(transformedData).forEach(([key, value]) => {
+        if (value !== null && value !== undefined) {
+          submitFormData.append(key, value.toString());
+        }
+      });
 
+      // Add profile image if selected
+      if (profileImage) {
+        submitFormData.append('profileImage', profileImage);
+      }
 
-      await studentService.create(transformedData);
+      await studentService.create(submitFormData);
       setSuccessOpen(true);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Failed to create student.';
@@ -197,6 +215,39 @@ export default function CreateStudentPage() {
       setErrorOpen(true);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setErrorMessage('Image must be less than 5MB');
+        setErrorOpen(true);
+        return;
+      }
+      
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setErrorMessage('Please select a valid image file (JPEG, PNG, WebP)');
+        setErrorOpen(true);
+        return;
+      }
+
+      setProfileImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -254,6 +305,39 @@ export default function CreateStudentPage() {
               {error && (
                 <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
               )}
+              
+              {/* Profile Picture Section */}
+              <div className="space-y-2">
+                <Label className="text-gray-600">Profile Picture</Label>
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-16 w-16">
+                    <AvatarImage src={imagePreview} alt="Profile" />
+                    <AvatarFallback className="bg-saVividOrange text-white">
+                      {formData.name ? getInitials(formData.name) : 'ST'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('profile-image-upload')?.click()}
+                      className="w-fit"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Choose Image
+                    </Button>
+                    <p className="text-xs text-gray-500">Max 5MB. JPG, PNG, WebP allowed.</p>
+                  </div>
+                  <input
+                    id="profile-image-upload"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    onChange={handleImageChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="name" className="text-gray-600">
                   Full Name <span className="text-saVividOrange">*</span>

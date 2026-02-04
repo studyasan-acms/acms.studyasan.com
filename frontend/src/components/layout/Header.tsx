@@ -8,7 +8,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
@@ -25,6 +25,9 @@ export default function Header({
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const { unreadCount } = useNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Debug log
+  console.log('Header user data:', user);
 
   const handleLogout = () => {
     clearAuth();
@@ -96,6 +99,17 @@ export default function Header({
                   className="flex items-center gap-2 hover:bg-saBlueDarkHover/20"
                 >
                   <Avatar className="h-8 w-8">
+                    <AvatarImage 
+                      src={user?.profile_url} 
+                      alt={user?.name || 'User'}
+                      onError={(e) => {
+                        console.log('Header avatar image failed to load:', user?.profile_url);
+                        e.currentTarget.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('Header avatar image loaded:', user?.profile_url);
+                      }}
+                    />
                     <AvatarFallback className="bg-saVividOrange text-white">
                       {user && getInitials(user.name)}
                     </AvatarFallback>

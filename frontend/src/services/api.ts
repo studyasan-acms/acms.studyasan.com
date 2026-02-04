@@ -218,40 +218,30 @@ export const studentService = {
     return response.data;
   },
 
-  create: async (data: CreateStudentData): Promise<{ success: boolean; data: Student }> => {
-    // First create the user
-    const userResponse = await api.post('/auth/register', {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      password: data.password,
-      role: 'STUDENT',
-    });
-
-    // Then create the student profile with ALL fields including address
-    const studentResponse = await api.post('/students', {
-      user_id: userResponse.data.data.user.id,
-      class_id: data.class_id,
-      board_id: data.board_id,
-      date_of_birth: data.date_of_birth,
-      gender: data.gender,
-      school: data.school,
-      blood_group: data.blood_group, // Add blood_group
-      addressLine: data.addressLine, // Add address fields
-      countryId: data.countryId,
-      stateId: data.stateId,
-      cityId: data.cityId,
-      postalCode: data.postalCode,
-    });
-
-    return studentResponse.data;
+  create: async (data: CreateStudentData | FormData): Promise<{ success: boolean; data: Student }> => {
+    // Send all data to backend endpoint - no longer need to create user separately
+    if (data instanceof FormData) {
+      // Create student with FormData (backend handles user creation in transaction)
+      const studentResponse = await api.post('/students', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return studentResponse.data;
+    } else {
+      // Create student (backend handles user creation in transaction)
+      const studentResponse = await api.post('/students', data);
+      return studentResponse.data;
+    }
   },
 
   update: async (
     id: number,
-    data: UpdateStudentData
+    data: UpdateStudentData | FormData
   ): Promise<{ success: boolean; data: Student }> => {
-    const response = await api.put(`/students/${id}`, data);
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const response = await api.put(`/students/${id}`, data, { headers });
     return response.data;
   },
 
@@ -348,43 +338,41 @@ export const teacherService = {
     return (response.data && (response.data.data ?? response.data)) as any;
   },
 
-  create: async (data: CreateTeacherData): Promise<{ success: boolean; data: Teacher }> => {
-    // First create the user
-    const userResponse = await api.post('/auth/register', {
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      password: data.password,
-      role: 'TEACHER',
-    });
-
-    // Then create the teacher profile
-    const teacherPayload: any = {
-      user_id: userResponse.data.data.user.id,
-      salary: data.salary,
-      salary_currency_id: data.salary_currency_id,
-      qualification: data.qualification,
-      gender: data.gender,
-      experience: data.experience,
-    };
-
-    if (data.address) teacherPayload.address = data.address;
-
-    const teacherResponse = await api.post('/teachers', teacherPayload);
-
-    return teacherResponse.data;
+  create: async (data: CreateTeacherData | FormData): Promise<{ success: boolean; data: Teacher }> => {
+    // Send all data to backend endpoint - no longer need to create user separately
+    if (data instanceof FormData) {
+      // Create teacher with FormData (backend handles user creation in transaction)
+      const teacherResponse = await api.post('/teachers', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      return teacherResponse.data;
+    } else {
+      // Create teacher (backend handles user creation in transaction)
+      const teacherResponse = await api.post('/teachers', data);
+      return teacherResponse.data;
+    }
   },
 
   update: async (
     id: number,
-    data: UpdateTeacherData
+    data: UpdateTeacherData | FormData
   ): Promise<{ success: boolean; data: Teacher }> => {
-    const payload: any = { ...data };
-    // if address is present, send nested address object
-    if (data.address) payload.address = data.address;
+    if (data instanceof FormData) {
+      const response = await api.put(`/teachers/${id}`, data, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } else {
+      const payload: any = { ...data };
+      // if address is present, send nested address object
+      if (data.address) payload.address = data.address;
 
-    const response = await api.put(`/teachers/${id}`, payload);
-    return response.data;
+      const response = await api.put(`/teachers/${id}`, payload);
+      return response.data;
+    }
   },
 
   delete: async (id: number): Promise<void> => {
@@ -1199,3 +1187,4 @@ export const analyticsService = {
 };
 
 export default api;
+export { api as apiService };

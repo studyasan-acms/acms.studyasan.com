@@ -37,6 +37,7 @@ model User {
   email               String                   @unique
   phone               String
   password            String
+  profile_url         String?
   role                Role                     @default(STUDENT)
   created_at          DateTime                 @default(now())
   updated_at          DateTime                 @updatedAt

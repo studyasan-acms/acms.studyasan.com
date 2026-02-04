@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
+import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
@@ -63,7 +65,7 @@ export const getAllStudents = async (req: Request, res: Response) => {
         skip,
         take: limit,
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true } },
+          user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
           class: true,
           board: true,
           address: {
@@ -142,6 +144,10 @@ export const getStudentById = async (req: Request, res: Response) => {
 export const createStudent = async (req: Request, res: Response) => {
   try {
     const {
+      name,
+      email,
+      phone,
+      password,
       user_id,
       class_id,
       board_id,
@@ -155,6 +161,38 @@ export const createStudent = async (req: Request, res: Response) => {
       cityId,
       postalCode,
     } = req.body;
+
+    const profileImage = req.file;
+
+    // Check if we're creating a new user or using existing user_id
+    if (user_id) {
+      // Existing flow for admin creating student from existing user
+      return createStudentFromExistingUser();
+    }
+
+    // New flow: Create user and student in a single transaction
+    if (!name || !email || !phone || !password) {
+      return sendError(res, 'Name, email, phone, and password are required', 400);
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (existingUser) {
+      return sendError(res, 'A user with this email already exists', 400);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle profile image upload if provided
+    let profileUrl: string | undefined;
+    if (profileImage) {
+      const uploadResult = await uploadToS3(profileImage, 'profiles');
+      profileUrl = uploadResult.url;
+    }
 
     const hasAnyAddressField = addressLine || countryId || stateId || cityId || postalCode;
     const hasAllAddressFields = addressLine && countryId && stateId && cityId && postalCode;
@@ -172,40 +210,122 @@ export const createStudent = async (req: Request, res: Response) => {
         create: {
           addressLine,
           postalCode,
-          country: { connect: { id: countryId } },
-          state: { connect: { id: stateId } },
-          city: { connect: { id: cityId } },
+          country: { connect: { id: parseInt(countryId.toString()) } },
+          state: { connect: { id: parseInt(stateId.toString()) } },
+          city: { connect: { id: parseInt(cityId.toString()) } },
         },
       }
       : undefined;
 
-    const student = await prisma.student.create({
-      data: {
-        user: { connect: { id: user_id } },
-        ...(class_id && { class: { connect: { id: class_id } } }),
-        ...(board_id && { board: { connect: { id: board_id } } }),
-        ...(date_of_birth && { date_of_birth: new Date(date_of_birth) }),
-        ...(gender && { gender }),
-        ...(school && { school }),
-        ...(blood_group && { blood_group }),
-        ...(addressData && { address: addressData }),
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
-        class: true,
-        board: true,
-        address: { include: { country: true, state: true, city: true } },
-      },
+    // Create user and student in a single transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user first
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          phone,
+          password: hashedPassword,
+          profile_url: profileUrl || null,
+          role: 'STUDENT',
+        },
+      });
+
+      // Create student profile
+      const student = await tx.student.create({
+        data: {
+          user: { connect: { id: user.id } },
+          ...(class_id && { class: { connect: { id: parseInt(class_id.toString()) } } }),
+          ...(board_id && { board: { connect: { id: parseInt(board_id.toString()) } } }),
+          ...(date_of_birth && { date_of_birth: new Date(date_of_birth) }),
+          ...(gender && { gender }),
+          ...(school && { school }),
+          ...(blood_group && { blood_group }),
+          ...(addressData && { address: addressData }),
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
+          class: true,
+          board: true,
+          address: { include: { country: true, state: true, city: true } },
+        },
+      });
+
+      return student;
     });
 
-    sendSuccess(res, student, 'Student created successfully', 201);
+    sendSuccess(res, result, 'Student created successfully', 201);
+    
+    async function createStudentFromExistingUser() {
+      // Original logic for creating student from existing user
+      const hasAnyAddressField = addressLine || countryId || stateId || cityId || postalCode;
+      const hasAllAddressFields = addressLine && countryId && stateId && cityId && postalCode;
+
+      if (hasAnyAddressField && !hasAllAddressFields) {
+        return sendError(
+          res,
+          'If providing address, all address fields (addressLine, countryId, stateId, cityId, postalCode) are required',
+          400
+        );
+      }
+
+      // Handle profile image upload if provided
+      let profileUrl: string | undefined;
+      if (profileImage) {
+        const uploadResult = await uploadToS3(profileImage, 'profiles');
+        profileUrl = uploadResult.url;
+
+        // Update user with profile image
+        await prisma.user.update({
+          where: { id: user_id },
+          data: { profile_url: profileUrl },
+        });
+      }
+
+      const addressData = hasAllAddressFields
+        ? {
+          create: {
+            addressLine,
+            postalCode,
+            country: { connect: { id: parseInt(countryId.toString()) } },
+            state: { connect: { id: parseInt(stateId.toString()) } },
+            city: { connect: { id: parseInt(cityId.toString()) } },
+          },
+        }
+        : undefined;
+
+      const student = await prisma.student.create({
+        data: {
+          user: { connect: { id: user_id } },
+          ...(class_id && { class: { connect: { id: parseInt(class_id.toString()) } } }),
+          ...(board_id && { board: { connect: { id: parseInt(board_id.toString()) } } }),
+          ...(date_of_birth && { date_of_birth: new Date(date_of_birth) }),
+          ...(gender && { gender }),
+          ...(school && { school }),
+          ...(blood_group && { blood_group }),
+          ...(addressData && { address: addressData }),
+        },
+        include: {
+          user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
+          class: true,
+          board: true,
+          address: { include: { country: true, state: true, city: true } },
+        },
+      });
+
+      sendSuccess(res, student, 'Student created successfully', 201);
+    }
   } catch (error: any) {
     console.error('Error creating student:', error);
+
+    if (error.code === 'P2002') {
+      return sendError(res, 'A user with this email already exists', 400);
+    }
 
     if (error.code === 'P2003') {
       return sendError(
         res,
-        'Invalid foreign key (user_id, class_id, board_id, countryId, stateId, or cityId)',
+        'Invalid foreign key (class_id, board_id, countryId, stateId, or cityId)',
         400
       );
     }
@@ -217,6 +337,10 @@ export const createStudent = async (req: Request, res: Response) => {
 export const updateStudent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const profileImage = req.file;
+    
+    // Extract data from either req.body (JSON) or req.body (FormData fields)
+    // When FormData is sent, multer parses the fields into req.body
     const {
       class_id,
       board_id,
@@ -243,14 +367,22 @@ export const updateStudent = async (req: Request, res: Response) => {
       return sendError(res, 'Student not found', 404);
     }
 
+    // Handle profile image upload if provided
+    let profileUrl: string | undefined;
+    if (profileImage) {
+      const uploadResult = await uploadToS3(profileImage, 'profiles');
+      profileUrl = uploadResult.url;
+    }
+
     // Update user information if provided
-    if (name !== undefined || email !== undefined || phone !== undefined) {
+    if (name !== undefined || email !== undefined || phone !== undefined || profileUrl) {
       await prisma.user.update({
         where: { id: existingStudent.user_id },
         data: {
           ...(name !== undefined && { name }),
           ...(email !== undefined && { email }),
           ...(phone !== undefined && { phone }),
+          ...(profileUrl && { profile_url: profileUrl }),
         },
       });
     }

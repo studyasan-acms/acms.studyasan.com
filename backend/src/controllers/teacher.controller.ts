@@ -1,7 +1,9 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
+import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
@@ -39,6 +41,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
               name: true,
               email: true,
               phone: true,
+              profile_url: true,
             },
           },
           salary_currency: true,
@@ -78,6 +81,7 @@ export const getTeacherById = async (req: Request, res: Response) => {
             name: true,
             email: true,
             phone: true,
+            profile_url: true,
           },
         },
         teacher_subject_junctions: {
@@ -131,81 +135,276 @@ export const getTeacherById = async (req: Request, res: Response) => {
 
 export const createTeacher = async (req: Request, res: Response) => {
   try {
-    const { user_id, salary, salary_currency_id, qualification, gender, experience, address } = req.body;
+    const { 
+      name,
+      email,
+      phone,
+      password,
+      user_id, 
+      salary, 
+      salary_currency_id, 
+      qualification, 
+      gender, 
+      experience, 
+      address 
+    } = req.body;
+    const profileImage = req.file;
 
-    // normalize IDs
-    const userIdNum = typeof user_id === 'string' ? parseInt(user_id, 10) : user_id;
-    const salaryCurrencyIdNum = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
-
-    const createData: any = { user: { connect: { id: Number(userIdNum) } } };
-    if (typeof salary !== 'undefined') createData.salary = salary;
-    if (salaryCurrencyIdNum !== undefined && salaryCurrencyIdNum !== null) {
-      createData.salary_currency = { connect: { id: Number(salaryCurrencyIdNum) } };
-    }
-    if (typeof qualification !== 'undefined') createData.qualification = qualification;
-    if (typeof gender !== 'undefined') createData.gender = gender;
-    if (typeof experience !== 'undefined') createData.experience = experience;
-    if (address) {
-      createData.address = {
-        create: {
-          addressLine: address.addressLine,
-          postalCode: address.postalCode,
-          countryId: address.countryId,
-          stateId: address.stateId,
-          cityId: address.cityId,
-        },
-      };
+    // Check if we're creating a new user or using existing user_id
+    if (user_id) {
+      // Existing flow for admin creating teacher from existing user
+      return createTeacherFromExistingUser();
     }
 
-    const teacher = await prisma.teacher.create({
-      data: createData,
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-          },
-        },
-        salary_currency: true,
-        address: {
-          include: {
-            country: { select: { id: true, name: true } },
-            state: { select: { id: true, name: true } },
-            city: { select: { id: true, name: true } },
-          },
-        },
-      },
+    // New flow: Create user and teacher in a single transaction
+    if (!name || !email || !phone || !password) {
+      return sendError(res, 'Name, email, phone, and password are required', 400);
+    }
+
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
     });
 
-    sendSuccess(res, teacher, 'Teacher created successfully', 201);
+    if (existingUser) {
+      return sendError(res, 'A user with this email already exists', 400);
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Handle profile image upload if provided
+    let profileUrl: string | undefined;
+    if (profileImage) {
+      const uploadResult = await uploadToS3(profileImage, 'profiles');
+      profileUrl = uploadResult.url;
+    }
+
+    // Parse address if it's a JSON string (from FormData)
+    let parsedAddress = address;
+    if (typeof address === 'string') {
+      try {
+        parsedAddress = JSON.parse(address);
+      } catch (error) {
+        console.warn('Failed to parse address JSON:', error);
+        parsedAddress = null;
+      }
+    }
+
+    // Create user and teacher in a single transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create user first
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          phone,
+          password: hashedPassword,
+          profile_url: profileUrl || null,
+          role: 'TEACHER',
+        },
+      });
+
+      // Prepare teacher data
+      const createData: any = { user: { connect: { id: user.id } } };
+      if (typeof salary !== 'undefined') createData.salary = salary;
+      if (salary_currency_id !== undefined && salary_currency_id !== null) {
+        const salaryCurrencyIdNum = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
+        createData.salary_currency = { connect: { id: Number(salaryCurrencyIdNum) } };
+      }
+      if (typeof qualification !== 'undefined') createData.qualification = qualification;
+      if (typeof gender !== 'undefined') createData.gender = gender;
+      if (typeof experience !== 'undefined') createData.experience = experience;
+      if (parsedAddress) {
+        createData.address = {
+          create: {
+            addressLine: parsedAddress.addressLine,
+            postalCode: parsedAddress.postalCode,
+            countryId: parsedAddress.countryId,
+            stateId: parsedAddress.stateId,
+            cityId: parsedAddress.cityId,
+          },
+        };
+      }
+
+      // Create teacher profile
+      const teacher = await tx.teacher.create({
+        data: createData,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              profile_url: true,
+            },
+          },
+          salary_currency: true,
+          address: {
+            include: {
+              country: { select: { id: true, name: true } },
+              state: { select: { id: true, name: true } },
+              city: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      return teacher;
+    });
+
+    sendSuccess(res, result, 'Teacher created successfully', 201);
+    
+    async function createTeacherFromExistingUser() {
+      // normalize IDs
+      const userIdNum = typeof user_id === 'string' ? parseInt(user_id, 10) : user_id;
+      const salaryCurrencyIdNum = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
+
+      // Handle profile image upload if provided
+      let profileUrl: string | undefined;
+      if (profileImage) {
+        const uploadResult = await uploadToS3(profileImage, 'profiles');
+        profileUrl = uploadResult.url;
+      }
+
+      // Update user with profile image if provided
+      if (profileUrl) {
+        await prisma.user.update({
+          where: { id: userIdNum },
+          data: { profile_url: profileUrl },
+        });
+      }
+
+      // Parse address if it's a JSON string (from FormData)
+      let parsedAddress = address;
+      if (typeof address === 'string') {
+        try {
+          parsedAddress = JSON.parse(address);
+        } catch (error) {
+          console.warn('Failed to parse address JSON:', error);
+          parsedAddress = null;
+        }
+      }
+
+      const createData: any = { user: { connect: { id: Number(userIdNum) } } };
+      if (typeof salary !== 'undefined') createData.salary = salary;
+      if (salaryCurrencyIdNum !== undefined && salaryCurrencyIdNum !== null) {
+        createData.salary_currency = { connect: { id: Number(salaryCurrencyIdNum) } };
+      }
+      if (typeof qualification !== 'undefined') createData.qualification = qualification;
+      if (typeof gender !== 'undefined') createData.gender = gender;
+      if (typeof experience !== 'undefined') createData.experience = experience;
+      if (parsedAddress) {
+        createData.address = {
+          create: {
+            addressLine: parsedAddress.addressLine,
+            postalCode: parsedAddress.postalCode,
+            countryId: parsedAddress.countryId,
+            stateId: parsedAddress.stateId,
+            cityId: parsedAddress.cityId,
+          },
+        };
+      }
+
+      const teacher = await prisma.teacher.create({
+        data: createData,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              phone: true,
+              profile_url: true,
+            },
+          },
+          salary_currency: true,
+          address: {
+            include: {
+              country: { select: { id: true, name: true } },
+              state: { select: { id: true, name: true } },
+              city: { select: { id: true, name: true } },
+            },
+          },
+        },
+      });
+
+      sendSuccess(res, teacher, 'Teacher created successfully', 201);
+    }
   } catch (error: any) {
-    sendError(res, error.message, 500);
+    console.error('Error creating teacher:', error);
+
+    if (error.code === 'P2002') {
+      return sendError(res, 'A user with this email already exists', 400);
+    }
+
+    if (error.code === 'P2003') {
+      return sendError(
+        res,
+        'Invalid foreign key (salary_currency_id, countryId, stateId, or cityId)',
+        400
+      );
+    }
+
+    sendError(res, error.message || 'Internal server error', 500);
   }
 };
 
 export const updateTeacher = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { salary, salary_currency_id, qualification, gender, experience, address, name, email, phone } = req.body;
+    
+    // Extract profile image if present
+    const profileImage = req.file as Express.Multer.File | undefined;
+
+    // Extract fields from req.body (may be FormData or JSON)
+    const salary = req.body.salary;
+    const salary_currency_id = req.body.salary_currency_id;
+    const qualification = req.body.qualification;
+    const gender = req.body.gender;
+    const experience = req.body.experience;
+    const address = req.body.address;
+    const name = req.body.name;
+    const email = req.body.email;
+    const phone = req.body.phone;
 
     const existingTeacher = await prisma.teacher.findUnique({
       where: { id: parseInt(id!) },
+      include: {
+        user: {
+          select: {
+            profile_url: true,
+          },
+        },
+      },
     });
 
     if (!existingTeacher) {
       return sendError(res, 'Teacher not found', 404);
     }
 
+    // Handle profile image upload if present
+    let profileUrl = existingTeacher.user.profile_url;
+    if (profileImage) {
+      // Delete old profile image if it exists
+      if (existingTeacher.user.profile_url) {
+        await deleteFromS3(existingTeacher.user.profile_url);
+      }
+      // Upload new profile image
+      const uploadResult = await uploadToS3(profileImage, `teacher-profiles`);
+      profileUrl = uploadResult.url;
+    }
+
     // Update user information if provided
-    if (name !== undefined || email !== undefined || phone !== undefined) {
+    if (name !== undefined || email !== undefined || phone !== undefined || profileUrl !== undefined) {
       await prisma.user.update({
         where: { id: existingTeacher.user_id },
         data: {
           ...(name !== undefined && { name }),
           ...(email !== undefined && { email }),
           ...(phone !== undefined && { phone }),
+          ...(profileUrl !== undefined && { profile_url: profileUrl }),
         },
       });
     }
@@ -213,7 +412,12 @@ export const updateTeacher = async (req: Request, res: Response) => {
     const salaryCurrencyIdNumUp = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
 
     const updateData: any = {};
-    if (typeof salary !== 'undefined') updateData.salary = salary;
+    if (typeof salary !== 'undefined') {
+      const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
+      if (!isNaN(salaryNum)) {
+        updateData.salary = salaryNum;
+      }
+    }
     if (typeof qualification !== 'undefined') updateData.qualification = qualification;
     if (typeof gender !== 'undefined') updateData.gender = gender;
     if (typeof experience !== 'undefined') updateData.experience = experience;
@@ -225,21 +429,33 @@ export const updateTeacher = async (req: Request, res: Response) => {
       }
     }
     if (address) {
+      // Handle address parsing for both JSON and FormData
+      let addressData;
+      if (typeof address === 'string') {
+        try {
+          addressData = JSON.parse(address);
+        } catch (e) {
+          return sendError(res, 'Invalid address format', 400);
+        }
+      } else {
+        addressData = address;
+      }
+      
       updateData.address = {
         upsert: {
           create: {
-            addressLine: address.addressLine,
-            postalCode: address.postalCode,
-            countryId: address.countryId,
-            stateId: address.stateId,
-            cityId: address.cityId,
+            addressLine: addressData.addressLine,
+            postalCode: addressData.postalCode,
+            countryId: addressData.countryId,
+            stateId: addressData.stateId,
+            cityId: addressData.cityId,
           },
           update: {
-            addressLine: address.addressLine,
-            postalCode: address.postalCode,
-            countryId: address.countryId,
-            stateId: address.stateId,
-            cityId: address.cityId,
+            addressLine: addressData.addressLine,
+            postalCode: addressData.postalCode,
+            countryId: addressData.countryId,
+            stateId: addressData.stateId,
+            cityId: addressData.cityId,
           },
         },
       };
@@ -255,6 +471,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
             name: true,
             email: true,
             phone: true,
+            profile_url: true,
           },
         },
         salary_currency: true,

@@ -97,6 +97,7 @@ import StudentActivitiesPage from '@/pages/activities/StudentActivitiesPage';
 // Home and Enquiry imports
 import StudentHomePage from '@/pages/StudentHomePage';
 import AdminEnquiriesPage from '@/pages/AdminEnquiriesPage';
+import ProfilePage from '@/pages/ProfilePage';
 
 // Homework imports
 import HomeworkPage from '@/pages/homework/HomeworkPage';
@@ -301,7 +302,7 @@ function App() {
           {/* Attendance Routes */}
           <Route path="attendance" element={<AttendanceListPage />} />
 
-          <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
+          <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<div>Settings Page - Coming Soon</div>} />
         </Route>
 

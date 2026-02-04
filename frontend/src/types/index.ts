@@ -4,6 +4,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  profile_url?: string;
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
   created_at: string;
   updated_at: string;
@@ -99,6 +100,7 @@ export interface Student {
     name: string;
     email: string;
     phone: string;
+    profile_url?: string;
   };
   class: { id: number; name: string } | null;
   board: { id: number; name: string } | null;
@@ -246,6 +248,7 @@ export interface Teacher {
     name: string;
     email: string;
     phone: string;
+    profile_url?: string;
   };
   _count?: { teacher_subject_junctions: number; test_series_junctions: number; activity_group_junctions: number };
   teacher_subject_junctions?: {
