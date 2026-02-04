@@ -175,6 +175,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
+    title: "Deletion Requests",
+    href: "/dashboard/admin/deletion-requests",
+    icon: ClipboardCheck,
+    roles: ["ADMIN"],
+  },
+  {
     title: "Enquiries",
     href: "/dashboard/enquiries",
     icon: GraduationCap,

@@ -29,6 +29,7 @@ import * as videoRoomController from '../controllers/videoRoom.controller.js';
 import * as paymentController from '../controllers/payment.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as profileController from '../controllers/profile.controller.js';
+import * as deletionController from '../controllers/deletion.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -58,6 +59,13 @@ router.get('/profile', authenticate, profileController.getProfile);
 router.put('/profile', authenticate, upload.single('profileImage'), profileController.updateProfile);
 router.put('/profile/student', authenticate, authorize('STUDENT'), profileController.updateStudentDetails);
 router.put('/profile/teacher', authenticate, authorize('TEACHER'), profileController.updateTeacherDetails);
+
+// Account deletion routes
+router.post('/account/request-deletion', authenticate, authorize('STUDENT', 'TEACHER'), deletionController.requestDeletion);
+router.post('/account/cancel-deletion', authenticate, authorize('STUDENT', 'TEACHER'), deletionController.cancelDeletion);
+router.get('/admin/deletion-requests', authenticate, authorize('ADMIN'), deletionController.getDeletionRequests);
+router.post('/admin/verify-deletion/:userId', authenticate, authorize('ADMIN'), deletionController.verifyDeletion);
+router.delete('/admin/delete-user/:userId', authenticate, authorize('ADMIN'), deletionController.deleteUserAccount);
 
 // Board routes
 router.get('/boards', boardController.getAllBoards);

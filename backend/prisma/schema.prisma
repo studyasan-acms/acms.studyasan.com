@@ -39,6 +39,9 @@ model User {
   password            String
   profile_url         String?
   role                Role                     @default(STUDENT)
+  delete_requested    Boolean                  @default(false)
+  delete_verified     Boolean                  @default(false)
+  delete_requested_at DateTime?
   created_at          DateTime                 @default(now())
   updated_at          DateTime                 @updatedAt
   student             Student?
@@ -311,6 +314,7 @@ enum NotificationType {
   INFO
   WARNING
   SUCCESS
+  ACCOUNT_DELETION
 }
 
 enum PendingNotificationStatus {

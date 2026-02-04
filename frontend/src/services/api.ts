@@ -1186,5 +1186,37 @@ export const analyticsService = {
   },
 };
 
+export const deletionService = {
+  // Request account deletion (Students/Teachers)
+  requestDeletion: async (): Promise<any> => {
+    const response = await api.post('/account/request-deletion');
+    return response.data;
+  },
+
+  // Cancel deletion request (Students/Teachers)
+  cancelDeletion: async (): Promise<any> => {
+    const response = await api.post('/account/cancel-deletion');
+    return response.data;
+  },
+
+  // Get all deletion requests (Admin only)
+  getDeletionRequests: async (): Promise<any> => {
+    const response = await api.get('/admin/deletion-requests');
+    return response.data;
+  },
+
+  // Verify/approve deletion (Admin only)
+  verifyDeletion: async (userId: number): Promise<any> => {
+    const response = await api.post(`/admin/verify-deletion/${userId}`);
+    return response.data;
+  },
+
+  // Delete user account (Admin only)
+  deleteUserAccount: async (userId: number): Promise<any> => {
+    const response = await api.delete(`/admin/delete-user/${userId}`);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };

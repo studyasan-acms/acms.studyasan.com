@@ -109,6 +109,9 @@ import StudentAnalyticsPage from '@/pages/analytics/StudentAnalyticsPage';
 import TeacherAnalyticsPage from '@/pages/analytics/TeacherAnalyticsPage';
 import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
 
+// Admin imports
+import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
+
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -293,6 +296,9 @@ function App() {
 
           {/* Admin Enquiries Route */}
           <Route path="enquiries" element={<AdminEnquiriesPage />} />
+
+          {/* Admin Deletion Requests Route */}
+          <Route path="admin/deletion-requests" element={<DeletionRequestsPage />} />
 
           {/* Analytics Routes */}
           <Route path="analytics" element={<StudentAnalyticsPage />} />
