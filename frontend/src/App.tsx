@@ -136,7 +136,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
   if (isAuthenticated && user) {
     if (user.role === 'STUDENT') {
-      return <Navigate to="/dashboard/home" replace />;
+      return <Navigate to="/dashboard" replace />;
     } else {
       return <Navigate to="/dashboard" replace />;
     }
@@ -183,7 +183,7 @@ function App() {
       <Routes>
         {/* Redirect home page to login */}
         <Route path="/" element={<Navigate to="/login" replace />} />
-        
+
         {/* Public Website Routes */}
         <Route element={<PublicLayout />}>
           <Route path="about" element={<AboutPage />} />

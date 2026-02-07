@@ -38,7 +38,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     title: "Home",
-    href: "/dashboard/home",
+    href: "/dashboard",
     icon: Home,
     roles: ["STUDENT"],
   },
@@ -47,24 +47,6 @@ const navItems: NavItem[] = [
     href: "/dashboard",
     icon: Home,
     roles: ["ADMIN", "TEACHER"],
-  },
-  {
-    title: "Analytics",
-    href: "/dashboard/analytics/admin",
-    icon: TrendingUp,
-    roles: ["ADMIN"],
-  },
-  {
-    title: "Student Analytics",
-    href: "/dashboard/analytics/teacher",
-    icon: TrendingUp,
-    roles: ["TEACHER"],
-  },
-  {
-    title: "My Analytics",
-    href: "/dashboard/analytics",
-    icon: TrendingUp,
-    roles: ["STUDENT"],
   },
   {
     title: "Students",
