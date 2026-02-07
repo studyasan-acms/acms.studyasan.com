@@ -44,6 +44,7 @@ model User {
   delete_requested_at  DateTime?
   reset_otp_hash       String?                  // Hashed OTP for password reset
   reset_otp_expires_at DateTime?                // OTP expiry timestamp
+  fcm_token            String?                  // Firebase Cloud Messaging token for push notifications
   created_at           DateTime                 @default(now())
   updated_at           DateTime                 @updatedAt
   student             Student?

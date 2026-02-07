@@ -31,6 +31,7 @@ import * as paymentController from '../controllers/payment.controller.js';
 import * as analyticsController from '../controllers/analytics.controller.js';
 import * as profileController from '../controllers/profile.controller.js';
 import * as deletionController from '../controllers/deletion.controller.js';
+import * as pushNotificationController from '../controllers/pushNotification.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -72,6 +73,13 @@ router.post('/account/cancel-deletion', authenticate, authorize('STUDENT', 'TEAC
 router.get('/admin/deletion-requests', authenticate, authorize('ADMIN'), deletionController.getDeletionRequests);
 router.post('/admin/verify-deletion/:userId', authenticate, authorize('ADMIN'), deletionController.verifyDeletion);
 router.delete('/admin/delete-user/:userId', authenticate, authorize('ADMIN'), deletionController.deleteUserAccount);
+
+// Push Notification routes
+router.post('/notifications/subscribe', authenticate, pushNotificationController.subscribeToNotifications);
+router.post('/notifications/unsubscribe', authenticate, pushNotificationController.unsubscribeFromNotifications);
+router.post('/notifications/test', authenticate, pushNotificationController.sendTestNotification);
+router.post('/notifications/send-to-users', authenticate, authorize('ADMIN', 'TEACHER'), pushNotificationController.sendNotificationToUsers);
+router.post('/notifications/send-to-role', authenticate, authorize('ADMIN'), pushNotificationController.sendNotificationToRole);
 
 // Board routes
 router.get('/boards', boardController.getAllBoards);

@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Upload, User, Lock, Save, Camera, AlertTriangle, Trash2 } from 'lucide-react';
+import { Upload, User, Lock, Save, Camera, AlertTriangle, Trash2, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService, deletionService } from '@/services/api';
+import NotificationSettings from '@/components/NotificationSettings';
 
 interface ProfileData {
   id: number;
@@ -288,9 +289,13 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile Settings</h1>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-2' : 'grid-cols-4'}`}>
+          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-3' : 'grid-cols-5'}`}>
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
+            <TabsTrigger value="notifications">
+              <Bell className="h-4 w-4 mr-2" />
+              Notifications
+            </TabsTrigger>
             {profileData?.role !== 'ADMIN' && (
               <TabsTrigger value="details">
                 {profileData?.role === 'STUDENT' ? 'Student Details' : 'Teacher Details'}
@@ -444,6 +449,10 @@ export default function ProfilePage() {
                 </Button>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications">
+            <NotificationSettings />
           </TabsContent>
 
           <TabsContent value="details">
