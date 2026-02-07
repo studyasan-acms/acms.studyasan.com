@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,33 +9,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
+import { Badge } from "@/components/ui/badge";
 import {
   subjectService,
   boardService,
   classService,
 } from "@/services/api";
-
 import type { Subject, Board, Class } from "@/types";
-
 import {
   Plus,
   Eye,
   Edit,
   Trash2,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   BookOpen,
+  Search,
 } from "lucide-react";
-
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -52,6 +34,7 @@ export default function SubjectsPage() {
   usePageTitle("Subjects");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const isAdmin = user?.role === "ADMIN";
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -91,18 +74,15 @@ export default function SubjectsPage() {
       if (user?.role === "TEACHER" && user.id) {
         params.user_id = user.id;
         params.role = "TEACHER";
-        console.log('🔍 [SUBJECTS_PAGE] Fetching teacher subjects with params:', params);
       }
 
       // Student filter
       if (user?.role === "STUDENT" && user.id) {
         params.user_id = user.id;
         params.role = "STUDENT";
-        console.log('🔍 [SUBJECTS_PAGE] Fetching student subjects with params:', params);
       }
 
       const response = await subjectService.getAll(params);
-      console.log('✅ [SUBJECTS_PAGE] Subjects response:', response);
 
       setSubjects(response.data.data);
       setTotalPages(response.data.pagination.totalPages);
@@ -161,402 +141,255 @@ export default function SubjectsPage() {
     }
   };
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setSelectedClass("");
-    setSelectedBoard("");
-    setSelectedType("");
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
     setCurrentPage(1);
   };
 
-  const isAdmin = user?.role === "ADMIN";
+  const handleFilterChange = () => setCurrentPage(1);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">
             Subjects
           </h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Manage subjects and courses
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
+            Manage subjects & courses
           </p>
         </div>
-
         {isAdmin && (
           <Button
+            className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm rounded-xl"
             onClick={() => navigate("/dashboard/subjects/new")}
-            className="w-full md:w-auto flex justify-center"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Subject
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            New Subject
           </Button>
         )}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-gray-600">
-            All Subjects ({total})
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            A list of all subjects in the system
-          </CardDescription>
-        </CardHeader>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+        {/* Search */}
+        <div className="relative flex-1 w-full md:w-auto min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search subjects..."
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
+          />
+        </div>
 
-        <CardContent>
-          {/* Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 mb-4 items-end">
-            {/* Search */}
-            <div className="md:col-span-5">
-              <Input
-                placeholder="Search by name..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
+        {/* Dropdowns Container */}
+        <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
+          <select
+            value={selectedClass}
+            onChange={(e) => {
+              setSelectedClass(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+          >
+            <option value="">All Classes</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
 
-            {/* Class filter */}
-            <div className="md:col-span-2">
-              <Select
-                value={selectedClass}
-                onValueChange={(val) => {
-                  setSelectedClass(val === "all" ? "" : val);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Classes</SelectItem>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id.toString()}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <select
+            value={selectedBoard}
+            onChange={(e) => {
+              setSelectedBoard(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+          >
+            <option value="">All Boards</option>
+            {boards.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
 
-            {/* Board filter */}
-            <div className="md:col-span-2">
-              <Select
-                value={selectedBoard}
-                onValueChange={(val) => {
-                  setSelectedBoard(val === "all" ? "" : val);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Boards" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Boards</SelectItem>
-                  {boards.map((b) => (
-                    <SelectItem key={b.id} value={b.id.toString()}>
-                      {b.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <select
+            value={selectedType}
+            onChange={(e) => {
+              setSelectedType(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[100px]"
+          >
+            <option value="">All Types</option>
+            <option value="subject">Subject</option>
+            <option value="course">Course</option>
+          </select>
+        </div>
+      </div>
 
-            {/* Type filter */}
-            <div className="md:col-span-2">
-              <Select
-                value={selectedType}
-                onValueChange={(val) => {
-                  setSelectedType(val === "all" ? "" : val);
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="subject">Subject</SelectItem>
-                  <SelectItem value="course">Course</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Clear filters */}
-            <div className="md:col-span-1 flex justify-end">
-              <Button
-                variant="outline"
-                onClick={clearFilters}
-                disabled={
-                  !searchTerm &&
-                  !selectedClass &&
-                  !selectedBoard &&
-                  !selectedType
-                }
-                className="w-full md:w-auto"
-              >
-                Clear
-              </Button>
-            </div>
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-4">
+          <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-bold text-xs tracking-widest uppercase">
+            Loading Subjects...
+          </p>
+        </div>
+      ) : subjects.length === 0 ? (
+        <div className="py-20 flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+            <BookOpen className="w-8 h-8 text-gray-300" />
           </div>
-
-          {/* Table / Cards */}
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : subjects.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <BookOpen className="h-12 w-12 mb-4" />
-              <p className="text-lg font-medium">No subjects found</p>
-              <p className="text-sm">Try adjusting your filters</p>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-md overflow-hidden border-none lg:border">
-                {/* Desktop Table */}
-                <div className="hidden lg:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-saBlue/40 hover:bg-saBlue/40">
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Name
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Class
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Board
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Type
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Teachers
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Enrollments
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-
-                    <TableBody>
-                      {subjects.map((subject, index) => (
-                        <TableRow
-                          key={subject.id}
-                          className={
-                            index % 2 === 0
-                              ? "bg-saBlueLight/20"
-                              : "bg-saBlueLight/10"
+          <h3 className="text-lg font-bold text-gray-600">No subjects found</h3>
+          <p className="text-gray-400 text-xs mt-1">
+            Try adjusting your filters
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm animate-in fade-in duration-500 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 min-w-[200px]">
+                    Subject Name
+                  </TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden md:table-cell">
+                    Class & Board
+                  </TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px] hidden md:table-cell">
+                    Type
+                  </TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px] hidden lg:table-cell">
+                    Enrollments
+                  </TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">
+                    Actions
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {subjects.map((subject) => (
+                  <TableRow
+                    key={subject.id}
+                    className="hover:bg-blue-50/30 border-b-gray-50 transition-colors"
+                  >
+                    <TableCell className="pl-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-saBlue">
+                          <BookOpen className="h-5 w-5" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm leading-tight">
+                            {subject.name}
+                          </span>
+                          <span className="text-[10px] text-gray-400">
+                            {subject._count?.teacher_subject_junctions || 0} Teachers
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="w-fit text-[10px] border-blue-100 text-saBlue bg-blue-50/50">
+                          {subject.class?.name || "No Class"}
+                        </Badge>
+                        <span className="text-[10px] text-gray-400 ml-1">{subject.board?.name || 'No Board'}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge variant="secondary" className="text-[10px] font-medium bg-gray-100 text-gray-600">
+                        {subject.is_course ? "Course" : "Subject"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="flex items-center space-x-1">
+                        <div className="h-6 w-16 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
+                          <span className="text-[10px] font-bold text-gray-600">{subject._count?.enrollments || 0}</span>
+                        </div>
+                        <span className="text-[10px] text-gray-400">students</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex gap-1 justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-gray-400 hover:text-saBlue"
+                          onClick={() =>
+                            navigate(`/dashboard/subjects/${subject.id}`)
                           }
                         >
-                          <TableCell className="font-medium">
-                            {subject.name}
-                          </TableCell>
-
-                          <TableCell>{subject.class?.name || "-"}</TableCell>
-
-                          <TableCell>{subject.board?.name || "-"}</TableCell>
-
-                          <TableCell>
-                            {subject.is_course ? "Course" : "Subject"}
-                          </TableCell>
-
-                          <TableCell>
-                            {subject._count?.teacher_subject_junctions || 0}
-                          </TableCell>
-
-                          <TableCell>
-                            {subject._count?.enrollments || 0}
-                          </TableCell>
-
-                          <TableCell className="text-right">
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-saBlue hover:text-saBlueDarkHover cursor-pointer"
-                                onClick={() =>
-                                  navigate(`/dashboard/subjects/${subject.id}`)
-                                }
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-
-                              {isAdmin && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-saVividOrange hover:text-[#d18a00] cursor-pointer"
-                                    onClick={() =>
-                                      navigate(
-                                        `/dashboard/subjects/${subject.id}/edit`
-                                      )
-                                    }
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-red-600 hover:text-red-800 cursor-pointer"
-                                    onClick={() =>
-                                      setDeleteSubject(subject)
-                                    }
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Mobile Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4 px-0">
-                  {subjects.map((subject) => (
-                    <div
-                      key={subject.id}
-                      className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-md duration-200"
-                    >
-                      {/* Header */}
-                      <div className="bg-saBlueLight/60 p-4 flex justify-between items-center">
-                        <div className="font-semibold text-lg text-gray-900 truncate">
-                          {subject.name}
-                        </div>
-
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-saBlue hover:text-saBlueDarkHover"
-                            onClick={() =>
-                              navigate(`/dashboard/subjects/${subject.id}`)
-                            }
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-
-                          {isAdmin && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-saVividOrange hover:text-[#d18a00]"
-                                onClick={() =>
-                                  navigate(
-                                    `/dashboard/subjects/${subject.id}/edit`
-                                  )
-                                }
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-red-600 hover:text-red-800"
-                                onClick={() => setDeleteSubject(subject)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-saVividOrange"
+                              onClick={() =>
+                                navigate(
+                                  `/dashboard/subjects/${subject.id}/edit`
+                                )
+                              }
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-gray-400 hover:text-red-600"
+                              onClick={() => setDeleteSubject(subject)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </>
+                        )}
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
-                      {/* Body */}
-                      <div className="p-4 bg-gray-100">
-                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                          <div>
-                            <span className="font-medium">Class</span>
-                            <p>{subject.class?.name || "-"}</p>
-                          </div>
-
-                          <div>
-                            <span className="font-medium">Board</span>
-                            <p>{subject.board?.name || "-"}</p>
-                          </div>
-
-                          <div>
-                            <span className="font-medium">Type</span>
-                            <p>{subject.is_course ? "Course" : "Subject"}</p>
-                          </div>
-
-                          <div>
-                            <span className="font-medium">Teachers</span>
-                            <p>
-                              {subject._count?.teacher_subject_junctions || 0}
-                            </p>
-                          </div>
-
-                          <div className="col-span-2">
-                            <span className="font-medium">Enrollments</span>
-                            <p>{subject._count?.enrollments || 0}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pagination */}
-              <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-2">
-                <p className="text-sm text-muted-foreground text-center sm:text-left w-full sm:w-auto">
-                  Showing {(currentPage - 1) * limit + 1} to{" "}
-                  {Math.min(currentPage * limit, total)} of {total} subjects
-                </p>
-
-                <div className="flex items-center space-x-2 justify-center w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded"
-                    disabled={currentPage === 1}
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(prev - 1, 1))
-                    }
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-
-                  <span className="text-sm">
-                    Page {currentPage} of {totalPages}
-                  </span>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded"
-                    disabled={currentPage === totalPages}
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                    }
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pagination Styled */}
+      {subjects.length > 0 && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            {Math.min(currentPage * limit, total)} of {total} Subjects
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              Next <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {isAdmin && (
@@ -564,9 +397,9 @@ export default function SubjectsPage() {
           open={!!deleteSubject}
           title="Delete Subject"
           message={
-            <p>
-              Are you sure you want to delete <b>{deleteSubject?.name}</b>?
-            </p>
+            <span>
+              Are you sure you want to delete <strong>{deleteSubject?.name}</strong>?
+            </span>
           }
           confirmText="Delete"
           cancelText="Cancel"
