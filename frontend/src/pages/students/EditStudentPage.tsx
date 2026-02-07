@@ -32,7 +32,7 @@ import type {
   State,
   City,
 } from "@/types";
-import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown, Camera, User, Mail, Phone, BookOpen, Globe, School, MapPin } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
@@ -290,7 +290,7 @@ export default function EditStudentPage() {
         setErrorOpen(true);
         return;
       }
-      
+
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setErrorMessage('Please select a valid image file (JPEG, PNG, WebP)');
@@ -343,7 +343,6 @@ export default function EditStudentPage() {
         blood_group: formData.blood_group
           ? formData.blood_group.replace("+", "_POS").replace("-", "_NEG")
           : null,
-        // date_of_birth is already in YYYY-MM-DD format, backend will parse it with new Date()
       };
 
       // Remove undefined values
@@ -366,7 +365,7 @@ export default function EditStudentPage() {
           }
         });
         formData.append('profileImage', profileImage);
-        
+
         await studentService.update(parseInt(id), formData);
       } else {
         await studentService.update(parseInt(id), cleanData);
@@ -396,16 +395,16 @@ export default function EditStudentPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
       </div>
     );
   }
 
   if (!student) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <p className="text-lg font-medium">Student not found</p>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <p className="text-lg font-medium text-gray-700">Student not found</p>
         <Button
           onClick={() => navigate("/dashboard/students")}
           className="mt-4"
@@ -422,9 +421,16 @@ export default function EditStudentPage() {
     return bg.replace("_POS", "+").replace("_NEG", "-");
   }
 
+  const FormLabel = ({ children, icon: Icon, required }: { children: React.ReactNode, icon?: any, required?: boolean }) => (
+    <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      {Icon && <Icon className="w-3.5 h-3.5" />}
+      {children}
+      {required && <span className="text-red-500 text-lg leading-none ml-0.5">*</span>}
+    </Label>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* SUCCESS MODAL */}
+    <div className="max-w-4xl mx-auto space-y-8 pb-10">
       <SuccessModal
         open={successOpen}
         title="Student Updated Successfully"
@@ -437,7 +443,6 @@ export default function EditStudentPage() {
         onClose={() => setSuccessOpen(false)}
       />
 
-      {/* ERROR MODAL */}
       <ErrorModal
         open={errorOpen}
         title="Error"
@@ -449,166 +454,175 @@ export default function EditStudentPage() {
       />
 
       {/* Header */}
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-4">
         <button
           onClick={() => navigate("/dashboard/students")}
-          className="flex items-center text-blue-600 text-sm hover:underline w-fit"
+          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-sm font-medium"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Students
         </button>
 
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
-            Edit Student
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Update student details for {student.user.name}
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 tracking-tight">
+              Edit Student
+            </h1>
+            <p className="text-gray-500 mt-1">
+              Update details for <span className="font-semibold text-saBlue">{student.user.name}</span>
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* User Information Card (read-only) */}
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">
-                User Information
-              </CardTitle>
-              <CardDescription>Account information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Profile Picture */}
-              <div className="space-y-2">
-                <Label className="text-gray-600">Profile Picture</Label>
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <img
-                      src={imagePreview || student.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}&background=f97316&color=ffffff&size=96`}
-                      alt={student.user.name}
-                      className="w-16 h-16 rounded-full object-cover border border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="profile-image-upload"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('profile-image-upload')?.click()}
-                      disabled={isSaving}
-                    >
-                      Change Picture
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-1">Max 5MB (JPEG, PNG, WebP)</p>
-                  </div>
+      <form onSubmit={handleSubmit} className="space-y-8">
+
+        {/* SECTION 1: USER INFO & PROFILE PHOTO */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Profile Photo Card */}
+          <Card className="md:col-span-1 rounded-3xl border-gray-100 shadow-sm h-full">
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <div className="relative group cursor-pointer" onClick={() => document.getElementById('profile-image-upload')?.click()}>
+                <div className="w-32 h-32 rounded-full border-4 border-gray-50 shadow-inner overflow-hidden relative">
+                  <img
+                    src={imagePreview || student.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}&background=f97316&color=ffffff&size=128`}
+                    alt={student.user.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white w-8 h-8" />
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label className="text-gray-600">Full Name</Label>
-                <Input
-                  value={formData.name || ""}
-                  onChange={(e) => handleChange("name", e.target.value)}
+              <div className="mt-4 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-saBlue hover:bg-blue-50 hover:text-saBlue/80"
+                  onClick={() => document.getElementById('profile-image-upload')?.click()}
                   disabled={isSaving}
-                />
+                >
+                  Change Photo
+                </Button>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Max 5MB (JPEG, PNG, WebP)
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label className="text-gray-600">Email</Label>
-                <Input
-                  value={formData.email || ""}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-600">Phone</Label>
-                <Input
-                  value={formData.phone || ""}
-                  onChange={(e) => handleChange("phone", e.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
+              <input
+                id="profile-image-upload"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </CardContent>
           </Card>
 
-          {/* Editable Student Info */}
-          <Card className="w-full">
+          {/* Basic Details Inputs */}
+          <Card className="md:col-span-2 rounded-3xl border-gray-100 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-xl text-gray-600">
-                Student Details
-              </CardTitle>
-              <CardDescription>Update student information</CardDescription>
+              <CardTitle className="text-xl text-gray-700">Account Information</CardTitle>
+              <CardDescription>Primary account details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 col-span-2">
+                  <FormLabel icon={User}>Full Name</FormLabel>
+                  <Input
+                    value={formData.name || ""}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormLabel icon={Mail}>Email Address</FormLabel>
+                  <Input
+                    value={formData.email || ""}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormLabel icon={Phone}>Phone Number</FormLabel>
+                  <Input
+                    value={formData.phone || ""}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* SECTION 2: ACADEMIC DETAILS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-700">Academic & Personal Details</CardTitle>
+            <CardDescription>Update schooling and personal info</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="class" className="text-gray-600">
-                  Class
-                </Label>
+                <FormLabel icon={BookOpen}>Class</FormLabel>
                 <Select
                   value={formData.class_id?.toString() || "none"}
                   onValueChange={(value) =>
-                    handleChange(
-                      "class_id",
-                      value === "none" ? null : parseInt(value)
-                    )
+                    handleChange("class_id", value === "none" ? null : parseInt(value))
                   }
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="class">
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id.toString()}>
-                        {cls.name}
-                      </SelectItem>
+                      <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="board" className="text-gray-600">
-                  Board
-                </Label>
+                <FormLabel icon={Globe}>Board</FormLabel>
                 <Select
                   value={formData.board_id?.toString() || "none"}
                   onValueChange={(value) =>
-                    handleChange(
-                      "board_id",
-                      value === "none" ? null : parseInt(value)
-                    )
+                    handleChange("board_id", value === "none" ? null : parseInt(value))
                   }
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="board">
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
                     <SelectValue placeholder="Select board" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {boards.map((board) => (
-                      <SelectItem key={board.id} value={board.id.toString()}>
-                        {board.name}
-                      </SelectItem>
+                      <SelectItem key={board.id} value={board.id.toString()}>{board.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="gender" className="text-gray-600">
-                  Gender
-                </Label>
+                <FormLabel icon={School}>School Name</FormLabel>
+                <Input
+                  placeholder="School Name"
+                  value={formData.school || ""}
+                  onChange={(e) => handleChange("school", e.target.value)}
+                  disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Gender</FormLabel>
                 <Select
                   value={formData.gender || "none"}
                   onValueChange={(value) =>
@@ -616,8 +630,8 @@ export default function EditStudentPage() {
                   }
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Select gender" />
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectValue placeholder="Select Gender" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
@@ -629,338 +643,255 @@ export default function EditStudentPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="date_of_birth" className="text-gray-600">
-                  Date of Birth
-                </Label>
+                <FormLabel>Date of Birth</FormLabel>
                 <Input
-                  id="date_of_birth"
                   type="date"
                   value={formData.date_of_birth || ""}
-                  onChange={(e) =>
-                    handleChange("date_of_birth", e.target.value)
-                  }
+                  onChange={(e) => handleChange("date_of_birth", e.target.value)}
                   disabled={isSaving}
                   max={new Date().toISOString().split("T")[0]}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="school" className="text-gray-600">
-                  School
-                </Label>
-                <Input
-                  id="school"
-                  placeholder="ABC High School"
-                  value={formData.school || ""}
-                  onChange={(e) => handleChange("school", e.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="blood_group" className="text-gray-600">
-                  Blood Group
-                </Label>
+                <FormLabel>Blood Group</FormLabel>
                 <Select
-                  value={
-                    formatBloodGroupForDisplay(formData.blood_group ?? null) ??
-                    "none"
-                  }
+                  value={formatBloodGroupForDisplay(formData.blood_group ?? null) ?? "none"}
                   onValueChange={(value) =>
                     handleChange("blood_group", value === "none" ? null : value)
                   }
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="blood_group">
-                    <SelectValue placeholder="Select blood group" />
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectValue placeholder="Select Blood Group" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
-                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
-                      (bg) => (
-                        <SelectItem key={bg} value={bg}>
-                          {bg}
-                        </SelectItem>
-                      )
-                    )}
+                    {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                      <SelectItem key={bg} value={bg}>{bg}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Address Section - NEW */}
-          <Card className="w-full md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Address</CardTitle>
-              <CardDescription>
-                Update student address. All fields must be filled to save
-                address.
-                {student.address && (
-                  <span className="text-green-600 ml-2">✓ Address exists</span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* SECTION 3: ADDRESS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-700 flex items-center justify-between">
+              Residential Address
+              {student.address && (
+                <span className="text-xs bg-green-50 text-green-600 px-2.5 py-1 rounded-full border border-green-100">
+                  ✓ Address Saved
+                </span>
+              )}
+            </CardTitle>
+            <CardDescription>
+              All address fields are required if you wish to update the address.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <FormLabel icon={MapPin}>Address</FormLabel>
+              <Textarea
+                placeholder="123 Main Street, Apartment, etc."
+                value={formData.addressLine || ""}
+                onChange={(e) => handleChange("addressLine", e.target.value)}
+                disabled={isSaving}
+                className="min-h-[80px] rounded-xl bg-gray-50 border-gray-200 resize-none"
+              />
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <div className="space-y-2">
-                <Label htmlFor="addressLine" className="text-gray-600">
-                  Address
-                </Label>
-                <Textarea
-                  id="addressLine"
-                  placeholder="123 Main Street, Apartment, etc."
-                  value={formData.addressLine || ""}
-                  onChange={(e) => handleChange("addressLine", e.target.value)}
+                <FormLabel>Country</FormLabel>
+                <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={countryOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={isSaving}
+                    >
+                      {formData.countryId
+                        ? countries.find((country) => country.id === formData.countryId)?.name
+                        : "Select Country..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        placeholder="Search..."
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        <div
+                          className="flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100 text-red-500"
+                          onClick={() => {
+                            handleCountryChange("none");
+                            setCountryOpen(false);
+                            setCountrySearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-3 w-3", !formData.countryId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </div>
+                        {countries
+                          .filter(c => c.name.toLowerCase().includes(countrySearch.toLowerCase()))
+                          .map((country) => (
+                            <div
+                              key={country.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.countryId === country.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleCountryChange(country.id.toString());
+                                setCountryOpen(false);
+                                setCountrySearch("");
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-3 w-3", formData.countryId === country.id ? "opacity-100" : "opacity-0")} />
+                              {country.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>State</FormLabel>
+                <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={stateOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={!selectedCountryId || isSaving}
+                    >
+                      {formData.stateId
+                        ? states.find((state) => state.id === formData.stateId)?.name
+                        : "Select State..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        placeholder="Search..."
+                        value={stateSearch}
+                        onChange={(e) => setStateSearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        {states
+                          .filter(s => s.name.toLowerCase().includes(stateSearch.toLowerCase()))
+                          .map((state) => (
+                            <div
+                              key={state.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.stateId === state.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleStateChange(state.id.toString());
+                                setStateOpen(false);
+                                setStateSearch("");
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-3 w-3", formData.stateId === state.id ? "opacity-100" : "opacity-0")} />
+                              {state.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>City</FormLabel>
+                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={cityOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={!selectedStateId || isSaving}
+                    >
+                      {formData.cityId
+                        ? cities.find((city) => city.id === formData.cityId)?.name
+                        : "Select City..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        placeholder="Search..."
+                        value={citySearch}
+                        onChange={(e) => setCitySearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        {cities
+                          .filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase()))
+                          .map((city) => (
+                            <div
+                              key={city.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.cityId === city.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleChange("cityId", city.id);
+                                setCityOpen(false);
+                                setCitySearch("");
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-3 w-3", formData.cityId === city.id ? "opacity-100" : "opacity-0")} />
+                              {city.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Postal Code</FormLabel>
+                <Input
+                  placeholder="e.g. 10001"
+                  value={formData.postalCode || ""}
+                  onChange={(e) => handleChange("postalCode", e.target.value)}
                   disabled={isSaving}
-                  className="w-full"
-                  rows={3}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="country" className="text-gray-600">
-                    Country
-                  </Label>
-                  <Popover open={countryOpen} onOpenChange={setCountryOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={countryOpen}
-                        className="w-full justify-between"
-                        disabled={isSaving}
-                      >
-                        {formData.countryId
-                          ? countries.find((country) => country.id === formData.countryId)?.name
-                          : "Select country..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search country..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleCountryChange("none");
-                              setCountryOpen(false);
-                              setCountrySearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.countryId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {countries
-                            .filter(country => country.name.toLowerCase().includes(countrySearch.toLowerCase()))
-                            .map((country) => (
-                              <div
-                                key={country.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleCountryChange(country.id.toString());
-                                  setCountryOpen(false);
-                                  setCountrySearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.countryId === country.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {country.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state" className="text-gray-600">
-                    State
-                  </Label>
-                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={stateOpen}
-                        className="w-full justify-between"
-                        disabled={!selectedCountryId || isSaving}
-                      >
-                        {formData.stateId
-                          ? states.find((state) => state.id === formData.stateId)?.name
-                          : "Select state..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search state..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={stateSearch}
-                          onChange={(e) => setStateSearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleStateChange("none");
-                              setStateOpen(false);
-                              setStateSearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.stateId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {states
-                            .filter(state => state.name.toLowerCase().includes(stateSearch.toLowerCase()))
-                            .map((state) => (
-                              <div
-                                key={state.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleStateChange(state.id.toString());
-                                  setStateOpen(false);
-                                  setStateSearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.stateId === state.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {state.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-gray-600">
-                    City
-                  </Label>
-                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={cityOpen}
-                        className="w-full justify-between"
-                        disabled={!selectedStateId || isSaving}
-                      >
-                        {formData.cityId
-                          ? cities.find((city) => city.id === formData.cityId)?.name
-                          : "Select city..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search city..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={citySearch}
-                          onChange={(e) => setCitySearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleChange("cityId", null);
-                              setCityOpen(false);
-                              setCitySearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.cityId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {cities
-                            .filter(city => city.name.toLowerCase().includes(citySearch.toLowerCase()))
-                            .map((city) => (
-                              <div
-                                key={city.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleChange("cityId", city.id);
-                                  setCityOpen(false);
-                                  setCitySearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.cityId === city.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {city.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode" className="text-gray-600">
-                    Postal Code
-                  </Label>
-                  <Input
-                    id="postalCode"
-                    placeholder="123456"
-                    value={formData.postalCode || ""}
-                    onChange={(e) => handleChange("postalCode", e.target.value)}
-                    disabled={isSaving}
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
           <Button
             type="button"
-            variant="outline"
-            onClick={() => navigate("/dashboard/students")}
+            variant="ghost"
+            onClick={() => navigate('/dashboard/students')}
+            className="w-full sm:w-auto h-12 rounded-xl text-gray-500 hover:text-gray-700"
             disabled={isSaving}
-            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
@@ -968,7 +899,7 @@ export default function EditStudentPage() {
           <Button
             type="submit"
             disabled={isSaving}
-            className="w-full sm:w-auto"
+            className="w-full sm:w-auto h-12 rounded-xl bg-saBlue hover:bg-saBlue/90 shadow-lg shadow-saBlue/30 min-w-[160px]"
           >
             {isSaving ? (
               <>

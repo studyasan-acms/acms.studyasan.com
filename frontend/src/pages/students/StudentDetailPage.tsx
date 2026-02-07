@@ -1,15 +1,10 @@
 import { useState, useEffect } from "react";
-import { cn, resolveImageUrl } from "@/lib/utils";
-
-
+import { resolveImageUrl } from "@/lib/utils";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import {
@@ -20,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { studentService, subjectService, testSeriesService } from "@/services/api";
-import { activityEnrollmentAPI } from "@/services/activity.service";
+import { activityEnrollmentAPI, activityGroupAPI } from "@/services/activity.service";
 import { useAuthStore } from "@/store/authStore";
 import type { Student } from "@/types";
 import {
@@ -43,12 +38,14 @@ import {
   Receipt,
   Plus,
   FileText,
-  CreditCard
+  CreditCard,
+  CalendarDays
 } from "lucide-react";
 import { format } from "date-fns";
 import InvoiceModal from "@/components/InvoiceModal";
 import IDCardModal from "@/components/students/IDCardModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Badge } from "@/components/ui/badge";
 
 export default function StudentDetailPage() {
   usePageTitle("Student Details");
@@ -130,8 +127,9 @@ export default function StudentDetailPage() {
   const fetchActivityGroups = async () => {
     setLoadingActivityGroups(true);
     try {
-      const response = await import("@/services/api").then(m => m.activityGroupService.getAll({ limit: 100, is_active: true }));
-      setActivityGroups(response.data.activityGroups);
+      const response = await activityGroupAPI.getAll({ limit: 100, is_active: true });
+      // @ts-ignore
+      setActivityGroups(response.data.data.activityGroups || []);
     } catch (error) {
       console.error("Failed to fetch activity groups:", error);
     } finally {
@@ -144,6 +142,7 @@ export default function StudentDetailPage() {
     if (!selectedSubjectId || !student) return;
 
     // Check if already enrolled
+    // @ts-ignore
     const alreadyEnrolled = student.enrollments?.some(e => e.subject.id === selectedSubjectId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this subject');
@@ -151,10 +150,12 @@ export default function StudentDetailPage() {
     }
 
     try {
-      await import("@/services/api").then(m => m.enrollmentService.create({
+      // Dynamic import to avoid circular dependency issues if any, or just strictly typed service call
+      const { enrollmentService } = await import("@/services/api");
+      await enrollmentService.create({
         student_id: student.id,
         subject_id: selectedSubjectId
-      }));
+      });
       setShowSubjectModal(false);
       setSelectedSubjectId(null);
       fetchStudent(student.id); // Refresh data
@@ -227,7 +228,7 @@ export default function StudentDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
       </div>
     );
   }
@@ -235,7 +236,7 @@ export default function StudentDetailPage() {
   if (!student) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-2xl font-bold mb-4">Student not found</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-700">Student not found</h1>
         <Button
           onClick={() => navigate("/dashboard/students")}
           className="mt-4"
@@ -266,587 +267,266 @@ export default function StudentDetailPage() {
     }
   };
 
+  const SectionTitle = ({ icon: Icon, title, description }: { icon: any, title: string, description?: string }) => (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="p-2 bg-saBlue/10 rounded-xl text-saBlue">
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base font-bold text-gray-800">{title}</h3>
+        {description && <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{description}</p>}
+      </div>
+    </div>
+  );
+
+  const InfoItem = ({ label, value, icon: Icon }: { label: string, value: React.ReactNode, icon?: any }) => (
+    <div className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all duration-300">
+      <div className="flex flex-col">
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</span>
+        <span className="text-sm font-semibold text-gray-700 truncate max-w-[200px]" title={typeof value === 'string' ? value : undefined}>
+          {value || '-'}
+        </span>
+      </div>
+      {Icon && <Icon className="w-4 h-4 text-gray-300 group-hover:text-saBlue transition-colors" />}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col space-y-4">
-        {/* First Row: Back button */}
-        <div>
-          <button
+    <div className="space-y-8 max-w-7xl mx-auto pb-10">
+      {/* 1. TOP HEADER SECTION */}
+      <div className="relative">
+        {/* Background gradient banner */}
+        <div className="h-28 w-full bg-gradient-to-r from-saBlue to-blue-400 rounded-3xl relative overflow-hidden shadow-lg shadow-blue-900/10">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl transform -translate-x-1/3 translate-y-1/3"></div>
+
+          {/* Back button */}
+          <Button
+            variant="ghost"
+            className="absolute top-4 left-4 text-white hover:bg-white/20 hover:text-white rounded-xl"
             onClick={() => navigate("/dashboard/students")}
-            className="flex items-center text-blue-600 text-sm hover:underline w-fit"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Students
-          </button>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
         </div>
 
-        {/* Second Row: Profile Picture + Name + Buttons */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          {/* Profile Picture and Student Name */}
-          <div className="flex items-center space-x-4">
-            <div className="flex-shrink-0">
-              <img
-                src={resolveImageUrl(student.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}&background=f97316&color=ffffff&size=80`}
-                alt={student.user.name}
-                className="w-20 h-20 rounded-full object-cover border border-gray-300"
-              />
+        {/* Profile Content overlapping banner */}
+        <div className="px-6 sm:px-10 pb-4">
+          <div className="flex flex-col sm:flex-row items-end -mt-16 gap-6">
+            {/* Avatar */}
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full border-[6px] border-white bg-white shadow-xl overflow-hidden relative z-10">
+                <img
+                  src={resolveImageUrl(student.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}`}
+                  alt={student.user.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute bottom-2 right-2 z-20 bg-green-500 w-5 h-5 rounded-full border-4 border-white shadow-sm"></div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
-                {student.user.name}
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                Student profile and details
-              </p>
-            </div>
-          </div>
 
-          {/* Buttons - Admin only */}
-          {isAdmin && (
-            <div className="flex-shrink-0 flex flex-wrap gap-2">
-              <Button
-                onClick={() => setShowIDCardModal(true)}
-                variant="outline"
-                className="w-full sm:w-auto"
-              >
-                <CreditCard className="mr-2 h-4 w-4" />
-                ID Card
-              </Button>
-              <Button
-                onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}
-                variant="outline"
-                className="w-full sm:w-auto"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Student
-              </Button>
-              <Button
-                onClick={() => setIsInvoiceModalOpen(true)}
-                className="w-full sm:w-auto"
-              >
-                <Receipt className="mr-2 h-4 w-4" />
-                Invoice
-              </Button>
+            {/* Name & Basic Info */}
+            <div className="flex-1 pb-2 text-center sm:text-left">
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{student.user.name}</h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
+                  <School className="w-3 h-3 mr-1" />
+                  {student.school || "School Not Set"}
+                </Badge>
+                <Badge variant="outline" className="border-gray-200 text-gray-500">
+                  ID: {student.id}
+                </Badge>
+              </div>
             </div>
-          )}
+
+            {/* Actions */}
+            {isAdmin && (
+              <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center">
+                <Button onClick={() => setShowIDCardModal(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
+                  <CreditCard className="mr-2 h-4 w-4" /> ID Card
+                </Button>
+                <Button onClick={() => setIsInvoiceModalOpen(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
+                  <Receipt className="mr-2 h-4 w-4" /> Invoice
+                </Button>
+                <Button onClick={() => navigate(`/dashboard/students/${student.id}/edit`)} className="rounded-xl bg-saBlue h-10 shadow-md shadow-saBlue/20 hover:bg-saBlue/90">
+                  <Edit className="mr-2 h-4 w-4" /> Edit
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Contact Information - Admin only */}
-        {isAdmin && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">
-                Contact Information
-              </CardTitle>
-              <CardDescription>Student contact details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start space-x-3">
-                <Mail className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Email</p>
-                  <p className="text-sm text-muted-foreground">
-                    {student.user.email}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <Phone className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Phone</p>
-                  <p className="text-sm text-muted-foreground">
-                    {student.user.phone}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* 2. MAIN CONTENT GRID */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
 
-        {/* Academic Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Academic Information
-            </CardTitle>
-            <CardDescription>Class and board details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <BookOpen className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Class</p>
-                {student.class ? (
-                  <p className="text-sm text-muted-foreground">
-                    {student.class.name}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Not assigned</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <Users className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Board</p>
-                {student.board ? (
-                  <p className="text-sm text-muted-foreground">
-                    {student.board.name}
-                  </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Not assigned</p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <School className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">School</p>
-                <p className="text-sm text-muted-foreground">
-                  {student.school || "-"}
-                </p>
-              </div>
+        {/* CONTACT INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={Phone} title="Contact Info" description="Reach out" />
+            <div className="space-y-3">
+              <InfoItem label="Email" value={student.user.email} icon={Mail} />
+              <InfoItem label="Phone" value={student.user.phone} icon={Phone} />
+              {/* Address in summary */}
+              <InfoItem label="Location" value={student.address?.city?.name || 'Unknown'} icon={MapPin} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Personal Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Personal Information
-            </CardTitle>
-            <CardDescription>Personal details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <User className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Gender</p>
-                <p className="text-sm text-muted-foreground">
-                  {getGenderDisplay(student.gender)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <Calendar className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Date of Birth
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {formatDate(student.date_of_birth)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <Droplet className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Blood Group</p>
-                <p className="text-sm text-muted-foreground">
-                  {getBloodGroupDisplay(student.blood_group)}
-                </p>
-              </div>
+        {/* ACADEMIC INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={BookOpen} title="Academic" description="Current Standing" />
+            <div className="space-y-3">
+              <InfoItem label="Class" value={student.class?.name} icon={Users} />
+              <InfoItem label="Board" value={student.board?.name} icon={Globe} />
+              <InfoItem label="School" value={student.school} icon={School} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Address Information - Admin only */}
+        {/* PERSONAL INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={User} title="Personal" description="Identity Stats" />
+            <div className="space-y-3">
+              <InfoItem label="Gender" value={getGenderDisplay(student.gender)} icon={User} />
+              <InfoItem label="Date of Birth" value={formatDate(student.date_of_birth)} icon={Calendar} />
+              <InfoItem label="Blood Group" value={getBloodGroupDisplay(student.blood_group)} icon={Droplet} />
+            </div>
+          </CardContent>
+        </Card>
+
+      </div>
+
+      {/* 3. DETAILED SECTIONS */}
+      <div className="grid gap-6 md:grid-cols-3 px-2">
+
+        {/* ADDRESS DETAILS */}
         {isAdmin && (
-          <Card className="md:col-span-2 lg:col-span-3">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">
-                Address Information
-              </CardTitle>
-              <CardDescription>
-                {student.address ? "Student address details" : "No address added"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <Card className="rounded-3xl border-gray-100 shadow-sm md:col-span-1">
+            <CardContent className="p-6">
+              <SectionTitle icon={MapPin} title="Full Address" description="Resident" />
               {student.address ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="flex items-start space-x-3">
-                    <Home className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Address</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student.address.addressLine || "-"}
-                      </p>
+                <div className="space-y-4">
+                  <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                    <p className="text-gray-800 text-sm font-medium leading-relaxed">
+                      {student.address.addressLine}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {student.address.city?.name && <Badge variant="outline" className="bg-white">{student.address.city?.name}</Badge>}
+                      {student.address.state?.name && <Badge variant="outline" className="bg-white">{student.address.state?.name}</Badge>}
+                      {student.address.postalCode && <Badge variant="outline" className="bg-white">{student.address.postalCode}</Badge>}
                     </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <MapPin className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">City</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student.address.city?.name || "-"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Map className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">State</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student.address.state?.name || "-"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Globe className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Country</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student.address.country?.name || "-"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-3">
-                    <Hash className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Postal Code</p>
-                      <p className="text-sm text-muted-foreground">
-                        {student.address.postalCode || "-"}
-                      </p>
-                    </div>
+                    {student.address.country?.name && (
+                      <p className="text-[10px] uppercase font-bold text-gray-400 mt-2 tracking-wider">{student.address.country?.name}</p>
+                    )}
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-center py-8">
-                  <div className="text-center">
-                    <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500">No address information available</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="mt-2"
-                      onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}
-                    >
-                      Add Address
-                    </Button>
-                  </div>
+                <div className="text-center py-6 text-gray-400 text-sm bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  No address found
                 </div>
               )}
             </CardContent>
           </Card>
         )}
 
-
-      </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Enrollment Statistics - Admin only */}
+        {/* ENROLLMENTS */}
         {isAdmin && (
-          <Card className="md:col-span-1 lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">
-                Enrollment Statistics
-              </CardTitle>
-              <CardDescription>Subject enrollment information</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Subject Enrollments */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <BookOpen className="h-5 w-5 text-saBlue/50" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">
-                          Subject Enrollments ({student._count?.enrollments || 0})
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={openSubjectModal}>
-                      <Plus className="mr-1 h-3 w-3" />
-                      Enroll
-                    </Button>
+          <Card className="rounded-3xl border-gray-100 shadow-sm md:col-span-2">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <SectionTitle icon={FileText} title="Enrollments" description="Active Courses" />
+                <Button variant="ghost" size="sm" onClick={() => navigate(`/dashboard/enrollments?student_id=${student.id}`)} className="text-xs font-bold uppercase text-saBlue hover:bg-blue-50">
+                  View All
+                </Button>
+              </div>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                {/* Subjects */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Subjects ({student._count?.enrollments || 0})</h4>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openSubjectModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
-                  {student.enrollments && student.enrollments.length > 0 ? (
-                    <div className="ml-8 space-y-1">
-                      {student.enrollments.map((enrollment) => (
-                        <p key={enrollment.id} className="text-sm text-muted-foreground">
-                          • {enrollment.subject.name}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground ml-8">No subject enrollments</p>
-                  )}
+                  <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                    {student.enrollments && student.enrollments.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {student.enrollments.map(e => (
+                          <Badge key={e.id} variant="secondary" className="bg-white border-gray-200 text-gray-700 shadow-sm">
+                            {e.subject?.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : <p className="text-gray-300 text-xs italic">No subjects enrolled</p>}
+                  </div>
                 </div>
 
-                {/* Test Series Enrollments */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <FileText className="h-5 w-5 text-saBlue/50" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">
-                          Test Series Enrollments ({student._count?.test_series_enrollments || 0})
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={openTestSeriesModal}>
-                      <Plus className="mr-1 h-3 w-3" />
-                      Enroll
-                    </Button>
+                {/* Test Series */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Test Series ({student._count?.test_series_enrollments || 0})</h4>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openTestSeriesModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
-                  {(student.test_series_enrollments || []).length > 0 ? (
-                    <div className="ml-8 space-y-1">
-                      {(student.test_series_enrollments || []).map((enrollment) => (
-                        <p key={enrollment.id} className="text-sm text-muted-foreground">
-                          • {enrollment.test_series?.title || 'Unknown Test Series'}
-                        </p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground ml-8">No test series enrollments</p>
-                  )}
+                  <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                    {(student.test_series_enrollments || []).length > 0 ? (
+                      <ul className="space-y-1.5">
+                        {(student.test_series_enrollments || []).map(e => (
+                          <li key={e.id} className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-saVividOrange flex-shrink-0"></div>
+                            <span className="truncate" title={e.test_series?.title}>{e.test_series?.title}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-gray-300 text-xs italic">No test series enrolled</p>}
+                  </div>
                 </div>
 
                 {/* Activity Groups */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <Users className="h-5 w-5 text-saBlue/50" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">
-                          Activity Groups ({student.activity_enrollments ?
-                            new Set(student.activity_enrollments.map(e => e.activity.group.id)).size : 0})
-                        </p>
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" onClick={openActivityGroupModal}>
-                      <Plus className="mr-1 h-3 w-3" />
-                      Enroll
-                    </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Activity Groups ({student._count?.activity_enrollments || 0})</h4>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openActivityGroupModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
-                  {student.activity_enrollments && student.activity_enrollments.length > 0 ? (
-                    <div className="ml-8 space-y-1">
-                      {Array.from(new Set(student.activity_enrollments.map(e => e.activity.group.name)))
-                        .map((groupName) => (
-                          <p key={groupName} className="text-sm text-muted-foreground">
-                            • {groupName}
-                          </p>
+                  <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                    {(student.activity_enrollments || []).length > 0 ? (
+                      <ul className="space-y-1.5">
+                        {/* Group enrollments by activity group to avoid duplicates if backend returns per-activity */}
+                        {Array.from(new Set(student.activity_enrollments?.map(e => e.activity?.group?.name).filter(Boolean))).map((groupName, idx) => (
+                          <li key={idx} className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></div>
+                            <span className="truncate" title={groupName}>{groupName}</span>
+                          </li>
                         ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground ml-8">No activity group enrollments</p>
-                  )}
+                      </ul>
+                    ) : <p className="text-gray-300 text-xs italic">No activity groups</p>}
+                  </div>
                 </div>
               </div>
-              <Button
-                variant="outline"
-                className="w-full text-gray-600 border-saBlue/50 mt-4"
-                onClick={() =>
-                  navigate(`/dashboard/enrollments?student_id=${student.id}`)
-                }
-              >
-                View Enrollments
-              </Button>
             </CardContent>
           </Card>
         )}
-
-        {/* Account Timeline */}
-        <Card className="md:col-span-1 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Account Timeline
-            </CardTitle>
-            <CardDescription>Important dates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">
-                Account Created
-              </span>
-              <span className="text-sm font-medium text-muted-foreground">
-                {format(new Date(student.created_at), "PPP")}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Last Updated</span>
-              <span className="text-sm font-medium text-muted-foreground">
-                {format(new Date(student.updated_at), "PPP")}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* ENROLL SUBJECT MODAL */}
-      {showSubjectModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowSubjectModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4">Enroll in Subject</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="subject-select">Select Subject</Label>
-                <Select
-                  value={selectedSubjectId?.toString() || ""}
-                  onValueChange={(value) => setSelectedSubjectId(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingSubjects ? (
-                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
-                    ) : (
-                      subjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id.toString()}>
-                          {subject.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowSubjectModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleEnrollSubject}
-                disabled={!selectedSubjectId || loadingSubjects}
-              >
-                Enroll
-              </Button>
-            </div>
+      {/* ACCOUNT TIMELINE */}
+      <div className="px-2">
+        <div className="bg-blue-50/30 rounded-2xl p-4 border border-blue-100/50 flex flex-wrap gap-6 items-center justify-center text-center">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <CalendarDays className="w-4 h-4 text-saBlue" />
+            Joined: <span className="font-bold text-gray-700">{format(new Date(student.created_at), "PPP")}</span>
+          </div>
+          <div className="w-px h-4 bg-gray-200 hidden sm:block"></div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></div>
+            Status: <span className="font-bold text-green-600">Active</span>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ENROLL TEST SERIES MODAL */}
-      {showTestSeriesModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowTestSeriesModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4">Enroll in Test Series</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="test-series-select">Select Test Series</Label>
-                <Select
-                  value={selectedTestSeriesId?.toString() || ""}
-                  onValueChange={(value) => setSelectedTestSeriesId(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a test series" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingTestSeries ? (
-                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
-                    ) : (
-                      testSeries.map((ts) => (
-                        <SelectItem key={ts.id} value={ts.id.toString()}>
-                          {ts.title}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowTestSeriesModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleEnrollTestSeries}
-                disabled={!selectedTestSeriesId || loadingTestSeries}
-              >
-                Enroll
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ENROLL ACTIVITY GROUP MODAL */}
-      {showActivityGroupModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowActivityGroupModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4">Enroll in Activity Group</h3>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="activity-group-select">Select Activity Group</Label>
-                <Select
-                  value={selectedActivityGroupId?.toString() || ""}
-                  onValueChange={(value) => setSelectedActivityGroupId(parseInt(value))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose an activity group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {loadingActivityGroups ? (
-                      <div className="p-2 text-sm text-muted-foreground">Loading...</div>
-                    ) : (
-                      activityGroups.map((ag) => (
-                        <SelectItem key={ag.id} value={ag.id.toString()}>
-                          {ag.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setShowActivityGroupModal(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleEnrollActivityGroup}
-                disabled={!selectedActivityGroupId || loadingActivityGroups}
-              >
-                Enroll
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ID Card Modal */}
-      {student && (
+      {/* MODALS */}
+      {showIDCardModal && (
         <IDCardModal
           isOpen={showIDCardModal}
           onClose={() => setShowIDCardModal(false)}
@@ -854,15 +534,93 @@ export default function StudentDetailPage() {
           type="STUDENT"
         />
       )}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        student={student}
+      />
 
-      {/* Invoice Modal */}
-      {student && (
-        <InvoiceModal
-          isOpen={isInvoiceModalOpen}
-          onClose={() => setIsInvoiceModalOpen(false)}
-          student={student}
-        />
+      {/* Subject Enrollment Modal */}
+      {showSubjectModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowSubjectModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">Enroll in Subject</h3>
+              <p className="text-gray-400 text-sm mb-6">Select a subject to add to this student's learning path.</p>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Subject</Label>
+                <Select value={selectedSubjectId?.toString() || ""} onValueChange={(value) => setSelectedSubjectId(parseInt(value))}>
+                  <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50"><SelectValue placeholder="Choose Subject" /></SelectTrigger>
+                  <SelectContent>
+                    {subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <Button variant="ghost" onClick={() => setShowSubjectModal(false)} className="rounded-xl h-12 text-gray-500 hover:text-gray-700 hover:bg-gray-100">Cancel</Button>
+                <Button onClick={handleEnrollSubject} disabled={!selectedSubjectId || loadingSubjects} className="rounded-xl h-12 bg-saBlue hover:bg-saBlue/90 shadow-md shadow-saBlue/20">Enroll Now</Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Test Series Modal */}
+      {showTestSeriesModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowTestSeriesModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">Enroll in Test Series</h3>
+              <p className="text-gray-400 text-sm mb-6">Assign a test series evaluation.</p>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Test Series</Label>
+                <Select value={selectedTestSeriesId?.toString() || ""} onValueChange={(value) => setSelectedTestSeriesId(parseInt(value))}>
+                  <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50"><SelectValue placeholder="Choose Series" /></SelectTrigger>
+                  <SelectContent>
+                    {testSeries.map(ts => <SelectItem key={ts.id} value={ts.id.toString()}>{ts.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <Button variant="ghost" onClick={() => setShowTestSeriesModal(false)} className="rounded-xl h-12 text-gray-500 hover:text-gray-700 hover:bg-gray-100">Cancel</Button>
+                <Button onClick={handleEnrollTestSeries} disabled={!selectedTestSeriesId || loadingTestSeries} className="rounded-xl h-12 bg-saBlue hover:bg-saBlue/90 shadow-md shadow-saBlue/20">Enroll Now</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Group Modal */}
+      {showActivityGroupModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowActivityGroupModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-800 mb-1">Join Activity Group</h3>
+              <p className="text-gray-400 text-sm mb-6">Enroll the student in an activity group.</p>
+
+              <div className="space-y-4">
+                <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Activity Group</Label>
+                <Select value={selectedActivityGroupId?.toString() || ""} onValueChange={(value) => setSelectedActivityGroupId(parseInt(value))}>
+                  <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50"><SelectValue placeholder="Choose Group" /></SelectTrigger>
+                  <SelectContent>
+                    {activityGroups.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <Button variant="ghost" onClick={() => setShowActivityGroupModal(false)} className="rounded-xl h-12 text-gray-500 hover:text-gray-700 hover:bg-gray-100">Cancel</Button>
+                <Button onClick={handleEnrollActivityGroup} disabled={!selectedActivityGroupId || loadingActivityGroups} className="rounded-xl h-12 bg-saBlue hover:bg-saBlue/90 shadow-md shadow-saBlue/20">Enroll Now</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

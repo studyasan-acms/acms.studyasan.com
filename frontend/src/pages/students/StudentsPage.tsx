@@ -1,14 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -17,14 +9,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { studentService, boardService, classService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import type { Student, Board, Class } from "@/types";
@@ -33,10 +19,10 @@ import {
   Eye,
   Edit,
   Trash2,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   Users,
+  Search,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -106,7 +92,7 @@ export default function StudentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm, selectedClass, selectedBoard, selectedGender, isTeacher, user?.id]);
+  }, [currentPage, searchTerm, selectedClass, selectedBoard, selectedGender, isTeacher, user?.id, limit]);
 
   useEffect(() => {
     fetchStudents();
@@ -148,20 +134,6 @@ export default function StudentsPage() {
 
   const handleFilterChange = () => setCurrentPage(1);
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setSelectedClass("");
-    setSelectedBoard("");
-    setSelectedGender("");
-    setCurrentPage(1);
-  };
-
-  const getGenderSpan = (gender: string | null) => {
-    if (!gender) return null;
-    const label = gender === "M" ? "Male" : gender === "F" ? "Female" : "Other";
-    return <span>{label}</span>;
-  };
-
   const getInitials = (name: string) =>
     name
       .split(" ")
@@ -171,403 +143,179 @@ export default function StudentsPage() {
       .slice(0, 2);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
-            Students
-          </h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Manage student accounts and information
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Students</h1>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
+            Directory & Management
           </p>
         </div>
-
         {isAdmin && (
           <Button
+            className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm rounded-xl"
             onClick={() => navigate("/dashboard/students/new")}
-            className="w-full md:w-auto mt-2 md:mt-0 md:ml-4 flex justify-center"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Student
+            <Plus className="mr-2 h-3.5 w-3.5" />
+            New Student
           </Button>
         )}
       </div>
 
-      {/* Students Table Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-xl text-gray-600">
-            All Students ({total})
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            {isTeacher
-              ? "Students enrolled in your subjects"
-              : "A list of all students in the system"}
-          </CardDescription>
-        </CardHeader>
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+        {/* Search */}
+        <div className="relative flex-1 w-full md:w-auto min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search students..."
+            value={searchTerm}
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
+          />
+        </div>
 
-        <CardContent>
-          {/* Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 mb-4 items-end">
-            <div className="md:col-span-5">
-              <Input
-                placeholder="Search by name..."
-                value={searchTerm}
-                onChange={(e) => handleSearch(e.target.value)}
-              />
-            </div>
-            <div className="md:col-span-2">
-              <Select
-                value={selectedClass}
-                onValueChange={(value) => {
-                  setSelectedClass(value === "all-classes" ? "" : value);
-                  handleFilterChange();
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-classes">All Classes</SelectItem>
-                  {classes.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id.toString()}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Select
-                value={selectedBoard}
-                onValueChange={(value) => {
-                  setSelectedBoard(value === "all-boards" ? "" : value);
-                  handleFilterChange();
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Boards" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-boards">All Boards</SelectItem>
-                  {boards.map((board) => (
-                    <SelectItem key={board.id} value={board.id.toString()}>
-                      {board.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <Select
-                value={selectedGender}
-                onValueChange={(value) => {
-                  setSelectedGender(value === "all-genders" ? "" : value);
-                  handleFilterChange();
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All Genders" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-genders">All Genders</SelectItem>
-                  <SelectItem value="M">Male</SelectItem>
-                  <SelectItem value="F">Female</SelectItem>
-                  <SelectItem value="OTHER">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-1 flex justify-end">
-              <Button
-                size="default"
-                variant="outline"
-                onClick={clearFilters}
-                disabled={
-                  !searchTerm &&
-                  !selectedClass &&
-                  !selectedBoard &&
-                  !selectedGender
-                }
-                className="w-full md:w-auto"
-              >
-                Clear
-              </Button>
-            </div>
+        {/* Dropdowns Container */}
+        <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
+          <select
+            value={selectedClass}
+            onChange={(e) => {
+              setSelectedClass(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+          >
+            <option value="">All Classes</option>
+            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+
+          <select
+            value={selectedBoard}
+            onChange={(e) => {
+              setSelectedBoard(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+          >
+            <option value="">All Boards</option>
+            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+
+          <select
+            value={selectedGender}
+            onChange={(e) => {
+              setSelectedGender(e.target.value);
+              handleFilterChange();
+            }}
+            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[100px]"
+          >
+            <option value="">Gender: All</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center space-y-4">
+          <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-bold text-xs tracking-widest uppercase">Loading Students...</p>
+        </div>
+      ) : students.length === 0 ? (
+        <div className="py-20 flex flex-col items-center text-center">
+          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+            <Users className="w-8 h-8 text-gray-300" />
           </div>
-
-          {/* Table */}
-          {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : students.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground">
-              <Users className="h-12 w-12 mb-4" />
-              <p className="text-lg font-medium">No students found</p>
-              <p className="text-sm">
-                Try adjusting your filters or add a new student
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="rounded-md overflow-hidden border-none lg:border">
-                {/* Desktop Table */}
-                <div className="hidden lg:block">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-saBlue/40 hover:bg-saBlue/40">
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Name
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Class
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Board
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          Gender
-                        </TableHead>
-                        <TableHead className="text-gray-900 font-semibold text-md">
-                          School
-                        </TableHead>
+          <h3 className="text-lg font-bold text-gray-600">No students found</h3>
+          <p className="text-gray-400 text-xs mt-1">Try adjusting your filters</p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm animate-in fade-in duration-500 overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 min-w-[200px]">Student</TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[150px] hidden md:table-cell">Class Info</TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden lg:table-cell">Phone</TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {students.map((student) => (
+                  <TableRow key={student.id} className="hover:bg-blue-50/30 border-b-gray-50 transition-colors">
+                    <TableCell className="pl-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9 ring-2 ring-gray-50">
+                          <AvatarImage src={student.user.profile_url} />
+                          <AvatarFallback className="bg-saVividOrange text-white text-xs">{getInitials(student.user.name)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-800 text-sm leading-tight">{student.user.name}</span>
+                          <span className="text-[10px] text-gray-400">{student.user.email}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-col gap-1">
+                        <Badge variant="outline" className="w-fit text-[10px] border-blue-100 text-saBlue bg-blue-50/50">{student.class?.name || 'No Class'}</Badge>
+                        <span className="text-[10px] text-gray-400 ml-1">{student.board?.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="text-xs text-gray-600 font-mono">{student.user.phone || '-'}</div>
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex gap-1 justify-end">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-saBlue" onClick={() => navigate(`/dashboard/students/${student.id}`)}>
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         {isAdmin && (
-                          <TableHead className="text-gray-900 font-semibold text-md">
-                            Enrollments
-                          </TableHead>
-                        )}
-                        <TableHead className="text-gray-900 font-semibold text-md text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {students.map((student, index) => (
-                        <TableRow
-                          key={student.id}
-                          className={
-                            index % 2 === 0
-                              ? "bg-saBlueLight/20"
-                              : "bg-saBlueLight/10"
-                          }
-                        >
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-3">
-                              <Avatar className="h-8 w-8">
-                                <AvatarImage 
-                                  src={student.user.profile_url} 
-                                  alt={student.user.name}
-                                  onError={() => {
-                                    console.log('Student table avatar failed:', student.user.name, student.user.profile_url);
-                                  }}
-                                />
-                                <AvatarFallback className="bg-saVividOrange text-white text-xs">
-                                  {getInitials(student.user.name)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <span>{student.user.name}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {student.class ? student.class.name : "-"}
-                          </TableCell>
-                          <TableCell>
-                            {student.board ? student.board.name : "-"}
-                          </TableCell>
-                          <TableCell>{getGenderSpan(student.gender)}</TableCell>
-                          <TableCell>{student.school || "-"}</TableCell>
-                          {isAdmin && (
-                            <TableCell>
-                              {student._count?.enrollments || 0}
-                            </TableCell>
-                          )}
-                          <TableCell className="text-right">
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-saBlue hover:text-saBlueDarkHover cursor-pointer"
-                                onClick={() =>
-                                  navigate(`/dashboard/students/${student.id}`)
-                                }
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                              {isAdmin && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-saVividOrange hover:text-[#d18a00] cursor-pointer"
-                                  onClick={() =>
-                                    navigate(
-                                      `/dashboard/students/${student.id}/edit`
-                                    )
-                                  }
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              )}
-                              {isAdmin && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="text-red-600 hover:text-red-800 cursor-pointer"
-                                  onClick={() => setDeleteStudent(student)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-
-                {/* Mobile & Tablet Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:hidden gap-4 px-0">
-                  {students.map((student) => (
-                    <div
-                      key={student.id}
-                      className="rounded-xl overflow-hidden shadow-sm transition hover:shadow-md duration-200"
-                    >
-                      <div className="bg-saBlueLight/60 p-4 flex justify-between items-center">
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage 
-                              src={student.user.profile_url} 
-                              alt={student.user.name}
-                              onError={() => {
-                                console.log('Student card avatar failed:', student.user.name, student.user.profile_url);
-                              }}
-                            />
-                            <AvatarFallback className="bg-saVividOrange text-white text-sm">
-                              {getInitials(student.user.name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="font-semibold text-lg text-gray-900 truncate">
-                            {student.user.name}
-                          </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-saBlue hover:text-saBlueDarkHover cursor-pointer"
-                            onClick={() =>
-                              navigate(`/dashboard/students/${student.id}`)
-                            }
-                          >
-                            <Eye className="h-4 w-4" />
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-saVividOrange" onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}>
+                            <Edit className="w-4 h-4" />
                           </Button>
-                          {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-saVividOrange hover:text-[#d18a00] cursor-pointer"
-                              onClick={() =>
-                                navigate(`/dashboard/students/${student.id}/edit`)
-                              }
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {isAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-red-600 hover:text-red-800 cursor-pointer"
-                              onClick={() => setDeleteStudent(student)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
+                        )}
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
-                      <div className="p-4 bg-gray-100">
-                        <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-800">
-                              Class
-                            </span>
-                            <span>{student.class?.name || "-"}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-800">
-                              Board
-                            </span>
-                            <span>{student.board?.name || "-"}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-800">
-                              Gender
-                            </span>
-                            <span>{getGenderSpan(student.gender)}</span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-medium text-gray-800">
-                              School
-                            </span>
-                            <span>{student.school || "-"}</span>
-                          </div>
-                          {isAdmin && (
-                            <div className="flex flex-col col-span-2">
-                              <span className="font-medium text-gray-800">
-                                Enrollments
-                              </span>
-                              <span>{student._count?.enrollments || 0}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pagination */}
-              <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-2">
-                <p className="text-sm text-muted-foreground text-center sm:text-left w-full sm:w-auto">
-                  Showing {(currentPage - 1) * limit + 1} to{" "}
-                  {Math.min(currentPage * limit, total)} of {total} students
-                </p>
-                <div className="flex items-center space-x-2 justify-center w-full sm:w-auto">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.max(1, prev - 1))
-                    }
-                    disabled={currentPage === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" />
-                    Previous
-                  </Button>
-                  <div className="text-sm">
-                    Page {currentPage} of {totalPages}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="rounded"
-                    onClick={() =>
-                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Pagination Styled */}
+      {students.length > 0 && (
+        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            {Math.min(currentPage * limit, total)} of {total} Students
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              Next <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
