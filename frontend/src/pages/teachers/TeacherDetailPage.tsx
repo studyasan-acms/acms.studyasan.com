@@ -6,9 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { teacherService, subjectService, testSeriesService, activityGroupService } from "@/services/api";
 import type { Teacher, Subject, TestSeries, ActivityGroup } from "@/types";
@@ -24,18 +21,33 @@ import {
   Briefcase,
   GraduationCap,
   MapPin,
-  Home,
   Globe,
   Map,
   Hash,
   Plus,
   X,
   IndianRupee,
-  Users,
   FileText,
   CreditCard,
+  CalendarDays,
+  LayoutGrid
 } from "lucide-react";
 import { format } from "date-fns";
+
+// Custom modals
+import SuccessModal from "@/components/ui/successModal";
+import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import IDCardModal from "@/components/students/IDCardModal";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { Label } from "@/components/ui/label";
 
 // Safely format dates — returns '-' for missing/invalid dates
 const safeFormat = (dateValue: string | number | Date | undefined | null, fmt: string) => {
@@ -48,21 +60,6 @@ const safeFormat = (dateValue: string | number | Date | undefined | null, fmt: s
     return '-';
   }
 };
-
-// Custom modals
-import SuccessModal from "@/components/ui/successModal";
-import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
-import IDCardModal from "@/components/students/IDCardModal";
-
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function TeacherDetailPage() {
   usePageTitle("Teacher Details");
@@ -319,7 +316,7 @@ export default function TeacherDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
       </div>
     );
   }
@@ -327,7 +324,7 @@ export default function TeacherDetailPage() {
   if (!teacher) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-2xl font-bold mb-4">Teacher not found</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-700">Teacher not found</h1>
         <Button
           onClick={() => navigate("/dashboard/teachers")}
           className="mt-4"
@@ -338,814 +335,397 @@ export default function TeacherDetailPage() {
     );
   }
 
+  const SectionTitle = ({ icon: Icon, title, description }: { icon: any, title: string, description?: string }) => (
+    <div className="flex items-center gap-3 mb-4">
+      <div className="p-2 bg-saBlue/10 rounded-xl text-saBlue">
+        <Icon className="w-5 h-5" />
+      </div>
+      <div>
+        <h3 className="text-base font-bold text-gray-800">{title}</h3>
+        {description && <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">{description}</p>}
+      </div>
+    </div>
+  );
+
+  const InfoItem = ({ label, value, icon: Icon }: { label: string, value: React.ReactNode, icon?: any }) => (
+    <div className="bg-gray-50/50 p-3 rounded-2xl border border-gray-100 flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all duration-300">
+      <div className="flex flex-col">
+        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">{label}</span>
+        <span className="text-sm font-semibold text-gray-700 truncate max-w-[200px]" title={typeof value === 'string' ? value : undefined}>
+          {value || '-'}
+        </span>
+      </div>
+      {Icon && <Icon className="w-4 h-4 text-gray-300 group-hover:text-saBlue transition-colors" />}
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      {/* HEADER - Matching Student Detail Layout */}
-      <div className="flex flex-col space-y-4">
-        {/* First Row: Back button */}
-        <div>
-          <button
+    <div className="space-y-8 max-w-7xl mx-auto pb-10">
+      {/* 1. TOP HEADER SECTION */}
+      <div className="relative">
+        <div className="h-28 w-full bg-gradient-to-r from-saBlue to-blue-400 rounded-3xl relative overflow-hidden shadow-lg shadow-blue-900/10">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl transform -translate-x-1/3 translate-y-1/3"></div>
+
+          <Button
+            variant="ghost"
+            className="absolute top-4 left-4 text-white hover:bg-white/20 hover:text-white rounded-xl"
             onClick={() => navigate("/dashboard/teachers")}
-            className="flex items-center text-blue-600 text-sm hover:underline w-fit"
           >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to Teachers
-          </button>
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </Button>
         </div>
 
-        {/* Second Row: Profile Picture + Name + Edit button */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
-          {/* Profile Picture and Teacher Name */}
-          <div className="flex items-center space-x-4">
-            <div className="flex-shrink-0">
-              <img
-                src={resolveImageUrl(teacher.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=80`}
-                alt={teacher.user.name}
-                className="w-20 h-20 rounded-full object-cover border border-gray-300"
-              />
+        <div className="px-6 sm:px-10 pb-4">
+          <div className="flex flex-col sm:flex-row items-end -mt-16 gap-6">
+            <div className="relative group">
+              <div className="w-32 h-32 rounded-full border-[6px] border-white bg-white shadow-xl overflow-hidden relative z-10">
+                <img
+                  src={resolveImageUrl(teacher.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}`}
+                  alt={teacher.user.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="absolute bottom-2 right-2 z-20 bg-green-500 w-5 h-5 rounded-full border-4 border-white shadow-sm"></div>
             </div>
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">
-                {teacher.user.name}
-              </h1>
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                Teacher profile and details
-              </p>
-            </div>
-          </div>
 
-          {/* Edit Button + ID Card */}
-          <div className="flex-shrink-0 flex gap-2">
-            <Button
-              onClick={() => setShowIDCardModal(true)}
-              variant="outline"
-              className="w-full sm:w-auto"
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              ID Card
-            </Button>
-            <Button
-              onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}
-              className="w-full sm:w-auto"
-            >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Teacher
-            </Button>
+            <div className="flex-1 pb-2 text-center sm:text-left">
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{teacher.user.name}</h1>
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
+                  Teacher
+                </Badge>
+                <Badge variant="outline" className="border-gray-200 text-gray-500">
+                  ID: {teacher.id}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center">
+              <Button onClick={() => setShowIDCardModal(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
+                <CreditCard className="mr-2 h-4 w-4" /> ID Card
+              </Button>
+              <Button onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)} className="rounded-xl bg-saBlue h-10 shadow-md shadow-saBlue/20 hover:bg-saBlue/90">
+                <Edit className="mr-2 h-4 w-4" /> Edit
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content Grid - Matching Student Detail Layout */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {/* Contact Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Contact Information
-            </CardTitle>
-            <CardDescription>Teacher contact details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <Mail className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Email</p>
-                <p className="text-sm text-muted-foreground">
-                  {teacher.user.email}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <Phone className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Phone</p>
-                <p className="text-sm text-muted-foreground">
-                  {teacher.user.phone}
-                </p>
-              </div>
+      {/* 2. MAIN CONTENT GRID */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
+
+        {/* CONTACT INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={Phone} title="Contact Info" description="Reach out" />
+            <div className="space-y-3">
+              <InfoItem label="Email" value={teacher.user.email} icon={Mail} />
+              <InfoItem label="Phone" value={teacher.user.phone} icon={Phone} />
+              <InfoItem label="Location" value={teacher.address?.city?.name || 'Unknown'} icon={MapPin} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Professional Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Professional Information
-            </CardTitle>
-            <CardDescription>Teacher professional details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <GraduationCap className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Qualification</p>
-                <p className="text-sm text-muted-foreground">
-                  {teacher.qualification || "-"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <Briefcase className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Experience</p>
-                <p className="text-sm text-muted-foreground">
-                  {teacher.experience || "-"}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <User className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Gender</p>
-                <p className="text-sm text-muted-foreground">
-                  {getGenderDisplay(teacher.gender)}
-                </p>
-              </div>
+        {/* PROFESSIONAL INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={Briefcase} title="Professional" description="Career Details" />
+            <div className="space-y-3">
+              <InfoItem label="Qualification" value={teacher.qualification} icon={GraduationCap} />
+              <InfoItem label="Experience" value={teacher.experience} icon={Briefcase} />
+              <InfoItem label="Salary" value={formatSalary(teacher.salary)} icon={IndianRupee} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Salary Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Salary Information
-            </CardTitle>
-            <CardDescription>Monthly salary details</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <IndianRupee className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Monthly Salary</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatSalary(teacher.salary)}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <BookOpen className="h-5 w-5 text-saBlue/50 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Currency</p>
-                <p className="text-sm text-muted-foreground">
-                  {teacher.salary_currency
-                    ? `${teacher.salary_currency.name} (${teacher.salary_currency.code})`
-                    : "-"}
-                </p>
-              </div>
+        {/* PERSONAL INFO */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-6">
+            <SectionTitle icon={User} title="Personal" description="Identity Stats" />
+            <div className="space-y-3">
+              <InfoItem label="Gender" value={getGenderDisplay(teacher.gender)} icon={User} />
+              <InfoItem label="Joined" value={format(new Date(teacher.created_at), "PPP")} icon={Calendar} />
+              <InfoItem label="Updated" value={format(new Date(teacher.updated_at), "PPP")} icon={LayoutGrid} />
             </div>
           </CardContent>
         </Card>
 
-        {/* Address Information */}
-        <Card className="md:col-span-2 lg:col-span-3">
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Address Information
-            </CardTitle>
-            <CardDescription>
-              {teacher.address ? "Teacher address details" : "No address added"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      </div>
+
+      {/* 3. DETAILED SECTIONS */}
+      <div className="grid gap-6 md:grid-cols-3 px-2">
+
+        {/* ADDRESS DETAILS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm md:col-span-1">
+          <CardContent className="p-6">
+            <SectionTitle icon={MapPin} title="Full Address" description="Resident" />
             {teacher.address ? (
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="flex items-start space-x-3">
-                  <Home className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Address</p>
-                    <p className="text-sm text-muted-foreground">
-                      {teacher.address.addressLine || "-"}
-                    </p>
+              <div className="space-y-4">
+                <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                  <p className="text-gray-800 text-sm font-medium leading-relaxed">
+                    {teacher.address.addressLine}
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {teacher.address.city?.name && <Badge variant="outline" className="bg-white">{teacher.address.city?.name}</Badge>}
+                    {teacher.address.state?.name && <Badge variant="outline" className="bg-white">{teacher.address.state?.name}</Badge>}
+                    {teacher.address.postalCode && <Badge variant="outline" className="bg-white">{teacher.address.postalCode}</Badge>}
                   </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <MapPin className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">City</p>
-                    <p className="text-sm text-muted-foreground">
-                      {teacher.address.city?.name || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Map className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">State</p>
-                    <p className="text-sm text-muted-foreground">
-                      {teacher.address.state?.name || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Globe className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Country</p>
-                    <p className="text-sm text-muted-foreground">
-                      {teacher.address.country?.name || "-"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <Hash className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Postal Code</p>
-                    <p className="text-sm text-muted-foreground">
-                      {teacher.address.postalCode || "-"}
-                    </p>
-                  </div>
+                  {teacher.address.country?.name && (
+                    <p className="text-[10px] uppercase font-bold text-gray-400 mt-2 tracking-wider">{teacher.address.country?.name}</p>
+                  )}
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center">
-                  <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-2" />
-                  <p className="text-gray-500">No address information available</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}
-                  >
-                    Add Address
-                  </Button>
-                </div>
+              <div className="text-center py-6 text-gray-400 text-sm bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                No address found
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* ASSIGNMENTS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm md:col-span-2">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <SectionTitle icon={FileText} title="Assignments" description="Responsibilities" />
+            </div>
+
+            <div className="grid sm:grid-cols-3 gap-4">
+              {/* Subjects */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Subjects ({teacher.teacher_subject_junctions?.length || 0})</h4>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openAssignModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                </div>
+                <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                  {teacher.teacher_subject_junctions?.length ? (
+                    <div className="flex flex-wrap gap-2">
+                      {teacher.teacher_subject_junctions.map((junction) => (
+                        <div key={junction.id} className="group relative">
+                          <Badge variant="secondary" className="bg-white border-gray-200 text-gray-700 shadow-sm pr-6">
+                            {junction.subject.name}
+                            {junction.subject.class && <span className="text-[10px] text-gray-400 ml-1">({junction.subject.class.name})</span>}
+                          </Badge>
+                          <button
+                            onClick={() => { setDeleteJunctionId(junction.id); setShowDeleteModal(true); }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="text-gray-300 text-xs italic">No subjects assigned</p>}
+                </div>
+              </div>
+
+              {/* Test Series */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Test Series ({teacher.test_series_junctions?.length || 0})</h4>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openTestSeriesModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                </div>
+                <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                  {teacher.test_series_junctions?.length ? (
+                    <ul className="space-y-1.5">
+                      {teacher.test_series_junctions.map((junction) => (
+                        <li key={junction.id} className="text-xs font-medium text-gray-600 truncate flex items-center justify-between gap-1 group">
+                          <div className="flex items-center gap-2 truncate">
+                            <div className="w-1.5 h-1.5 rounded-full bg-saVividOrange flex-shrink-0"></div>
+                            <span className="truncate" title={junction.test_series.title}>{junction.test_series.title}</span>
+                          </div>
+                          <button onClick={() => handleRemoveTestSeries(junction.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-gray-300 text-xs italic">No test series assigned</p>}
+                </div>
+              </div>
+
+              {/* Activity Groups */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Activity Groups ({teacher.activity_group_junctions?.length || 0})</h4>
+                  <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openActivityGroupModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                </div>
+                <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                  {teacher.activity_group_junctions?.length ? (
+                    <ul className="space-y-1.5">
+                      {teacher.activity_group_junctions.map((junction) => (
+                        <li key={junction.id} className="text-xs font-medium text-gray-600 truncate flex items-center justify-between gap-1 group">
+                          <div className="flex items-center gap-2 truncate">
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></div>
+                            <span className="truncate" title={junction.activity_group.name}>{junction.activity_group.name}</span>
+                          </div>
+                          <button onClick={() => handleRemoveActivityGroup(junction.id)} className="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="text-gray-300 text-xs italic">No activity groups assigned</p>}
+                </div>
+              </div>
+
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Second Row Grid - Matching Student Detail Layout */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Assigned Subjects Statistics */}
-        <Card className="md:col-span-1 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Assigned Subjects
-            </CardTitle>
-            <CardDescription>Subjects assigned to this teacher</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-3 mb-4">
-              <BookOpen className="h-5 w-5 text-saBlue/50" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Subjects Assigned
-                </p>
-                <p className="text-lg font-semibold text-muted-foreground">
-                  {teacher.teacher_subject_junctions?.length || 0}
-                </p>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full text-gray-600 border-saBlue/50"
-              onClick={openAssignModal}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Assign New Subject
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Account Timeline */}
-        <Card className="md:col-span-1 lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-xl text-gray-600">
-              Account Timeline
-            </CardTitle>
-            <CardDescription>Important dates</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">
-                Account Created
-              </span>
-              <span className="text-sm font-medium text-muted-foreground">
-                {safeFormat(teacher.created_at, "PPP")}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Last Updated</span>
-              <span className="text-sm font-medium text-muted-foreground">
-                {safeFormat(teacher.updated_at, "PPP")}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ACCOUNT TIMELINE */}
+      <div className="px-2">
+        <div className="bg-blue-50/30 rounded-2xl p-4 border border-blue-100/50 flex flex-wrap gap-6 items-center justify-center text-center">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <CalendarDays className="w-4 h-4 text-saBlue" />
+            Joined: <span className="font-bold text-gray-700">{format(new Date(teacher.created_at), "PPP")}</span>
+          </div>
+          <div className="w-px h-4 bg-gray-200 hidden sm:block"></div>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <LayoutGrid className="w-4 h-4 text-saBlue" />
+            Last Updated: <span className="font-bold text-gray-700">{format(new Date(teacher.updated_at), "PPP")}</span>
+          </div>
+        </div>
       </div>
-
-      {/* Assigned Subjects Detailed View */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div>
-              <CardTitle className="text-xl text-gray-600">Assigned Subjects</CardTitle>
-              <CardDescription>
-                {teacher.teacher_subject_junctions?.length || 0} subjects assigned
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={openAssignModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Assign Subject
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {teacher.teacher_subject_junctions?.length ? (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {teacher.teacher_subject_junctions.map((junction) => (
-                <Card key={junction.id} className="border-saBlue/20">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between">
-                      <div className="flex items-start space-x-3">
-                        <BookOpen className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-gray-600">{junction.subject.name}</p>
-                          {junction.subject.class && (
-                            <Badge
-                              variant="outline"
-                              className="mt-1 border-saBlue/50 text-saBlue"
-                            >
-                              {junction.subject.class.name}
-                            </Badge>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Assigned on: {safeFormat(junction.created_on, "MMM dd, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          setDeleteJunctionId(junction.id);
-                          setShowDeleteModal(true);
-                        }}
-                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <BookOpen className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">No subjects assigned yet.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={openAssignModal}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Assign First Subject
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Assigned Test Series Detailed View */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div>
-              <CardTitle className="text-xl text-gray-600">Assigned Test Series</CardTitle>
-              <CardDescription>
-                {teacher.test_series_junctions?.length || 0} test series assigned
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={openTestSeriesModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Assign Test Series
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {teacher.test_series_junctions?.length ? (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {teacher.test_series_junctions.map((junction) => (
-                <Card key={junction.id} className="border-saBlue/20">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between">
-                      <div className="flex items-start space-x-3">
-                        <FileText className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-gray-600">{junction.test_series.title}</p>
-                          <Badge
-                            variant={junction.test_series.is_published ? "default" : "secondary"}
-                            className="mt-1"
-                          >
-                            {junction.test_series.is_published ? "Published" : "Draft"}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Assigned on: {safeFormat(junction.assigned_at, "MMM dd, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveTestSeries(junction.id)}
-                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">No test series assigned yet.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={openTestSeriesModal}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Assign First Test Series
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Assigned Activity Groups Detailed View */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div>
-              <CardTitle className="text-xl text-gray-600">Assigned Activity Groups</CardTitle>
-              <CardDescription>
-                {teacher.activity_group_junctions?.length || 0} activity groups assigned
-              </CardDescription>
-            </div>
-            <Button size="sm" onClick={openActivityGroupModal}>
-              <Plus className="mr-2 h-4 w-4" />
-              Assign Activity Group
-            </Button>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          {teacher.activity_group_junctions?.length ? (
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {teacher.activity_group_junctions.map((junction) => (
-                <Card key={junction.id} className="border-saBlue/20">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between">
-                      <div className="flex items-start space-x-3">
-                        <Users className="h-5 w-5 text-saBlue/50 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-gray-600">{junction.activity_group.name}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {junction.activity_group.description || "No description"}
-                          </p>
-                          <Badge
-                            variant={junction.activity_group.is_active ? "default" : "secondary"}
-                            className="mt-1"
-                          >
-                            {junction.activity_group.is_active ? "Active" : "Inactive"}
-                          </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Assigned on: {safeFormat(junction.assigned_at, "MMM dd, yyyy")}
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveActivityGroup(junction.id)}
-                        className="text-destructive hover:bg-destructive/10 h-8 w-8"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div className="py-12 text-center text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-              <p className="text-gray-500">No activity groups assigned yet.</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={openActivityGroupModal}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Assign First Activity Group
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ASSIGN SUBJECT MODAL */}
-      {showAssignModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowAssignModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setShowAssignModal(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {/* Header */}
-            <h2 className="text-xl font-semibold text-gray-800">Assign Subject</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Select a subject to assign to {teacher.user.name}.
-            </p>
-
-            {/* Error */}
-            {assignError && (
-              <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md mt-3">
-                {assignError}
-              </div>
-            )}
-
-            {/* Subject Selection */}
-            <div className="mt-5">
-              <Label className="font-medium">Subject</Label>
-
-              {subjectListLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Select
-                  value={selectedSubject}
-                  onValueChange={setSelectedSubject}
-                  disabled={assignLoading}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id.toString()}>
-                        {subject.name} {subject.class ? `(${subject.class.name})` : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-6 flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowAssignModal(false)}
-                disabled={assignLoading}
-              >
-                Cancel
-              </Button>
-
-              <Button onClick={handleAssignSubject} disabled={assignLoading}>
-                {assignLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Assigning...
-                  </>
-                ) : (
-                  "Assign Subject"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGN TEST SERIES MODAL */}
-      {showTestSeriesModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowTestSeriesModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setShowTestSeriesModal(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {/* Header */}
-            <h2 className="text-xl font-semibold text-gray-800">Assign Test Series</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Select a test series to assign to {teacher.user.name}.
-            </p>
-
-            {/* Error */}
-            {testSeriesError && (
-              <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md mt-3">
-                {testSeriesError}
-              </div>
-            )}
-
-            {/* Test Series Selection */}
-            <div className="mt-5">
-              <Label className="font-medium">Test Series</Label>
-
-              {testSeriesListLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Select
-                  value={selectedTestSeries}
-                  onValueChange={setSelectedTestSeries}
-                  disabled={testSeriesLoading}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select test series" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {testSeries.map((series) => (
-                      <SelectItem key={series.id} value={series.id.toString()}>
-                        {series.title} {series.is_published ? "(Published)" : "(Draft)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-6 flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowTestSeriesModal(false)}
-                disabled={testSeriesLoading}
-              >
-                Cancel
-              </Button>
-
-              <Button onClick={handleAssignTestSeries} disabled={testSeriesLoading}>
-                {testSeriesLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Assigning...
-                  </>
-                ) : (
-                  "Assign Test Series"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ASSIGN ACTIVITY GROUP MODAL */}
-      {showActivityGroupModal && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
-          onClick={() => setShowActivityGroupModal(false)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Close Button */}
-            <button
-              onClick={() => setShowActivityGroupModal(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-
-            {/* Header */}
-            <h2 className="text-xl font-semibold text-gray-800">Assign Activity Group</h2>
-            <p className="text-sm text-gray-500 mt-1">
-              Select an activity group to assign to {teacher.user.name}.
-            </p>
-
-            {/* Error */}
-            {activityGroupError && (
-              <div className="bg-red-100 text-red-600 text-sm p-3 rounded-md mt-3">
-                {activityGroupError}
-              </div>
-            )}
-
-            {/* Activity Group Selection */}
-            <div className="mt-5">
-              <Label className="font-medium">Activity Group</Label>
-
-              {activityGroupListLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : (
-                <Select
-                  value={selectedActivityGroup}
-                  onValueChange={setSelectedActivityGroup}
-                  disabled={activityGroupLoading}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select activity group" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activityGroups.map((group) => (
-                      <SelectItem key={group.id} value={group.id.toString()}>
-                        {group.name} {group.is_active ? "(Active)" : "(Inactive)"}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-6 flex justify-end space-x-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowActivityGroupModal(false)}
-                disabled={activityGroupLoading}
-              >
-                Cancel
-              </Button>
-
-              <Button onClick={handleAssignActivityGroup} disabled={activityGroupLoading}>
-                {activityGroupLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Assigning...
-                  </>
-                ) : (
-                  "Assign Activity Group"
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ID Card Modal */}
       {teacher && (
         <IDCardModal
           isOpen={showIDCardModal}
           onClose={() => setShowIDCardModal(false)}
-          data={teacher}
+          data={{
+            ...teacher,
+            class: undefined,
+            board: undefined
+          }}
           type="TEACHER"
         />
       )}
 
-      {/* Success Modal */}
+      {/* Modal - Assign Subject */}
+      {showAssignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Assign Subject</h2>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Subject</Label>
+                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={subjectListLoading ? "Loading..." : "Select a subject"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {subjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.name} {s.class ? `(${s.class.name})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {assignError && <p className="text-red-500 text-sm">{assignError}</p>}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+                <Button onClick={handleAssignSubject} disabled={assignLoading}>
+                  {assignLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Assign Test Series */}
+      {showTestSeriesModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Assign Test Series</h2>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Test Series</Label>
+                <Select value={selectedTestSeries} onValueChange={setSelectedTestSeries}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={testSeriesListLoading ? "Loading..." : "Select test series"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {testSeries.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>
+                        {s.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {testSeriesError && <p className="text-red-500 text-sm">{testSeriesError}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowTestSeriesModal(false)}>Cancel</Button>
+                <Button onClick={handleAssignTestSeries} disabled={testSeriesLoading}>
+                  {testSeriesLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Assign Activity Group */}
+      {showActivityGroupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-bold mb-4">Assign Activity Group</h2>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Select Activity Group</Label>
+                <Select value={selectedActivityGroup} onValueChange={setSelectedActivityGroup}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={activityGroupListLoading ? "Loading..." : "Select activity group"} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {activityGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id.toString()}>
+                        {g.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {activityGroupError && <p className="text-red-500 text-sm">{activityGroupError}</p>}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setShowActivityGroupModal(false)}>Cancel</Button>
+                <Button onClick={handleAssignActivityGroup} disabled={activityGroupLoading}>
+                  {activityGroupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Assign
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <SuccessModal
         open={showSuccessModal}
-        title="Subject Assigned!"
-        description="The subject has been successfully assigned to this teacher."
-        okText="OK"
+        title="Success"
+        description="Assignment updated successfully"
+        okText="Close"
         onConfirm={() => setShowSuccessModal(false)}
-        showButtons={true}
+        onClose={() => setShowSuccessModal(false)}
       />
 
-      {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         open={showDeleteModal}
-        title="Remove Subject?"
-        message="Are you sure you want to remove this subject from the teacher?"
+        title="Remove Assignment"
+        message="Are you sure you want to remove this assignment?"
         confirmText="Remove"
         cancelText="Cancel"
         onConfirm={handleRemoveSubject}
         onCancel={() => setShowDeleteModal(false)}
-        onClose={() => setShowDeleteModal(false)}
       />
     </div>
   );

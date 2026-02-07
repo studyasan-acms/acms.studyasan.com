@@ -13,17 +13,18 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { teacherService, locationService, currencyService } from '@/services/api';
 import type { Teacher, Country, State, City, Currency } from '@/types';
-import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown, User, Mail, Phone, Briefcase, GraduationCap, DollarSign, MapPin, Camera, UploadCloud } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
-import { cn } from '@/lib/utils';
+import { cn, resolveImageUrl } from '@/lib/utils';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Gender = "M" | "F" | "OTHER" | null;
 
@@ -82,9 +83,9 @@ export default function EditTeacherPage() {
   useEffect(() => {
     if (id) {
       fetchTeacher(parseInt(id));
+      fetchCountries();
+      fetchCurrencies();
     }
-    fetchCountries();
-    fetchCurrencies();
   }, [id]);
 
   const fetchTeacher = async (teacherId: number) => {
@@ -227,7 +228,7 @@ export default function EditTeacherPage() {
         setErrorOpen(true);
         return;
       }
-      
+
       const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!validTypes.includes(file.type)) {
         setErrorMessage('Please select a valid image file (JPEG, PNG, WebP)');
@@ -311,15 +312,17 @@ export default function EditTeacherPage() {
 
       // If there's a profile image, use FormData
       if (profileImage) {
-        const formData = new FormData();
+        const formDataPayload = new FormData();
         Object.entries(cleanData).forEach(([key, value]) => {
-          if (value !== null && value !== undefined) {
-            formData.append(key, value.toString());
+          if (key === 'address' && value) {
+            formDataPayload.append(key, JSON.stringify(value));
+          } else if (value !== null && value !== undefined) {
+            formDataPayload.append(key, value.toString());
           }
         });
-        formData.append('profileImage', profileImage);
-        
-        await teacherService.update(parseInt(id), formData);
+        formDataPayload.append('profileImage', profileImage);
+
+        await teacherService.update(parseInt(id), formDataPayload);
       } else {
         await teacherService.update(parseInt(id), cleanData);
       }
@@ -334,18 +337,34 @@ export default function EditTeacherPage() {
     }
   };
 
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+
+  const FormLabel = ({ children, icon: Icon, required }: { children: React.ReactNode, icon?: any, required?: boolean }) => (
+    <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      {Icon && <Icon className="w-3.5 h-3.5" />}
+      {children}
+      {required && <span className="text-red-500 text-lg leading-none ml-0.5">*</span>}
+    </Label>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center h-screen bg-gray-50/50">
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
       </div>
     );
   }
 
   if (!teacher) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <p className="text-lg font-medium">Teacher not found</p>
+      <div className="flex flex-col items-center justify-center h-screen">
+        <p className="text-lg font-bold text-gray-500">Teacher not found</p>
         <Button onClick={() => navigate('/dashboard/teachers')} className="mt-4">
           Back to Teachers
         </Button>
@@ -354,8 +373,7 @@ export default function EditTeacherPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* SUCCESS MODAL */}
+    <div className="max-w-4xl mx-auto space-y-8 pb-10">
       <SuccessModal
         open={successOpen}
         title="Teacher Updated Successfully"
@@ -368,7 +386,6 @@ export default function EditTeacherPage() {
         onClose={() => setSuccessOpen(false)}
       />
 
-      {/* ERROR MODAL */}
       <ErrorModal
         open={errorOpen}
         title="Error"
@@ -379,137 +396,148 @@ export default function EditTeacherPage() {
         onClose={() => setErrorOpen(false)}
       />
 
-      {/* Header */}
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-col space-y-4">
         <button
           onClick={() => navigate('/dashboard/teachers')}
-          className="flex items-center text-blue-600 text-sm hover:underline w-fit"
+          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-sm font-medium"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Teachers
         </button>
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Edit Teacher</h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Edit Teacher</h1>
+          <p className="text-gray-500 mt-1">
             Update teacher details for {teacher.user.name}
           </p>
         </div>
       </div>
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* User Information Card (read-only) */}
-          <Card className="w-full">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">User Information</CardTitle>
-              <CardDescription>Account information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Profile Picture */}
-              <div className="space-y-2">
-                <Label className="text-gray-600">Profile Picture</Label>
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <img
-                      src={imagePreview || teacher.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=96`}
-                      alt={teacher.user.name}
-                      className="w-16 h-16 rounded-full object-cover border border-gray-300"
-                    />
-                  </div>
-                  <div>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="profile-image-upload"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => document.getElementById('profile-image-upload')?.click()}
-                      disabled={isSaving}
-                    >
-                      Change Picture
-                    </Button>
-                    <p className="text-xs text-gray-500 mt-1">Max 5MB (JPEG, PNG, WebP)</p>
-                  </div>
+      <form onSubmit={handleSubmit} className="space-y-8">
+
+        {/* SECTION 1: USER INFO WITH AVATAR */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Profile Photo Card */}
+          <Card className="md:col-span-1 rounded-3xl border-gray-100 shadow-sm h-full">
+            <CardContent className="pt-6 flex flex-col items-center justify-center h-full">
+              <div className="relative group cursor-pointer" onClick={() => document.getElementById('profile-image-upload')?.click()}>
+                <Avatar className="h-32 w-32 border-4 border-gray-50 shadow-inner">
+                  <AvatarImage src={imagePreview || resolveImageUrl(teacher.user.profile_url)} className="object-cover" />
+                  <AvatarFallback className="bg-gray-100 text-gray-400 text-3xl font-bold">
+                    {teacher.user.name ? getInitials(teacher.user.name) : <User className="w-12 h-12 opacity-50" />}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white w-8 h-8" />
+                </div>
+                <div className="absolute bottom-0 right-0 bg-saBlue text-white p-2 rounded-full border-4 border-white shadow-sm">
+                  <UploadCloud className="w-4 h-4" />
                 </div>
               </div>
-              
-              <div className="space-y-2">
-                <Label className="text-gray-600">Full Name</Label>
-                <Input
-                  value={formData.name || ""}
-                  onChange={(e) => handleChange("name", e.target.value)}
+              <div className="mt-4 text-center">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-saBlue hover:bg-blue-50 hover:text-saBlue/80"
+                  onClick={() => document.getElementById('profile-image-upload')?.click()}
                   disabled={isSaving}
+                >
+                  Change Photo
+                </Button>
+                <input
+                  id="profile-image-upload"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleImageChange}
+                  className="hidden"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-600">Email</Label>
-                <Input
-                  value={formData.email || ""}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  disabled={isSaving}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-gray-600">Phone</Label>
-                <Input
-                  value={formData.phone || ""}
-                  onChange={(e) => handleChange("phone", e.target.value)}
-                  disabled={isSaving}
-                />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Max 5MB (JPEG, PNG, WebP)
+                </p>
               </div>
             </CardContent>
           </Card>
 
-          {/* Editable Teacher Details */}
-          <Card className="w-full">
+          {/* Account Details */}
+          <Card className="md:col-span-2 rounded-3xl border-gray-100 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Teacher Details</CardTitle>
-              <CardDescription>Update professional information</CardDescription>
+              <CardTitle className="text-xl text-gray-700">Account Information</CardTitle>
+              <CardDescription>Basic contact details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="col-span-2 space-y-2">
+                  <FormLabel icon={User}>Full Name</FormLabel>
+                  <Input
+                    value={formData.name || ""}
+                    onChange={(e) => handleChange("name", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormLabel icon={Mail}>Email</FormLabel>
+                  <Input
+                    value={formData.email || ""}
+                    onChange={(e) => handleChange("email", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <FormLabel icon={Phone}>Phone</FormLabel>
+                  <Input
+                    value={formData.phone || ""}
+                    onChange={(e) => handleChange("phone", e.target.value)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* SECTION 2: TEACHER DETAILS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-700">Teacher Details</CardTitle>
+            <CardDescription>Update professional information</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-6 sm:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="qualification" className="text-gray-600">
-                  Qualification
-                </Label>
+                <FormLabel icon={GraduationCap}>Qualification</FormLabel>
                 <Input
                   id="qualification"
                   placeholder="M.Sc. Mathematics, B.Ed."
                   value={formData.qualification || ''}
                   onChange={(e) => handleChange('qualification', e.target.value)}
                   disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="experience" className="text-gray-600">
-                  Experience
-                </Label>
+                <FormLabel icon={Briefcase}>Experience</FormLabel>
                 <Input
                   id="experience"
                   placeholder="5 years"
                   value={formData.experience || ''}
                   onChange={(e) => handleChange('experience', e.target.value)}
                   disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="gender" className="text-gray-600">
-                  Gender
-                </Label>
+                <FormLabel icon={User}>Gender</FormLabel>
                 <Select
                   value={formData.gender || 'none'}
                   onValueChange={(value) => handleChange('gender', value === 'none' ? null : value as Gender)}
                   disabled={isSaving}
                 >
-                  <SelectTrigger id="gender">
+                  <SelectTrigger id="gender" className="h-11 rounded-xl bg-gray-50 border-gray-200">
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
@@ -521,378 +549,340 @@ export default function EditTeacherPage() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="salary" className="text-gray-600">
-                    Salary (Monthly)
-                  </Label>
-                  <div className="flex items-center">
-                    <span className="inline-flex items-center px-3 py-2 border border-r-0 rounded-l-md bg-gray-50 text-gray-700">
-                      {currencies.find((c) => c.id === formData.salary_currency_id)?.symbol || '¤'}
-                    </span>
-                    <Input
-                      id="salary"
-                      type="number"
-                      placeholder="50000"
-                      value={formData.salary ?? ''}
-                      onChange={(e) => handleChange('salary', e.target.value ? parseFloat(e.target.value) : null)}
-                      disabled={isSaving}
-                      className="rounded-l-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="salary_currency" className="text-gray-600">
-                    Currency
-                  </Label>
-                  <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={currencyOpen}
-                        className="w-full justify-between"
-                        disabled={isSaving}
-                      >
-                        {formData.salary_currency_id
-                          ? `${currencies.find((c) => c.id === formData.salary_currency_id)?.code} - ${currencies.find((c) => c.id === formData.salary_currency_id)?.name}`
-                          : 'Select currency...'}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search currency..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={currencySearch}
-                          onChange={(e) => setCurrencySearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleChange('salary_currency_id', null);
-                              setCurrencyOpen(false);
-                              setCurrencySearch('');
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.salary_currency_id ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {currencies
-                            .filter((c) => c.code.toLowerCase().includes(currencySearch.toLowerCase()) || c.name.toLowerCase().includes(currencySearch.toLowerCase()))
-                            .map((currency) => (
-                              <div
-                                key={currency.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleChange('salary_currency_id', currency.id);
-                                  setCurrencyOpen(false);
-                                  setCurrencySearch('');
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.salary_currency_id === currency.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {currency.code} - {currency.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Address Section - FIXED WITH POPOVER SEARCH COMPONENTS */}
-          <Card className="w-full md:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Address</CardTitle>
-              <CardDescription>
-                Update teacher address. All fields must be filled to save address.
-                {teacher.address && (
-                  <span className="text-green-600 ml-2">✓ Address exists</span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="addressLine" className="text-gray-600">
-                  Address
-                </Label>
-                <Textarea
-                  id="addressLine"
-                  placeholder="123 Main Street, Apartment, etc."
-                  value={formData.addressLine || ''}
-                  onChange={(e) => handleChange('addressLine', e.target.value)}
-                  disabled={isSaving}
-                  className="w-full"
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="country" className="text-gray-600">
-                    Country
-                  </Label>
-                  <Popover open={countryOpen} onOpenChange={setCountryOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={countryOpen}
-                        className="w-full justify-between"
-                        disabled={isSaving}
-                      >
-                        {formData.countryId
-                          ? countries.find((country) => country.id === formData.countryId)?.name
-                          : "Select country..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search country..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleCountryChange(null);
-                              setCountryOpen(false);
-                              setCountrySearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.countryId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {countries
-                            .filter(country => country.name.toLowerCase().includes(countrySearch.toLowerCase()))
-                            .map((country) => (
-                              <div
-                                key={country.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleCountryChange(country.id);
-                                  setCountryOpen(false);
-                                  setCountrySearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.countryId === country.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {country.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="state" className="text-gray-600">
-                    State
-                  </Label>
-                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={stateOpen}
-                        className="w-full justify-between"
-                        disabled={!selectedCountryId || isSaving}
-                      >
-                        {formData.stateId
-                          ? states.find((state) => state.id === formData.stateId)?.name
-                          : "Select state..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search state..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={stateSearch}
-                          onChange={(e) => setStateSearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleStateChange(null);
-                              setStateOpen(false);
-                              setStateSearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.stateId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {states
-                            .filter(state => state.name.toLowerCase().includes(stateSearch.toLowerCase()))
-                            .map((state) => (
-                              <div
-                                key={state.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleStateChange(state.id);
-                                  setStateOpen(false);
-                                  setStateSearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.stateId === state.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {state.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="city" className="text-gray-600">
-                    City
-                  </Label>
-                  <Popover open={cityOpen} onOpenChange={setCityOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={cityOpen}
-                        className="w-full justify-between"
-                        disabled={!selectedStateId || isSaving}
-                      >
-                        {formData.cityId
-                          ? cities.find((city) => city.id === formData.cityId)?.name
-                          : "Select city..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-full p-0">
-                      <div className="p-2">
-                        <input
-                          type="text"
-                          placeholder="Search city..."
-                          className="w-full px-2 py-1 border rounded"
-                          value={citySearch}
-                          onChange={(e) => setCitySearch(e.target.value)}
-                        />
-                        <div className="max-h-60 overflow-y-auto">
-                          <div
-                            className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => {
-                              handleChange('cityId', null);
-                              setCityOpen(false);
-                              setCitySearch("");
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                !formData.cityId ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            None
-                          </div>
-                          {cities
-                            .filter(city => city.name.toLowerCase().includes(citySearch.toLowerCase()))
-                            .map((city) => (
-                              <div
-                                key={city.id}
-                                className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer"
-                                onClick={() => {
-                                  handleChange('cityId', city.id);
-                                  setCityOpen(false);
-                                  setCitySearch("");
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    formData.cityId === city.id ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                {city.name}
-                              </div>
-                            ))}
-                        </div>
-                      </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="postalCode" className="text-gray-600">
-                    Postal Code
-                  </Label>
+                <FormLabel icon={DollarSign}>Salary (Monthly)</FormLabel>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 py-2 border border-r-0 rounded-l-xl bg-gray-50 text-gray-700 border-gray-200">
+                    {currencies.find((c) => c.id === formData.salary_currency_id)?.symbol || '¤'}
+                  </span>
                   <Input
-                    id="postalCode"
-                    placeholder="123456"
-                    value={formData.postalCode || ''}
-                    onChange={(e) => handleChange('postalCode', e.target.value)}
+                    id="salary"
+                    type="number"
+                    placeholder="50000"
+                    value={formData.salary ?? ''}
+                    onChange={(e) => handleChange('salary', e.target.value ? parseFloat(e.target.value) : null)}
                     disabled={isSaving}
+                    className="h-11 rounded-l-none rounded-r-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                   />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+              <div className="space-y-2">
+                <FormLabel icon={DollarSign}>Currency</FormLabel>
+                <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={currencyOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={isSaving}
+                    >
+                      {formData.salary_currency_id
+                        ? `${currencies.find((c) => c.id === formData.salary_currency_id)?.code} - ${currencies.find((c) => c.id === formData.salary_currency_id)?.name}`
+                        : 'Select currency...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 rounded-xl">
+                    <div className="p-2 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Search currency..."
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        value={currencySearch}
+                        onChange={(e) => setCurrencySearch(e.target.value)}
+                      />
+                      <div className="max-h-60 overflow-y-auto space-y-1">
+                        <div
+                          className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm"
+                          onClick={() => {
+                            handleChange('salary_currency_id', null);
+                            setCurrencyOpen(false);
+                            setCurrencySearch('');
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              !formData.salary_currency_id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          None
+                        </div>
+                        {currencies
+                          .filter((c) => c.code.toLowerCase().includes(currencySearch.toLowerCase()) || c.name.toLowerCase().includes(currencySearch.toLowerCase()))
+                          .map((currency) => (
+                            <div
+                              key={currency.id}
+                              className="flex items-center px-2 py-1 hover:bg-gray-100 cursor-pointer text-sm"
+                              onClick={() => {
+                                handleChange('salary_currency_id', currency.id);
+                                setCurrencyOpen(false);
+                                setCurrencySearch('');
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.salary_currency_id === currency.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {currency.code} - {currency.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* SECTION 3: ADDRESS */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className="text-xl text-gray-700">Residential Address</CardTitle>
+            <CardDescription>
+              Update teacher address. All fields must be filled to save address.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <FormLabel icon={MapPin}>Full Address</FormLabel>
+              <Textarea
+                id="addressLine"
+                placeholder="Street address, apartment, suite, etc."
+                value={formData.addressLine || ''}
+                onChange={(e) => handleChange('addressLine', e.target.value)}
+                disabled={isSaving}
+                className="min-h-[80px] rounded-xl bg-gray-50 border-gray-200 resize-none"
+              />
+            </div>
+
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <FormLabel>Country</FormLabel>
+                <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={countryOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={isSaving}
+                    >
+                      {formData.countryId
+                        ? countries.find((country) => country.id === formData.countryId)?.name
+                        : "Select country..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Search country..."
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        value={countrySearch}
+                        onChange={(e) => setCountrySearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        <div
+                          className="flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            handleCountryChange(null);
+                            setCountryOpen(false);
+                            setCountrySearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-3 w-3", !formData.countryId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </div>
+                        {countries
+                          .filter(country => country.name.toLowerCase().includes(countrySearch.toLowerCase()))
+                          .map((country) => (
+                            <div
+                              key={country.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.countryId === country.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleCountryChange(country.id);
+                                setCountryOpen(false);
+                                setCountrySearch("");
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.countryId === country.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {country.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>State</FormLabel>
+                <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={stateOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={!selectedCountryId || isSaving}
+                    >
+                      {formData.stateId
+                        ? states.find((state) => state.id === formData.stateId)?.name
+                        : "Select state..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Search state..."
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        value={stateSearch}
+                        onChange={(e) => setStateSearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        <div
+                          className="flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100"
+                          onClick={() => {
+                            handleStateChange(null);
+                            setStateOpen(false);
+                            setStateSearch("");
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-3 w-3", !formData.stateId ? "opacity-100" : "opacity-0")} />
+                          None
+                        </div>
+                        {states
+                          .filter(state => state.name.toLowerCase().includes(stateSearch.toLowerCase()))
+                          .map((state) => (
+                            <div
+                              key={state.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.stateId === state.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleStateChange(state.id);
+                                setStateOpen(false);
+                                setStateSearch("");
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.stateId === state.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {state.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>City</FormLabel>
+                <Popover open={cityOpen} onOpenChange={setCityOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={cityOpen}
+                      className="w-full justify-between h-11 rounded-xl bg-gray-50 border-gray-200 font-normal"
+                      disabled={!selectedStateId || isSaving}
+                    >
+                      {formData.cityId
+                        ? cities.find((city) => city.id === formData.cityId)?.name
+                        : "Select city..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[200px] p-0 rounded-xl" align="start">
+                    <div className="p-2 space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Search city..."
+                        className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-saBlue/20"
+                        value={citySearch}
+                        onChange={(e) => setCitySearch(e.target.value)}
+                      />
+                      <div className="max-h-[200px] overflow-y-auto space-y-1">
+                        {cities
+                          .filter(c => c.name.toLowerCase().includes(citySearch.toLowerCase()))
+                          .map((city) => (
+                            <div
+                              key={city.id}
+                              className={cn(
+                                "flex items-center px-2 py-1.5 text-sm rounded-md cursor-pointer hover:bg-gray-100",
+                                formData.cityId === city.id && "bg-blue-50 text-blue-600"
+                              )}
+                              onClick={() => {
+                                handleChange('cityId', city.id);
+                                setCityOpen(false);
+                                setCitySearch("");
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-3 w-3", formData.cityId === city.id ? "opacity-100" : "opacity-0")} />
+                              {city.name}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Postal Code</FormLabel>
+                <Input
+                  id="postalCode"
+                  placeholder="e.g. 10001"
+                  value={formData.postalCode || ''}
+                  onChange={(e) => handleChange('postalCode', e.target.value)}
+                  disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={() => navigate('/dashboard/teachers')}
+            className="w-full sm:w-auto h-12 rounded-xl text-gray-500 hover:text-gray-700"
             disabled={isSaving}
-            className="w-full sm:w-auto"
           >
             Cancel
           </Button>
 
-          <Button type="submit" disabled={isSaving} className="w-full sm:w-auto">
+          <Button
+            type="submit"
+            disabled={isSaving}
+            className="w-full sm:w-auto h-12 rounded-xl bg-saBlue hover:bg-saBlue/90 shadow-lg shadow-saBlue/30 min-w-[160px]"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
