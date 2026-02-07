@@ -163,7 +163,7 @@ export function ClassroomPage() {
 
     // Connected - render classroom
     return (
-        <div className="h-screen w-screen overflow-hidden">
+        <div className="h-[100dvh] w-screen overflow-hidden">
             <ClassroomLayout
                 isConnected={janus.isConnected}
                 localStream={janus.localStream}

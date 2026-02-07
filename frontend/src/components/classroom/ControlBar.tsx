@@ -53,7 +53,7 @@ export function ControlBar({
     onLeave,
 }: ControlBarProps) {
     return (
-        <div className="flex items-center gap-2 p-2 rounded-full bg-white/90 backdrop-blur-xl border border-slate-200 shadow-lg">
+        <div className="flex items-center gap-1 md:gap-2 p-2 rounded-2xl md:rounded-full bg-white/90 backdrop-blur-xl border border-slate-200 shadow-lg max-w-[90vw] overflow-x-auto scrollbar-hide no-scrollbar">
             {/* Microphone Toggle */}
             <Button
                 variant={isMuted ? 'destructive' : 'outline'}

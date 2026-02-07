@@ -213,8 +213,8 @@ export function Whiteboard({
             className="absolute inset-0 flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         >
             {/* Toolbar */}
-            <div className="flex items-center justify-between p-1.5 md:p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
-                <div className="flex items-center gap-1 min-w-max overflow-visible">
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
+                <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
                     {/* Drawing Tools */}
                     <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                         <Button
@@ -260,8 +260,8 @@ export function Whiteboard({
                         <button
                             onClick={() => setShowShapeSelector(!showShapeSelector)}
                             className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
-                                    ? 'bg-sky-50 border-sky-300'
-                                    : ''
+                                ? 'bg-sky-50 border-sky-300'
+                                : ''
                                 }`}
                             title="Shapes"
                         >
@@ -456,8 +456,8 @@ export function Whiteboard({
                                 <button
                                     onClick={() => setBoard(board)}
                                     className={`flex items-center justify-center w-6 h-6 rounded transition-all ${currentBoard === board
-                                            ? 'bg-sky-500 text-white shadow-sm'
-                                            : 'hover:bg-slate-100 text-slate-600'
+                                        ? 'bg-sky-500 text-white shadow-sm'
+                                        : 'hover:bg-slate-100 text-slate-600'
                                         }`}
                                     title={`Board ${board}`}
                                 >
@@ -498,7 +498,7 @@ export function Whiteboard({
                 </div>
 
                 {/* Close button */}
-                <Button variant="ghost" size="sm" onClick={onClose} className="ml-2">
+                <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-2 top-2 md:static md:ml-2">
                     <X className="w-4 h-4" />
                 </Button>
             </div>

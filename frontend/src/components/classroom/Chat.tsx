@@ -49,7 +49,7 @@ export function Chat({
     if (!isOpen) return null;
 
     return (
-        <div className="absolute right-4 bottom-20 w-80 h-96 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col z-50 overflow-hidden">
+        <div className="absolute inset-0 z-[60] md:z-50 md:inset-auto md:right-4 md:bottom-20 md:w-80 md:h-96 bg-white md:rounded-2xl shadow-2xl border-l md:border border-slate-200 flex flex-col overflow-hidden">
             {/* Header */}
             <div className="bg-gradient-to-r from-sky-500 to-indigo-500 text-white p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -84,8 +84,8 @@ export function Chat({
                             >
                                 <div
                                     className={`max-w-[80%] rounded-2xl px-4 py-2 shadow-sm ${isOwn
-                                            ? 'bg-sky-500 text-white rounded-br-sm'
-                                            : 'bg-white text-slate-900 rounded-bl-sm border border-slate-200'
+                                        ? 'bg-sky-500 text-white rounded-br-sm'
+                                        : 'bg-white text-slate-900 rounded-bl-sm border border-slate-200'
                                         }`}
                                 >
                                     {!isOwn && (

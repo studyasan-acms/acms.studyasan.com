@@ -120,17 +120,20 @@ export function ClassroomLayout({
             </header>
 
             {/* Main content area */}
-            <div className="flex-1 relative flex overflow-hidden">
-                {/* Participant strip - left side */}
-                <div className="w-24 md:w-32 lg:w-40 bg-slate-50 border-r border-slate-200 p-2 flex flex-col gap-2 overflow-y-auto shrink-0">
+            <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-slate-900">
+                {/* Participant strip - Top on mobile, Left on desktop */}
+                <div className="w-full h-24 md:w-32 lg:w-40 md:h-full bg-slate-800 md:bg-slate-50 border-b md:border-b-0 md:border-r border-slate-700 md:border-slate-200 p-2 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto shrink-0">
                     {stripParticipants.length === 0 && localParticipant && (
-                        <VideoTile
-                            participant={localParticipant}
-                            stream={localStream || undefined}
-                            isLocal
-                            onClick={() => onSetMainParticipant(localParticipant.id)}
-                            isTeacher={isTeacher}
-                        />
+                        <div className="h-full aspect-video md:w-full md:h-auto md:aspect-video shrink-0">
+                            <VideoTile
+                                participant={localParticipant}
+                                stream={localStream || undefined}
+                                isLocal
+                                onClick={() => onSetMainParticipant(localParticipant.id)}
+                                isTeacher={isTeacher}
+                                className="w-full h-full"
+                            />
+                        </div>
                     )}
                     {stripParticipants.map((participant, index) => {
                         const stream = participant.isLocal
@@ -144,24 +147,26 @@ export function ClassroomLayout({
                         if (index >= maxShow) return null;
 
                         return (
-                            <VideoTile
-                                key={String(participant.id)}
-                                participant={participant}
-                                stream={stream || undefined}
-                                isLocal={participant.isLocal}
-                                showOverflow={overflow}
-                                onClick={() => onSetMainParticipant(participant.id)}
-                                isTeacher={isTeacher}
-                                onMuteParticipant={onMuteParticipant}
-                                onKickParticipant={onKickParticipant}
-                            />
+                            <div key={String(participant.id)} className="h-full aspect-video md:w-full md:h-auto md:aspect-video shrink-0">
+                                <VideoTile
+                                    participant={participant}
+                                    stream={stream || undefined}
+                                    isLocal={participant.isLocal}
+                                    showOverflow={overflow}
+                                    onClick={() => onSetMainParticipant(participant.id)}
+                                    isTeacher={isTeacher}
+                                    onMuteParticipant={onMuteParticipant}
+                                    onKickParticipant={onKickParticipant}
+                                    className="w-full h-full"
+                                />
+                            </div>
                         );
                     })}
                 </div>
 
                 {/* Main video area */}
-                <div className="flex-1 relative p-4">
-                    <div className="w-full h-full rounded-2xl overflow-hidden bg-slate-200 shadow-lg">
+                <div className="flex-1 relative p-0 md:p-4 bg-black md:bg-slate-100">
+                    <div className="w-full h-full rounded-none md:rounded-2xl overflow-hidden bg-slate-900 shadow-lg relative">
                         <VideoTile
                             participant={mainParticipant}
                             stream={mainStream || undefined}
