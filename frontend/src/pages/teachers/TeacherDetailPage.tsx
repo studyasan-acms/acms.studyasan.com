@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { resolveImageUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -32,6 +33,7 @@ import {
   IndianRupee,
   Users,
   FileText,
+  CreditCard,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -50,6 +52,7 @@ const safeFormat = (dateValue: string | number | Date | undefined | null, fmt: s
 // Custom modals
 import SuccessModal from "@/components/ui/successModal";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
+import IDCardModal from "@/components/students/IDCardModal";
 
 import { Label } from "@/components/ui/label";
 import {
@@ -67,6 +70,9 @@ export default function TeacherDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // ID Card Modal State
+  const [showIDCardModal, setShowIDCardModal] = useState(false);
 
   // Assign Subject Modal
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -353,7 +359,7 @@ export default function TeacherDetailPage() {
           <div className="flex items-center space-x-4">
             <div className="flex-shrink-0">
               <img
-                src={teacher.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=80`}
+                src={resolveImageUrl(teacher.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}&background=f97316&color=ffffff&size=80`}
                 alt={teacher.user.name}
                 className="w-20 h-20 rounded-full object-cover border border-gray-300"
               />
@@ -368,8 +374,16 @@ export default function TeacherDetailPage() {
             </div>
           </div>
 
-          {/* Edit Button */}
-          <div className="flex-shrink-0">
+          {/* Edit Button + ID Card */}
+          <div className="flex-shrink-0 flex gap-2">
+            <Button
+              onClick={() => setShowIDCardModal(true)}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              <CreditCard className="mr-2 h-4 w-4" />
+              ID Card
+            </Button>
             <Button
               onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}
               className="w-full sm:w-auto"
@@ -1100,6 +1114,16 @@ export default function TeacherDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ID Card Modal */}
+      {teacher && (
+        <IDCardModal
+          isOpen={showIDCardModal}
+          onClose={() => setShowIDCardModal(false)}
+          data={teacher}
+          type="TEACHER"
+        />
       )}
 
       {/* Success Modal */}

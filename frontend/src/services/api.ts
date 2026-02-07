@@ -1238,5 +1238,12 @@ export const deletionService = {
   },
 };
 
+export const idCardService = {
+  sendEmail: async (data: { userId: string | number; userType: 'STUDENT' | 'TEACHER'; imageData: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/id-cards/send-email', data);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };

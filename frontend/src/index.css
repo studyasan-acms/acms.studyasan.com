@@ -108,4 +108,8 @@
   .scrollbar-hide::-webkit-scrollbar { 
     display: none;  /* Safari and Chrome */
   }
+
+  .clip-path-header {
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+  }
 }

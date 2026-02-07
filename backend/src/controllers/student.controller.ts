@@ -106,7 +106,7 @@ export const getStudentById = async (req: Request, res: Response) => {
         blood_group: true,
         created_at: true,
         updated_at: true,
-        user: { select: { id: true, name: true, email: true, phone: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
         class: true,
         board: true,
         enrollments: { include: { subject: true } },
@@ -255,7 +255,7 @@ export const createStudent = async (req: Request, res: Response) => {
     });
 
     sendSuccess(res, result, 'Student created successfully', 201);
-    
+
     async function createStudentFromExistingUser() {
       // Original logic for creating student from existing user
       const hasAnyAddressField = addressLine || countryId || stateId || cityId || postalCode;
@@ -338,7 +338,7 @@ export const updateStudent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const profileImage = req.file;
-    
+
     // Extract data from either req.body (JSON) or req.body (FormData fields)
     // When FormData is sent, multer parses the fields into req.body
     const {
@@ -447,7 +447,7 @@ export const updateStudent = async (req: Request, res: Response) => {
         ...(addressData && { address: addressData }),
       },
       include: {
-        user: { select: { id: true, name: true, email: true, phone: true } },
+        user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
         class: true,
         board: true,
         address: { include: { country: true, state: true, city: true } },

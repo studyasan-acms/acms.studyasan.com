@@ -568,6 +568,7 @@ export const assignSubjectToTeacher = async (req: Request, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                profile_url: true,
               },
             },
           },
@@ -619,6 +620,7 @@ export const getTeachersBySubject = async (req: Request, res: Response) => {
             name: true,
             email: true,
             phone: true,
+            profile_url: true,
           },
         },
         teacher_subject_junctions: {

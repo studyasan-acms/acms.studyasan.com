@@ -15,6 +15,12 @@ interface EmailOptions {
   to: string;
   subject: string;
   html: string;
+  attachments?: Array<{
+    filename: string;
+    content?: string | Buffer;
+    path?: string;
+    contentType?: string;
+  }>;
 }
 
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
@@ -24,6 +30,7 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
       to: options.to,
       subject: options.subject,
       html: options.html,
+      attachments: options.attachments,
     });
     return true;
   } catch (error) {

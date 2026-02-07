@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { cn, resolveImageUrl } from "@/lib/utils";
+
+
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,10 +42,12 @@ import {
   Hash,
   Receipt,
   Plus,
-  FileText
+  FileText,
+  CreditCard
 } from "lucide-react";
 import { format } from "date-fns";
 import InvoiceModal from "@/components/InvoiceModal";
+import IDCardModal from "@/components/students/IDCardModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudentDetailPage() {
@@ -52,6 +57,9 @@ export default function StudentDetailPage() {
   const [student, setStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  // ID Card Modal State
+  const [showIDCardModal, setShowIDCardModal] = useState(false);
 
   // Enrollment modals
   const [showSubjectModal, setShowSubjectModal] = useState(false);
@@ -273,13 +281,13 @@ export default function StudentDetailPage() {
           </button>
         </div>
 
-        {/* Second Row: Profile Picture + Name + Edit button */}
+        {/* Second Row: Profile Picture + Name + Buttons */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
           {/* Profile Picture and Student Name */}
           <div className="flex items-center space-x-4">
             <div className="flex-shrink-0">
               <img
-                src={student.user.profile_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}&background=f97316&color=ffffff&size=80`}
+                src={resolveImageUrl(student.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}&background=f97316&color=ffffff&size=80`}
                 alt={student.user.name}
                 className="w-20 h-20 rounded-full object-cover border border-gray-300"
               />
@@ -294,9 +302,17 @@ export default function StudentDetailPage() {
             </div>
           </div>
 
-          {/* Edit Button - Admin only */}
+          {/* Buttons - Admin only */}
           {isAdmin && (
-            <div className="flex-shrink-0 flex space-x-2">
+            <div className="flex-shrink-0 flex flex-wrap gap-2">
+              <Button
+                onClick={() => setShowIDCardModal(true)}
+                variant="outline"
+                className="w-full sm:w-auto"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                ID Card
+              </Button>
               <Button
                 onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}
                 variant="outline"
@@ -827,6 +843,16 @@ export default function StudentDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ID Card Modal */}
+      {student && (
+        <IDCardModal
+          isOpen={showIDCardModal}
+          onClose={() => setShowIDCardModal(false)}
+          data={student}
+          type="STUDENT"
+        />
       )}
 
       {/* Invoice Modal */}

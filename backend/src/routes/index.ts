@@ -8,6 +8,7 @@ import * as subjectController from '../controllers/subject.controller.js';
 import * as enrollmentController from '../controllers/enrollment.controller.js';
 import * as teacherController from '../controllers/teacher.controller.js';
 import * as notificationController from '../controllers/notification.controller.js';
+import * as idCardController from '../controllers/idCard.controller.js';
 import * as classSessionController from '../controllers/classSession.controller.js';
 import * as attendanceController from '../controllers/attendance.controller.js';
 import * as moduleController from '../controllers/module.controller.js';
@@ -653,5 +654,8 @@ router.get('/analytics/student/:studentId', authenticate, authorize('ADMIN', 'TE
 router.get('/analytics/admin/students', authenticate, authorize('ADMIN'), analyticsController.getAdminStudentsAnalytics);
 router.get('/analytics/admin/teachers', authenticate, authorize('ADMIN'), analyticsController.getAdminTeachersAnalytics);
 router.get('/analytics/admin/business', authenticate, authorize('ADMIN'), analyticsController.getAdminBusinessAnalytics);
+
+// ================== ID CARD ROUTES ==================
+router.post('/id-cards/send-email', authenticate, idCardController.sendIDCardEmail);
 
 export default router;
