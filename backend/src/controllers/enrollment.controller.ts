@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { NotificationProcessorService } from '../services/notificationProcessor.service.js';
+import { sendNotificationAllChannels } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -244,11 +245,12 @@ async function createPaymentSchedule(
       });
     }
 
-    // Create immediate notifications
+    // Send immediate notifications via all channels (in-app, FCM, email)
     if (immediateNotifications.length > 0) {
-      await prisma.notification.createMany({
-        data: immediateNotifications,
-      });
+      const notificationPromises = immediateNotifications.map(notification =>
+        sendNotificationAllChannels(notification)
+      );
+      await Promise.allSettled(notificationPromises);
     }
 
     // Create pending notifications

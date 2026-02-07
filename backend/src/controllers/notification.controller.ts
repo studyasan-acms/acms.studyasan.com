@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import type { AuthRequest } from '../types/index.js';
+import { sendNotificationAllChannels } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -64,17 +65,17 @@ export const createNotification = async (req: Request, res: Response) => {
   try {
     const { user_id, type, title, description } = req.body;
     
-    const notification = await prisma.notification.create({
-      data: {
-        user_id,
-        type,
-        title,
-        description,
-      },
+    // Send notification through all channels (in-app, push, email)
+    await sendNotificationAllChannels({
+      user_id,
+      type,
+      title,
+      description,
     });
     
-    sendSuccess(res, notification, 'Notification created successfully', 201);
+    sendSuccess(res, null, 'Notification sent successfully via all channels', 201);
   } catch (error: any) {
+    console.error('Create notification error:', error);
     sendError(res, error.message, 500);
   }
 };

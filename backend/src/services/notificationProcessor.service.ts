@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
+import { sendNotificationAllChannels } from './notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -33,18 +34,18 @@ export class NotificationProcessorService {
 
       console.log(`Processing ${pendingNotifications.length} pending notifications`);
 
-      // Create notifications from pending ones
-      const notificationsToCreate = pendingNotifications.map(pending => ({
-        user_id: pending.user_id,
-        type: pending.type,
-        title: pending.title,
-        description: pending.description,
-      }));
+      // Send each notification via all channels (in-app, push, email)
+      const promises = pendingNotifications.map(pending =>
+        sendNotificationAllChannels({
+          user_id: pending.user_id,
+          type: pending.type,
+          title: pending.title,
+          description: pending.description || undefined,
+        })
+      );
 
-      // Create notifications in batch
-      await prisma.notification.createMany({
-        data: notificationsToCreate,
-      });
+      // Process all notifications concurrently
+      await Promise.allSettled(promises);
 
       // Mark pending notifications as delivered
       const pendingIds = pendingNotifications.map(p => p.id);
@@ -59,7 +60,7 @@ export class NotificationProcessorService {
         },
       });
 
-      console.log(`Delivered ${pendingNotifications.length} notifications`);
+      console.log(`Delivered ${pendingNotifications.length} notifications via all channels`);
     } catch (error) {
       console.error('Error processing pending notifications:', error);
     }

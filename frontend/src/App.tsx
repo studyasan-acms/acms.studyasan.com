@@ -98,6 +98,7 @@ import StudentActivitiesPage from '@/pages/activities/StudentActivitiesPage';
 import StudentHomePage from '@/pages/StudentHomePage';
 import AdminEnquiriesPage from '@/pages/AdminEnquiriesPage';
 import ProfilePage from '@/pages/ProfilePage';
+import SettingsPage from '@/pages/SettingsPage';
 
 // Homework imports
 import HomeworkPage from '@/pages/homework/HomeworkPage';
@@ -309,7 +310,7 @@ function App() {
           <Route path="attendance" element={<AttendanceListPage />} />
 
           <Route path="profile" element={<ProfilePage />} />
-          <Route path="settings" element={<div>Settings Page - Coming Soon</div>} />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
 
         {/* Test Routes (outside dashboard layout for fullscreen test attempt) */}

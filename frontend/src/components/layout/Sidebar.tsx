@@ -25,6 +25,7 @@ import {
   ClipboardCheck,
   DollarSign,
   TrendingUp,
+  Settings,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -167,6 +168,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/enquiries",
     icon: GraduationCap,
     roles: ["ADMIN"],
+  },
+  {
+    title: "Settings",
+    href: "/dashboard/settings",
+    icon: Settings,
+    roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
 ];
 

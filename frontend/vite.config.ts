@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt', // Changed from 'autoUpdate' to prevent reload loops with Firebase SW
       includeAssets: ['studyasan-logo-lady.png', 'studyasan-logo.png', 'logo.jpg'],
       manifest: {
         name: 'StudyAsan - Appointment Management',
@@ -99,7 +99,7 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: true
+        enabled: false // Disabled to prevent conflicts with Firebase messaging SW during dev
       }
     })
   ],

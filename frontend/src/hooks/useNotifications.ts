@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   requestNotificationPermission,
-  onMessageListener,
+  setupMessageListener,
   isNotificationSupported,
   getNotificationPermissionStatus,
 } from '@/lib/firebase';
@@ -101,10 +101,18 @@ export const useNotifications = (): UseNotificationsReturn => {
     setIsSupported(isNotificationSupported());
     setPermission(getNotificationPermissionStatus());
 
-    // Check for existing token
+    // Check for existing token and sync with server
     const existingToken = localStorage.getItem('fcm_token');
     if (existingToken) {
       setFcmToken(existingToken);
+      
+      // Ensure token is synced with server
+      const authToken = localStorage.getItem('token');
+      if (authToken) {
+        sendTokenToServer(existingToken).catch(err => {
+          console.error('Failed to sync existing FCM token:', err);
+        });
+      }
     }
 
     // Auto-request permission if supported and not yet decided
@@ -129,7 +137,8 @@ export const useNotifications = (): UseNotificationsReturn => {
               sendTokenToServer(token);
             }
             
-            toast.success('Notifications enabled successfully!');
+            // Silent auto-enable - no toast to avoid annoying users
+            console.log('✓ Push notifications enabled automatically');
           }
         } catch (error) {
           console.error('Error auto-requesting notification permission:', error);
@@ -139,32 +148,37 @@ export const useNotifications = (): UseNotificationsReturn => {
     
     autoRequestPermission();
 
-    // Listen for foreground messages
+    // Set up foreground message listener
+    let unsubscribe: (() => void) | null = null;
+    
     if (isNotificationSupported()) {
-      onMessageListener()
-        .then((payload: NotificationPayload) => {
-          console.log('Foreground notification received:', payload);
-          
-          // Show toast notification
-          toast(payload.notification?.title || 'New Notification', {
-            description: payload.notification?.body,
-            duration: 5000,
-          });
-
-          // You can also show a native notification
-          if (Notification.permission === 'granted') {
-            new Notification(payload.notification?.title || 'StudyAsan', {
-              body: payload.notification?.body,
-              icon: '/studyasan-logo.png',
-              badge: '/pwa-192x192.png',
-              data: payload.data,
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('Failed to listen for messages:', err);
+      unsubscribe = setupMessageListener((payload) => {
+        console.log('Foreground notification received:', payload);
+        
+        // Show toast notification
+        toast(payload.notification?.title || 'New Notification', {
+          description: payload.notification?.body,
+          duration: 5000,
         });
+
+        // Show native notification if permitted
+        if (Notification.permission === 'granted') {
+          new Notification(payload.notification?.title || 'StudyAsan', {
+            body: payload.notification?.body,
+            icon: '/studyasan-logo.png',
+            badge: '/pwa-192x192.png',
+            data: payload.data,
+          });
+        }
+      });
     }
+
+    // Cleanup function
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount
 

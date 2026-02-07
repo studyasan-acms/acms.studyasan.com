@@ -85,6 +85,25 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
 
 /**
  * Listen for foreground messages
+ * Returns an unsubscribe function to clean up the listener
+ */
+export const setupMessageListener = (callback: (payload: any) => void): (() => void) => {
+  if (!messaging) {
+    console.error('Firebase messaging not initialized');
+    return () => {};
+  }
+  
+  const unsubscribe = onMessage(messaging, (payload) => {
+    console.log('Message received in foreground:', payload);
+    callback(payload);
+  });
+  
+  return unsubscribe;
+};
+
+/**
+ * @deprecated Use setupMessageListener instead
+ * Legacy promise-based listener - kept for backwards compatibility
  */
 export const onMessageListener = (): Promise<any> =>
   new Promise((resolve) => {

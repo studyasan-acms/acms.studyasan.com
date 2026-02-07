@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { sendNotificationAllChannels } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -56,9 +57,11 @@ export const requestDeletion = async (req: Request, res: Response) => {
       description: `${existingUser.name} (${existingUser.email}) has requested to delete their account.`,
     }));
 
-    await prisma.notification.createMany({
-      data: adminNotifications,
-    });
+    // Send notifications to all admins via all channels (in-app, FCM, email)
+    const notificationPromises = adminNotifications.map(notification =>
+      sendNotificationAllChannels(notification)
+    );
+    await Promise.allSettled(notificationPromises);
 
     sendSuccess(res, null, 'Account deletion requested successfully. Admins have been notified.');
   } catch (error: any) {
@@ -158,14 +161,12 @@ export const verifyDeletion = async (req: Request, res: Response) => {
       },
     });
 
-    // Notify the user that their deletion request has been approved
-    await prisma.notification.create({
-      data: {
-        user_id: parseInt(userId),
-        type: 'SUCCESS',
-        title: 'Account Deletion Approved',
-        description: 'Your account deletion request has been approved. Your account will be deleted permanently.',
-      },
+    // Notify the user via all channels (in-app, FCM, email)
+    await sendNotificationAllChannels({
+      user_id: parseInt(userId),
+      type: 'SUCCESS',
+      title: 'Account Deletion Approved',
+      description: 'Your account deletion request has been approved. Your account will be deleted permanently.',
     });
 
     sendSuccess(res, null, 'Account deletion verified successfully');

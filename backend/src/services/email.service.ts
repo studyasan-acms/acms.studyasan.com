@@ -122,3 +122,93 @@ export const sendOTPEmail = async (
     html,
   });
 };
+
+export const sendNotificationEmail = async (
+  email: string,
+  name: string,
+  title: string,
+  description: string,
+  type: string
+): Promise<boolean> => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Notification - StudyAsan</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f7fa;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #0076CE 0%, #0055a3 100%); padding: 40px 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
+                  <img src="https://xdas-tech.sirv.com/studyasan-logo.png" alt="StudyAsan" style="height: 60px; margin-bottom: 20px;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">StudyAsan Notification</h1>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 40px;">
+                  <p style="color: #333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                    Hello <strong>${name}</strong>,
+                  </p>
+                  
+                  <!-- Notification Type Badge -->
+                  <div style="margin: 0 0 20px;">
+                    <span style="display: inline-block; padding: 6px 16px; background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%); color: #0076CE; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                      ${type}
+                    </span>
+                  </div>
+                  
+                  <!-- Notification Title -->
+                  <div style="background: #f8fafc; border-left: 4px solid #0076CE; border-radius: 8px; padding: 20px; margin: 0 0 20px;">
+                    <h2 style="color: #0076CE; font-size: 20px; margin: 0 0 10px; font-weight: 600;">
+                      ${title}
+                    </h2>
+                    ${description ? `<p style="color: #555; font-size: 15px; line-height: 1.6; margin: 0;">
+                      ${description}
+                    </p>` : ''}
+                  </div>
+                  
+                  <div style="text-align: center; margin: 30px 0 0;">
+                    <a href="https://studyasan.com/dashboard" style="display: inline-block; background: linear-gradient(135deg, #0076CE 0%, #0055a3 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 15px;">
+                      View on Dashboard
+                    </a>
+                  </div>
+                  
+                  <p style="color: #666; font-size: 13px; line-height: 1.6; margin: 30px 0 0; text-align: center;">
+                    You can also check this notification in the app or website.
+                  </p>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 25px 40px; border-radius: 0 0 16px 16px; text-align: center; border-top: 1px solid #e5e7eb;">
+                  <p style="color: #888; font-size: 13px; margin: 0 0 10px;">
+                    © 2024 StudyAsan. All rights reserved.
+                  </p>
+                  <p style="color: #aaa; font-size: 12px; margin: 0;">
+                    This is an automated message, please do not reply.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `${title} - StudyAsan`,
+    html,
+  });
+};

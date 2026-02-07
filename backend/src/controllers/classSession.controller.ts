@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
+import { sendNotificationAllChannels } from '../services/notification.service.js';
 import type { AuthRequest } from '../types/index.js';
 import { googleMeetService } from '../utils/googleMeet.js';
 
@@ -42,10 +43,12 @@ async function notifyEnrolledStudents(
       description,
     }));
 
+    // Send notifications via all channels (in-app, FCM, email)
     if (notifications.length > 0) {
-      await prisma.notification.createMany({
-        data: notifications,
-      });
+      const notificationPromises = notifications.map(notification =>
+        sendNotificationAllChannels(notification)
+      );
+      await Promise.allSettled(notificationPromises);
     }
 
     return notifications.length;

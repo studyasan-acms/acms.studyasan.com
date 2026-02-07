@@ -8,10 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Upload, User, Lock, Save, Camera, AlertTriangle, Trash2, Bell } from 'lucide-react';
+import { Upload, User, Lock, Save, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiService, deletionService } from '@/services/api';
-import NotificationSettings from '@/components/NotificationSettings';
+import { apiService } from '@/services/api';
 
 interface ProfileData {
   id: number;
@@ -228,40 +227,6 @@ export default function ProfilePage() {
     }
   };
 
-  const requestAccountDeletion = async () => {
-    if (!confirm('Are you sure you want to request account deletion? This action cannot be undone once approved by an admin.')) {
-      return;
-    }
-
-    try {
-      setUpdating(true);
-      await deletionService.requestDeletion();
-      await loadProfile();
-      toast.success('Account deletion requested successfully. Admins have been notified.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to request account deletion');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const cancelAccountDeletion = async () => {
-    if (!confirm('Are you sure you want to cancel your account deletion request?')) {
-      return;
-    }
-
-    try {
-      setUpdating(true);
-      await deletionService.cancelDeletion();
-      await loadProfile();
-      toast.success('Account deletion request cancelled successfully.');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to cancel account deletion');
-    } finally {
-      setUpdating(false);
-    }
-  };
-
   useEffect(() => {
     console.log('ProfilePage mounted, loading profile...');
     loadProfile();
@@ -289,21 +254,12 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile Settings</h1>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-3' : 'grid-cols-5'}`}>
+          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="notifications">
-              <Bell className="h-4 w-4 mr-2" />
-              Notifications
-            </TabsTrigger>
             {profileData?.role !== 'ADMIN' && (
               <TabsTrigger value="details">
                 {profileData?.role === 'STUDENT' ? 'Student Details' : 'Teacher Details'}
-              </TabsTrigger>
-            )}
-            {profileData?.role !== 'ADMIN' && (
-              <TabsTrigger value="danger" className="text-red-600 hover:text-red-700">
-                Danger Zone
               </TabsTrigger>
             )}
           </TabsList>
@@ -451,10 +407,6 @@ export default function ProfilePage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="notifications">
-            <NotificationSettings />
-          </TabsContent>
-
           <TabsContent value="details">
             {profileData.role === 'STUDENT' && profileData.student && (
               <Card>
@@ -594,83 +546,6 @@ export default function ProfilePage() {
               </Card>
             )}
           </TabsContent>
-
-          {/* Danger Zone Tab - Only for Students and Teachers */}
-          {profileData?.role !== 'ADMIN' && (
-            <TabsContent value="danger">
-              <Card className="border-red-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-red-700">
-                    <AlertTriangle className="h-5 w-5" />
-                    Danger Zone
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {profileData?.delete_requested ? (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-yellow-800">
-                            Account Deletion Requested
-                          </h4>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            You have requested to delete your account on{' '}
-                            {profileData.delete_requested_at && 
-                              new Date(profileData.delete_requested_at).toLocaleDateString()
-                            }.
-                            {profileData.delete_verified ? (
-                              <span className="block mt-1 font-medium">
-                                ✅ This request has been approved by an admin. Your account will be deleted permanently.
-                              </span>
-                            ) : (
-                              <span className="block mt-1">
-                                The request is pending admin approval.
-                              </span>
-                            )}
-                          </p>
-                          {!profileData.delete_verified && (
-                            <Button
-                              onClick={cancelAccountDeletion}
-                              disabled={updating}
-                              variant="outline"
-                              className="mt-3 border-yellow-400 text-yellow-700 hover:bg-yellow-50"
-                            >
-                              Cancel Deletion Request
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <Trash2 className="h-5 w-5 text-red-600 mt-1" />
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-red-800">
-                            Delete Account
-                          </h4>
-                          <p className="text-sm text-red-700 mt-1">
-                            Once you request account deletion, an admin will need to approve it.
-                            This action is irreversible and will permanently delete all your data.
-                          </p>
-                          <Button
-                            onClick={requestAccountDeletion}
-                            disabled={updating}
-                            variant="destructive"
-                            className="mt-3"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            {updating ? 'Processing...' : 'Request Account Deletion'}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
         </Tabs>
       </div>
     </div>

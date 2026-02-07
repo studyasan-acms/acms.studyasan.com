@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
+import { useNotifications } from "@/hooks/useNotifications";
 import Header from "./Header";
 import Sidebar from "./Sidebar";
 import DashboardSkeleton from "@/components/DashboardSkeleton";
@@ -18,6 +19,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  // Initialize push notifications for all authenticated users
+  useNotifications();
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
