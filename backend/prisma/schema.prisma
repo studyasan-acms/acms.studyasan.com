@@ -32,18 +32,20 @@ model Class {
 }
 
 model User {
-  id                  Int                      @id @default(autoincrement())
-  name                String
-  email               String                   @unique
-  phone               String
-  password            String
-  profile_url         String?
-  role                Role                     @default(STUDENT)
-  delete_requested    Boolean                  @default(false)
-  delete_verified     Boolean                  @default(false)
-  delete_requested_at DateTime?
-  created_at          DateTime                 @default(now())
-  updated_at          DateTime                 @updatedAt
+  id                   Int                      @id @default(autoincrement())
+  name                 String
+  email                String                   @unique
+  phone                String
+  password             String
+  profile_url          String?
+  role                 Role                     @default(STUDENT)
+  delete_requested     Boolean                  @default(false)
+  delete_verified      Boolean                  @default(false)
+  delete_requested_at  DateTime?
+  reset_otp_hash       String?                  // Hashed OTP for password reset
+  reset_otp_expires_at DateTime?                // OTP expiry timestamp
+  created_at           DateTime                 @default(now())
+  updated_at           DateTime                 @updatedAt
   student             Student?
   teacher             Teacher?
   notifications       Notification[]

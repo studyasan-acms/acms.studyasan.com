@@ -164,6 +164,22 @@ export const authService = {
     const response = await api.post('/auth/check-password-strength', { password });
     return response.data;
   },
+
+  // Password reset methods
+  requestPasswordReset: async (email: string): Promise<{ success: boolean; data: { email: string }; message: string }> => {
+    const response = await api.post('/auth/request-password-reset', { email });
+    return response.data;
+  },
+
+  verifyPasswordResetOtp: async (data: { email: string; otp: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/verify-password-reset-otp', data);
+    return response.data;
+  },
+
+  resetPassword: async (data: { email: string; otp: string; newPassword: string }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.post('/auth/reset-password', data);
+    return response.data;
+  },
 };
 
 

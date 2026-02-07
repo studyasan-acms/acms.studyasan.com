@@ -53,28 +53,6 @@ export const validatePassword = (password: string): PasswordStrength => {
         suggestions.push('Consider using 12 or more characters for a stronger password');
     }
 
-    // Check for common patterns
-    const commonPatterns = [
-        /^123456/,
-        /password/i,
-        /qwerty/i,
-        /abc123/i,
-        /admin/i,
-        /letmein/i,
-        /welcome/i,
-        /monkey/i,
-        /dragon/i,
-        /master/i,
-    ];
-
-    for (const pattern of commonPatterns) {
-        if (pattern.test(password)) {
-            errors.push('Password contains a common pattern that is easy to guess');
-            score = Math.max(0, score - 1);
-            break;
-        }
-    }
-
     // Check for repeated characters
     if (/(.)\1{2,}/.test(password)) {
         suggestions.push('Avoid using repeated characters');

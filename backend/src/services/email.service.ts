@@ -39,14 +39,21 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   }
 };
 
-export const sendOTPEmail = async (email: string, otp: string, name: string): Promise<boolean> => {
+export const sendOTPEmail = async (
+  email: string, 
+  otp: string, 
+  name: string, 
+  purpose: 'Registration' | 'Password Reset' = 'Registration'
+): Promise<boolean> => {
+  const isPasswordReset = purpose === 'Password Reset';
+  
   const html = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Verify Your Email - StudyAsan</title>
+      <title>${isPasswordReset ? 'Reset Your Password' : 'Verify Your Email'} - StudyAsan</title>
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f7fa;">
@@ -57,7 +64,7 @@ export const sendOTPEmail = async (email: string, otp: string, name: string): Pr
               <tr>
                 <td style="background: linear-gradient(135deg, #0076CE 0%, #0055a3 100%); padding: 40px 40px 30px; border-radius: 16px 16px 0 0; text-align: center;">
                   <img src="https://xdas-tech.sirv.com/studyasan-logo.png" alt="StudyAsan" style="height: 60px; margin-bottom: 20px;">
-                  <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">Email Verification</h1>
+                  <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 600;">${isPasswordReset ? 'Password Reset' : 'Email Verification'}</h1>
                 </td>
               </tr>
               
@@ -68,12 +75,14 @@ export const sendOTPEmail = async (email: string, otp: string, name: string): Pr
                     Hello <strong>${name}</strong>,
                   </p>
                   <p style="color: #555; font-size: 16px; line-height: 1.6; margin: 0 0 30px;">
-                    Thank you for registering with StudyAsan! To complete your registration, please enter the following verification code:
+                    ${isPasswordReset 
+                      ? 'We received a request to reset your password. Please enter the following verification code to proceed:' 
+                      : 'Thank you for registering with StudyAsan! To complete your registration, please enter the following verification code:'}
                   </p>
                   
                   <!-- OTP Box -->
                   <div style="background: linear-gradient(135deg, #f0f7ff 0%, #e6f2ff 100%); border-radius: 12px; padding: 30px; text-align: center; margin: 0 0 30px;">
-                    <p style="color: #666; font-size: 14px; margin: 0 0 15px; text-transform: uppercase; letter-spacing: 1px;">Your Verification Code</p>
+                    <p style="color: #666; font-size: 14px; margin: 0 0 15px; text-transform: uppercase; letter-spacing: 1px;">${isPasswordReset ? 'Password Reset Code' : 'Your Verification Code'}</p>
                     <div style="background: #ffffff; border-radius: 10px; padding: 20px 30px; display: inline-block; box-shadow: 0 2px 12px rgba(0, 118, 206, 0.15);">
                       <span style="font-size: 36px; font-weight: 700; color: #0076CE; letter-spacing: 8px; font-family: 'Courier New', monospace;">${otp}</span>
                     </div>
@@ -81,7 +90,9 @@ export const sendOTPEmail = async (email: string, otp: string, name: string): Pr
                   </div>
                   
                   <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 0;">
-                    If you didn't request this verification, please ignore this email.
+                    ${isPasswordReset 
+                      ? 'If you didn\'t request a password reset, please ignore this email and your password will remain unchanged.' 
+                      : 'If you didn\'t request this verification, please ignore this email.'}
                   </p>
                 </td>
               </tr>
@@ -107,7 +118,7 @@ export const sendOTPEmail = async (email: string, otp: string, name: string): Pr
 
   return sendEmail({
     to: email,
-    subject: 'Verify Your Email - StudyAsan',
+    subject: isPasswordReset ? 'Reset Your Password - StudyAsan' : 'Verify Your Email - StudyAsan',
     html,
   });
 };

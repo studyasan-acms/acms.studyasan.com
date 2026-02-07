@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/authStore";
 import { Loader2, Mail, Lock, Eye, EyeOff, Phone } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import ForgotPasswordModal from "@/components/ForgotPasswordModal";
 
 // Define the expected API error shape
 interface ApiErrorResponse {
@@ -27,6 +28,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -156,9 +158,18 @@ export default function LoginPage() {
 
               {/* Password */}
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-gray-700 text-sm">
-                  Password
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-gray-700 text-sm">
+                    Password
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => setIsForgotPasswordOpen(true)}
+                    className="text-xs text-[#0076CE] hover:text-[#0055a3] hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
 
                 <div className="relative">
                   <Lock className="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -223,6 +234,12 @@ export default function LoginPage() {
           </form>
         </Card>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={isForgotPasswordOpen}
+        onClose={() => setIsForgotPasswordOpen(false)}
+      />
 
       {/* Footer - centered at bottom of the page */}
       <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none">

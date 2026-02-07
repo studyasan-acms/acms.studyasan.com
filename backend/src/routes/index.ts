@@ -55,6 +55,11 @@ router.post('/auth/verify-otp', authController.verifyOTP);
 router.post('/auth/resend-otp', authController.resendOTP);
 router.post('/auth/check-password-strength', authController.checkPasswordStrength);
 
+// Password reset routes
+router.post('/auth/request-password-reset', authController.requestPasswordReset);
+router.post('/auth/verify-password-reset-otp', authController.verifyPasswordResetOTP);
+router.post('/auth/reset-password', authController.resetPassword);
+
 // Profile routes
 router.get('/profile', authenticate, profileController.getProfile);
 router.put('/profile', authenticate, upload.single('profileImage'), profileController.updateProfile);

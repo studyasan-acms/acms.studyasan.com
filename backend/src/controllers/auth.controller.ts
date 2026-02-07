@@ -400,3 +400,173 @@ export const verifyToken = async (req: AuthRequest, res: Response) => {
     sendError(res, error.message, 500);
   }
 };
+
+// Request password reset OTP
+export const requestPasswordReset = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    // Validate required field
+    if (!email) {
+      return sendError(res, 'Email is required', 400);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return sendError(res, 'Invalid email format', 400);
+    }
+
+    // Check if user exists
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return sendError(res, 'No account found with this email address', 404);
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const hashedOTP = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update user with reset OTP
+    await prisma.user.update({
+      where: { email },
+      data: {
+        reset_otp_hash: hashedOTP,
+        reset_otp_expires_at: expiresAt,
+      },
+    });
+
+    // Send OTP email
+    const emailSent = await sendOTPEmail(email, otp, user.name, 'Password Reset');
+
+    if (!emailSent) {
+      return sendError(res, 'Failed to send reset email. Please try again.', 500);
+    }
+
+    sendSuccess(res, { email }, 'Password reset OTP sent successfully. Please check your email.', 200);
+  } catch (error: any) {
+    console.error('Request password reset error:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// Verify password reset OTP
+export const verifyPasswordResetOTP = async (req: Request, res: Response) => {
+  try {
+    const { email, otp } = req.body;
+
+    // Validate required fields
+    if (!email || !otp) {
+      return sendError(res, 'Email and OTP are required', 400);
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return sendError(res, 'No account found with this email address', 404);
+    }
+
+    // Check if OTP exists
+    if (!user.reset_otp_hash || !user.reset_otp_expires_at) {
+      return sendError(res, 'No password reset request found. Please request a new OTP.', 400);
+    }
+
+    // Check if OTP has expired
+    if (new Date() > user.reset_otp_expires_at) {
+      await prisma.user.update({
+        where: { email },
+        data: {
+          reset_otp_hash: null,
+          reset_otp_expires_at: null,
+        },
+      });
+      return sendError(res, 'OTP has expired. Please request a new one.', 400);
+    }
+
+    // Verify OTP
+    const isValidOTP = await bcrypt.compare(otp, user.reset_otp_hash);
+    if (!isValidOTP) {
+      return sendError(res, 'Invalid OTP. Please try again.', 400);
+    }
+
+    sendSuccess(res, { email }, 'OTP verified successfully. You can now reset your password.', 200);
+  } catch (error: any) {
+    console.error('Verify password reset OTP error:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// Reset password with verified OTP
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    // Validate required fields
+    if (!email || !otp || !newPassword) {
+      return sendError(res, 'Email, OTP, and new password are required', 400);
+    }
+
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      return sendError(res, passwordValidation.errors.join('. '), 400);
+    }
+
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return sendError(res, 'No account found with this email address', 404);
+    }
+
+    // Check if OTP exists
+    if (!user.reset_otp_hash || !user.reset_otp_expires_at) {
+      return sendError(res, 'No password reset request found. Please request a new OTP.', 400);
+    }
+
+    // Check if OTP has expired
+    if (new Date() > user.reset_otp_expires_at) {
+      await prisma.user.update({
+        where: { email },
+        data: {
+          reset_otp_hash: null,
+          reset_otp_expires_at: null,
+        },
+      });
+      return sendError(res, 'OTP has expired. Please request a new one.', 400);
+    }
+
+    // Verify OTP
+    const isValidOTP = await bcrypt.compare(otp, user.reset_otp_hash);
+    if (!isValidOTP) {
+      return sendError(res, 'Invalid OTP. Please try again.', 400);
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear OTP
+    await prisma.user.update({
+      where: { email },
+      data: {
+        password: hashedPassword,
+        reset_otp_hash: null,
+        reset_otp_expires_at: null,
+      },
+    });
+
+    sendSuccess(res, null, 'Password reset successfully. You can now login with your new password.', 200);
+  } catch (error: any) {
+    console.error('Reset password error:', error);
+    sendError(res, error.message, 500);
+  }
+};
