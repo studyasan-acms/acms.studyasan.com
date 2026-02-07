@@ -179,7 +179,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                         ctx.lineWidth = 2;
                         ctx.setLineDash([5, 5]);
                         ctx.strokeRect(x - 4, y - 4, width + 8, height + 8);
-                        
+
                         // Draw resize handles
                         ctx.setLineDash([]);
                         ctx.fillStyle = '#0ea5e9';
@@ -368,10 +368,10 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                     const height = selectedStroke.points.length > 1
                         ? (selectedStroke.points[1].y - selectedStroke.points[0].y) * rect.height
                         : 200;
-                    
+
                     const handleSize = 8;
                     const tolerance = 6;
-                    
+
                     // Check each resize handle
                     const handles = [
                         { name: 'tl' as const, x: x - 4, y: y - 4 },
@@ -379,7 +379,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                         { name: 'bl' as const, x: x - 4, y: y + height + 4 },
                         { name: 'br' as const, x: x + width + 4, y: y + height + 4 },
                     ];
-                    
+
                     for (const handle of handles) {
                         if (Math.abs(clickX - handle.x) <= handleSize + tolerance &&
                             Math.abs(clickY - handle.y) <= handleSize + tolerance) {
@@ -396,7 +396,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
 
             // Check strokes in reverse order (top to bottom)
             const strokesArray = Array.from(strokes.current.entries()).reverse();
-            
+
             for (const [strokeId, stroke] of strokesArray) {
                 if (stroke.tool === 'image' && stroke.points.length >= 1) {
                     const x = stroke.points[0].x * rect.width;
@@ -415,7 +415,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 } else if (stroke.tool === 'text' && stroke.text && stroke.points.length >= 1) {
                     const ctx = canvas.getContext('2d');
                     if (!ctx) continue;
-                    
+
                     const x = stroke.points[0].x * rect.width;
                     const y = stroke.points[0].y * rect.height;
                     ctx.font = `${stroke.size * 4}px Arial`;
@@ -423,7 +423,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                     const textWidth = metrics.width;
                     const textHeight = stroke.size * 4;
 
-                    if (clickX >= x - 4 && clickX <= x + textWidth + 4 && 
+                    if (clickX >= x - 4 && clickX <= x + textWidth + 4 &&
                         clickY >= y - textHeight && clickY <= y + 8) {
                         foundStrokeId = strokeId;
                         break;
@@ -497,7 +497,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
 
             if (startPoints.length >= 2) {
                 const newPoints = [...startPoints];
-                
+
                 switch (resizeHandle.current) {
                     case 'tl':
                         newPoints[0] = { x: startPoints[0].x + dx, y: startPoints[0].y + dy };
@@ -514,7 +514,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                         newPoints[1] = { x: startPoints[1].x + dx, y: startPoints[1].y + dy };
                         break;
                 }
-                
+
                 stroke.points = newPoints;
                 strokes.current.set(selectedStrokeId, stroke);
                 redrawCanvas();

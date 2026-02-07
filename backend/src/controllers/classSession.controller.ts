@@ -83,6 +83,86 @@ async function getAllowedParticipantEmails(
   return enrollments.map((e) => e.student.user.email);
 }
 
+// Helper to schedule future class reminders (PendingNotification)
+async function schedulePendingNotifications(
+  subjectId: number,
+  classId: number | null,
+  boardId: number | null,
+  subjectName: string,
+  teacherId: number,
+  instances: { startTime: Date; endTime: Date }[]
+) {
+  try {
+    const enrollments = await prisma.enrollment.findMany({
+      where: {
+        subject_id: subjectId,
+        student: {
+          ...(classId && { class_id: classId }),
+          ...(boardId && { board_id: boardId }),
+        },
+      },
+      select: { student: { select: { user_id: true } } }
+    });
+
+    // Get the teacher's user_id
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: teacherId },
+      select: { user_id: true }
+    });
+
+    const recipientUserIds = enrollments.map(e => e.student.user_id);
+    if (teacher) recipientUserIds.push(teacher.user_id);
+
+    if (recipientUserIds.length === 0) return;
+
+    const now = new Date();
+    const pendingData: any[] = [];
+
+    instances.forEach((inst) => {
+      const timeStr = inst.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      // 1. Schedule reminder 15 minutes before the class
+      const deliveryTime15 = new Date(inst.startTime.getTime() - 15 * 60 * 1000);
+      if (deliveryTime15 > now) {
+        recipientUserIds.forEach((userId) => {
+          pendingData.push({
+            user_id: userId,
+            type: 'INFO',
+            title: `Class Starting Soon: ${subjectName}`,
+            description: `Your ${subjectName} class starts in 15 minutes (${timeStr}).`,
+            delivery_time: deliveryTime15,
+            status: 'PENDING',
+          });
+        });
+      }
+
+      // 2. Schedule reminder at the exact start time
+      if (inst.startTime > now) {
+        recipientUserIds.forEach((userId) => {
+          pendingData.push({
+            user_id: userId,
+            type: 'INFO',
+            title: `Class Starting Now: ${subjectName}`,
+            description: `Your ${subjectName} class is starting now. Click to join the session!`,
+            delivery_time: inst.startTime,
+            status: 'PENDING',
+          });
+        });
+      }
+    });
+
+    if (pendingData.length > 0) {
+      await prisma.pendingNotification.createMany({
+        data: pendingData,
+      });
+    }
+    return pendingData.length;
+  } catch (error) {
+    console.error('Error scheduling pending notifications:', error);
+    return 0;
+  }
+}
+
 // Helper function to generate recurring session instances
 function generateRecurringInstances(
   startTime: Date,
@@ -112,7 +192,7 @@ function generateRecurringInstances(
         });
       }
       currentDate.setDate(currentDate.getDate() + 1);
-      
+
       // Skip to next week if we've passed all days
       if (currentDate.getDay() === 0 && interval > 1) {
         currentDate.setDate(currentDate.getDate() + 7 * (interval - 1));
@@ -402,6 +482,72 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // If it's recurring, generate multiple instances
+    if (is_recurring && recurrence_rule) {
+      const instances = generateRecurringInstances(startTime, endTime, recurrence_rule);
+
+      // Create all instances (including the first one which is already in the array)
+      const sessionData = instances.map((inst) => ({
+        teacher_id,
+        subject_id,
+        class_id,
+        board_id,
+        mode,
+        location,
+        meeting_link: meetingLink || req.body.meeting_link,
+        google_event_id: googleEventId,
+        start_time: inst.startTime,
+        end_time: inst.endTime,
+        is_recurring: true,
+        recurrence_rule,
+        created_by: req.user!.id,
+      }));
+
+      await prisma.classSession.createMany({
+        data: sessionData,
+      });
+
+      // Get the first session to return as response
+      const firstSession = await prisma.classSession.findFirst({
+        where: {
+          teacher_id,
+          subject_id,
+          start_time: startTime,
+        },
+        include: {
+          teacher: { include: { user: { select: { id: true, name: true, email: true } } } },
+          subject: true,
+          class: true,
+          board: true,
+        },
+      });
+
+      // Send notifications
+      const notificationTitle = `New Recurring Class Scheduled: ${subject.name}`;
+      const notificationDesc = `A new recurring ${mode.toLowerCase()} class has been scheduled. Check your schedule for all instances.`;
+
+      await notifyEnrolledStudents(
+        subject_id,
+        class_id,
+        board_id,
+        notificationTitle,
+        notificationDesc
+      );
+
+      // Schedule future reminders for each instance
+      await schedulePendingNotifications(
+        subject_id,
+        class_id,
+        board_id,
+        subject.name,
+        teacher_id,
+        instances
+      );
+
+      return sendSuccess(res, firstSession, 'Recurring class sessions created successfully', 201);
+    }
+
+    // Single session creation (original logic)
     const session = await prisma.classSession.create({
       data: {
         teacher_id,
@@ -414,22 +560,11 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         google_event_id: googleEventId,
         start_time: startTime,
         end_time: endTime,
-        is_recurring: is_recurring || false,
-        recurrence_rule,
+        is_recurring: false,
         created_by: req.user!.id,
       },
       include: {
-        teacher: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
+        teacher: { include: { user: { select: { id: true, name: true, email: true } } } },
         subject: true,
         class: true,
         board: true,
@@ -438,14 +573,24 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
 
     // Send notifications to enrolled students
     const notificationTitle = `New Class Scheduled: ${subject.name}`;
-    const notificationDesc = `A new ${mode.toLowerCase()} class has been scheduled for ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()}. ${is_recurring ? 'This is a recurring class.' : ''}`;
-    
+    const notificationDesc = `A new ${mode.toLowerCase()} class has been scheduled for ${startTime.toLocaleDateString()} at ${startTime.toLocaleTimeString()}.`;
+
     await notifyEnrolledStudents(
       subject_id,
       class_id,
       board_id,
       notificationTitle,
       notificationDesc
+    );
+
+    // Schedule a reminder for this session
+    await schedulePendingNotifications(
+      subject_id,
+      class_id,
+      board_id,
+      subject.name,
+      teacher_id,
+      [{ startTime, endTime }]
     );
 
     sendSuccess(res, session, 'Class session created successfully', 201);
@@ -670,10 +815,6 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
 
     const where: any = {
       subject_id: { in: enrolledSubjectIds },
-      OR: [
-        { class_id: null },
-        { class_id: student.class_id },
-      ],
     };
 
     // Filter by specific subject if provided
@@ -768,10 +909,6 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
       if (student) {
         const enrolledSubjectIds = student.enrollments.map((e) => e.subject_id);
         where.subject_id = { in: enrolledSubjectIds };
-        where.OR = [
-          { class_id: null },
-          { class_id: student.class_id },
-        ];
       }
     } else if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
@@ -827,7 +964,7 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
 
     const offset = parseInt(week_offset as string) || 0;
     const startOfWeek = new Date();
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay() + (offset * 7));
+    startOfWeek.setDate(startOfWeek.getDate() + (offset * 7));
     startOfWeek.setHours(0, 0, 0, 0);
 
     const endOfWeek = new Date(startOfWeek);
@@ -853,10 +990,6 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
       if (student) {
         const enrolledSubjectIds = student.enrollments.map((e) => e.subject_id);
         where.subject_id = { in: enrolledSubjectIds };
-        where.OR = [
-          { class_id: null },
-          { class_id: student.class_id },
-        ];
       }
     } else if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
@@ -897,23 +1030,10 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
       orderBy: { start_time: 'asc' },
     });
 
-    // Group sessions by day
-    const groupedSessions: { [key: string]: typeof sessions } = {};
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-    sessions.forEach((session) => {
-      const dayIndex = new Date(session.start_time).getDay();
-      const dayName = dayNames[dayIndex] as string;
-      if (!groupedSessions[dayName]) {
-        groupedSessions[dayName] = [];
-      }
-      groupedSessions[dayName].push(session);
-    });
-
     sendSuccess(res, {
       weekStart: startOfWeek.toISOString(),
       weekEnd: endOfWeek.toISOString(),
-      sessions: groupedSessions,
+      sessions: sessions, // Return flat array
       totalSessions: sessions.length,
     });
   } catch (error: any) {
@@ -940,27 +1060,23 @@ export const canJoinSession = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Session not found', 404);
     }
 
-    // Check if session is happening now or soon (15 minutes before)
     const now = new Date();
-    const sessionStart = new Date(session.start_time);
     const sessionEnd = new Date(session.end_time);
-    const fifteenMinsBefore = new Date(sessionStart.getTime() - 15 * 60 * 1000);
-
-    const isTimeValid = now >= fifteenMinsBefore && now <= sessionEnd;
+    const isTimeValid = now <= sessionEnd;
 
     let canJoin = false;
     let reason = '';
 
     if (userRole === 'ADMIN') {
       canJoin = isTimeValid;
-      reason = isTimeValid ? '' : 'Session is not active yet or has ended';
+      reason = isTimeValid ? '' : 'Session has ended';
     } else if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: userId },
       });
       canJoin = isTimeValid && teacher?.id === session.teacher_id;
-      reason = !isTimeValid ? 'Session is not active yet or has ended' : 
-               teacher?.id !== session.teacher_id ? 'You are not the assigned teacher for this session' : '';
+      reason = !isTimeValid ? 'Session has ended' :
+        teacher?.id !== session.teacher_id ? 'You are not the assigned teacher for this session' : '';
     } else if (userRole === 'STUDENT') {
       const student = await prisma.student.findUnique({
         where: { user_id: userId },
@@ -972,17 +1088,13 @@ export const canJoinSession = async (req: AuthRequest, res: Response) => {
       });
 
       const isEnrolled = student && student.enrollments.length > 0;
-      const classMatches = !session.class_id || session.class_id === student?.class_id;
-      const boardMatches = !session.board_id || session.board_id === student?.board_id;
 
-      canJoin = isTimeValid && !!isEnrolled && !!classMatches && !!boardMatches;
-      
+      canJoin = isTimeValid && !!isEnrolled;
+
       if (!isTimeValid) {
-        reason = 'Session is not active yet or has ended';
+        reason = 'Session has ended';
       } else if (!isEnrolled) {
         reason = 'You are not enrolled in this subject';
-      } else if (!classMatches || !boardMatches) {
-        reason = 'This session is not for your class/board';
       }
     }
 

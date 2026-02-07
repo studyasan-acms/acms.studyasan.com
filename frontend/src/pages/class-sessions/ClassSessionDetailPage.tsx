@@ -53,13 +53,10 @@ export default function ClassSessionDetailPage() {
     const now = new Date();
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    const fifteenMinsBefore = new Date(start.getTime() - 15 * 60 * 1000);
-
-    if (now >= fifteenMinsBefore && now <= end) {
-      return { label: 'Live Now', color: 'bg-green-500' };
-    }
-    if (now < start) {
-      return { label: 'Upcoming', color: 'bg-blue-500' };
+    if (now <= end) {
+      return now >= start
+        ? { label: 'Live Now', color: 'bg-green-500' }
+        : { label: 'Upcoming', color: 'bg-blue-500' };
     }
     return { label: 'Ended', color: 'bg-gray-500' };
   };
@@ -216,8 +213,7 @@ export default function ClassSessionDetailPage() {
                 </div>
               ) : (
                 <div className="text-center text-gray-600">
-                  <p className="font-medium">{joinReason || 'Meeting not available yet'}</p>
-                  <p className="text-sm mt-1">The meeting link will become available 15 minutes before the scheduled time.</p>
+                  <p className="font-medium">{joinReason || 'Meeting not available'}</p>
                 </div>
               )}
             </div>

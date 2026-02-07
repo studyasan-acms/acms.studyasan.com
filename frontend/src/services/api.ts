@@ -227,7 +227,7 @@ export const studentService = {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       return studentResponse.data;
     } else {
       // Create student (backend handles user creation in transaction)
@@ -347,7 +347,7 @@ export const teacherService = {
           'Content-Type': 'multipart/form-data',
         },
       });
-      
+
       return teacherResponse.data;
     } else {
       // Create teacher (backend handles user creation in transaction)
@@ -1146,6 +1146,26 @@ export const enquiryService = {
 
   delete: async (id: number): Promise<{ message: string }> => {
     const response = await api.delete(`/enquiries/${id}`);
+    return response.data;
+  },
+};
+
+export const profileService = {
+  getProfile: async (): Promise<{ success: boolean; data: any }> => {
+    const response = await api.get('/profile');
+    return response.data;
+  },
+  updateProfile: async (data: any | FormData): Promise<{ success: boolean; data: any }> => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    const response = await api.put('/profile', data, { headers });
+    return response.data;
+  },
+  updateStudentDetails: async (data: any): Promise<{ success: boolean; data: any }> => {
+    const response = await api.put('/profile/student', data);
+    return response.data;
+  },
+  updateTeacherDetails: async (data: any): Promise<{ success: boolean; data: any }> => {
+    const response = await api.put('/profile/teacher', data);
     return response.data;
   },
 };

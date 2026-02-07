@@ -127,7 +127,7 @@ export interface Student {
     state: { id: number; name: string };
     city: { id: number; name: string };
   };
-  _count?: { 
+  _count?: {
     enrollments: number;
     test_series_enrollments: number;
     activity_enrollments: number;
@@ -537,7 +537,7 @@ export interface UpdateClassSessionData {
 export interface WeeklyScheduleResponse {
   weekStart: string;
   weekEnd: string;
-  sessions: { [key: string]: ClassSession[] };
+  sessions: ClassSession[];
   totalSessions: number;
 }
 

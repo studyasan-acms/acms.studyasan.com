@@ -135,18 +135,18 @@ export const getTeacherById = async (req: Request, res: Response) => {
 
 export const createTeacher = async (req: Request, res: Response) => {
   try {
-    const { 
+    const {
       name,
       email,
       phone,
       password,
-      user_id, 
-      salary, 
-      salary_currency_id, 
-      qualification, 
-      gender, 
-      experience, 
-      address 
+      user_id,
+      salary,
+      salary_currency_id,
+      qualification,
+      gender,
+      experience,
+      address
     } = req.body;
     const profileImage = req.file;
 
@@ -207,7 +207,13 @@ export const createTeacher = async (req: Request, res: Response) => {
 
       // Prepare teacher data
       const createData: any = { user: { connect: { id: user.id } } };
-      if (typeof salary !== 'undefined') createData.salary = salary;
+
+      if (typeof salary !== 'undefined' && salary !== null && salary !== '') {
+        const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
+        if (!isNaN(salaryNum)) {
+          createData.salary = salaryNum;
+        }
+      }
       if (salary_currency_id !== undefined && salary_currency_id !== null) {
         const salaryCurrencyIdNum = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
         createData.salary_currency = { connect: { id: Number(salaryCurrencyIdNum) } };
@@ -255,7 +261,7 @@ export const createTeacher = async (req: Request, res: Response) => {
     });
 
     sendSuccess(res, result, 'Teacher created successfully', 201);
-    
+
     async function createTeacherFromExistingUser() {
       // normalize IDs
       const userIdNum = typeof user_id === 'string' ? parseInt(user_id, 10) : user_id;
@@ -288,7 +294,13 @@ export const createTeacher = async (req: Request, res: Response) => {
       }
 
       const createData: any = { user: { connect: { id: Number(userIdNum) } } };
-      if (typeof salary !== 'undefined') createData.salary = salary;
+
+      if (typeof salary !== 'undefined' && salary !== null && salary !== '') {
+        const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
+        if (!isNaN(salaryNum)) {
+          createData.salary = salaryNum;
+        }
+      }
       if (salaryCurrencyIdNum !== undefined && salaryCurrencyIdNum !== null) {
         createData.salary_currency = { connect: { id: Number(salaryCurrencyIdNum) } };
       }
@@ -354,7 +366,7 @@ export const createTeacher = async (req: Request, res: Response) => {
 export const updateTeacher = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Extract profile image if present
     const profileImage = req.file as Express.Multer.File | undefined;
 
@@ -440,7 +452,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
       } else {
         addressData = address;
       }
-      
+
       updateData.address = {
         upsert: {
           create: {

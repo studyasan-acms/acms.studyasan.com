@@ -25,9 +25,10 @@ export default function ClassSessionsPage() {
   const [selectedSubject, setSelectedSubject] = useState<number | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState<number | null>(null);
   const [selectedMode, setSelectedMode] = useState<'ONLINE' | 'OFFLINE' | ''>('');
-  const [viewMode, setViewMode] = useState<'all' | 'upcoming' | 'past' | 'today' | 'week'>('upcoming');
+  const [viewMode, setViewMode] = useState<'all' | 'upcoming' | 'past' | 'today' | 'week'>('week');
   const [weekOffset, setWeekOffset] = useState(0);
   const [weeklyData, setWeeklyData] = useState<{ [key: string]: ClassSession[] } | null>(null);
+  const [selectedDay, setSelectedDay] = useState<string>('');
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -68,6 +69,32 @@ export default function ClassSessionsPage() {
       if (selectedTeacher) params.teacher_id = selectedTeacher;
       if (selectedMode) params.mode = selectedMode as 'ONLINE' | 'OFFLINE';
 
+      if (viewMode === 'week') {
+        const weekRes = await classSessionService.getWeeklySchedule({ week_offset: weekOffset });
+        const flatSessions: ClassSession[] = weekRes.data.sessions;
+
+        // Group sessions by day in the user's local timezone
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const grouped: { [key: string]: ClassSession[] } = {};
+
+        flatSessions.forEach(session => {
+          const dayIndex = new Date(session.start_time).getDay();
+          const dayName = dayNames[dayIndex];
+          if (!grouped[dayName]) grouped[dayName] = [];
+          grouped[dayName].push(session);
+        });
+
+        setWeeklyData(grouped);
+
+        // Auto-select today if no day is selected and we are in current week
+        if (!selectedDay) {
+          setSelectedDay(dayNames[new Date().getDay()]);
+        }
+
+        setLoading(false);
+        return;
+      }
+
       switch (viewMode) {
         case 'upcoming': {
           const upcomingRes = await classSessionService.getUpcoming(params);
@@ -83,12 +110,6 @@ export default function ClassSessionsPage() {
           const todayRes = await classSessionService.getToday();
           data = todayRes.data;
           break;
-        }
-        case 'week': {
-          const weekRes = await classSessionService.getWeeklySchedule({ week_offset: weekOffset });
-          setWeeklyData(weekRes.data.sessions);
-          setLoading(false);
-          return;
         }
         default: {
           if (isStudent) {
@@ -108,7 +129,7 @@ export default function ClassSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedSubject, selectedTeacher, selectedMode, weekOffset, isStudent]);
+  }, [viewMode, selectedSubject, selectedTeacher, selectedMode, weekOffset, isStudent, selectedDay]);
 
   useEffect(() => {
     fetchSubjects();
@@ -123,13 +144,13 @@ export default function ClassSessionsPage() {
     const now = new Date();
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    const fifteenMinsBefore = new Date(start.getTime() - 15 * 60 * 1000);
-
-    if (now >= fifteenMinsBefore && now <= end) {
-      return { label: 'Live Now', color: 'bg-green-500', canJoin: true };
-    }
-    if (now < start) {
-      return { label: 'Upcoming', color: 'bg-blue-500', canJoin: false };
+    if (now <= end) {
+      const isLive = now >= start;
+      return {
+        label: isLive ? 'Live Now' : 'Upcoming',
+        color: isLive ? 'bg-green-500' : 'bg-blue-500',
+        canJoin: true
+      };
     }
     return { label: 'Ended', color: 'bg-gray-500', canJoin: false };
   };
@@ -175,112 +196,84 @@ export default function ClassSessionsPage() {
     return (
       <Card
         key={session.id}
-        className="shadow-md hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden flex flex-col"
+        className="group shadow-sm hover:shadow-md transition-all duration-300 rounded-3xl overflow-hidden flex flex-col border border-gray-100 bg-white"
       >
-        <div className={`relative ${session.mode === 'ONLINE' ? 'bg-saBlueLight/60' : 'bg-saBlueLight/60'} text-gray-600 p-4 sm:p-5`}>
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2">
-              {session.mode === 'ONLINE' ? <Video className="w-5 h-5 text-saBlue/50" /> : <BookOpen className="w-5 h-5 text-saVividOrange" />}
-              <CardTitle className="text-md sm:text-lg font-semibold">
-                {session.subject?.name || 'Class Session'}
-              </CardTitle>
+        <div className={`relative p-5 ${session.mode === 'ONLINE' ? 'bg-blue-50/50' : 'bg-orange-50/50'}`}>
+          <div className="flex items-start justify-between mb-4">
+            <div className={`p-2.5 rounded-xl ${session.mode === 'ONLINE' ? 'bg-saBlue/10 text-saBlue' : 'bg-saVividOrange/10 text-saVividOrange'}`}>
+              {session.mode === 'ONLINE' ? <Video className="w-5 h-5" /> : <BookOpen className="w-5 h-5" />}
             </div>
-            <div className="flex flex-col items-end gap-1">
-              <Badge className={`text-white text-xs font-medium px-2 py-1 rounded-full ${status.color}`}>
+            <div className="flex flex-col items-end gap-2">
+              <Badge className={`${status.color} text-white border-none px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-tight`}>
                 {status.label}
               </Badge>
               {session.is_recurring && (
-                <Badge variant="outline" className="text-xs flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> Recurring
-                </Badge>
+                <div className="flex items-center gap-1.5 text-[9px] font-semibold text-gray-400 uppercase tracking-wider bg-white/80 px-2 py-0.5 rounded-md border border-gray-100">
+                  <RefreshCw className="w-2.5 h-2.5" /> Recurring
+                </div>
               )}
             </div>
           </div>
-          <p className="text-xs sm:text-sm mt-1 opacity-80">
-            by {session.teacher?.user?.name || 'Unknown Teacher'}
+
+          <h3 className="text-lg font-bold text-gray-800 leading-tight group-hover:text-saBlue transition-colors">
+            {session.subject?.name || 'Class Session'}
+          </h3>
+          <p className="text-xs font-semibold text-gray-400 mt-1">
+            Prof. {session.teacher?.user?.name || 'Teacher'}
           </p>
         </div>
 
-        <CardContent className="bg-gray-100 rounded-b-2xl pt-6 p-4 sm:p-5 space-y-3 text-gray-700 flex-1 flex flex-col justify-between">
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4 text-saBlue/50" />
-              <span>{formatDate(session.start_time)}</span>
+        <CardContent className="p-5 pt-0 space-y-4 flex-1 flex flex-col justify-between mt-4">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100/50">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Time</p>
+                <div className="flex items-center gap-2 text-gray-700 font-bold text-xs">
+                  <Clock className="w-3 h-3 text-gray-400" />
+                  <span>{formatTime(session.start_time)}</span>
+                </div>
+              </div>
+              <div className="bg-gray-50 p-3 rounded-2xl border border-gray-100/50">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Class</p>
+                <div className="flex items-center gap-2 text-gray-700 font-bold text-xs">
+                  <Users className="w-3 h-3 text-gray-400" />
+                  <span>{session.class?.name || 'All'}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-saBlue/50" />
-              <span>{formatTime(session.start_time)} - {formatTime(session.end_time)}</span>
-            </div>
-            {session.class && (
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 text-saBlue/50" />
-                <span>Class {session.class.name}</span>
+
+            {session.mode === 'OFFLINE' && session.location && (
+              <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-xl border border-gray-100">
+                <MapPin className="w-3 h-3 text-gray-400" />
+                <span className="text-[11px] font-semibold text-gray-600">{session.location}</span>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-saBlue/50" />
-              <span>{session._count?.attendances || 0} Attendees</span>
-            </div>
           </div>
 
-          {session.mode === 'OFFLINE' && session.location && (
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> {session.location}
-            </p>
-          )}
-
-          <div className="pt-3 border-t border-gray-200 flex flex-col sm:flex-row gap-2">
-            {/* View Button */}
+          <div className="flex gap-2 mt-auto">
             <Button
               size="sm"
-              variant={'outline'}
-              className="text-gray-600 flex-1 border"
+              className={`flex-1 h-9 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all ${status.canJoin
+                ? 'bg-saBlue text-white shadow-md shadow-saBlue/10'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 shadow-none'
+                }`}
               onClick={() => handleJoinSession(session)}
             >
-              View
+              {status.canJoin ? 'Join Now' : 'View Session'}
             </Button>
 
-            {/* Online Join button */}
-            {status.canJoin && session.mode === 'ONLINE' && session.meeting_link && (
+            {canManage && (
               <Button
-                size="sm"
-                className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                variant="outline"
+                size="icon"
+                className="w-10 h-10 rounded-xl border-gray-100 hover:border-saBlue hover:text-saBlue transition-all"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleJoinSession(session);
+                  navigate(`/dashboard/class-sessions/${session.id}/edit`);
                 }}
               >
-                <Video className="w-4 h-4 mr-2" />
-                Join Now
+                <RefreshCw className="w-3.5 h-3.5" />
               </Button>
-            )}
-
-            {/* Edit/Delete for Admin/Teacher */}
-            {canManage && (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/dashboard/class-sessions/${session.id}/edit`);
-                  }}
-                >
-                  Edit
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteSession(session);
-                  }}
-                >
-                  Delete
-                </Button>
-              </>
             )}
           </div>
         </CardContent>
@@ -292,174 +285,170 @@ export default function ClassSessionsPage() {
   const renderWeeklyView = () => {
     if (!weeklyData) return null;
 
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const todayIndex = new Date().getDay();
+    const orderedDays: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      orderedDays.push(dayNames[(todayIndex + i) % 7]);
+    }
+
+    const currentSessions = weeklyData[selectedDay] || [];
 
     return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekOffset((prev) => prev - 1)}
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" /> Previous Week
-          </Button>
-          <span className="font-medium">
-            {weekOffset === 0 ? 'This Week' : weekOffset > 0 ? `${weekOffset} week(s) ahead` : `${Math.abs(weekOffset)} week(s) ago`}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setWeekOffset((prev) => prev + 1)}
-          >
-            Next Week <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4">
+          {/* COMPACT DATE & WEEK NAV */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-gray-800">{selectedDay}</h3>
+            <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg hover:bg-white"
+                onClick={() => setWeekOffset((prev) => prev - 1)}
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="px-2 text-[9px] font-bold uppercase tracking-wider text-gray-500">
+                {weekOffset === 0 ? 'Current' : weekOffset > 0 ? `+${weekOffset}wk` : `${weekOffset}wk`}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg hover:bg-white"
+                onClick={() => setWeekOffset((prev) => prev + 1)}
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* WRAPPING DAY SELECTOR - No forced scroll */}
+          <div className="flex flex-wrap gap-2">
+            {orderedDays.map((day) => {
+              const isToday = day === dayNames[todayIndex] && weekOffset === 0;
+              const isSelected = day === selectedDay;
+              return (
+                <button
+                  key={day}
+                  onClick={() => setSelectedDay(day)}
+                  className={`flex-1 min-w-[50px] sm:flex-none sm:px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${isSelected
+                    ? 'bg-saBlue border-saBlue text-white shadow-md shadow-saBlue/10'
+                    : isToday
+                      ? 'bg-blue-50 border-blue-100 text-saBlue'
+                      : 'bg-white border-gray-100 text-gray-400 hover:bg-gray-50'
+                    }`}
+                >
+                  {isToday ? 'Today' : day.slice(0, 3)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-7 gap-4">
-          {days.map((day) => (
-            <div key={day} className="bg-white rounded-lg shadow p-3">
-              <h3 className="font-semibold text-gray-700 mb-3 pb-2 border-b">{day}</h3>
-              {weeklyData[day]?.length > 0 ? (
-                <div className="space-y-2">
-                  {weeklyData[day].map((session) => {
-                    const status = getSessionStatus(session);
-                    return (
-                      <div
-                        key={session.id}
-                        className={`p-2 rounded cursor-pointer hover:bg-gray-50 border-l-4 ${status.label === 'Live Now' ? 'border-green-500 bg-green-50' :
-                            status.label === 'Upcoming' ? 'border-blue-500' : 'border-gray-300'
-                          }`}
-                        onClick={() => navigate(`/dashboard/class-sessions/${session.id}`)}
-                      >
-                        <p className="font-medium text-sm text-gray-800">{session.subject?.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {formatTime(session.start_time)} - {formatTime(session.end_time)}
-                        </p>
-                        <p className="text-xs text-gray-400">{session.teacher?.user?.name}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-xs text-gray-400 text-center py-4">No classes</p>
-              )}
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {currentSessions.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {currentSessions.map(renderSessionCard)}
             </div>
-          ))}
+          ) : (
+            <div className="py-20 bg-gray-50/50 rounded-[2.5rem] border border-dashed border-gray-200 flex flex-col items-center justify-center text-center">
+              <Clock className="w-10 h-10 text-gray-200 mb-4" />
+              <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest">No Classes Today</h4>
+            </div>
+          )}
         </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Class Sessions</h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            {isStudent ? 'View your scheduled classes' : 'Manage and schedule class sessions'}
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Schedule</h1>
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
+            {isStudent ? 'Learning Path' : 'Management'}
           </p>
         </div>
         {canManage && (
           <Button
-            className="bg-saBlue hover:bg-saBlueDarkHover text-white w-full sm:w-auto flex items-center justify-center"
+            className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm"
             onClick={() => navigate('/dashboard/class-sessions/create')}
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Schedule Class
+            <Plus className="w-3.5 h-3.5 mr-2" />
+            New Class
           </Button>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-4">
-        {['upcoming', 'today', 'week', 'all', 'past'].map((mode) => (
-          <Button
-            key={mode}
-            variant={viewMode === mode ? 'default' : 'outline'}
-            size="sm"
-            className={viewMode === mode ? 'bg-saBlue text-white' : ''}
-            onClick={() => {
-              setViewMode(mode as typeof viewMode);
-              setWeekOffset(0);
-            }}
-          >
-            {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </Button>
-        ))}
-      </div>
-
-      <Card className="mb-6">
-        <CardContent className="pt-4 sm:pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-600">Subject</label>
-              <select
-                value={selectedSubject || ''}
-                onChange={(e) => setSelectedSubject(e.target.value ? parseInt(e.target.value) : null)}
-                className="w-full p-2 border rounded-md text-sm"
-              >
-                <option value="">All Subjects</option>
-                {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
-                    {subject.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {isAdmin && (
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-600">Teacher</label>
-                <select
-                  value={selectedTeacher || ''}
-                  onChange={(e) => setSelectedTeacher(e.target.value ? parseInt(e.target.value) : null)}
-                  className="w-full p-2 border rounded-md text-sm"
-                >
-                  <option value="">All Teachers</option>
-                  {teachers.map((teacher) => (
-                    <option key={teacher.id} value={teacher.id}>
-                      {teacher.user.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-2 text-gray-600">Mode</label>
-              <select
-                value={selectedMode}
-                onChange={(e) => setSelectedMode(e.target.value as typeof selectedMode)}
-                className="w-full p-2 border rounded-md text-sm"
-              >
-                <option value="">All Modes</option>
-                <option value="ONLINE">Online</option>
-                <option value="OFFLINE">Offline</option>
-              </select>
-            </div>
+      {/* ULTRA-COMPACT FILTERS - One Line */}
+      {canManage && (
+        <div className="flex flex-wrap items-center gap-2 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100">
+          <div className="flex-1 min-w-[120px] relative">
+            <select
+              value={selectedSubject || ''}
+              onChange={(e) => setSelectedSubject(e.target.value ? parseInt(e.target.value) : null)}
+              className="w-full appearance-none h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-saBlue/5 transition-all"
+            >
+              <option value="">Subject: All</option>
+              {subjects.map((subject) => (
+                <option key={subject.id} value={subject.id}>{subject.name}</option>
+              ))}
+            </select>
+            <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 rotate-90" />
           </div>
-        </CardContent>
-      </Card>
+
+          <div className="flex-1 min-w-[120px] relative">
+            <select
+              value={selectedMode}
+              onChange={(e) => setSelectedMode(e.target.value as typeof selectedMode)}
+              className="w-full appearance-none h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-saBlue/5 transition-all"
+            >
+              <option value="">Mode: All</option>
+              <option value="ONLINE">Online</option>
+              <option value="OFFLINE">Offline</option>
+            </select>
+            <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 rotate-90" />
+          </div>
+
+          {!isStudent && (
+            <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-lg">
+              {['week', 'all'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => {
+                    setViewMode(mode as typeof viewMode);
+                    setWeekOffset(0);
+                  }}
+                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-saBlue/10 text-saBlue' : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
-        <div className="text-center py-12 text-gray-600">Loading sessions...</div>
+        <div className="py-32 flex flex-col items-center justify-center space-y-4">
+          <div className="w-12 h-12 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+          <p className="text-gray-400 font-bold text-sm tracking-widest uppercase">Loading Your Schedule...</p>
+        </div>
       ) : viewMode === 'week' ? (
         renderWeeklyView()
       ) : sessions.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Calendar className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 mb-4">No class sessions found</p>
-            {canManage && (
-              <Button
-                className="bg-saBlue hover:bg-saBlueDarkHover text-white mt-2"
-                onClick={() => navigate('/dashboard/class-sessions/create')}
-              >
-                Schedule Your First Class
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="py-32 flex flex-col items-center text-center">
+          <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+            <Calendar className="w-10 h-10 text-gray-200" />
+          </div>
+          <h3 className="text-xl font-bold text-gray-600">No sessions found</h3>
+          <p className="text-gray-400 mt-2 max-w-xs">There are no classes scheduled for your selection at the moment.</p>
+        </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           {sessions.map(renderSessionCard)}
         </div>
       )}
@@ -467,10 +456,10 @@ export default function ClassSessionsPage() {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         open={deleteModalOpen}
-        title="Delete Class Session"
-        message={`Are you sure you want to delete the session "${sessionToDelete?.subject?.name}"?`}
-        confirmText="Delete"
-        cancelText="Cancel"
+        title="Delete Session"
+        message={`Are you sure you want to delete "${sessionToDelete?.subject?.name}"? This action cannot be undone.`}
+        confirmText="Yes, Delete"
+        cancelText="No, Keep It"
         onConfirm={confirmDeleteSession}
         onCancel={() => {
           setDeleteModalOpen(false);

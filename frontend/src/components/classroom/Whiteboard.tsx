@@ -259,11 +259,10 @@ export function Whiteboard({
                     <div className="relative" ref={shapeSelectorRef}>
                         <button
                             onClick={() => setShowShapeSelector(!showShapeSelector)}
-                            className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${
-                                ['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
+                            className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
                                     ? 'bg-sky-50 border-sky-300'
                                     : ''
-                            }`}
+                                }`}
                             title="Shapes"
                         >
                             {currentTool === 'rect' && <Square className="w-3.5 h-3.5 text-sky-600" />}
@@ -277,7 +276,7 @@ export function Whiteboard({
                             )}
                             <ChevronDown className="w-3 h-3 text-slate-400" />
                         </button>
-                        
+
                         {showShapeSelector && (
                             <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] min-w-[120px]">
                                 <button
@@ -285,9 +284,8 @@ export function Whiteboard({
                                         setTool('rect');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Rectangle"
                                 >
                                     <Square className="w-4 h-4" />
@@ -297,9 +295,8 @@ export function Whiteboard({
                                         setTool('circle');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Circle"
                                 >
                                     <Circle className="w-4 h-4" />
@@ -309,9 +306,8 @@ export function Whiteboard({
                                         setTool('line');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Line"
                                 >
                                     <Minus className="w-4 h-4" />
@@ -321,9 +317,8 @@ export function Whiteboard({
                                         setTool('arrow');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Arrow"
                                 >
                                     <ArrowRight className="w-4 h-4" />
@@ -333,9 +328,8 @@ export function Whiteboard({
                                         setTool('triangle');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Triangle"
                                 >
                                     <Triangle className="w-4 h-4" />
@@ -345,9 +339,8 @@ export function Whiteboard({
                                         setTool('star');
                                         setShowShapeSelector(false);
                                     }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${
-                                        currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                    }`}
+                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                        }`}
                                     title="Star"
                                 >
                                     <Star className="w-4 h-4" />
@@ -388,9 +381,8 @@ export function Whiteboard({
                                         setColor(color);
                                         if (currentTool === 'rainbow') setTool('pen');
                                     }}
-                                    className={`w-5 h-5 rounded-full transition-transform border border-slate-200 ${
-                                        currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                    }`}
+                                    className={`w-5 h-5 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                        }`}
                                     style={{ backgroundColor: color }}
                                     title={color === '#000000' ? 'Black' : color === '#ef4444' ? 'Red' : 'Blue'}
                                 />
@@ -411,7 +403,7 @@ export function Whiteboard({
                                 </button>
                             )}
                         </div>
-                        
+
                         {showColorSelector && (
                             <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] min-w-[140px]">
                                 {COLORS.map((color) => (
@@ -422,9 +414,8 @@ export function Whiteboard({
                                             if (currentTool === 'rainbow') setTool('pen');
                                             setShowColorSelector(false);
                                         }}
-                                        className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${
-                                            currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                        }`}
+                                        className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                            }`}
                                         style={{ backgroundColor: color }}
                                     />
                                 ))}
@@ -433,9 +424,8 @@ export function Whiteboard({
                                         setTool('rainbow');
                                         setShowColorSelector(false);
                                     }}
-                                    className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${
-                                        currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                    }`}
+                                    className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                        }`}
                                     title="Rainbow"
                                 >
                                     <Sparkles className="w-3 h-3 text-white drop-shadow" />
@@ -465,11 +455,10 @@ export function Whiteboard({
                             <div key={board} className="relative group">
                                 <button
                                     onClick={() => setBoard(board)}
-                                    className={`flex items-center justify-center w-6 h-6 rounded transition-all ${
-                                        currentBoard === board
+                                    className={`flex items-center justify-center w-6 h-6 rounded transition-all ${currentBoard === board
                                             ? 'bg-sky-500 text-white shadow-sm'
                                             : 'hover:bg-slate-100 text-slate-600'
-                                    }`}
+                                        }`}
                                     title={`Board ${board}`}
                                 >
                                     <span className="text-[10px] font-semibold">{board}</span>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Video, MapPin, RefreshCw, Info } from 'lucide-react';
-import { classSessionService, subjectService, teacherService, classService, boardService } from '@/services/api';
+import { ArrowLeft, Video, MapPin, RefreshCw, Info, BookOpen, Calendar, Settings, ChevronRight, Check } from 'lucide-react';
+import { classSessionService, subjectService, teacherService, classService, boardService, profileService } from '@/services/api';
 import type { Subject, Teacher, Class, Board, CreateClassSessionData, ClassSession, RecurrenceRule } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ export default function CreateClassSessionPage() {
     description: '',
   });
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<CreateClassSessionData>({
     teacher_id: 0,
     subject_id: 0,
@@ -139,18 +140,106 @@ export default function CreateClassSessionPage() {
 
   // Auto-set teacher for non-admin
   useEffect(() => {
-    if (!isAdmin && teachers.length > 0 && user?.id) {
-      const myTeacher = teachers.find((t) => t.user_id === user.id);
-      if (myTeacher) {
-        setFormData((prev) => ({ ...prev, teacher_id: myTeacher.id }));
+    if (!isAdmin && user?.id) {
+      // For teachers, we'll auto-set their ID once we know their teacher record
+      const fetchTeacherRecord = async () => {
+        try {
+          const res = await profileService.getProfile();
+          if (res.data?.teacher?.id) {
+            setFormData(prev => ({ ...prev, teacher_id: res.data.teacher.id }));
+          }
+        } catch (err) {
+          console.error("Failed to fetch teacher record", err);
+        }
+      };
+      fetchTeacherRecord();
+    }
+  }, [isAdmin, user?.id]);
+
+  // 🔥 Handle Subject Selection change
+  const handleSubjectChange = async (subjectId: number) => {
+    if (!subjectId) {
+      setFormData(prev => ({ ...prev, subject_id: 0, class_id: null, board_id: null }));
+      return;
+    }
+
+    const subject = subjects.find(s => s.id === subjectId);
+    if (subject) {
+      setFormData(prev => ({
+        ...prev,
+        subject_id: subjectId,
+        class_id: subject.class_id,
+        board_id: subject.board_id
+      }));
+
+      // Fetch teachers for this subject
+      try {
+        const res = await teacherService.getBySubject(subjectId);
+        const subjectTeachers = res.data;
+        setTeachers(subjectTeachers);
+
+        // Auto-select if only one teacher
+        if (subjectTeachers.length === 1) {
+          setFormData(prev => ({ ...prev, teacher_id: subjectTeachers[0].id }));
+        } else if (!isAdmin && user?.id) {
+          // If teacher, see if they are in the list
+          const me = subjectTeachers.find((t: Teacher) => t.user_id === user.id);
+          if (me) {
+            setFormData(prev => ({ ...prev, teacher_id: me.id }));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch teachers for subject", err);
       }
     }
-  }, [isAdmin, teachers, user?.id]);
+  };
+
+  const handleClassChange = (classId: number | null) => {
+    setFormData(prev => ({ ...prev, class_id: classId, subject_id: 0 }));
+  };
+
+  const filteredSubjects = formData.class_id
+    ? subjects.filter(s => s.class_id === formData.class_id)
+    : subjects;
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // STEP-BY-STEP FLOW LOGIC
+    if (currentStep === 1) {
+      if (!formData.subject_id || !formData.teacher_id) {
+        return setErrorModal({
+          open: true,
+          title: 'Required Selection',
+          description: 'Please select both a subject and a teacher to continue.',
+        });
+      }
+      setCurrentStep(2);
+      return;
+    }
+
+    if (currentStep === 2) {
+      if (!formData.start_time || !formData.end_time) {
+        return setErrorModal({
+          open: true,
+          title: 'Timing Required',
+          description: 'Please set the session start and end times.',
+        });
+      }
+      if (formData.mode === 'OFFLINE' && !formData.location) {
+        return setErrorModal({
+          open: true,
+          title: 'Location Required',
+          description: 'Offline sessions must include a location.',
+        });
+      }
+      generateAutoTitle();
+      setCurrentStep(3);
+      return;
+    }
+
+    // FINAL SUBMISSION (STEP 3)
     if (!formData.teacher_id || !formData.subject_id) {
       return setErrorModal({
         open: true,
@@ -233,349 +322,440 @@ export default function CreateClassSessionPage() {
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // 🔥 UI Helpers
+  const nextStep = () => {
+    // This is now mostly handled by handleSubmit, but we'll keep it for the button click
+    const fakeEvent = { preventDefault: () => { } } as React.FormEvent;
+    handleSubmit(fakeEvent);
+  };
+
+  const generateAutoTitle = () => {
+    if (formData.title && !isEditing) return; // Don't overwrite if already there (unless it was auto-gen)
+
+    const subject = subjects.find(s => s.id === formData.subject_id);
+    const cls = classes.find(c => c.id === formData.class_id);
+    const board = boards.find(b => b.id === formData.board_id);
+
+    if (!subject) return;
+
+    let timeStr = "";
+    if (formData.start_time) {
+      const date = new Date(formData.start_time);
+      timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    const titleParts = [
+      cls?.name,
+      board?.name,
+      subject.name,
+      timeStr
+    ].filter(Boolean);
+
+    setFormData(prev => ({ ...prev, title: titleParts.join(' - ') }));
+  };
+
+  const prevStep = () => setCurrentStep(prev => prev - 1);
+
+  const Stepper = () => {
+    const steps = [
+      { id: 1, name: 'Subject', icon: BookOpen },
+      { id: 2, name: 'Schedule', icon: Calendar },
+      { id: 3, name: 'Refine', icon: Settings },
+    ];
+    return (
+      <div className="flex items-center justify-between mb-8 max-w-2xl mx-auto">
+        {steps.map((step, idx) => (
+          <div key={step.id} className="flex items-center flex-1 last:flex-none">
+            <div className="flex flex-col items-center gap-2">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${currentStep > step.id
+                  ? 'bg-green-500 text-white'
+                  : currentStep === step.id
+                    ? 'bg-saBlue text-white ring-2 ring-saBlue/10 scale-105'
+                    : 'bg-gray-100 text-gray-400'
+                  }`}
+              >
+                {currentStep > step.id ? <Check className="w-5 h-5" /> : <step.icon className="w-5 h-5" />}
+              </div>
+              <span className={`text-[10px] uppercase tracking-wider font-semibold ${currentStep === step.id ? 'text-saBlue' : 'text-gray-400'}`}>
+                {step.name}
+              </span>
+            </div>
+            {idx < steps.length - 1 && (
+              <div className={`flex-1 h-[2px] mx-4 -mt-6 min-w-[30px] ${currentStep > step.id ? 'bg-green-300' : 'bg-gray-100'}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-500">Loading...</div>
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="w-12 h-12 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin" />
+        <div className="text-gray-400 animate-pulse font-medium">Preparing Session Builder...</div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-6xl mx-auto py-4 px-2 sm:px-4">
 
-      {/* BACK LINK */}
-      <div className="mb-6">
-        <a
-          onClick={() => navigate('/dashboard/class-sessions')}
-          className="inline-flex items-center text-blue-600 hover:underline cursor-pointer w-auto"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Sessions
-        </a>
+      {/* HEADER SECTION */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <button
+            onClick={() => navigate('/dashboard/class-sessions')}
+            className="group flex items-center text-sm text-gray-500 hover:text-saBlue transition-colors mb-2"
+          >
+            <ArrowLeft className="w-4 h-4 mr-1 group-hover:-translate-x-1 transition-transform" />
+            Back to Sessions
+          </button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">
+            {isEditing ? 'Edit Session' : 'Schedule Class'}
+          </h1>
+        </div>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl sm:text-2xl text-gray-600">
-            {isEditing ? 'Edit Class Session' : 'Schedule New Class Session'}
-          </CardTitle>
-        </CardHeader>
+      <Stepper />
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Mode Selection */}
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'ONLINE'
-                  ? 'border-saBlue bg-saBlueLight/30'
-                  : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                onClick={() => setFormData((prev) => ({ ...prev, mode: 'ONLINE' }))}
-              >
-                <Video className={`w-8 h-8 ${formData.mode === 'ONLINE' ? 'text-saBlue' : 'text-gray-400'}`} />
-                <span className={`font-medium ${formData.mode === 'ONLINE' ? 'text-saBlue' : 'text-gray-600'}`}>
-                  Online
-                </span>
-              </button>
-              <button
-                type="button"
-                className={`p-4 rounded-lg border-2 flex flex-col items-center gap-2 transition-all ${formData.mode === 'OFFLINE'
-                  ? 'border-amber-500 bg-amber-50'
-                  : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                onClick={() => setFormData((prev) => ({ ...prev, mode: 'OFFLINE' }))}
-              >
-                <MapPin className={`w-8 h-8 ${formData.mode === 'OFFLINE' ? 'text-amber-500' : 'text-gray-400'}`} />
-                <span className={`font-medium ${formData.mode === 'OFFLINE' ? 'text-amber-600' : 'text-gray-600'}`}>
-                  In-Person
-                </span>
-              </button>
-            </div>
+      <Card className="border border-gray-100 shadow-md shadow-gray-200/20 rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm">
+        <CardContent className="p-0">
+          <form onSubmit={handleSubmit}>
+            <div className="p-6 sm:p-10 min-h-[400px]">
+              {/* STEP 1: SUBJECT & TEACHER */}
+              {currentStep === 1 && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+                          <BookOpen className="w-4 h-4 text-indigo-600" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800">Target Audience</h3>
+                      </div>
 
-            {/* Subject & Teacher */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="subject" className='text-gray-600'>Subject *</Label>
-                <select
-                  id="subject"
-                  className="w-full p-2 border rounded-md mt-1"
-                  value={formData.subject_id || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, subject_id: parseInt(e.target.value) }))}
-                  required
-                >
-                  <option value="">Select Subject</option>
-                  {subjects.map((subject) => (
-                    <option key={subject.id} value={subject.id}>
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                      <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
+                        <div>
+                          <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest'>Optional Class Filter</Label>
+                          <select
+                            className="w-full p-3 border border-gray-100 bg-white rounded-xl mt-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/10 outline-none"
+                            value={formData.class_id || ''}
+                            onChange={(e) => handleClassChange(e.target.value ? parseInt(e.target.value) : null)}
+                          >
+                            <option value="">All Classes</option>
+                            {classes.map((cls) => (
+                              <option key={cls.id} value={cls.id}>{cls.name}</option>
+                            ))}
+                          </select>
+                        </div>
 
-              {isAdmin && (
-                <div>
-                  <Label htmlFor="teacher" className='text-gray-600'>Teacher *</Label>
-                  <select
-                    id="teacher"
-                    className="w-full p-2 border rounded-md mt-1"
-                    value={formData.teacher_id || ''}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, teacher_id: parseInt(e.target.value) }))}
-                    required
-                  >
-                    <option value="">Select Teacher</option>
-                    {teachers.map((teacher) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.user.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
-
-            {/* Class & Board (optional) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="class" className='text-gray-600'>Class (Optional)</Label>
-                <select
-                  id="class"
-                  className="w-full p-2 border rounded-md mt-1"
-                  value={formData.class_id || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, class_id: e.target.value ? parseInt(e.target.value) : null }))}
-                >
-                  <option value="">All Classes</option>
-                  {classes.map((cls) => (
-                    <option key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <Label htmlFor="board" className='text-gray-600'>Board (Optional)</Label>
-                <select
-                  id="board"
-                  className="w-full p-2 border rounded-md mt-1"
-                  value={formData.board_id || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, board_id: e.target.value ? parseInt(e.target.value) : null }))}
-                >
-                  <option value="">All Boards</option>
-                  {boards.map((board) => (
-                    <option key={board.id} value={board.id}>
-                      {board.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Date & Time */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="start_time" className='text-gray-600'>Start Time *</Label>
-                <Input
-                  id="start_time"
-                  type="datetime-local"
-                  className="mt-1"
-                  value={formData.start_time}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, start_time: e.target.value }))}
-                  required
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="end_time" className='text-gray-600'>End Time *</Label>
-                <Input
-                  id="end_time"
-                  type="datetime-local"
-                  className="mt-1"
-                  value={formData.end_time}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, end_time: e.target.value }))}
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Integrated Classroom Info */}
-            {formData.mode === 'ONLINE' && (
-              <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
-                <div className="flex items-center gap-3">
-                  <Video className="w-5 h-5 text-sky-600" />
-                  <div>
-                    <p className="font-medium text-sky-800">Integrated Video Classroom</p>
-                    <p className="text-xs text-sky-600 mt-1">
-                      A video classroom room will be automatically created. Students can join directly from the session page.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {formData.mode === 'OFFLINE' && (
-              <div>
-                <Label htmlFor="location">Location *</Label>
-                <Input
-                  id="location"
-                  type="text"
-                  className="mt-1"
-                  placeholder="e.g., Room 101, Main Building"
-                  value={formData.location || ''}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                  required={formData.mode === 'OFFLINE'}
-                />
-              </div>
-            )}
-
-            {/* Optional title & description */}
-            <div>
-              <Label htmlFor="title" className='text-gray-600'>Session Title (Optional)</Label>
-              <Input
-                id="title"
-                type="text"
-                className="mt-1"
-                placeholder="Custom title for this session"
-                value={formData.title || ''}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="description" className='text-gray-600'>Description (Optional)</Label>
-              <textarea
-                id="description"
-                className="w-full p-2 border rounded-md mt-1 min-h-[80px]"
-                placeholder="Add any notes or agenda for this session..."
-                value={formData.description || ''}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              />
-            </div>
-
-            {/* Recurring Session */}
-            <div className="border rounded-lg p-4">
-              <div className="flex items-center gap-3 mb-4">
-                <Switch
-                  id="is_recurring"
-                  checked={formData.is_recurring}
-                  onCheckedChange={(checked: boolean) => setFormData((prev) => ({ ...prev, is_recurring: checked }))}
-                />
-                <Label htmlFor="is_recurring" className="flex items-center gap-2 cursor-pointer text-gray-600">
-                  <RefreshCw className="w-4 h-4 text-saBlue/50" />
-                  Make this a recurring class
-                </Label>
-              </div>
-
-              {formData.is_recurring && (
-                <div className="space-y-4 pt-4 border-t">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Frequency</Label>
-                      <select
-                        className="w-full p-2 border rounded-md mt-1"
-                        value={recurrenceRule.frequency}
-                        onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, frequency: e.target.value as 'daily' | 'weekly' | 'monthly' }))}
-                      >
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                        <option value="monthly">Monthly</option>
-                      </select>
+                        <div>
+                          <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest'>Board (Auto)</Label>
+                          <div className="w-full p-3 bg-gray-50 rounded-xl mt-2 text-xs text-gray-500 font-medium border border-gray-100">
+                            {formData.board_id ? boards.find(b => b.id === formData.board_id)?.name : 'Auto-detected'}
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <Label>Every</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Input
-                          type="number"
-                          min={1}
-                          max={12}
-                          value={recurrenceRule.interval || 1}
-                          onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, interval: parseInt(e.target.value) || 1 }))}
-                          className="w-20"
-                        />
-                        <span className="text-gray-600">
-                          {recurrenceRule.frequency === 'daily' ? 'day(s)' :
-                            recurrenceRule.frequency === 'weekly' ? 'week(s)' : 'month(s)'}
-                        </span>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-lg bg-saBlue/5 flex items-center justify-center border border-saBlue/10">
+                          <Check className="w-4 h-4 text-saBlue" />
+                        </div>
+                        <h3 className="text-sm font-bold text-gray-800">Primary Details</h3>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div>
+                          <Label className='text-[10px] font-bold text-saBlue uppercase tracking-widest'>Subject *</Label>
+                          <select
+                            className="w-full p-3 border border-saBlue/20 bg-white rounded-xl mt-2 text-sm focus:border-saBlue focus:ring-2 focus:ring-saBlue/5 outline-none font-bold text-gray-800"
+                            value={formData.subject_id || ''}
+                            onChange={(e) => handleSubjectChange(parseInt(e.target.value))}
+                            required
+                          >
+                            <option value="">Choose a subject...</option>
+                            {filteredSubjects.map((subject) => (
+                              <option key={subject.id} value={subject.id}>
+                                {subject.name} {subject.class?.name ? `(${subject.class.name})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <Label className='text-[9px] font-semibold text-gray-400 block uppercase tracking-widest mb-2 px-1'>Teacher Allocation *</Label>
+                          <select
+                            className="w-full p-3 border border-gray-200 bg-white rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/5 outline-none disabled:opacity-50"
+                            value={formData.teacher_id || ''}
+                            onChange={(e) => setFormData((prev) => ({ ...prev, teacher_id: parseInt(e.target.value) }))}
+                            required
+                            disabled={!formData.subject_id || (!isAdmin && formData.teacher_id !== 0)}
+                          >
+                            <option value="">{formData.subject_id ? "Select Teacher" : "Select Subject First"}</option>
+                            {teachers.map((teacher) => (
+                              <option key={teacher.id} value={teacher.id}>{teacher.user.name}</option>
+                            ))}
+                          </select>
+                          {teachers.length === 0 && formData.subject_id !== 0 && (
+                            <p className="text-[10px] text-destructive mt-2 font-semibold px-2">No teachers assigned to this subject.</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
 
-                  {recurrenceRule.frequency === 'weekly' && (
-                    <div>
-                      <Label>On Days</Label>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {dayNames.map((day, index) => (
-                          <label
-                            key={day}
-                            className={`flex items-center gap-2 px-3 py-2 border rounded-lg cursor-pointer transition-all ${recurrenceRule.daysOfWeek?.includes(index)
-                              ? 'bg-saBlue text-white border-saBlue'
-                              : 'hover:bg-gray-50'
-                              }`}
-                          >
-                            <Checkbox
-                              checked={recurrenceRule.daysOfWeek?.includes(index)}
-                              onCheckedChange={() => handleDayToggle(index)}
-                              className="hidden"
-                            />
-                            {day}
-                          </label>
-                        ))}
+              {/* STEP 2: SCHEDULE & MODE */}
+              {currentStep === 2 && (
+                <div className="space-y-10 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="grid grid-cols-2 gap-4 max-w-md mx-auto bg-gray-50/80 p-1.5 rounded-2xl border border-gray-100">
+                    <button
+                      type="button"
+                      className={`p-5 rounded-xl flex flex-col items-center gap-2 transition-all duration-300 ${formData.mode === 'ONLINE'
+                        ? 'bg-white shadow-md border border-saBlue/20'
+                        : 'opacity-50 hover:opacity-100'
+                        }`}
+                      onClick={() => setFormData((prev) => ({ ...prev, mode: 'ONLINE' }))}
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.mode === 'ONLINE' ? 'bg-saBlue text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        <Video className="w-5 h-5" />
+                      </div>
+                      <span className={`font-bold tracking-wider uppercase text-[10px] ${formData.mode === 'ONLINE' ? 'text-saBlue' : 'text-gray-400'}`}>Online</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`p-5 rounded-xl flex flex-col items-center gap-2 transition-all duration-300 ${formData.mode === 'OFFLINE'
+                        ? 'bg-white shadow-md border border-amber-500/20'
+                        : 'opacity-50 hover:opacity-100'
+                        }`}
+                      onClick={() => setFormData((prev) => ({ ...prev, mode: 'OFFLINE' }))}
+                    >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${formData.mode === 'OFFLINE' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <span className={`font-bold tracking-wider uppercase text-[10px] ${formData.mode === 'OFFLINE' ? 'text-amber-500' : 'text-gray-400'}`}>Offline</span>
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+                    <div className="space-y-2">
+                      <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest ml-1'>Start Date & Time *</Label>
+                      <Input
+                        type="datetime-local"
+                        className="h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-saBlue/5"
+                        value={formData.start_time}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, start_time: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest ml-1'>End Date & Time *</Label>
+                      <Input
+                        type="datetime-local"
+                        className="h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-saBlue/5"
+                        value={formData.end_time}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, end_time: e.target.value }))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {formData.mode === 'ONLINE' && (
+                    <div className="p-4 bg-blue-50/30 rounded-2xl border border-saBlue/5 flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-saBlue/10 flex items-center justify-center shrink-0">
+                        <Video className="w-5 h-5 text-saBlue" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-saBlue">Virtual Classroom Enabled</p>
+                        <p className="text-[11px] text-saBlue/60 mt-0.5 font-medium">Link will be automatically shared with all students.</p>
                       </div>
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label>End Date (Optional)</Label>
+                  {formData.mode === 'OFFLINE' && (
+                    <div className="space-y-2">
+                      <Label className='text-[10px] font-semibold text-amber-600 uppercase tracking-widest ml-1'>Physical Location *</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                        <Input
+                          type="text"
+                          className="h-11 pl-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-amber-500/5"
+                          placeholder="e.g., Room 101, Science Block..."
+                          value={formData.location || ''}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
+                          required={formData.mode === 'OFFLINE'}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* STEP 3: REFINE & RECURRENCE */}
+              {currentStep === 3 && (
+                <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+                  <div className="space-y-4">
+                    <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 mb-4">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-2 px-1">Final Session Title</p>
                       <Input
-                        type="date"
-                        className="mt-1"
-                        value={recurrenceRule.endDate || ''}
-                        onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, endDate: e.target.value, count: undefined }))}
+                        className="h-11 rounded-xl border-gray-200 bg-white font-bold text-gray-800 focus:ring-2 focus:ring-saBlue/5"
+                        placeholder="e.g., Weekly Algebra Session..."
+                        value={formData.title || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
                       />
+                      <p className="text-[10px] text-gray-400 mt-2 italic px-1">Tip: Keep it clear and descriptive for students.</p>
                     </div>
 
                     <div>
-                      <Label>Or Number of Occurrences</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={52}
-                        className="mt-1"
-                        placeholder="e.g., 10"
-                        value={recurrenceRule.count || ''}
-                        onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, count: e.target.value ? parseInt(e.target.value) : undefined, endDate: '' }))}
+                      <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest ml-1'>Additional Notes</Label>
+                      <textarea
+                        className="w-full p-4 border border-gray-200 bg-white focus:bg-white rounded-2xl mt-2 min-h-[80px] text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/5 outline-none"
+                        placeholder="Topics covered, syllabus pointers..."
+                        value={formData.description || ''}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
                       />
                     </div>
+                  </div>
+
+                  <div className={`p-5 rounded-2xl border transition-all duration-300 ${formData.is_recurring ? 'bg-saBlue/5 border-saBlue/20' : 'border-gray-100 bg-gray-50/50'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${formData.is_recurring ? 'bg-saBlue text-white' : 'bg-white text-gray-400 border border-gray-100'}`}>
+                          <RefreshCw className={`w-5 h-5 ${formData.is_recurring ? 'animate-spin-slow' : ''}`} />
+                        </div>
+                        <div>
+                          <p className="font-bold text-gray-800 text-sm">Recurring Schedule</p>
+                          <p className="text-[10px] text-gray-400 font-medium">Auto-generate future sessions</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={formData.is_recurring}
+                        onCheckedChange={(checked: boolean) => setFormData((prev) => ({ ...prev, is_recurring: checked }))}
+                      />
+                    </div>
+
+                    {formData.is_recurring && (
+                      <div className="mt-8 pt-8 border-t border-saBlue/10 space-y-8 animate-in zoom-in-95 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div>
+                            <Label className='text-[10px] font-semibold text-saBlue uppercase tracking-widest'>Frequency</Label>
+                            <select
+                              className="w-full p-3 border border-saBlue/10 bg-white rounded-xl mt-2 text-sm focus:ring-2 focus:ring-saBlue/5 font-bold outline-none"
+                              value={recurrenceRule.frequency}
+                              onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, frequency: e.target.value as 'daily' | 'weekly' | 'monthly' }))}
+                            >
+                              <option value="daily">Daily</option>
+                              <option value="weekly">Weekly</option>
+                              <option value="monthly">Monthly</option>
+                            </select>
+                          </div>
+                          <div>
+                            <Label className='text-[10px] font-semibold text-saBlue uppercase tracking-widest'>Repeat Every</Label>
+                            <div className="flex items-center gap-3 mt-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                className="w-20 h-10 rounded-xl text-center font-bold border border-saBlue/10 bg-white"
+                                value={recurrenceRule.interval || 1}
+                                onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, interval: parseInt(e.target.value) || 1 }))}
+                              />
+                              <span className="text-xs font-semibold text-saBlue/60 uppercase tracking-wider">
+                                {recurrenceRule.frequency === 'daily' ? 'Days' : recurrenceRule.frequency === 'weekly' ? 'Weeks' : 'Months'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {recurrenceRule.frequency === 'weekly' && (
+                          <div className="space-y-3">
+                            <Label className='text-[10px] font-semibold text-saBlue uppercase tracking-widest'>On Specific Days</Label>
+                            <div className="flex flex-wrap gap-2">
+                              {dayNames.map((day, index) => (
+                                <button
+                                  key={day}
+                                  type="button"
+                                  onClick={() => handleDayToggle(index)}
+                                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${recurrenceRule.daysOfWeek?.includes(index)
+                                    ? 'bg-saBlue text-white'
+                                    : 'bg-white text-gray-400 border border-gray-100 hover:text-saBlue hover:bg-saBlue/5'
+                                    }`}
+                                >
+                                  {day}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                          <div>
+                            <Label className='text-[10px] font-bold text-saBlue uppercase tracking-widest'>Ending Pattern</Label>
+                            <div className="mt-2 space-y-4">
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase">On Date:</span>
+                                <Input
+                                  type="date"
+                                  className="h-12 pl-16 rounded-xl border-none bg-white shadow-sm"
+                                  value={recurrenceRule.endDate || ''}
+                                  onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, endDate: e.target.value, count: undefined }))}
+                                />
+                              </div>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-gray-400 uppercase">After:</span>
+                                <Input
+                                  type="number"
+                                  placeholder="Occurrences"
+                                  className="h-12 pl-16 rounded-xl border-none bg-white shadow-sm"
+                                  value={recurrenceRule.count || ''}
+                                  onChange={(e) => setRecurrenceRule((prev) => ({ ...prev, count: e.target.value ? parseInt(e.target.value) : undefined, endDate: '' }))}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="bg-white/50 p-4 rounded-xl border border-saBlue/10 flex items-center justify-center text-center">
+                            <p className="text-xs text-saBlue/60 font-medium italic">All selected students will be notified for every instance of this class.</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Info Box */}
-            <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg text-sm text-gray-600">
-              <Info className="w-5 h-5 text-saBlue/50 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-gray-600">Notification</p>
-                <p>All enrolled students will receive a notification about this class session when it's created.</p>
+            {/* ACTION BAR */}
+            <div className="bg-gray-50/80 border-t p-6 flex items-center justify-between gap-4">
+              {currentStep > 1 ? (
+                <Button type="button" variant="outline" className="rounded-xl font-bold text-gray-500 border-gray-200 hover:bg-white px-6" onClick={prevStep}>
+                  Back
+                </Button>
+              ) : (
+                <div />
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  type="submit"
+                  className={`bg-saBlue hover:bg-saBlue/90 text-white rounded-xl px-8 font-bold h-11 flex items-center gap-2 transition-all ${currentStep < 3 ? 'w-auto' : 'w-48'}`}
+                  disabled={submitting}
+                >
+                  {currentStep < 3 ? (
+                    <>
+                      Next Step
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </>
+                  ) : (
+                    submitting ? 'Processing...' : isEditing ? 'Save Changes' : 'Create Session'
+                  )}
+                </Button>
               </div>
             </div>
-
-            {/* Submit Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Button type="button" variant="outline" className="flex-1"
-                onClick={() => navigate('/dashboard/class-sessions')}
-              >
-                Cancel
-              </Button>
-
-              <Button type="submit" className="flex-1 bg-saBlue hover:bg-saBlueDarkHover text-white" disabled={submitting}>
-                {submitting ? 'Saving...' : isEditing ? 'Update Session' : 'Schedule Session'}
-              </Button>
-            </div>
-
           </form>
         </CardContent>
       </Card>
