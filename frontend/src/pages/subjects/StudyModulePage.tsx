@@ -1,17 +1,38 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ArrowLeft, CheckCircle, FileText, Clock } from 'lucide-react';
-import { moduleService, progressService } from '@/services/api';
-import type { Module, StudentModuleProgress, UpdateProgressData } from '@/types';
-import { useAuthStore } from '@/store/authStore';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  ArrowLeft,
+  CheckCircle,
+  FileText,
+  Clock,
+  Play,
+  ChevronRight,
+  ChevronLeft,
+  BookOpen,
+  Sparkles,
+  Zap,
+  Loader2,
+  AlertCircle,
+  ShieldCheck,
+  Expand,
+  Maximize2
+} from "lucide-react";
+import { moduleService, progressService } from "@/services/api";
+import type { Module, StudentModuleProgress, UpdateProgressData } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { cn, resolveImageUrl } from "@/lib/utils";
 
 export default function StudyModulePage() {
-  usePageTitle("Study Module");
-  const { subjectId, moduleId } = useParams<{ subjectId: string; moduleId: string }>();
+  usePageTitle("Study Session");
+  const { subjectId, moduleId } = useParams<{
+    subjectId: string;
+    moduleId: string;
+  }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const [module, setModule] = useState<Module | null>(null);
@@ -31,20 +52,22 @@ export default function StudyModulePage() {
       setLoading(true);
       const [moduleResponse, progressResponse] = await Promise.all([
         moduleService.getModuleById(parseInt(subjectId!), parseInt(moduleId!)),
-        progressService.getStudentProgress(user!.id, parseInt(subjectId!))
+        progressService.getStudentProgress(user!.id, parseInt(subjectId!)),
       ]);
 
-      setModule(moduleResponse.data);
-      const moduleProgress = progressResponse.data.find(p => p.module_id === parseInt(moduleId!));
+      const moduleData = moduleResponse.data;
+      setModule(moduleData);
+
+      const moduleProgress = progressResponse.data.find(
+        (p: any) => p.module_id === parseInt(moduleId!)
+      );
       setProgress(moduleProgress || null);
 
-      // If no progress exists, start the module
       if (!moduleProgress) {
         await startModule();
       }
-      // Don't update if progress already exists - let the user control it
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to load module');
+      console.error("Failed to load module session:", err);
       navigate(`/dashboard/subjects/${subjectId}/modules`);
     } finally {
       setLoading(false);
@@ -53,49 +76,37 @@ export default function StudyModulePage() {
 
   const startModule = async () => {
     try {
-      console.log('🔍 [STUDY_MODULE] Starting module...');
       const progressData = await progressService.updateProgress(
         user!.id,
         parseInt(subjectId!),
         parseInt(moduleId!),
         { progress_percent: 0, is_completed: false }
       );
-      console.log('✅ [STUDY_MODULE] Module started:', progressData);
       setProgress(progressData.data);
     } catch (err: any) {
-      console.error('❌ [STUDY_MODULE] Failed to start module:', err);
-      console.error('❌ [STUDY_MODULE] Error details:', err.response?.data);
+      console.error("Failed to initialize progress:", err);
     }
   };
 
   const updateProgress = async (data: UpdateProgressData) => {
     try {
-      console.log('🔍 [STUDY_MODULE] updateProgress called with data:', data);
-      console.log('🔍 [STUDY_MODULE] Current user:', user);
-      console.log('🔍 [STUDY_MODULE] Params:', { subjectId, moduleId });
       setUpdating(true);
-      debugger;
       const progressData = await progressService.updateProgress(
         user!.id,
         parseInt(subjectId!),
         parseInt(moduleId!),
         data
       );
-      console.log('✅ [STUDY_MODULE] Progress updated successfully:', progressData);
       setProgress(progressData.data);
     } catch (err: any) {
-      console.error('❌ [STUDY_MODULE] Failed to update progress:', err);
-      console.error('❌ [STUDY_MODULE] Error response:', err.response?.data);
-      console.error('❌ [STUDY_MODULE] Error message:', err.response?.data?.message);
+      console.error("Failed to synchronize progress:", err);
     } finally {
       setUpdating(false);
     }
   };
 
   const handleCompleteModule = async () => {
-    console.log('🔍 [STUDY_MODULE] Completing module...');
     await updateProgress({ progress_percent: 100, is_completed: true });
-    alert('Congratulations! Module completed!');
     navigate(`/dashboard/subjects/${subjectId}/modules`);
   };
 
@@ -104,10 +115,10 @@ export default function StudyModulePage() {
       const newIndex = currentContentIndex + 1;
       setCurrentContentIndex(newIndex);
 
-      // Update progress based on content viewed
       if (module && !progress?.is_completed) {
-        const progressPercent = Math.round(((newIndex + 1) / module.content.length) * 100);
-        console.log(`🔍 [STUDY_MODULE] Updating progress to ${progressPercent}%`);
+        const progressPercent = Math.round(
+          ((newIndex + 1) / module.content.length) * 100
+        );
         await updateProgress({ progress_percent: progressPercent });
       }
     }
@@ -120,103 +131,106 @@ export default function StudyModulePage() {
   };
 
   const renderContent = (content: any) => {
+    const assetUrl = resolveImageUrl(content.s3_url || content.url);
+
     switch (content.type) {
-      case 'text':
+      case "text":
         return (
-          <div className="prose max-w-none bg-white p-6 rounded-lg">
-            <div className="whitespace-pre-wrap text-gray-800 leading-relaxed">
-              {content.text_content}
+          <div className="max-w-4xl mx-auto py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="prose prose-slate prose-lg max-w-none">
+              <div className="whitespace-pre-wrap text-gray-800 leading-[1.8] text-lg font-medium tracking-tight bg-white p-10 md:p-14 rounded-[32px] border border-gray-100 shadow-sm transition-all hover:shadow-md">
+                {content.text_content}
+              </div>
             </div>
           </div>
         );
 
-      case 'image':
+      case "image":
         return (
-          <div className="flex justify-center bg-white p-6 rounded-lg">
-            <img
-              src={content.s3_url || content.url}
-              alt={content.filename || content.file_name || 'Image'}
-              className="max-w-full max-h-[600px] object-contain rounded-lg shadow-sm"
-              onError={(e) => {
-                console.error('Image failed to load');
-                e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Crect fill="%23ddd" width="200" height="200"/%3E%3Ctext fill="%23999" x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle"%3EImage unavailable%3C/text%3E%3C/svg%3E';
-              }}
-              onContextMenu={(e) => e.preventDefault()} // Prevent right-click download
-            />
+          <div className="max-w-5xl mx-auto py-6 animate-in zoom-in-95 duration-700">
+            <div className="bg-white p-6 rounded-[40px] border border-gray-100 shadow-xl overflow-hidden group relative">
+              <img
+                src={assetUrl}
+                alt={content.filename || content.file_name || "Instructional Asset"}
+                className="w-full h-auto max-h-[700px] object-contain rounded-[32px] transition-transform duration-700 group-hover:scale-[1.01]"
+                onContextMenu={(e) => e.preventDefault()}
+              />
+              <div className="absolute bottom-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm shadow-xl">
+                  <Maximize2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-center mt-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-green-500/50" />
+              Secure Instructional Content
+            </p>
           </div>
         );
 
-      case 'video':
+      case "video":
         return (
-          <div className="flex justify-center bg-black rounded-lg overflow-hidden">
-            <video
-              controls
-              controlsList="nodownload" // Disable download button
-              className="max-w-full max-h-[600px] w-full"
-              onContextMenu={(e) => e.preventDefault()} // Prevent right-click download
-              onError={() => {
-                console.error('Video failed to load');
-              }}
-            >
-              <source src={content.s3_url || content.url} />
-              Your browser does not support the video tag.
-            </video>
+          <div className="max-w-6xl mx-auto py-6 animate-in fade-in zoom-in-95 duration-700">
+            <div className="bg-gray-950 rounded-[40px] overflow-hidden shadow-2xl ring-1 ring-white/10 relative group">
+              <video
+                controls
+                controlsList="nodownload"
+                className="w-full aspect-video shadow-2xl"
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                <source src={assetUrl} />
+                Learning content unavailable in this browser.
+              </video>
+            </div>
+            <div className="flex items-center justify-between mt-8 px-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-saBlue/10 rounded-xl text-saBlue">
+                  <Play className="w-5 h-5" fill="currentColor" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-gray-800">Dynamic Video Lecture</h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Multimedia Module</p>
+                </div>
+              </div>
+            </div>
           </div>
         );
 
-      case 'pdf':
+      case "pdf":
         return (
-          <div className="bg-white p-8 rounded-lg">
-            <div className="flex flex-col items-center">
-              <FileText className="w-20 h-20 text-red-500 mb-4" />
-              <p className="text-xl font-semibold mb-2">
-                {content.filename || content.file_name || 'PDF Document'}
-              </p>
-              <p className="text-gray-600 mb-6">PDF Document - View Only</p>
-
-              {/* Embed PDF viewer */}
-              <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+          <div className="max-w-6xl mx-auto py-6 animate-in fade-in duration-700">
+            <div className="bg-white p-3 rounded-[40px] border border-gray-100 shadow-2xl overflow-hidden min-h-[700px]">
+              <div className="w-full h-[750px] rounded-[32px] overflow-hidden bg-gray-50 flex flex-col">
+                <div className="p-4 bg-gray-50 border-b flex items-center justify-between shrink-0">
+                  <div className="flex items-center gap-2.5">
+                    <FileText className="w-4 h-4 text-red-500" />
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      {content.filename || content.file_name || "Document Viewer"}
+                    </span>
+                  </div>
+                  <Badge variant="outline" className="text-[9px] font-bold tracking-widest uppercase py-1 border-gray-200">
+                    Encrypted PDF
+                  </Badge>
+                </div>
                 <iframe
-                  src={`${content.s3_url || content.url}#toolbar=0&navpanes=0`}
-                  className="w-full h-full"
-                  title={content.filename || content.file_name || 'PDF Viewer'}
+                  src={`${assetUrl}#toolbar=0&navpanes=0`}
+                  className="w-full flex-1 border-none"
+                  title="PDF Document"
                   onContextMenu={(e) => e.preventDefault()}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-4">
-                Downloads are disabled for learning materials
-              </p>
             </div>
           </div>
         );
 
       default:
         return (
-          <div className="bg-white p-8 rounded-lg">
-            <div className="flex flex-col items-center">
-              <FileText className="w-20 h-20 text-gray-400 mb-4" />
-              <p className="text-xl font-semibold mb-2">
-                {content.filename || content.file_name || 'Document'}
-              </p>
-              <p className="text-gray-600 mb-4">
-                {content.type ? content.type.toUpperCase() : 'Document'} - View Only
-              </p>
-
-              {/* For other document types, try to display in iframe */}
-              {(content.s3_url || content.url) && (
-                <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-                  <iframe
-                    src={content.s3_url || content.url}
-                    className="w-full h-full"
-                    title={content.filename || content.file_name || 'Document Viewer'}
-                    onContextMenu={(e) => e.preventDefault()}
-                  />
-                </div>
-              )}
-              <p className="text-xs text-gray-500 mt-4">
-                Downloads are disabled for learning materials
-              </p>
+          <div className="max-w-4xl mx-auto py-20 text-center animate-in fade-in duration-700">
+            <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
+              <AlertCircle className="w-10 h-10 text-gray-300" />
             </div>
+            <h3 className="text-xl font-bold text-gray-800 tracking-tight">Resource Unsupported</h3>
+            <p className="text-gray-500 text-sm mt-2 max-w-xs mx-auto">This asset type is currently not optimized for this viewing environment.</p>
           </div>
         );
     }
@@ -224,19 +238,14 @@ export default function StudyModulePage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading module...</div>
+      <div className="flex flex-col items-center justify-center min-vh-screen space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-saBlue" />
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">Initializing Study Environment...</p>
       </div>
     );
   }
 
-  if (!module) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">Module not found</div>
-      </div>
-    );
-  }
+  if (!module) return null;
 
   const currentContent = module.content[currentContentIndex];
   const progressPercent = module.content.length > 0
@@ -244,139 +253,162 @@ export default function StudyModulePage() {
     : 100;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10 shadow-sm">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-white pb-40">
+      {/* IMMERSIVE HEADER */}
+      <div className="bg-slate-50 border-b border-slate-100 sticky top-0 z-50 shadow-sm transition-all duration-300 group">
+        <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative overflow-hidden">
+          {/* Subtle Background Decoration */}
+          <div className="absolute top-0 right-0 w-64 h-full bg-saBlue/5 blur-[80px] -z-10" />
+
+          <div className="flex items-center justify-between gap-6 relative z-10">
+            <div className="flex items-center gap-4 md:gap-8 pr-4 border-r border-slate-200">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                size="sm"
+                className="h-12 w-12 rounded-2xl text-slate-400 hover:text-saBlue hover:bg-saBlue/5 transition-all p-0"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back
+                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
               </Button>
-              <div>
-                <h1 className="text-xl font-bold">{module.title}</h1>
-                <p className="text-sm text-gray-600">
-                  Content {currentContentIndex + 1} of {module.content.length}
-                </p>
+              <div className="hidden sm:block">
+                <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight line-clamp-1">{module.title}</h1>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    Milestone {currentContentIndex + 1} of {module.content.length}
+                  </span>
+                  <div className="w-1 h-1 rounded-full bg-slate-200" />
+                  <Badge variant="outline" className="bg-saBlue/5 text-saBlue text-[8px] font-black uppercase tracking-[0.2em] border-saBlue/10">
+                    Interactive Lesson
+                  </Badge>
+                </div>
               </div>
             </div>
 
-            {progress?.is_completed && (
-              <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
-                <CheckCircle className="w-5 h-5" />
-                <span className="font-medium text-sm">Completed</span>
+            <div className="flex-1 max-w-lg hidden md:block px-6">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-3.5 h-3.5 text-saBlue animate-pulse" />
+                  <span className="text-[10px] font-black text-saBlue uppercase tracking-widest">Session Progress</span>
+                </div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tabular-nums">{Math.round(progressPercent)}%</span>
               </div>
-            )}
-          </div>
-
-          {/* Progress Bar */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2 text-xs text-gray-600">
-              <span>Your Progress</span>
-              <span>{Math.round(progressPercent)}%</span>
+              <Progress value={progressPercent} className="h-2 bg-gray-50 rounded-full" />
             </div>
-            <Progress value={progressPercent} className="h-2" />
+
+            <div className="shrink-0 flex items-center gap-4">
+              {progress?.is_completed && (
+                <div className="hidden md:flex items-center gap-2 bg-green-50 px-4 py-2.5 rounded-2xl border border-green-100 text-green-600 animate-in fade-in duration-500">
+                  <CheckCircle className="w-4 h-4 shadow-sm" />
+                  <span className="text-[10px] font-black uppercase tracking-widest">Certified Verified</span>
+                </div>
+              )}
+              <div className="w-12 h-12 bg-saBlue/10 rounded-2xl flex items-center justify-center text-saBlue">
+                <BookOpen className="w-6 h-6" />
+              </div>
+            </div>
           </div>
+        </div>
+
+        {/* Responsive Progress Bar for Mobile */}
+        <div className="md:hidden w-full h-1 bg-gray-50">
+          <div className="h-full bg-saBlue transition-all duration-500" style={{ width: `${progressPercent}%` }} />
         </div>
       </div>
 
-      {/* Content */}
-      <div className="container mx-auto px-4 py-8">
+      {/* DYNAMIC CONTENT AREA */}
+      <div className="max-w-7xl mx-auto px-6 pt-10">
         {module.content.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <FileText className="w-20 h-20 text-gray-400 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">No content available</h3>
-              <p className="text-gray-600 mb-6">This module doesn't have any content yet.</p>
-              <Button onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}>
-                Back to Modules
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="max-w-5xl mx-auto">
-            {/* Content Card */}
-            <Card className="mb-6">
-              <CardContent className="p-8">
-                {renderContent(currentContent)}
-              </CardContent>
-            </Card>
-
-            {/* Navigation Controls */}
-            <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-lg shadow-sm">
-              <Button
-                onClick={handlePrevious}
-                disabled={currentContentIndex === 0}
-                variant="outline"
-                size="lg"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous
-              </Button>
-
-              <div className="flex-1 text-center">
-                <p className="text-sm text-gray-600 mb-1">Content Progress</p>
-                <div className="flex items-center justify-center gap-2">
-                  {module.content.map((_, index) => (
-                    <div
-                      key={index}
-                      className={`h-2 rounded-full transition-all ${index < currentContentIndex
-                          ? 'w-8 bg-green-500'
-                          : index === currentContentIndex
-                            ? 'w-10 bg-blue-500'
-                            : 'w-6 bg-gray-300'
-                        }`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                {!progress?.is_completed && currentContentIndex === module.content.length - 1 && (
-                  <Button
-                    onClick={handleCompleteModule}
-                    disabled={updating}
-                    className="bg-green-600 hover:bg-green-700"
-                    size="lg"
-                  >
-                    {updating ? (
-                      <>
-                        <Clock className="w-4 h-4 mr-2 animate-spin" />
-                        Completing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Mark as Complete
-                      </>
-                    )}
-                  </Button>
-                )}
-
-                {currentContentIndex < module.content.length - 1 && (
-                  <Button onClick={handleNext} size="lg">
-                    Next
-                    <ArrowLeft className="w-4 h-4 ml-2 rotate-180" />
-                  </Button>
-                )}
-
-                {currentContentIndex === module.content.length - 1 && progress?.is_completed && (
-                  <Button
-                    onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                    size="lg"
-                  >
-                    Back to Modules
-                  </Button>
-                )}
-              </div>
+          <div className="py-24 text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <div className="w-24 h-24 bg-white rounded-[40px] flex items-center justify-center mx-auto mb-8 shadow-xl border border-gray-100 ring-1 ring-gray-100">
+              <AlertCircle className="w-12 h-12 text-gray-200" />
             </div>
+            <h3 className="text-3xl font-black text-gray-900 tracking-tight">Curriculum Unavailable</h3>
+            <p className="text-gray-500 text-lg mt-4 max-w-sm mx-auto font-medium">This module exists in the syllabus but currently contains no instructional materials.</p>
+            <Button
+              onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
+              className="mt-10 h-14 px-10 rounded-2xl bg-saBlue hover:bg-saBlue/90 font-bold text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20"
+            >
+              Back to Roadmap
+            </Button>
+          </div>
+        ) : (
+          <div className="pb-10">
+            {renderContent(currentContent)}
           </div>
         )}
+      </div>
+
+      {/* FLOAT NAVIGATION CONTROLS */}
+      <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-3xl px-6">
+        <Card className="bg-white/90 backdrop-blur-2xl border border-white/20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-[32px] overflow-hidden p-3 md:p-4">
+          <div className="flex items-center justify-between gap-4">
+            <Button
+              onClick={handlePrevious}
+              disabled={currentContentIndex === 0}
+              variant="outline"
+              className="h-14 sm:w-14 w-12 rounded-2xl border-gray-200 transition-all active:scale-90 disabled:opacity-30 disabled:grayscale group"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-saBlue" />
+            </Button>
+
+            <div className="flex-1 flex items-center justify-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5 px-4 h-10 bg-gray-50 rounded-full border border-gray-100">
+                {module.content.map((_, index) => (
+                  <div
+                    key={index}
+                    onClick={() => setCurrentContentIndex(index)}
+                    className={cn(
+                      "cursor-pointer transition-all duration-500 rounded-full",
+                      index === currentContentIndex
+                        ? "w-4 h-2 bg-saBlue"
+                        : index < currentContentIndex
+                          ? "w-2 h-2 bg-green-400"
+                          : "w-2 h-2 bg-gray-200 hover:bg-gray-300"
+                    )}
+                  />
+                ))}
+              </div>
+              <span className="sm:hidden text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                {currentContentIndex + 1} / {module.content.length}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              {!progress?.is_completed && currentContentIndex === module.content.length - 1 && (
+                <Button
+                  onClick={handleCompleteModule}
+                  disabled={updating}
+                  className="h-14 px-8 rounded-2xl bg-saVividOrange hover:bg-saVividOrange/90 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-saVividOrange/20 transition-all active:scale-95 group/complete"
+                >
+                  {updating ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
+                  )}
+                  Finish Session
+                </Button>
+              )}
+
+              {currentContentIndex < module.content.length - 1 && (
+                <Button
+                  onClick={handleNext}
+                  className="h-14 px-8 md:px-10 rounded-2xl bg-saBlue hover:bg-saBlue/90 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/next"
+                >
+                  Continue
+                  <ChevronRight className="w-4 h-4 ml-2 group-hover/next:translate-x-1 transition-transform" />
+                </Button>
+              )}
+
+              {currentContentIndex === module.content.length - 1 && progress?.is_completed && (
+                <Button
+                  onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
+                  className="h-14 px-10 rounded-2xl bg-gray-950 hover:bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-gray-200 transition-all"
+                >
+                  Subject Hub
+                </Button>
+              )}
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );

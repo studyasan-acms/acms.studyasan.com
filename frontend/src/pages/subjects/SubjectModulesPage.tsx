@@ -1,13 +1,38 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, BookOpen, ArrowLeft, Clock, FileText } from 'lucide-react';
-import { moduleService, subjectService } from '@/services/api';
-import type { Module, Subject } from '@/types';
-import { useAuthStore } from '@/store/authStore';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  BookOpen,
+  ArrowLeft,
+  Clock,
+  FileText,
+  ChevronRight,
+  MoreVertical,
+  Layers,
+  Sparkles,
+  Loader2,
+  AlertCircle
+} from "lucide-react";
+import { moduleService, subjectService } from "@/services/api";
+import type { Module, Subject } from "@/types";
+import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export default function SubjectModulesPage() {
   usePageTitle("Subject Modules");
@@ -30,7 +55,7 @@ export default function SubjectModulesPage() {
       setLoading(true);
       const [subjectResponse, modulesResponse] = await Promise.all([
         subjectService.getById(parseInt(subjectId!)),
-        moduleService.getModulesBySubject(parseInt(subjectId!))
+        moduleService.getModulesBySubject(parseInt(subjectId!)),
       ]);
 
       setSubject(subjectResponse.data);
@@ -38,8 +63,8 @@ export default function SubjectModulesPage() {
       setModules(Array.isArray(moduleData) ? moduleData : []);
       setError(null);
     } catch (err: any) {
-      console.error('Error loading modules:', err);
-      setError(err.response?.data?.message || 'Failed to load data');
+      console.error("Error loading modules:", err);
+      setError(err.response?.data?.message || "Failed to load module data");
       setModules([]);
     } finally {
       setLoading(false);
@@ -47,7 +72,11 @@ export default function SubjectModulesPage() {
   };
 
   const handleDeleteModule = async (moduleId: number) => {
-    if (!confirm('Are you sure you want to delete this module? This will also delete all associated content.')) {
+    if (
+      !confirm(
+        "Are you sure you want to delete this module? This will also delete all associated content."
+      )
+    ) {
       return;
     }
 
@@ -55,32 +84,39 @@ export default function SubjectModulesPage() {
       await moduleService.deleteModule(parseInt(subjectId!), moduleId);
       await loadData(); // Reload to get fresh data
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Failed to delete module');
+      alert(err.response?.data?.message || "Failed to delete module");
     }
   };
 
-  const isTeacher = user?.role === 'TEACHER' || user?.role === 'ADMIN';
+  const isTeacher = user?.role === "TEACHER" || user?.role === "ADMIN";
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
+      <div className="flex flex-col items-center justify-center min-vh-screen space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-saBlue" />
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+          Loading Learning Modules...
+        </p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-6">
-            <p className="text-red-600">{error}</p>
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <Card className="border-red-100 bg-red-50/50 rounded-3xl overflow-hidden shadow-sm">
+          <CardContent className="p-10 flex flex-col items-center text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
+              <AlertCircle className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-800 mb-2">Oops! Something went wrong</h3>
+            <p className="text-sm text-gray-500 mb-8 max-w-xs">{error}</p>
             <Button
-              onClick={() => navigate('/dashboard/subjects')}
-              variant="outline"
-              className="mt-4"
+              onClick={() => navigate("/dashboard/subjects")}
+              className="bg-saBlue hover:bg-saBlue/90 rounded-xl px-8 h-12 font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
             >
-              Back to Subjects
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Return to Subjects
             </Button>
           </CardContent>
         </Card>
@@ -89,130 +125,193 @@ export default function SubjectModulesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard/subjects')}
-          className="mb-4"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Subjects
-        </Button>
+    <div className="min-h-screen bg-white pb-20">
+      {/* PREMIUM HEADER SECTION */}
+      <div className="relative overflow-hidden bg-slate-50 rounded-b-[40px] mb-10 shadow-sm border-b border-slate-100 group">
+        {/* Animated Background Elements */}
+        <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
+        <div className="absolute bottom-[-10%] left-[-5%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{subject?.name}</h1>
-            <p className="text-gray-600 mt-2">
-              {isTeacher ? 'Manage course modules and content' : 'Browse and study course modules'}
-            </p>
+        <div className="max-w-7xl mx-auto px-6 pt-12 pb-16 relative z-10">
+          {/* Breadcrumb / Back Button */}
+          <Button
+            variant="ghost"
+            onClick={() => navigate(`/dashboard/subjects/${subjectId}`)}
+            className="mb-8 text-slate-500 hover:text-saBlue hover:bg-saBlue/5 rounded-xl transition-all h-10 px-4 group/back"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover/back:-translate-x-1 transition-transform" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Back to Subject</span>
+          </Button>
+
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-8">
+            <div className="space-y-4 max-w-2xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-saBlue/20 rounded-2xl border border-saBlue/30 text-saBlue animate-in zoom-in duration-500">
+                  <Layers className="w-6 h-6" />
+                </div>
+                <Badge variant="outline" className="border-saBlue/30 text-saBlue text-[10px] uppercase font-bold tracking-widest px-3 py-1 bg-saBlue/5 rounded-full">
+                  Learning Content
+                </Badge>
+              </div>
+              <div>
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-2 flex items-center gap-3">
+                  {subject?.name}
+                  <Sparkles className="w-6 h-6 text-saVividOrange animate-pulse" />
+                </h1>
+                <p className="text-slate-500 text-sm md:text-base font-medium leading-relaxed max-w-xl">
+                  {isTeacher
+                    ? "Structure and manage your course modules, curriculum, and educational resources."
+                    : "Access your learning materials, study modules, and track your educational journey."}
+                </p>
+              </div>
+            </div>
+
+            {isTeacher && (
+              <Button
+                onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
+                className="bg-saBlue hover:bg-saBlue/90 text-white h-14 px-8 rounded-2xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/btn border border-saBlue/50"
+              >
+                <Plus className="w-5 h-5 mr-2 group-hover/btn:rotate-90 transition-transform duration-300" />
+                Create New Module
+              </Button>
+            )}
           </div>
-
-          {isTeacher && (
-            <Button
-              onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Module
-            </Button>
-          )}
         </div>
       </div>
 
-      {!Array.isArray(modules) || modules.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-400 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">No modules yet</h3>
-            <p className="text-gray-600 mb-4">
-              {isTeacher ? 'Get started by creating your first module' : 'No learning modules are available yet'}
-            </p>
-            {isTeacher && (
-              <Button onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create First Module
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-          {(modules || [])
-            .sort((a, b) => a.order - b.order)
-            .map((module) => (
-              <Card key={module.module_id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <BookOpen className="w-5 h-5 text-blue-600" />
-                        <CardTitle className="text-xl">{module.title}</CardTitle>
-                        <Badge variant="outline" className="ml-auto">
-                          Module {module.order}
-                        </Badge>
-                      </div>
-                      <CardDescription className="mb-4">{module.description}</CardDescription>
-                      <div className="flex items-center gap-6 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4" />
-                          <span>{module.estimated_time_minutes} min</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-4 h-4" />
-                          <span>{module.content?.length || 0} content {(module.content?.length || 0) !== 1 ? 'items' : 'item'}</span>
-                        </div>
-                      </div>
-                    </div>
+      <div className="max-w-7xl mx-auto px-6">
+        {/* MODULES LIST */}
+        {!Array.isArray(modules) || modules.length === 0 ? (
+          <div className="py-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Card className="border-2 border-dashed border-gray-100 bg-gray-50/50 rounded-[40px] overflow-hidden">
+              <CardContent className="flex flex-col items-center justify-center py-24 text-center">
+                <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-8 shadow-sm border border-gray-100 group">
+                  <BookOpen className="w-12 h-12 text-gray-200 group-hover:text-saBlue transition-colors duration-500" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">No learning modules yet</h3>
+                <p className="text-gray-500 mb-10 max-w-sm text-sm">
+                  {isTeacher
+                    ? "Start building your curriculum by creating your first instructional module."
+                    : "Your teacher hasn't published any learning modules for this subject yet."}
+                </p>
+                {isTeacher && (
+                  <Button
+                    onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
+                    className="h-14 px-10 rounded-2xl bg-saBlue hover:bg-saBlue/90 font-bold text-xs uppercase tracking-widest shadow-lg shadow-saBlue/15"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Create First Module
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Curriculum Structure · {modules.length} {modules.length === 1 ? 'Module' : 'Modules'}
+              </h2>
+            </div>
 
-                    {isTeacher && (
-                      <div className="flex gap-2 ml-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDeleteModule(module.module_id)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
+            <div className="space-y-6">
+              {[...modules]
+                .sort((a, b) => a.order - b.order)
+                .map((module, index) => (
+                  <Card
+                    key={module.module_id}
+                    className="group border border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5 transition-all duration-500 rounded-[32px] overflow-hidden"
+                  >
+                    <CardContent className="p-0">
+                      <div className="flex flex-col md:flex-row items-stretch">
+                        {/* Module Order Indicator */}
+                        <div className="md:w-32 bg-gray-50 flex flex-row md:flex-col items-center justify-center p-6 md:p-8 border-b md:border-b-0 md:border-r border-gray-100 group-hover:bg-saBlue/5 transition-colors duration-500 shrink-0">
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0 md:mb-2 mr-4 md:mr-0 group-hover:text-saBlue/40 transition-colors">Module</span>
+                          <span className="text-5xl font-black text-gray-200 group-hover:text-saBlue transition-all duration-500 tabular-nums leading-none">
+                            {(index + 1).toString().padStart(2, '0')}
+                          </span>
+                        </div>
 
-                <CardContent>
-                  {isTeacher ? (
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
-                        className="flex-1"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit Module
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`)}
-                      className="w-full"
-                    >
-                      <BookOpen className="w-4 h-4 mr-2" />
-                      Start Learning
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-        </div>
-      )}
+                        {/* Module Info */}
+                        <div className="flex-1 p-6 md:p-10 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-start justify-between mb-4">
+                              <h3 className="text-2xl font-black text-gray-800 tracking-tight group-hover:text-saBlue transition-colors duration-300">
+                                {module.title}
+                              </h3>
+                              {isTeacher && (
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-10 w-10 text-gray-400 hover:bg-gray-50 rounded-xl">
+                                      <MoreVertical className="h-5 w-5" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="rounded-2xl border-gray-100 p-2 min-w-[160px] shadow-xl">
+                                    <DropdownMenuItem
+                                      onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
+                                      className="rounded-xl px-4 py-3 font-bold text-[10px] uppercase tracking-widest text-gray-600 focus:bg-saBlue/5 focus:text-saBlue cursor-pointer"
+                                    >
+                                      <Edit className="w-4 h-4 mr-3" />
+                                      Edit Details
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteModule(module.module_id)}
+                                      className="rounded-xl px-4 py-3 font-bold text-[10px] uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1"
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-3" />
+                                      Delete Module
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              )}
+                            </div>
+                            <p className="text-gray-500 mb-8 max-w-3xl leading-relaxed text-sm">
+                              {module.description}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pt-6 border-t border-gray-50">
+                            <div className="flex items-center gap-6">
+                              <div className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 group-hover:bg-white group-hover:border-saBlue/10 transition-all duration-500">
+                                <Clock className="w-4 h-4 text-saBlue/60" />
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{module.estimated_time_minutes} min</span>
+                              </div>
+                              <div className="flex items-center gap-2.5 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 group-hover:bg-white group-hover:border-saBlue/10 transition-all duration-500">
+                                <FileText className="w-4 h-4 text-saBlue/60" />
+                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                                  {module.content?.length || 0} Resource{(module.content?.length || 0) !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+
+                            <Button
+                              onClick={() => {
+                                if (isTeacher) {
+                                  navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`);
+                                } else {
+                                  navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`);
+                                }
+                              }}
+                              className={cn(
+                                "h-14 px-8 rounded-2xl font-bold text-[10px] uppercase tracking-[0.15em] transition-all active:scale-95 group/btn-go",
+                                isTeacher
+                                  ? "bg-gray-50 text-gray-700 hover:bg-saBlue hover:text-white border border-gray-100"
+                                  : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
+                              )}
+                            >
+                              {isTeacher ? "Manage Resources" : "Start Learning"}
+                              <ChevronRight className="w-4 h-4 ml-2 group-hover/btn-go:translate-x-1 transition-transform" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

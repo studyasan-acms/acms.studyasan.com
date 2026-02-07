@@ -9,8 +9,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { subjectService, teacherService, studentService } from "@/services/api";
-import type { Subject } from "@/types";
+import { subjectService, teacherService, studentService, moduleService } from "@/services/api";
+import type { Subject, Module } from "@/types";
 import {
   ArrowLeft,
   Edit,
@@ -38,6 +38,7 @@ export default function SubjectDetailPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const [subject, setSubject] = useState<Subject | null>(null);
+  const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [currentStudentId, setCurrentStudentId] = useState<number | null>(null);
@@ -112,6 +113,12 @@ export default function SubjectDetailPage() {
       }
 
       setSubject(subjectData);
+
+      // Fetch modules as fallback content
+      const modulesRes = await moduleService.getModulesBySubject(subjectId);
+      if (modulesRes.success) {
+        setModules(modulesRes.data);
+      }
     } catch (error) {
       console.error("Failed to fetch subject:", error);
       navigate("/dashboard/subjects");
@@ -186,48 +193,57 @@ export default function SubjectDetailPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-10">
       {/* 1. TOP HEADER SECTION */}
-      <div className="relative">
-        <div className="h-28 w-full bg-gradient-to-r from-saBlue to-blue-400 rounded-3xl relative overflow-hidden shadow-lg shadow-blue-900/10">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-black/10 rounded-full blur-2xl transform -translate-x-1/3 translate-y-1/3"></div>
+      <div className="relative overflow-hidden bg-slate-50 rounded-[40px] border border-slate-100 shadow-sm group">
+        {/* Animated Background Elements */}
+        <div className="absolute top-[-20%] right-[-10%] w-[400px] h-[400px] bg-saBlue/5 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
 
+        <div className="px-6 sm:px-10 pt-8 pb-8 relative z-10">
           <Button
             variant="ghost"
-            className="absolute top-4 left-4 text-white hover:bg-white/20 hover:text-white rounded-xl"
+            className="mb-6 text-slate-500 hover:text-saBlue hover:bg-saBlue/5 rounded-xl transition-all h-10 px-4 group/back"
             onClick={() => navigate("/dashboard/subjects")}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            <ArrowLeft className="w-4 h-4 mr-2 group-hover/back:-translate-x-1 transition-transform" />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Back to Subjects</span>
           </Button>
-        </div>
 
-        <div className="px-6 sm:px-10 pb-4">
-          <div className="flex flex-col sm:flex-row items-end -mt-16 gap-6">
-            <div className="relative group">
-              <div className="w-32 h-32 rounded-[2rem] border-[6px] border-white bg-white shadow-xl overflow-hidden relative z-10">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-8">
+            <div className="relative group/img shrink-0">
+              <div className="w-40 h-40 rounded-[2.5rem] border-[6px] border-white bg-white shadow-2xl overflow-hidden relative z-10 transition-transform duration-500 group-hover/img:scale-105">
                 <img
                   src={resolveImageUrl(subject.cover_image) || `https://placehold.co/400x300/f3f4f6/3b82f6?text=${encodeURIComponent(subject.name)}`}
                   alt={subject.name}
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-full object-cover"
                 />
               </div>
+              <div className="absolute -inset-4 bg-saBlue/10 rounded-[3rem] blur-2xl opacity-0 group-hover/img:opacity-100 transition-opacity duration-500" />
             </div>
 
-            <div className="flex-1 pb-2 text-center sm:text-left">
-              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{subject.name}</h1>
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
-                <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100 rounded-lg py-1 px-3">
-                  <LayoutGrid className="w-3 h-3 mr-1.5" />
+            <div className="flex-1 text-center sm:text-left space-y-4">
+              <div className="space-y-1">
+                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[10px] uppercase font-bold tracking-[0.2em] px-3 py-1 bg-saBlue/5 rounded-full mb-2">
+                  Academic Catalog
+                </Badge>
+                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none">
+                  {subject.name}
+                </h1>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                <Badge variant="secondary" className="bg-slate-200/50 text-slate-700 border-none rounded-xl py-2 px-4 font-bold text-xs uppercase tracking-wider">
+                  <LayoutGrid className="w-3.5 h-3.5 mr-2 text-saBlue" />
                   {subject.is_course ? "Course" : "Subject"}
                 </Badge>
                 {subject.class && (
-                  <Badge variant="outline" className="border-gray-200 text-gray-500 bg-white rounded-lg py-1 px-3">
-                    <School className="w-3 h-3 mr-1.5" />
+                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-xl py-2 px-4 shadow-sm font-bold text-xs uppercase tracking-wider">
+                    <School className="w-3.5 h-3.5 mr-2 text-saBlue" />
                     {subject.class.name}
                   </Badge>
                 )}
                 {subject.board && (
-                  <Badge variant="outline" className="border-gray-200 text-gray-500 bg-white rounded-lg py-1 px-3">
-                    <Globe className="w-3 h-3 mr-1.5" />
+                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-xl py-2 px-4 shadow-sm font-bold text-xs uppercase tracking-wider">
+                    <Globe className="w-3.5 h-3.5 mr-2 text-saBlue" />
                     {subject.board.name}
                   </Badge>
                 )}
@@ -235,14 +251,13 @@ export default function SubjectDetailPage() {
             </div>
 
             {isAdmin && (
-              <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center">
-                <Button
-                  onClick={() => navigate(`/dashboard/subjects/${subject.id}/edit`)}
-                  className="rounded-xl bg-saBlue h-12 px-6 shadow-md shadow-saBlue/20 hover:bg-saBlue/90 font-bold uppercase tracking-wider text-xs"
-                >
-                  <Edit className="mr-2 h-4 w-4" /> Edit Details
-                </Button>
-              </div>
+              <Button
+                onClick={() => navigate(`/dashboard/subjects/${subject.id}/edit`)}
+                className="rounded-2xl bg-saBlue h-14 px-8 shadow-xl shadow-saBlue/20 hover:bg-saBlue/90 font-black uppercase tracking-[0.2em] text-[10px] transition-all active:scale-95 group/edit"
+              >
+                <Edit className="mr-3 h-4 w-4 group-hover/edit:rotate-12 transition-transform" />
+                Edit Configuration
+              </Button>
             )}
           </div>
         </div>
@@ -262,17 +277,19 @@ export default function SubjectDetailPage() {
           </CardContent>
         </Card>
 
-        {/* STATISTICS */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <SectionTitle icon={LayoutGrid} title="Activity" description="Internal Stats" />
-            <div className="space-y-3">
-              <InfoItem label="Total Enrolled" value={`${subject._count?.enrollments || 0} Students`} icon={Users} />
-              <InfoItem label="Assigned Teachers" value={`${subject._count?.teacher_subject_junctions || 0} Educators`} icon={UserCheck} />
-              <InfoItem label="Creation Date" value={format(new Date(subject.created_at), "PPP")} icon={CalendarDays} />
-            </div>
-          </CardContent>
-        </Card>
+        {/* STATISTICS - Hidden for Students */}
+        {user?.role !== "STUDENT" && (
+          <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <SectionTitle icon={LayoutGrid} title="Activity" description="Internal Stats" />
+              <div className="space-y-3">
+                <InfoItem label="Total Enrolled" value={`${subject._count?.enrollments || 0} Students`} icon={Users} />
+                <InfoItem label="Assigned Teachers" value={`${subject._count?.teacher_subject_junctions || 0} Educators`} icon={UserCheck} />
+                <InfoItem label="Creation Date" value={format(new Date(subject.created_at), "PPP")} icon={CalendarDays} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* OPERATIONS / MODULES */}
         <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -333,13 +350,34 @@ export default function SubjectDetailPage() {
                     </div>
                   ))}
                 </div>
+              ) : modules.length > 0 ? (
+                <div className="space-y-4">
+                  {modules.map((module, index) => (
+                    <div key={module.module_id} className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all group cursor-pointer" onClick={() => navigate(`/dashboard/subjects/${id}/student-modules`)}>
+                      <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-saBlue font-bold text-sm shadow-sm shrink-0 group-hover:bg-saBlue group-hover:text-white transition-colors">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-bold text-gray-700 mb-1">{module.title}</h4>
+                        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{module.description}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-saBlue transition-colors self-center" />
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-12 bg-gray-50/50 rounded-3xl border border-dashed border-gray-100">
                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
                     <BookOpen className="w-8 h-8 text-gray-200" />
                   </div>
-                  <h4 className="font-bold text-gray-400">No Syllabus Defined</h4>
-                  <p className="text-xs text-gray-300 mt-1">Visit the edit page to add curriculum units</p>
+                  <h4 className="font-bold text-gray-400">
+                    {user?.role === "STUDENT" ? "Curriculum details pending" : "No Syllabus Defined"}
+                  </h4>
+                  <p className="text-xs text-gray-300 mt-1">
+                    {user?.role === "STUDENT"
+                      ? "Stay tuned as we update the learning pathway for this subject."
+                      : "Visit the edit page to add curriculum units"}
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -356,7 +394,11 @@ export default function SubjectDetailPage() {
               </CardHeader>
               <CardContent className="p-6 space-y-3">
                 {subject.teacher_subject_junctions?.map((junction) => (
-                  <div key={junction.id} className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 cursor-pointer" onClick={() => navigate(`/dashboard/teachers/${junction.teacher.id}`)}>
+                  <div
+                    key={junction.id}
+                    className={`flex items-center gap-3 p-2.5 rounded-2xl transition-colors border border-transparent ${user?.role !== "STUDENT" ? "hover:bg-gray-50 hover:border-gray-100 cursor-pointer" : "cursor-default"}`}
+                    onClick={() => user?.role !== "STUDENT" && navigate(`/dashboard/teachers/${junction.teacher.id}`)}
+                  >
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-gray-100">
                       <AvatarImage src={resolveImageUrl((junction.teacher.user as any).profile_url)} />
                       <AvatarFallback className="bg-saBlue text-white text-[10px] uppercase font-bold">{getInitials(junction.teacher.user.name)}</AvatarFallback>

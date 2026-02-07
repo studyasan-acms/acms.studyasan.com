@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -227,19 +228,27 @@ export default function EditSubjectPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-10">
-      {/* --------------------------- HEADER --------------------------- */}
-      <div className="flex flex-col space-y-4">
-        <Link
-          to="/dashboard/subjects"
-          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-sm font-medium"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to Subjects
-        </Link>
+      {/* PREMIUM HEADER SECTION */}
+      <div className="relative overflow-hidden bg-slate-50 rounded-b-[40px] -mx-4 sm:-mx-6 px-6 pt-12 pb-16 border-b border-slate-100 shadow-sm mb-8">
+        {/* Animated Background Elements */}
+        <div className="absolute top-[-20%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
 
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Edit Subject</h1>
-          <p className="text-gray-500 mt-1">Update information and curriculum for {subject.name}</p>
+        <div className="relative z-10 space-y-4">
+          <Link
+            to="/dashboard/subjects"
+            className="group flex items-center text-slate-500 hover:text-saBlue transition-all w-fit text-[10px] font-black uppercase tracking-[0.2em]"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            Back to Subjects
+          </Link>
+
+          <div className="space-y-1">
+            <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[10px] uppercase font-bold tracking-[0.2em] px-3 py-1 bg-saBlue/5 rounded-full mb-1">
+              Management Portal
+            </Badge>
+            <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none">Edit Subject</h1>
+            <p className="text-slate-500 text-sm font-medium mt-2 max-w-lg">Modify the core educational attributes and curriculum structure for <span className="text-saBlue font-bold">{subject.name}</span>.</p>
+          </div>
         </div>
       </div>
 
