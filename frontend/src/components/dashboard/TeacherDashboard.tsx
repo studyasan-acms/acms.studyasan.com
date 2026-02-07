@@ -157,7 +157,7 @@ export default function TeacherDashboard() {
                             value={totalStudents}
                             icon={Users}
                             description={selectedSubject === 'all' ? 'All active students' : 'Enrolled in subject'}
-                            className="bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800"
+                            className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
                         />
                         <StatCard
                             title="Avg. Class Performance"

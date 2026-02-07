@@ -64,7 +64,7 @@ export default function Header({
               <img
                 src="/studyasan-logo.png"
                 alt="StudyAsan Logo"
-                className="h-10"
+                className="h-10 w-auto object-contain"
               />
             </div>
           </div>
@@ -99,8 +99,8 @@ export default function Header({
                   className="flex items-center gap-2 hover:bg-saBlueDarkHover/20"
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarImage 
-                      src={user?.profile_url} 
+                    <AvatarImage
+                      src={user?.profile_url}
                       alt={user?.name || 'User'}
                       onError={(e) => {
                         console.log('Header avatar image failed to load:', user?.profile_url);

@@ -243,7 +243,7 @@ export default function StudentHomePage() {
                         className="bg-white rounded-lg p-2 md:p-4 shadow-md hover:shadow-lg transition-shadow border border-gray-100"
                     >
                         <div className="flex items-center space-x-2 md:space-x-3">
-                            <Users className="h-5 w-5 md:h-8 md:w-8 text-purple-600 flex-shrink-0" />
+                            <Users className="h-5 w-5 md:h-8 md:w-8 text-blue-600 flex-shrink-0" />
                             <div className="min-w-0">
                                 <h3 className="font-semibold text-gray-700 text-xs md:text-base">Profile</h3>
                                 <p className="text-xs text-gray-500 truncate hidden sm:block">Manage your account</p>

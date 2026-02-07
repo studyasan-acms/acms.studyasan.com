@@ -19,15 +19,15 @@ const services = [
         icon: Sparkles,
         title: 'Kids Classes',
         description: 'Reading, Speaking & All Subjects tuition for young learners',
-        color: 'from-pink-500 to-rose-500',
-        shadowColor: 'shadow-pink-500/25',
+        color: 'from-amber-400 to-orange-500',
+        shadowColor: 'shadow-amber-500/25',
     },
     {
         icon: BookOpen,
         title: 'Grade 4-8',
         description: 'Comprehensive all-subject tuition with personalized attention',
-        color: 'from-purple-500 to-violet-500',
-        shadowColor: 'shadow-purple-500/25',
+        color: 'from-sky-500 to-blue-500',
+        shadowColor: 'shadow-sky-500/25',
     },
     {
         icon: Target,
@@ -54,8 +54,8 @@ const services = [
         icon: Lightbulb,
         title: 'Competitive Exams',
         description: 'SSC, Bank, Railway, UPSC, UKSSC and state-level exams',
-        color: 'from-red-500 to-pink-500',
-        shadowColor: 'shadow-red-500/25',
+        color: 'from-orange-600 to-red-600',
+        shadowColor: 'shadow-orange-600/25',
     },
 ];
 
@@ -107,7 +107,7 @@ export default function HomePage() {
                 {/* Background Decorations */}
                 <div className="absolute inset-0 overflow-hidden">
                     <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-                    <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
+                    <div className="absolute top-1/2 -left-40 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
                     <div className="absolute bottom-0 right-1/3 w-64 h-64 bg-cyan-500/20 rounded-full blur-3xl animate-pulse delay-500"></div>
 
                     {/* Grid Pattern */}
@@ -315,7 +315,7 @@ export default function HomePage() {
                                     <p className="text-blue-200 text-sm">Connecting mentors and students from all over India</p>
                                 </div>
                                 <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6">
-                                    <Heart className="w-10 h-10 text-pink-400 mb-4" />
+                                    <Heart className="w-10 h-10 text-red-500 mb-4" />
                                     <h4 className="text-white font-bold text-lg mb-2">Personalized Care</h4>
                                     <p className="text-blue-200 text-sm">One-on-one attention for every student</p>
                                 </div>

@@ -39,7 +39,7 @@ const positions = [
             'Ability to simplify complex concepts',
         ],
         icon: GraduationCap,
-        color: 'from-purple-500 to-pink-500',
+        color: 'from-sky-500 to-blue-500',
     },
     {
         title: 'Personality Development Trainer',
@@ -104,7 +104,7 @@ export default function CareerPage() {
             <section className="relative py-24 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 overflow-hidden">
                 <div className="absolute inset-0">
                     <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-0 -left-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-0 -left-40 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"></div>
                 </div>
 
                 <div className="container mx-auto px-4 relative z-10">
@@ -181,7 +181,7 @@ export default function CareerPage() {
             <section className="py-20 bg-white">
                 <div className="container mx-auto px-4">
                     <div className="text-center max-w-3xl mx-auto mb-16">
-                        <span className="inline-block px-4 py-1 bg-purple-100 text-purple-600 rounded-full text-sm font-medium mb-4">
+                        <span className="inline-block px-4 py-1 bg-blue-100 text-blue-600 rounded-full text-sm font-medium mb-4">
                             Open Positions
                         </span>
                         <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">

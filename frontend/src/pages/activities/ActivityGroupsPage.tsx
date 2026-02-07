@@ -5,16 +5,15 @@ import { Card } from '../../components/ui/card';
 import { activityGroupAPI } from '../../services/activity.service';
 const getRandomGradient = () => {
   const gradients = [
-    'from-purple-500 to-pink-500',
     'from-blue-500 to-cyan-500',
     'from-green-500 to-teal-500',
-    'from-orange-500 to-red-500',
-    'from-indigo-500 to-purple-500',
-    'from-pink-500 to-rose-500',
+    'from-orange-500 to-yellow-500', // Replaced purple-pink
+    'from-blue-400 to-indigo-400', // Replaced indigo-purple
+    'from-amber-500 to-orange-500', // Replaced pink-rose
     'from-cyan-500 to-blue-500',
     'from-teal-500 to-green-500',
-    'from-yellow-500 to-orange-500',
-    'from-fuchsia-500 to-pink-500',
+    'from-yellow-400 to-orange-400', // Replaced yellow-orange (similar but safer)
+    'from-sky-500 to-blue-600', // Replaced fuchsia-pink
   ];
   return gradients[Math.floor(Math.random() * gradients.length)];
 };
@@ -199,8 +198,8 @@ export default function ActivityGroupsPage() {
             <div className="flex justify-between items-center">
               <span
                 className={`px-3 py-1 rounded-full text-xs font-semibold ${group.is_active
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-gray-100 text-gray-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-gray-100 text-gray-800'
                   }`}
               >
                 {group.is_active ? 'Active' : 'Inactive'}

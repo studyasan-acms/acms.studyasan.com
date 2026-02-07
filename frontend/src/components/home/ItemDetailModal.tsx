@@ -34,7 +34,7 @@ interface ItemDetailModalProps {
 const typeConfig = {
     COURSE: { icon: GraduationCap, color: 'bg-blue-500', label: 'Course' },
     SUBJECT: { icon: BookOpen, color: 'bg-green-500', label: 'Subject' },
-    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-purple-500', label: 'Activity Group' },
+    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-amber-500', label: 'Activity Group' },
     TEST_SERIES: { icon: FileText, color: 'bg-orange-500', label: 'Test Series' },
 };
 

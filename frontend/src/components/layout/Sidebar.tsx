@@ -230,7 +230,7 @@ export default function Sidebar({
               <img
                 src="/studyasan-logo.png"
                 alt="StudyAsan Logo"
-                className="h-10 w-[80%]"
+                className="h-10 w-auto max-w-[80%] object-contain"
               />
             )}
           </div>

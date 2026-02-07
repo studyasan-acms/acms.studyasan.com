@@ -16,16 +16,15 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 
 const getRandomGradient = () => {
   const gradients = [
-    'from-purple-500 to-pink-500',
     'from-blue-500 to-cyan-500',
     'from-green-500 to-teal-500',
-    'from-orange-500 to-red-500',
-    'from-indigo-500 to-purple-500',
-    'from-pink-500 to-rose-500',
+    'from-orange-500 to-yellow-500',
+    'from-blue-400 to-indigo-400', // Changed to lighter blue/indigo or just blue
+    'from-amber-500 to-orange-500',
     'from-cyan-500 to-blue-500',
     'from-teal-500 to-green-500',
-    'from-yellow-500 to-orange-500',
-    'from-fuchsia-500 to-pink-500',
+    'from-yellow-400 to-orange-400',
+    'from-sky-500 to-blue-600',
   ];
   return gradients[Math.floor(Math.random() * gradients.length)];
 };
@@ -322,7 +321,7 @@ export default function ActivitiesPage() {
               <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                 {activity.difficulty}
               </span>
-              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                 {activity.points} points
               </span>
             </div>
@@ -380,7 +379,7 @@ export default function ActivitiesPage() {
                 variant="default"
                 size="sm"
                 onClick={() => setHostingActivity(activity)}
-                className="bg-purple-600 hover:bg-purple-700 text-xs sm:text-sm px-2 sm:px-3"
+                className="bg-saVividOrange hover:bg-amber-600 text-white text-xs sm:text-sm px-2 sm:px-3"
               >
                 <Presentation className="w-3 h-3 mr-1" />
                 <span className="hidden sm:inline">Host Game</span>

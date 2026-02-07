@@ -151,7 +151,7 @@ export default function AdminDashboard() {
                             title="Total Teachers"
                             value={teachersAnalytics.length}
                             icon={GraduationCap}
-                            className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-purple-200 dark:border-purple-800"
+                            className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-amber-200 dark:border-amber-800"
                         />
                     </div>
 

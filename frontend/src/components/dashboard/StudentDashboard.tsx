@@ -278,7 +278,7 @@ export default function StudentDashboard() {
                                 value={analytics.activities.played}
                                 icon={Gamepad2}
                                 description="Games Played"
-                                className="bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800"
+                                className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"
                             />
                             <StatCard
                                 title="Study Hours"

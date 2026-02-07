@@ -31,7 +31,7 @@ const values = [
         icon: Heart,
         title: 'Passion for Teaching',
         description: 'We believe that teaching is more than just a job - it\'s a calling to help people through education.',
-        color: 'from-red-500 to-pink-500',
+        color: 'from-orange-500 to-red-500',
     },
     {
         icon: Globe,
@@ -49,7 +49,7 @@ const values = [
         icon: Users,
         title: 'Community Building',
         description: 'Connecting mentors from villages and cities with students from diverse places across India.',
-        color: 'from-purple-500 to-violet-500',
+        color: 'from-sky-500 to-cyan-500',
     },
 ];
 
@@ -61,7 +61,7 @@ export default function AboutPage() {
             <section className="relative py-24 bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 overflow-hidden">
                 <div className="absolute inset-0">
                     <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl"></div>
-                    <div className="absolute bottom-0 -left-40 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
+                    <div className="absolute bottom-0 -left-40 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl"></div>
                 </div>
 
                 <div className="container mx-auto px-4 relative z-10">
@@ -167,7 +167,7 @@ export default function AboutPage() {
 
                                 {/* Timeline Item 2 */}
                                 <div className="relative flex gap-8">
-                                    <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center z-10">
+                                    <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center z-10">
                                         <BookOpen className="w-8 h-8 text-white" />
                                     </div>
                                     <div className="bg-white rounded-2xl p-6 shadow-lg flex-grow">
@@ -222,16 +222,16 @@ export default function AboutPage() {
                         </div>
 
                         {/* Vision */}
-                        <div className="bg-gradient-to-br from-purple-900 to-purple-800 rounded-3xl p-8 text-white">
+                        <div className="bg-gradient-to-br from-sky-900 to-blue-800 rounded-3xl p-8 text-white">
                             <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-                                <Eye className="w-8 h-8 text-pink-400" />
+                                <Eye className="w-8 h-8 text-yellow-400" />
                             </div>
                             <h3 className="text-2xl font-bold mb-6">Our Vision</h3>
                             <ul className="space-y-4">
                                 {visionPoints.map((point, index) => (
                                     <li key={index} className="flex items-start gap-3">
-                                        <div className="w-2 h-2 bg-pink-400 rounded-full mt-2 flex-shrink-0"></div>
-                                        <span className="text-purple-100 leading-relaxed">{point}</span>
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 flex-shrink-0"></div>
+                                        <span className="text-blue-100 leading-relaxed">{point}</span>
                                     </li>
                                 ))}
                             </ul>
