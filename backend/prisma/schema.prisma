@@ -119,8 +119,9 @@ model Student {
   enrollments             Enrollment[]
   module_progress         StudentModuleProgress[]
   test_attempts           TestAttempt[]
-  test_series_enrollments TestSeriesEnrollment[]
+  // test_series_enrollments TestSeriesEnrollment[] // Removed
   activity_enrollments    ActivityEnrollment[]
+  // activity_group_enrollments ActivityGroupEnrollment[] // Removed
   activity_attempts       ActivityAttempt[]
   enquiries               Enquiry[]
   homework_assignments    HomeworkAssignment[]
@@ -160,27 +161,46 @@ model Subject {
   @@map("subjects")
 }
 
+enum EnrollmentType {
+  SUBJECT
+  TEST_SERIES
+  ACTIVITY_GROUP
+}
+
 model Enrollment {
   id         Int      @id @default(autoincrement())
+  type       EnrollmentType @default(SUBJECT)
   student_id Int
-  subject_id Int
+  
+  subject_id         Int?
+  test_series_id     Int?
+  activity_group_id  Int?
+
   price      Float?   // Enrollment fee amount
   is_recurring Boolean @default(false)
   frequency  String?  // "monthly", "yearly", "quarterly", etc.
   end_date   DateTime? // When recurring payments should stop
   created_on DateTime @default(now())
   updated_on DateTime @updatedAt
+  
   student    Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  payments   EnrollmentPayment[]
+  
+  subject         Subject?       @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  test_series     TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  activity_group  ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
+  
+  payments   Payment[]
 
   @@unique([student_id, subject_id])
+  @@unique([student_id, test_series_id])
+  @@unique([student_id, activity_group_id])
   @@map("enrollments")
 }
 
-model EnrollmentPayment {
+model Payment {
   id             Int         @id @default(autoincrement())
   enrollment_id  Int
+  type           EnrollmentType @default(SUBJECT)
   period         String      // Format: "YYYY-MM" for monthly, "YYYY" for yearly
   due_date       DateTime
   amount         Float
@@ -598,24 +618,10 @@ model TestSeries {
 
   creator           User                        @relation("TestSeriesCreator", fields: [created_by], references: [id])
   tests             Test[]
-  enrollments       TestSeriesEnrollment[]
+  enrollments       Enrollment[] // Unified
   teacher_junctions TestSeriesTeacherJunction[]
 
   @@map("test_series")
-}
-
-// Test Series Enrollment - Links students to test series
-model TestSeriesEnrollment {
-  id             Int      @id @default(autoincrement())
-  test_series_id Int
-  student_id     Int
-  enrolled_at    DateTime @default(now())
-
-  test_series TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
-  student     Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
-
-  @@unique([test_series_id, student_id])
-  @@map("test_series_enrollments")
 }
 
 // Test Series Teacher Junction - Links teachers to test series
@@ -663,6 +669,7 @@ model ActivityGroup {
   creator           User                           @relation("ActivityGroupCreator", fields: [created_by], references: [id])
   activities        Activity[]
   teacher_junctions ActivityGroupTeacherJunction[]
+  enrollments       Enrollment[] // Unified
 
   @@map("activity_groups")
 }

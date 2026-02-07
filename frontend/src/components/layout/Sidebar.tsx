@@ -50,6 +50,18 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "TEACHER"],
   },
   {
+    title: "Curriculum",
+    href: "/dashboard/offerings",
+    icon: BookOpen,
+    roles: ["ADMIN", "TEACHER"],
+  },
+  {
+    title: "Curriculum",
+    href: "/dashboard/subjects",
+    icon: BookOpen,
+    roles: ["STUDENT"],
+  },
+  {
     title: "Students",
     href: "/dashboard/students",
     icon: Users,
@@ -62,21 +74,9 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
-    title: "Subjects",
-    href: "/dashboard/subjects",
-    icon: BookOpen,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
-  },
-  {
     title: "Class Sessions",
     href: "/dashboard/class-sessions",
     icon: Video,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
-  },
-  {
-    title: "Attendance",
-    href: "/dashboard/attendance",
-    icon: ClipboardCheck,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
   {
@@ -84,18 +84,6 @@ const navItems: NavItem[] = [
     href: "/tests",
     icon: FileText,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
-  },
-  {
-    title: "Test Series",
-    href: "/dashboard/test-series",
-    icon: Library,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
-  },
-  {
-    title: "Activity Groups",
-    href: "/dashboard/activity-groups",
-    icon: FolderOpen,
-    roles: ["ADMIN"],
   },
   {
     title: "Activities",
@@ -134,33 +122,9 @@ const navItems: NavItem[] = [
     roles: ["STUDENT"],
   },
   {
-    title: "Classes",
-    href: "/dashboard/classes",
-    icon: LayoutDashboard,
-    roles: ["ADMIN"],
-  },
-  {
-    title: "Boards",
-    href: "/dashboard/boards",
-    icon: ClipboardList,
-    roles: ["ADMIN"],
-  },
-  {
     title: "Enrollments",
     href: "/dashboard/enrollments",
     icon: GraduationCap,
-    roles: ["ADMIN"],
-  },
-  {
-    title: "Payments",
-    href: "/dashboard/payments",
-    icon: DollarSign,
-    roles: ["ADMIN"],
-  },
-  {
-    title: "Deletion Requests",
-    href: "/dashboard/admin/deletion-requests",
-    icon: ClipboardCheck,
     roles: ["ADMIN"],
   },
   {

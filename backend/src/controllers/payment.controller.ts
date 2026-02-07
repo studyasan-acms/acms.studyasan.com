@@ -21,7 +21,7 @@ export const getAllPayments = async (req: Request, res: Response) => {
     if (enrollment_id) where.enrollment_id = parseInt(enrollment_id as string);
 
     const [payments, total] = await Promise.all([
-      prisma.enrollmentPayment.findMany({
+      prisma.payment.findMany({
         where,
         skip,
         take: limit,
@@ -34,12 +34,14 @@ export const getAllPayments = async (req: Request, res: Response) => {
                 },
               },
               subject: true,
+              test_series: true,
+              activity_group: true,
             },
           },
         },
         orderBy: { due_date: 'asc' },
       }),
-      prisma.enrollmentPayment.count({ where }),
+      prisma.payment.count({ where }),
     ]);
 
     const response = createPaginatedResponse(payments, total, page, limit);
@@ -53,7 +55,7 @@ export const getPaymentById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const payment = await prisma.enrollmentPayment.findUnique({
+    const payment = await prisma.payment.findUnique({
       where: { id: parseInt(id!) },
       include: {
         enrollment: {
@@ -64,6 +66,8 @@ export const getPaymentById = async (req: Request, res: Response) => {
               },
             },
             subject: true,
+            test_series: true,
+            activity_group: true,
           },
         },
       },
@@ -84,7 +88,7 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { paid_date } = req.body;
 
-    const payment = await prisma.enrollmentPayment.findUnique({
+    const payment = await prisma.payment.findUnique({
       where: { id: parseInt(id!) },
       include: {
         enrollment: {
@@ -95,6 +99,8 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
               },
             },
             subject: true,
+            test_series: true,
+            activity_group: true,
           },
         },
       },
@@ -105,7 +111,7 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
     }
 
     // Update the payment
-    const updatedPayment = await prisma.enrollmentPayment.update({
+    const updatedPayment = await prisma.payment.update({
       where: { id: parseInt(id!) },
       data: {
         is_paid: true,
@@ -120,13 +126,27 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
               },
             },
             subject: true,
+            test_series: true,
+            activity_group: true,
           },
         },
       },
     });
 
     // Cancel corresponding pending notification
-    const notificationTitle = `Payment Due: ${payment.enrollment.subject.name} - ${payment.period}`;
+    let itemName = 'Unknown Item';
+    const enrollment = payment.enrollment;
+
+    if (enrollment.subject) itemName = enrollment.subject.name;
+    else if (enrollment.test_series) itemName = enrollment.test_series.title;
+    else if (enrollment.activity_group) itemName = enrollment.activity_group.name;
+
+    // Fallback if relations are not loaded but type is known (though we loaded them above)
+    if (itemName === 'Unknown Item' && enrollment.type) {
+      itemName = enrollment.type.toString().replace('_', ' ');
+    }
+
+    const notificationTitle = `Payment Due: ${itemName} - ${payment.period}`;
     await NotificationProcessorService.cancelPendingNotifications(
       payment.enrollment.student.user_id,
       notificationTitle
@@ -140,7 +160,7 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
 
 export const getOverduePayments = async (req: Request, res: Response) => {
   try {
-    const overduePayments = await prisma.enrollmentPayment.findMany({
+    const overduePayments = await prisma.payment.findMany({
       where: {
         is_paid: false,
         due_date: {
@@ -156,6 +176,8 @@ export const getOverduePayments = async (req: Request, res: Response) => {
               },
             },
             subject: true,
+            test_series: true,
+            activity_group: true,
           },
         },
       },

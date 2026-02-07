@@ -109,8 +109,13 @@ export const getStudentById = async (req: Request, res: Response) => {
         user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
         class: true,
         board: true,
-        enrollments: { include: { subject: true } },
-        test_series_enrollments: { include: { test_series: true } },
+        enrollments: {
+          include: {
+            subject: true,
+            test_series: true,
+            activity_group: true,
+          },
+        },
         address: { include: { country: true, state: true, city: true } },
         activity_enrollments: {
           include: {
@@ -124,7 +129,6 @@ export const getStudentById = async (req: Request, res: Response) => {
         _count: {
           select: {
             enrollments: true,
-            test_series_enrollments: true,
             activity_enrollments: true,
           },
         },

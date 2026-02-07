@@ -7,6 +7,7 @@ import { AlertTriangle, Trash2, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService, deletionService } from '@/services/api';
 import NotificationSettings from '@/components/NotificationSettings';
+import DeletionRequestsPage from './admin/DeletionRequestsPage';
 
 interface ProfileData {
   id: number;
@@ -98,7 +99,7 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Settings</h1>
 
         <Tabs defaultValue="notifications" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="notifications">
               <Bell className="h-4 w-4 mr-2" />
               Notifications
@@ -109,11 +110,23 @@ export default function SettingsPage() {
                 Delete Account
               </TabsTrigger>
             )}
+            {user?.role === 'ADMIN' && (
+              <TabsTrigger value="deletion-requests">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Deletion Requests
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="notifications">
             <NotificationSettings />
           </TabsContent>
+
+          {user?.role === 'ADMIN' && (
+            <TabsContent value="deletion-requests">
+              <DeletionRequestsPage />
+            </TabsContent>
+          )}
 
           {profileData?.role !== 'ADMIN' && (
             <TabsContent value="danger">
@@ -135,7 +148,7 @@ export default function SettingsPage() {
                           </h4>
                           <p className="text-sm text-yellow-700 mt-1">
                             You have requested to delete your account on{' '}
-                            {profileData.delete_requested_at && 
+                            {profileData.delete_requested_at &&
                               new Date(profileData.delete_requested_at).toLocaleDateString()
                             }.
                             {profileData.delete_verified ? (

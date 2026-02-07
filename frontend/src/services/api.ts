@@ -64,6 +64,7 @@ import type {
   TestSeries,
   TestSeriesTeacherJunction,
   TestSeriesEnrollment,
+  ActivityGroupEnrollment,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -487,6 +488,9 @@ export const enrollmentService = {
     search?: string;
     student_id?: number;
     subject_id?: number;
+    test_series_id?: number;
+    activity_group_id?: number;
+    type?: string;
   }): Promise<PaginatedResponse<Enrollment>> => {
     const response = await api.get<PaginatedResponse<Enrollment>>('/enrollments', {
       params,
@@ -1013,9 +1017,9 @@ export const testSeriesService = {
     await api.delete(`/test-series/${id}`);
   },
 
-  // Enroll in test series (student enrolls self, or admin enrolls a student)
-  enroll: async (id: number, studentId?: number): Promise<{ success: boolean; data: TestSeriesEnrollment }> => {
-    const response = await api.post(`/test-series/${id}/enroll`, studentId ? { student_id: studentId } : {});
+  // Enroll in test series
+  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null }): Promise<{ success: boolean; data: TestSeriesEnrollment }> => {
+    const response = await api.post(`/test-series/${id}/enroll`, data);
     return response.data;
   },
 
@@ -1119,6 +1123,23 @@ export const activityGroupService = {
   // Get teachers by activity group
   getTeachers: async (id: number): Promise<{ success: boolean; data: ActivityGroupTeacherJunction[] }> => {
     const response = await api.get(`/activity-groups/${id}/teachers`);
+    return response.data;
+  },
+
+  // Enroll in activity group
+  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null }): Promise<{ success: boolean; data: ActivityGroupEnrollment }> => {
+    const response = await api.post(`/activity-groups/${id}/enroll`, data);
+    return response.data;
+  },
+
+  // Unenroll from activity group
+  unenroll: async (id: number, studentId?: number): Promise<void> => {
+    await api.delete(`/activity-groups/${id}/enroll`, { data: studentId ? { student_id: studentId } : {} });
+  },
+
+  // Get enrollments for an activity group (admin)
+  getEnrollments: async (id: number): Promise<{ success: boolean; data: ActivityGroupEnrollment[] }> => {
+    const response = await api.get(`/activity-groups/${id}/enrollments`);
     return response.data;
   },
 };

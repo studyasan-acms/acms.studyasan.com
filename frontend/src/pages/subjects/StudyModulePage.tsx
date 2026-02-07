@@ -255,62 +255,44 @@ export default function StudyModulePage() {
   return (
     <div className="min-h-screen bg-white pb-40">
       {/* IMMERSIVE HEADER */}
-      <div className="bg-slate-50 border-b border-slate-100 sticky top-0 z-50 shadow-sm transition-all duration-300 group">
-        <div className="max-w-7xl mx-auto px-6 py-4 md:py-6 relative overflow-hidden">
-          {/* Subtle Background Decoration */}
-          <div className="absolute top-0 right-0 w-64 h-full bg-saBlue/5 blur-[80px] -z-10" />
-
-          <div className="flex items-center justify-between gap-6 relative z-10">
-            <div className="flex items-center gap-4 md:gap-8 pr-4 border-r border-slate-200">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="flex items-center gap-4 min-w-0">
               <Button
                 variant="ghost"
                 onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                className="h-12 w-12 rounded-2xl text-slate-400 hover:text-saBlue hover:bg-saBlue/5 transition-all p-0"
+                className="hover:bg-gray-100 rounded-full h-10 w-10 p-0 text-gray-500"
               >
-                <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                <ArrowLeft className="w-5 h-5" />
               </Button>
-              <div className="hidden sm:block">
-                <h1 className="text-lg md:text-xl font-black text-slate-900 tracking-tight line-clamp-1">{module.title}</h1>
-                <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                    Milestone {currentContentIndex + 1} of {module.content.length}
+
+              <div className="min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 truncate pr-4">{module.title}</h1>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="font-medium">
+                    Part {currentContentIndex + 1} of {module.content.length}
                   </span>
-                  <div className="w-1 h-1 rounded-full bg-slate-200" />
-                  <Badge variant="outline" className="bg-saBlue/5 text-saBlue text-[8px] font-black uppercase tracking-[0.2em] border-saBlue/10">
-                    Interactive Lesson
-                  </Badge>
+                  <span className="text-gray-300">•</span>
+                  <span className="uppercase tracking-wider font-semibold text-[10px]">
+                    {progress?.is_completed ? 'Completed' : 'In Progress'}
+                  </span>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 max-w-lg hidden md:block px-6">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-saBlue animate-pulse" />
-                  <span className="text-[10px] font-black text-saBlue uppercase tracking-widest">Session Progress</span>
-                </div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tabular-nums">{Math.round(progressPercent)}%</span>
+            <div className="hidden md:flex flex-col items-end w-64 flex-shrink-0">
+              <div className="flex items-center justify-between w-full mb-1.5">
+                <span className="text-xs font-medium text-gray-500">Progress</span>
+                <span className="text-xs font-bold text-gray-900">{Math.round(progressPercent)}%</span>
               </div>
-              <Progress value={progressPercent} className="h-2 bg-gray-50 rounded-full" />
+              <Progress value={progressPercent} className="h-2 w-full bg-gray-100" />
             </div>
 
-            <div className="shrink-0 flex items-center gap-4">
-              {progress?.is_completed && (
-                <div className="hidden md:flex items-center gap-2 bg-green-50 px-4 py-2.5 rounded-2xl border border-green-100 text-green-600 animate-in fade-in duration-500">
-                  <CheckCircle className="w-4 h-4 shadow-sm" />
-                  <span className="text-[10px] font-black uppercase tracking-widest">Certified Verified</span>
-                </div>
-              )}
-              <div className="w-12 h-12 bg-saBlue/10 rounded-2xl flex items-center justify-center text-saBlue">
-                <BookOpen className="w-6 h-6" />
-              </div>
+            <div className="md:hidden flex items-center">
+              <span className="text-sm font-bold text-saBlue">{Math.round(progressPercent)}%</span>
             </div>
           </div>
-        </div>
-
-        {/* Responsive Progress Bar for Mobile */}
-        <div className="md:hidden w-full h-1 bg-gray-50">
-          <div className="h-full bg-saBlue transition-all duration-500" style={{ width: `${progressPercent}%` }} />
         </div>
       </div>
 

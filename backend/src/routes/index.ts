@@ -401,6 +401,9 @@ router.get('/test-series', authenticate, testSeriesController.getAllTestSeries);
 // Get my enrolled test series (students)
 router.get('/test-series/my-enrollments', authenticate, testSeriesController.getMyTestSeries);
 
+// Get ALL test series enrollments (global admin)
+router.get('/test-series/enrollments/global', authenticate, authorize('ADMIN'), testSeriesController.getAllGlobalTestSeriesEnrollments);
+
 // Get test series by ID
 router.get('/test-series/:id', authenticate, testSeriesController.getTestSeriesById);
 
@@ -437,6 +440,9 @@ router.get('/test-series/:id/teachers', authenticate, authorize('ADMIN', 'TEACHE
 // Get all activity groups
 router.get('/activity-groups', authenticate, activityGroupController.getAllActivityGroups);
 
+// Get ALL activity group enrollments (global admin)
+router.get('/activity-groups/enrollments/global', authenticate, authorize('ADMIN'), activityGroupController.getAllGlobalActivityGroupEnrollments);
+
 // Get activity group by ID
 router.get('/activity-groups/:id', authenticate, activityGroupController.getActivityGroupById);
 
@@ -448,6 +454,9 @@ router.put('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGro
 
 // Delete activity group
 router.delete('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGroupController.deleteActivityGroup);
+
+// Enroll student in activity group
+router.post('/activity-groups/:id/enroll', authenticate, activityGroupController.enrollStudentInActivityGroup);
 
 // Assign teacher to activity group
 router.post('/activity-groups/assign-teacher', authenticate, authorize('ADMIN'), activityGroupController.assignTeacherToActivityGroup);

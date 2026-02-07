@@ -1,30 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   subjectService,
-  boardService,
-  classService,
 } from "@/services/api";
-import type { Subject, Board, Class } from "@/types";
+import type { Subject } from "@/types";
 import {
   Plus,
-  Eye,
   Edit,
   Trash2,
   ChevronLeft,
   ChevronRight,
   BookOpen,
-  Search,
+  Users,
+  GraduationCap,
+  PlayCircle,
+  Star,
+  BookMarked,
+  Target,
+  Award,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
@@ -37,8 +33,6 @@ export default function SubjectsPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [classes, setClasses] = useState<Class[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteSubject, setDeleteSubject] = useState<Subject | null>(null);
 
@@ -47,12 +41,6 @@ export default function SubjectsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 10;
-
-  // Filters
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedBoard, setSelectedBoard] = useState<string>("");
-  const [selectedType, setSelectedType] = useState<string>("");
 
   /** Fetch subjects */
   const fetchSubjects = useCallback(async () => {
@@ -63,12 +51,6 @@ export default function SubjectsPage() {
         page: currentPage,
         limit,
       };
-
-      if (searchTerm) params.search = searchTerm;
-      if (selectedClass) params.class_id = parseInt(selectedClass);
-      if (selectedBoard) params.board_id = parseInt(selectedBoard);
-      if (selectedType)
-        params.is_course = selectedType === "course" ? true : false;
 
       // Teacher filter
       if (user?.role === "TEACHER" && user.id) {
@@ -92,38 +74,7 @@ export default function SubjectsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    currentPage,
-    searchTerm,
-    selectedClass,
-    selectedBoard,
-    selectedType,
-    user,
-  ]);
-
-  /** Initial fetch: boards & classes */
-  useEffect(() => {
-    const fetchBoards = async () => {
-      try {
-        const res = await boardService.getAll({ limit: 100 });
-        setBoards(res.data.data);
-      } catch (err) {
-        console.error("Failed to fetch boards:", err);
-      }
-    };
-
-    const fetchClasses = async () => {
-      try {
-        const res = await classService.getAll({ limit: 100 });
-        setClasses(res.data.data);
-      } catch (err) {
-        console.error("Failed to fetch classes:", err);
-      }
-    };
-
-    fetchBoards();
-    fetchClasses();
-  }, []);
+  }, [currentPage, user]);
 
   /** Fetch subjects on filter/pagination change */
   useEffect(() => {
@@ -141,267 +92,227 @@ export default function SubjectsPage() {
     }
   };
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleFilterChange = () => setCurrentPage(1);
-
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-10">
-      {/* PREMIUM HEADER SECTION */}
-      <div className="relative overflow-hidden bg-slate-50 rounded-b-[40px] px-6 pt-12 pb-16 border-b border-slate-100 shadow-sm group">
-        {/* Animated Background Elements */}
-        <div className="absolute top-[-20%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
-
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-8 relative z-10">
-          <div className="text-center sm:text-left space-y-2">
-            <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[10px] uppercase font-bold tracking-[0.2em] px-3 py-1 bg-saBlue/5 rounded-full mb-1">
-              Educational Catalog
-            </Badge>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none">
-              Curriculum Hub
-            </h1>
-            <p className="text-slate-500 text-sm font-medium">Explore and manage all educational subjects and specialized courses.</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 pb-10">
+      {/* Simple, Fun Header */}
+      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 py-6 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-gradient-to-br from-saBlue to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <BookOpen className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">My Subjects</h1>
+                <p className="text-sm text-gray-500">Let's learn something awesome today!</p>
+              </div>
+            </div>
+            {isAdmin && (
+              <Button
+                className="bg-gradient-to-r from-saBlue to-cyan-500 hover:from-saBlue/90 hover:to-cyan-600 text-white shadow-lg"
+                onClick={() => navigate("/dashboard/subjects/new")}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Subject
+              </Button>
+            )}
           </div>
-
-          {isAdmin && (
-            <Button
-              className="bg-saBlue hover:bg-saBlue/90 text-white h-14 px-8 font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 shadow-xl shadow-saBlue/20 rounded-2xl group/btn"
-              onClick={() => navigate("/dashboard/subjects/new")}
-            >
-              <Plus className="mr-3 h-4 w-4 group-hover/btn:rotate-90 transition-transform" />
-              Initialize New Subject
-            </Button>
-          )}
         </div>
       </div>
 
-      <div className="px-4 sm:px-6 space-y-6">
-
-        {/* Filters */}
-        <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
-          {/* Search */}
-          <div className="relative flex-1 w-full md:w-auto min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search subjects..."
-              value={searchTerm}
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
-            />
-          </div>
-
-          {/* Dropdowns Container */}
-          <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
-            <select
-              value={selectedClass}
-              onChange={(e) => {
-                setSelectedClass(e.target.value);
-                handleFilterChange();
-              }}
-              className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
-            >
-              <option value="">All Classes</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedBoard}
-              onChange={(e) => {
-                setSelectedBoard(e.target.value);
-                handleFilterChange();
-              }}
-              className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
-            >
-              <option value="">All Boards</option>
-              {boards.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedType}
-              onChange={(e) => {
-                setSelectedType(e.target.value);
-                handleFilterChange();
-              }}
-              className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[100px]"
-            >
-              <option value="">All Types</option>
-              <option value="subject">Subject</option>
-              <option value="course">Course</option>
-            </select>
-          </div>
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        {/* Loading State */}
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-4">
-            <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
-            <p className="text-gray-400 font-bold text-xs tracking-widest uppercase">
-              Loading Subjects...
-            </p>
+            <div className="relative">
+              <div className="w-16 h-16 border-4 border-blue-200 rounded-full"></div>
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+            </div>
+            <p className="text-gray-600 font-medium">Loading your subjects...</p>
           </div>
         ) : subjects.length === 0 ? (
-          <div className="py-20 flex flex-col items-center text-center">
-            <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-              <BookOpen className="w-8 h-8 text-gray-300" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-600">No subjects found</h3>
-            <p className="text-gray-400 text-xs mt-1">
-              Try adjusting your filters
-            </p>
-          </div>
+          <Card className="py-16 text-center bg-white/60 backdrop-blur-sm border-2 border-dashed border-gray-300">
+            <CardContent>
+              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-10 h-10 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-bold text-gray-700 mb-2">No subjects found</h3>
+              <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+            </CardContent>
+          </Card>
         ) : (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm animate-in fade-in duration-500 overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
-                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 min-w-[200px]">
-                      Subject Name
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden md:table-cell">
-                      Class & Board
-                    </TableHead>
-                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px] hidden md:table-cell">
-                      Type
-                    </TableHead>
-                    {user?.role !== "STUDENT" && (
-                      <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px] hidden lg:table-cell">
-                        Enrollments
-                      </TableHead>
-                    )}
-                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {subjects.map((subject) => (
-                    <TableRow
-                      key={subject.id}
-                      className="hover:bg-blue-50/30 border-b-gray-50 transition-colors"
-                    >
-                      <TableCell className="pl-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-saBlue">
-                            <BookOpen className="h-5 w-5" />
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-gray-800 text-sm leading-tight">
-                              {subject.name}
-                            </span>
-                            <span className="text-[10px] text-gray-400">
-                              {subject._count?.teacher_subject_junctions || 0} Teachers
-                            </span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <div className="flex flex-col gap-1">
-                          <Badge variant="outline" className="w-fit text-[10px] border-blue-100 text-saBlue bg-blue-50/50">
-                            {subject.class?.name || "No Class"}
-                          </Badge>
-                          <span className="text-[10px] text-gray-400 ml-1">{subject.board?.name || 'No Board'}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="secondary" className="text-[10px] font-medium bg-gray-100 text-gray-600">
-                          {subject.is_course ? "Course" : "Subject"}
-                        </Badge>
-                      </TableCell>
-                      {user?.role !== "STUDENT" && (
-                        <TableCell className="hidden lg:table-cell">
-                          <div className="flex items-center space-x-1">
-                            <div className="h-6 w-16 bg-gray-50 rounded-full flex items-center justify-center border border-gray-100">
-                              <span className="text-[10px] font-bold text-gray-600">{subject._count?.enrollments || 0}</span>
-                            </div>
-                            <span className="text-[10px] text-gray-400">students</span>
-                          </div>
-                        </TableCell>
-                      )}
-                      <TableCell className="text-right pr-6">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-gray-400 hover:text-saBlue"
-                            onClick={() =>
-                              navigate(`/dashboard/subjects/${subject.id}`)
-                            }
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {isAdmin && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-gray-400 hover:text-saVividOrange"
-                                onClick={() =>
-                                  navigate(
-                                    `/dashboard/subjects/${subject.id}/edit`
-                                  )
-                                }
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-gray-400 hover:text-red-600"
-                                onClick={() => setDeleteSubject(subject)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
+          <>
+            {/* Subject Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {subjects.map((subject, index) => {
+                const colors = [
+                  { bg: "from-blue-500 to-cyan-500", badge: "bg-blue-100 text-blue-700 border-blue-200" },
+                  { bg: "from-cyan-500 to-teal-500", badge: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+                  { bg: "from-orange-500 to-amber-500", badge: "bg-orange-100 text-orange-700 border-orange-200" },
+                  { bg: "from-green-500 to-emerald-500", badge: "bg-green-100 text-green-700 border-green-200" },
+                  { bg: "from-saBlue to-blue-600", badge: "bg-blue-100 text-blue-700 border-blue-200" },
+                ];
+                const colorScheme = colors[index % colors.length];
 
-        {/* Pagination Styled */}
-        {subjects.length > 0 && (
-          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              {Math.min(currentPage * limit, total)} of {total} Subjects
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage((p) => p - 1)}
-                className="h-8 text-xs font-medium rounded-lg"
-              >
-                <ChevronLeft className="w-3 h-3 mr-1" /> Prev
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage((p) => p + 1)}
-                className="h-8 text-xs font-medium rounded-lg"
-              >
-                Next <ChevronRight className="w-3 h-3 ml-1" />
-              </Button>
+                return (
+                  <Card
+                    key={subject.id}
+                    className="group hover:shadow-2xl transition-all duration-300 overflow-hidden bg-white border-2 border-gray-100 hover:border-gray-200 cursor-pointer"
+                    onClick={() => navigate(`/dashboard/subjects/${subject.id}`)}
+                  >
+                    {/* Card Header with Gradient */}
+                    <div className={`h-32 bg-gradient-to-br ${colorScheme.bg} relative overflow-hidden`}>
+                      <div className="absolute inset-0 bg-black/10"></div>
+                      <div className="absolute top-3 right-3 flex gap-2">
+                        {subject.is_course && (
+                          <Badge className="bg-white/90 text-gray-800 border-0 shadow-lg">
+                            <Star className="h-3 w-3 mr-1" />
+                            Course
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <h3 className="text-xl font-bold text-white drop-shadow-lg line-clamp-2">
+                          {subject.name}
+                        </h3>
+                      </div>
+                      {/* Decorative circles */}
+                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"></div>
+                      <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/10 rounded-full"></div>
+                    </div>
+
+                    <CardContent className="p-5 space-y-4">
+                      {/* Class and Board Info */}
+                      <div className="flex gap-2 flex-wrap">
+                        <Badge variant="outline" className={colorScheme.badge}>
+                          <GraduationCap className="h-3 w-3 mr-1" />
+                          {subject.class?.name || "No Class"}
+                        </Badge>
+                        {subject.board && (
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200">
+                            {subject.board.name}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Quick Stats */}
+                      <div className="flex items-center justify-between text-sm">
+                        {user?.role !== "STUDENT" ? (
+                          <>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Users className="h-4 w-4" />
+                              <span className="font-medium">
+                                {subject._count?.enrollments || 0} students
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Target className="h-4 w-4" />
+                              <span className="font-medium">
+                                {subject._count?.teacher_subject_junctions || 0} teachers
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Award className="h-4 w-4" />
+                            <span className="font-medium">Start Learning</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Quick Actions */}
+                      <div className="pt-3 border-t border-gray-100 space-y-2">
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 group/btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/subjects/${subject.id}/modules`);
+                          }}
+                        >
+                          <BookMarked className="h-4 w-4 mr-2 group-hover/btn:scale-110 transition-transform" />
+                          View Modules
+                        </Button>
+
+                        <Button
+                          className={`w-full bg-gradient-to-r ${colorScheme.bg} text-white hover:opacity-90`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/dashboard/subjects/${subject.id}/student-modules`);
+                          }}
+                        >
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                          Start Learning
+                        </Button>
+
+                        {/* Admin Actions */}
+                        {isAdmin && (
+                          <div className="flex gap-2 pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/dashboard/subjects/${subject.id}/edit`);
+                              }}
+                            >
+                              <Edit className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteSubject(subject);
+                              }}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
-          </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between pt-4">
+              <p className="text-sm text-gray-600 font-medium">
+                Showing {Math.min(currentPage * limit, total)} of {total} subjects
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="rounded-lg"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+                </Button>
+                <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-lg border-2 border-gray-200">
+                  <span className="text-sm font-medium text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="rounded-lg"
+                >
+                  Next <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Delete Confirmation Modal */}

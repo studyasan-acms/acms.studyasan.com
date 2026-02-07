@@ -372,13 +372,22 @@ export default function ClassSessionsPage() {
           </p>
         </div>
         {canManage && (
-          <Button
-            className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm"
-            onClick={() => navigate('/dashboard/class-sessions/create')}
-          >
-            <Plus className="w-3.5 h-3.5 mr-2" />
-            New Class
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              className="h-10 px-5 font-bold text-[10px] uppercase tracking-wider border-saBlue text-saBlue hover:bg-saBlue/10 transition-all"
+              onClick={() => navigate('/dashboard/attendance')}
+            >
+              Attendance
+            </Button>
+            <Button
+              className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+              onClick={() => navigate('/dashboard/class-sessions/create')}
+            >
+              <Plus className="w-3.5 h-3.5 mr-2" />
+              New Class
+            </Button>
+          </div>
         )}
       </div>
 

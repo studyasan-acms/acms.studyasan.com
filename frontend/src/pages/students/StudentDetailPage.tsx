@@ -143,7 +143,7 @@ export default function StudentDetailPage() {
 
     // Check if already enrolled
     // @ts-ignore
-    const alreadyEnrolled = student.enrollments?.some(e => e.subject.id === selectedSubjectId);
+    const alreadyEnrolled = student.enrollments?.some(e => e.type === 'SUBJECT' && e.subject?.id === selectedSubjectId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this subject');
       return;
@@ -170,14 +170,14 @@ export default function StudentDetailPage() {
     if (!selectedTestSeriesId || !student) return;
 
     // Check if already enrolled
-    const alreadyEnrolled = student.test_series_enrollments?.some(e => e.test_series.id === selectedTestSeriesId);
+    const alreadyEnrolled = student.enrollments?.some(e => e.type === 'TEST_SERIES' && e.test_series?.id === selectedTestSeriesId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this test series');
       return;
     }
 
     try {
-      await testSeriesService.enroll(selectedTestSeriesId, student.id);
+      await testSeriesService.enroll(selectedTestSeriesId, { student_id: student.id });
       setShowTestSeriesModal(false);
       setSelectedTestSeriesId(null);
       fetchStudent(student.id); // Refresh data
@@ -192,7 +192,7 @@ export default function StudentDetailPage() {
     if (!selectedActivityGroupId || !student) return;
 
     // Check if already enrolled
-    const alreadyEnrolled = student.activity_enrollments?.some(e => e.activity.group.id === selectedActivityGroupId);
+    const alreadyEnrolled = student.enrollments?.some(e => e.type === 'ACTIVITY_GROUP' && e.activity_group?.id === selectedActivityGroupId);
     if (alreadyEnrolled) {
       alert('Student is already enrolled in this activity group');
       return;
@@ -448,13 +448,13 @@ export default function StudentDetailPage() {
                 {/* Subjects */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Subjects ({student._count?.enrollments || 0})</h4>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Subjects ({student.enrollments?.filter(e => e.type === 'SUBJECT').length || 0})</h4>
                     <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openSubjectModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
-                    {student.enrollments && student.enrollments.length > 0 ? (
+                    {student.enrollments && student.enrollments.filter(e => e.type === 'SUBJECT').length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {student.enrollments.map(e => (
+                        {student.enrollments.filter(e => e.type === 'SUBJECT').map(e => (
                           <Badge key={e.id} variant="secondary" className="bg-white border-gray-200 text-gray-700 shadow-sm">
                             {e.subject?.name}
                           </Badge>
@@ -467,13 +467,13 @@ export default function StudentDetailPage() {
                 {/* Test Series */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Test Series ({student._count?.test_series_enrollments || 0})</h4>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Test Series ({student.enrollments?.filter(e => e.type === 'TEST_SERIES').length || 0})</h4>
                     <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openTestSeriesModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
-                    {(student.test_series_enrollments || []).length > 0 ? (
+                    {(student.enrollments?.filter(e => e.type === 'TEST_SERIES') || []).length > 0 ? (
                       <ul className="space-y-1.5">
-                        {(student.test_series_enrollments || []).map(e => (
+                        {(student.enrollments?.filter(e => e.type === 'TEST_SERIES') || []).map(e => (
                           <li key={e.id} className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-saVividOrange flex-shrink-0"></div>
                             <span className="truncate" title={e.test_series?.title}>{e.test_series?.title}</span>
@@ -487,17 +487,16 @@ export default function StudentDetailPage() {
                 {/* Activity Groups */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Activity Groups ({student._count?.activity_enrollments || 0})</h4>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Activity Groups ({student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP').length || 0})</h4>
                     <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openActivityGroupModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
-                    {(student.activity_enrollments || []).length > 0 ? (
+                    {(student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP') || []).length > 0 ? (
                       <ul className="space-y-1.5">
-                        {/* Group enrollments by activity group to avoid duplicates if backend returns per-activity */}
-                        {Array.from(new Set(student.activity_enrollments?.map(e => e.activity?.group?.name).filter(Boolean))).map((groupName, idx) => (
-                          <li key={idx} className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
+                        {(student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP') || []).map(e => (
+                          <li key={e.id} className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0"></div>
-                            <span className="truncate" title={groupName}>{groupName}</span>
+                            <span className="truncate" title={e.activity_group?.name}>{e.activity_group?.name}</span>
                           </li>
                         ))}
                       </ul>

@@ -112,6 +112,7 @@ import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
 
 // Admin imports
 import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
+import CurriculumPage from '@/pages/admin/CurriculumPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -245,6 +246,9 @@ function App() {
           <Route path="subjects/:subjectId/student-modules" element={<StudentModulesPage />} />
           <Route path="subjects/:subjectId/modules/:moduleId/study" element={<StudyModulePage />} />
           <Route path="subjects/:subjectId/progress" element={<SubjectProgressPage />} />
+
+          {/* New Curriculum Management Route */}
+          <Route path="offerings" element={<CurriculumPage />} />
 
           {/* Enrollment Routes */}
           <Route path="enrollments" element={<EnrollmentsPage />} />

@@ -17,94 +17,38 @@ import ItemDetailModal from '@/components/home/ItemDetailModal';
 import { toast } from 'sonner';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-// Slider Component
-const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
+// Grid Component
+const ItemGrid = ({ title, items, icon: Icon, onItemClick }: {
     title: string;
     items: any[];
     icon: React.ElementType;
     onItemClick: (item: any) => void;
 }) => {
-    const scrollLeft = () => {
-        const container = document.getElementById(`slider-${title}`);
-        if (container) container.scrollLeft -= 200;
-    };
-
-    const scrollRight = () => {
-        const container = document.getElementById(`slider-${title}`);
-        if (container) container.scrollLeft += 200;
-    };
-
     return (
-        <div className="space-y-3 md:space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <Icon className="h-4 w-4 md:h-5 md:w-5 text-saBlue" />
-                    <h2 className="text-lg md:text-xl font-semibold text-gray-700">{title}</h2>
+        <div className="space-y-4 md:space-y-6">
+            <div className="flex items-center space-x-3 border-b pb-4 border-gray-100">
+                <div className="p-2 bg-blue-50 rounded-lg">
+                    <Icon className="h-5 w-5 md:h-6 md:w-6 text-saBlue" />
                 </div>
-                {items.length > 3 && (
-                    <div className="hidden md:flex space-x-1 md:space-x-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={scrollLeft}
-                            className="p-1 h-7 w-7 md:h-9 md:w-9"
-                        >
-                            <ChevronLeft className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={scrollRight}
-                            className="p-1 h-7 w-7 md:h-9 md:w-9"
-                        >
-                            <ChevronRight className="h-3 w-3 md:h-4 md:w-4" />
-                        </Button>
-                    </div>
-                )}
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800 tracking-tight">{title}</h2>
             </div>
-
-            {/* Mobile: Grid layout, Desktop: Horizontal scroll */}
-            <div className="block md:hidden">
-                {items.length === 0 ? (
-                    <div className="flex items-center justify-center w-full py-6">
-                        <p className="text-gray-400 text-sm">No {title.toLowerCase()} available</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.slice(0, 6).map((item) => (
-                            <div key={`${item.type}-${item.id}`} className="w-full">
-                                <HomeItemCard
-                                    item={item}
-                                    onClick={() => onItemClick(item)}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="hidden md:block">
-                <div
-                    id={`slider-${title}`}
-                    className="flex space-x-2 md:space-x-4 overflow-x-auto scrollbar-hide pb-4"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {items.length === 0 ? (
-                        <div className="flex items-center justify-center w-full py-6 md:py-8">
-                            <p className="text-gray-400 text-sm md:text-base">No {title.toLowerCase()} available</p>
+            {items.length === 0 ? (
+                <div className="flex flex-col items-center justify-center w-full py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    <Icon className="h-10 w-10 text-gray-300 mb-3" />
+                    <p className="text-gray-400 font-medium">No {title.toLowerCase()} available at the moment</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {items.map((item) => (
+                        <div key={`${item.type}-${item.id}`} className="transform hover:-translate-y-1 transition-transform duration-300">
+                            <HomeItemCard
+                                item={item}
+                                onClick={() => onItemClick(item)}
+                            />
                         </div>
-                    ) : (
-                        items.map((item) => (
-                            <div key={`${item.type}-${item.id}`} className="flex-shrink-0 w-40 sm:w-48 md:w-64">
-                                <HomeItemCard
-                                    item={item}
-                                    onClick={() => onItemClick(item)}
-                                />
-                            </div>
-                        ))
-                    )}
+                    ))}
                 </div>
-            </div>
+            )}
         </div>
     );
 };
@@ -281,21 +225,21 @@ export default function StudentHomePage() {
                 </div>
             </div>
 
-            {/* Sliders */}
+            {/* Grids */}
             <div className="space-y-4 md:space-y-8">
-                <ItemSlider
+                <ItemGrid
                     title="Subjects & Courses"
                     items={subjectsAndCourses}
                     icon={BookOpen}
                     onItemClick={handleItemClick}
                 />
-                <ItemSlider
+                <ItemGrid
                     title="Activity Groups"
                     items={activityGroups}
                     icon={Activity}
                     onItemClick={handleItemClick}
                 />
-                <ItemSlider
+                <ItemGrid
                     title="Test Series"
                     items={testSeries}
                     icon={Trophy}
