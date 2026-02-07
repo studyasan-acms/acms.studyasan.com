@@ -354,7 +354,7 @@ export interface Subject {
 
 export interface CreateSubjectData {
   name: string;
-  cover_image: string | null;
+  cover_image: string | File | null;
   class_id: number | null;
   board_id: number | null;
   syllabus: any;
@@ -365,7 +365,7 @@ export interface CreateSubjectData {
 
 export interface UpdateSubjectData {
   name?: string;
-  cover_image?: string | null;
+  cover_image?: string | File | null;
   class_id?: number | null;
   board_id?: number | null;
   syllabus?: any;

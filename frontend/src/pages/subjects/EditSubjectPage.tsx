@@ -12,16 +12,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
 import { subjectService, boardService, classService, currencyService } from '@/services/api';
 import type { Board, Class, Subject, UpdateSubjectData, Currency } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-
-import { ArrowLeft, Loader2, Save, Plus, Trash2 } from 'lucide-react';
-
+import { ArrowLeft, Loader2, Save, Plus, Trash2, Camera, UploadCloud, BookOpen, Globe, Users, Coins } from 'lucide-react';
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { resolveImageUrl } from '@/lib/utils';
 
 export default function EditSubjectPage() {
   usePageTitle("Edit Subject");
@@ -44,6 +42,10 @@ export default function EditSubjectPage() {
   const [syllabusUnits, setSyllabusUnits] = useState<{ name: string; content: string }[]>([]);
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitContent, setNewUnitContent] = useState('');
+
+  // Image upload state
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState<UpdateSubjectData>({
     name: '',
@@ -86,6 +88,10 @@ export default function EditSubjectPage() {
         price: data.price ?? null,
         currency_id: data.currency_id ?? null,
       });
+
+      if (data.cover_image) {
+        setImagePreview(resolveImageUrl(data.cover_image) || '');
+      }
 
       if (data.syllabus?.units) {
         setSyllabusUnits(data.syllabus.units);
@@ -135,6 +141,29 @@ export default function EditSubjectPage() {
     setSyllabusUnits((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError('Image must be less than 5MB');
+        return;
+      }
+
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        setError('Please select a valid image file (JPEG, PNG, WebP)');
+        return;
+      }
+
+      setCoverImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -147,11 +176,13 @@ export default function EditSubjectPage() {
       const syllabusData =
         syllabusUnits.length > 0 ? { units: syllabusUnits } : null;
 
-      await subjectService.update(Number(id), {
+      const submitData: UpdateSubjectData = {
         ...formData,
         syllabus: syllabusData,
-      });
+        cover_image: coverImageFile || formData.cover_image // Use new file if uploaded, otherwise keep old URL/value
+      };
 
+      await subjectService.update(Number(id), submitData);
       setSuccess('Subject updated successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update subject');
@@ -167,19 +198,27 @@ export default function EditSubjectPage() {
     }));
   };
 
+  const FormLabel = ({ children, icon: Icon, required }: { children: React.ReactNode, icon?: any, required?: boolean }) => (
+    <Label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      {Icon && <Icon className="w-3.5 h-3.5" />}
+      {children}
+      {required && <span className="text-red-500 text-lg leading-none ml-0.5">*</span>}
+    </Label>
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
       </div>
     );
   }
 
   if (!subject) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <p className="text-lg font-medium">Subject not found</p>
-        <Button onClick={() => navigate('/dashboard/subjects')} className="mt-4">
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <p className="text-lg font-medium text-gray-600">Subject not found</p>
+        <Button onClick={() => navigate('/dashboard/subjects')} className="mt-4 rounded-xl">
           Back to Subjects
         </Button>
       </div>
@@ -187,151 +226,172 @@ export default function EditSubjectPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col space-y-2">
+    <div className="max-w-4xl mx-auto space-y-8 pb-10">
+      {/* --------------------------- HEADER --------------------------- */}
+      <div className="flex flex-col space-y-4">
         <Link
           to="/dashboard/subjects"
-          className="flex items-center text-blue-600 text-sm hover:underline w-fit"
+          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-sm font-medium"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
           Back to Subjects
         </Link>
 
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Edit Subject</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Update information for {subject.name}
-          </p>
+          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Edit Subject</h1>
+          <p className="text-gray-500 mt-1">Update information and curriculum for {subject.name}</p>
         </div>
       </div>
 
-      {/* FORM */}
-      <form onSubmit={handleSubmit}>
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Basic Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Basic Information</CardTitle>
-              <CardDescription>Subject details</CardDescription>
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Cover Image Card */}
+          <Card className="md:col-span-1 rounded-3xl border-gray-100 shadow-sm overflow-hidden text-center">
+            <CardHeader className="pb-4 items-start">
+              <FormLabel icon={Camera}>Cover Image</FormLabel>
             </CardHeader>
+            <CardContent>
+              <div
+                className="relative group cursor-pointer w-full aspect-video rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex items-center justify-center transition-all hover:border-saBlue/50 hover:bg-gray-100/50"
+                onClick={() => document.getElementById('cover-image-upload')?.click()}
+              >
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="flex flex-col items-center text-gray-400">
+                    <UploadCloud className="w-8 h-8 mb-2" />
+                    <span className="text-[10px] font-semibold uppercase tracking-wider">Upload Image</span>
+                  </div>
+                )}
 
-            <CardContent className="space-y-4">
-              {/* Name */}
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-600">
-                  Subject Name *
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                    handleChange('name', e.target.value)
-                  }
-                  required
-                  disabled={isSaving}
-                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Camera className="text-white w-6 h-6" />
+                </div>
               </div>
 
-              {/* Cover Image */}
-              <div className="space-y-2">
-                <Label htmlFor="cover_image" className="text-gray-600">
-                  Cover Image URL
-                </Label>
-                <Input
-                  id="cover_image"
-                  type="url"
-                  value={formData.cover_image ?? ''}
-                  onChange={(e) => handleChange('cover_image', e.target.value || null)}
-                  disabled={isSaving}
-                />
-              </div>
-
-              {/* Type */}
-              <div className="space-y-2">
-                <Label className="text-gray-600">Type</Label>
-                <Select
-                  value={formData.is_course ? 'course' : 'subject'}
-                  onValueChange={(value) => handleChange('is_course', value === 'course')}
-                  disabled={isSaving}
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-saBlue hover:bg-blue-50 text-xs font-bold"
+                  onClick={() => document.getElementById('cover-image-upload')?.click()}
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="subject">Subject</SelectItem>
-                    <SelectItem value="course">Course</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Courses are standalone; subjects require class & board.
+                  Change Image
+                </Button>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  JPG, PNG, WEBP (Max 5MB)
                 </p>
               </div>
 
-              {isAdmin && (
-                <>
-                  {/* Price */}
-                  <div className="space-y-2">
-                    <Label htmlFor="price" className="text-gray-600">
-                      Price
-                    </Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.price ?? ''}
-                      onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
-                      disabled={isSaving}
-                    />
-                  </div>
-
-                  {/* Currency */}
-                  <div className="space-y-2">
-                    <Label htmlFor="currency_id" className="text-gray-600">
-                      Currency
-                    </Label>
-                    <Select
-                      value={formData.currency_id?.toString() ?? ''}
-                      onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
-                      disabled={isSaving}
-                    >
-                      <SelectTrigger id="currency_id">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currencies.map((currency) => (
-                          <SelectItem key={currency.id} value={currency.id.toString()}>
-                            {currency.name} ({currency.code})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              )}
+              <input
+                id="cover-image-upload"
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </CardContent>
           </Card>
 
-          {/* Classification */}
-          <Card>
+          {/* Basic Information Card */}
+          <Card className="md:col-span-2 rounded-3xl border-gray-100 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Classification</CardTitle>
-              <CardDescription>Class and board assignment</CardDescription>
+              <CardTitle className='text-xl text-gray-700'>Basic Information</CardTitle>
+              <CardDescription>Essential details about the subject</CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Class */}
               <div className="space-y-2">
-                <Label className="text-gray-600">Class</Label>
+                <FormLabel icon={BookOpen} required>Subject Name</FormLabel>
+                <Input
+                  id="name"
+                  placeholder="e.g. Mathematics"
+                  value={formData.name}
+                  onChange={(e) => handleChange('name', e.target.value)}
+                  required
+                  disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <FormLabel>Type</FormLabel>
+                  <Select
+                    value={formData.is_course ? 'course' : 'subject'}
+                    onValueChange={(value) => handleChange('is_course', value === 'course')}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger id="is_course" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="subject">Subject</SelectItem>
+                      <SelectItem value="course">Course</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <FormLabel icon={Coins}>Price</FormLabel>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="0.00"
+                    value={formData.price ?? ''}
+                    onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
+                    disabled={isSaving}
+                    className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              {formData.price !== null && (
+                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <FormLabel>Currency</FormLabel>
+                  <Select
+                    value={formData.currency_id?.toString() ?? ''}
+                    onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
+                    disabled={isSaving}
+                  >
+                    <SelectTrigger id="currency_id" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map((currency) => (
+                        <SelectItem key={currency.id} value={currency.id.toString()}>
+                          {currency.name} ({currency.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Classification Card */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
+          <CardHeader>
+            <CardTitle className='text-xl text-gray-700'>Classification</CardTitle>
+            <CardDescription>Academic assignment for better organization</CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-2">
+                <FormLabel icon={Users}>Class</FormLabel>
                 <Select
-                  value={formData.class_id?.toString() ?? 'none'}
-                  onValueChange={(v) =>
-                    handleChange('class_id', v === 'none' ? null : Number(v))
+                  value={formData.class_id?.toString() || 'none'}
+                  onValueChange={(value) =>
+                    handleChange('class_id', value === 'none' ? null : parseInt(value))
                   }
                   disabled={isSaving || formData.is_course}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="class" className="h-11 rounded-xl bg-gray-50 border-gray-200">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,25 +403,18 @@ export default function EditSubjectPage() {
                     ))}
                   </SelectContent>
                 </Select>
-
-                {formData.is_course && (
-                  <p className="text-xs text-muted-foreground">
-                    Class not required for courses
-                  </p>
-                )}
               </div>
 
-              {/* Board */}
               <div className="space-y-2">
-                <Label className="text-gray-600">Board</Label>
+                <FormLabel icon={Globe}>Board</FormLabel>
                 <Select
-                  value={formData.board_id?.toString() ?? 'none'}
-                  onValueChange={(v) =>
-                    handleChange('board_id', v === 'none' ? null : Number(v))
+                  value={formData.board_id?.toString() || 'none'}
+                  onValueChange={(value) =>
+                    handleChange('board_id', value === 'none' ? null : parseInt(value))
                   }
                   disabled={isSaving || formData.is_course}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger id="board" className="h-11 rounded-xl bg-gray-50 border-gray-200">
                     <SelectValue placeholder="Select board" />
                   </SelectTrigger>
                   <SelectContent>
@@ -373,93 +426,109 @@ export default function EditSubjectPage() {
                     ))}
                   </SelectContent>
                 </Select>
-
-                {formData.is_course && (
-                  <p className="text-xs text-muted-foreground">
-                    Board not required for courses
-                  </p>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Syllabus */}
-        <Card className="mt-6">
+        {/* Syllabus Card */}
+        <Card className="rounded-3xl border-gray-100 shadow-sm">
           <CardHeader>
-            <CardTitle className="text-xl text-gray-600">Syllabus</CardTitle>
-            <CardDescription>Add or modify syllabus units</CardDescription>
+            <CardTitle className='text-xl text-gray-700'>Syllabus</CardTitle>
+            <CardDescription>Define the curriculum and learning units</CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-4">
-            <div className="grid gap-2 md:grid-cols-2">
-              <Input
-                placeholder="Unit name"
-                value={newUnitName}
-                onChange={(e) => setNewUnitName(e.target.value)}
-                disabled={isSaving}
-              />
-              <Input
-                placeholder="Unit content"
-                value={newUnitContent}
-                onChange={(e) => setNewUnitContent(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addUnit()}
-                disabled={isSaving}
-              />
+          <CardContent className="space-y-6">
+            <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <FormLabel>Unit Name</FormLabel>
+                  <Input
+                    placeholder="e.g. Algebra Basics"
+                    value={newUnitName}
+                    onChange={(e) => setNewUnitName(e.target.value)}
+                    disabled={isSaving}
+                    className="bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <FormLabel>Content Description</FormLabel>
+                  <Input
+                    placeholder="Brief overview of the unit"
+                    value={newUnitContent}
+                    onChange={(e) => setNewUnitContent(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addUnit()}
+                    disabled={isSaving}
+                    className="bg-white"
+                  />
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                onClick={addUnit}
+                disabled={!newUnitName.trim() || !newUnitContent.trim() || isSaving}
+                variant="outline"
+                className="w-full h-11 rounded-xl border-saBlue/20 text-saBlue hover:bg-saBlue/5 font-semibold text-xs uppercase tracking-wider"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Syllabus Unit
+              </Button>
             </div>
 
-            <Button
-              type="button"
-              onClick={addUnit}
-              disabled={!newUnitName.trim() || !newUnitContent.trim() || isSaving}
-              variant="outline"
-              className="w-full"
-            >
-              <Plus className="h-4 w-4 mr-2" /> Add Unit
-            </Button>
-
             {syllabusUnits.length > 0 ? (
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {syllabusUnits.map((unit, index) => (
-                  <div key={index} className="flex items-start gap-2 p-3 bg-muted rounded-md">
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{unit.name}</div>
-                      <div className="text-sm text-muted-foreground">{unit.content}</div>
+              <div className="space-y-3">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Current Curriculum</p>
+                <div className="space-y-2 max-h-80 overflow-y-auto px-1 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
+                  {syllabusUnits.map((unit, index) => (
+                    <div key={index} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 group hover:border-saBlue/30 hover:shadow-sm transition-all">
+                      <div className="w-8 h-8 rounded-full bg-saBlue/10 flex items-center justify-center text-saBlue text-xs font-bold shrink-0">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-gray-700 text-sm truncate">{unit.name}</div>
+                        <div className="text-xs text-gray-400 truncate mt-0.5">{unit.content}</div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => removeUnit(index)}
+                        className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                        disabled={isSaving}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeUnit(index)}
-                      className="text-destructive"
-                      disabled={isSaving}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No units added yet. Add units above.
-              </p>
+              <div className="text-center py-10 bg-gray-50/30 rounded-2xl border border-dashed border-gray-200">
+                <BookOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                <p className="text-sm text-gray-400">No units added yet. Define your first unit above.</p>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* Actions */}
-        <div className="flex justify-end space-x-4 mt-6">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             onClick={() => navigate('/dashboard/subjects')}
+            className="w-full sm:w-auto h-12 rounded-xl text-gray-500 hover:text-gray-700 font-medium"
             disabled={isSaving}
           >
             Cancel
           </Button>
 
-          <Button type="submit" disabled={isSaving}>
+          <Button
+            type="submit"
+            disabled={isSaving}
+            className="w-full sm:w-auto h-12 rounded-xl bg-saBlue hover:bg-saBlue/90 shadow-lg shadow-saBlue/30 min-w-[180px] font-bold uppercase tracking-wider text-xs"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -475,20 +544,20 @@ export default function EditSubjectPage() {
         </div>
       </form>
 
-      {/* Modals */}
+      {/* ------------------------ MODALS ------------------------ */}
       <ErrorModal
         open={!!error}
-        title="Error"
+        title="Form Error"
         description={error}
-        okText="Close"
+        okText="Got it"
         onConfirm={() => setError('')}
       />
 
       <SuccessModal
         open={!!success}
-        title="Success"
+        title="Subject Updated"
         description={success}
-        okText="OK"
+        okText="Done"
         onConfirm={() => {
           setSuccess('');
           navigate('/dashboard/subjects');
