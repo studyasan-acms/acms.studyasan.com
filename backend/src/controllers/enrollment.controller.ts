@@ -4,6 +4,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { NotificationProcessorService } from '../services/notificationProcessor.service.js';
 import { sendNotificationAllChannels } from '../services/notification.service.js';
+import { createOneTimePayment } from '../utils/payment.utils.js';
 
 const prisma = new PrismaClient();
 
@@ -93,7 +94,7 @@ export const getEnrollmentById = async (req: Request, res: Response) => {
 
 export const createEnrollment = async (req: Request, res: Response) => {
   try {
-    const { student_id, subject_id, price, is_recurring, frequency, end_date } = req.body;
+    const { student_id, subject_id, price, is_recurring, frequency, end_date, one_time_amount } = req.body;
 
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
@@ -147,9 +148,17 @@ export const createEnrollment = async (req: Request, res: Response) => {
       },
     });
 
-    // If this is a paid enrollment with recurring payments, create payment schedule
-    if (price && is_recurring && frequency) {
+    // If this is a paid enrollment, create payment schedule or one-time payment
+    if (is_recurring && price && frequency) {
       await createPaymentSchedule(enrollment.id, price, frequency, end_date ? new Date(end_date) : null, student.user_id, subject);
+    } else if (!is_recurring && one_time_amount) {
+      await createOneTimePayment({
+        enrollmentId: enrollment.id,
+        amount: one_time_amount,
+        userId: student.user_id,
+        itemName: subject.name,
+        type: 'SUBJECT',
+      });
     }
 
     sendSuccess(res, enrollment, 'Enrollment created successfully', 201);

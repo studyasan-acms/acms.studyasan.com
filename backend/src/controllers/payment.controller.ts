@@ -13,12 +13,30 @@ export const getAllPayments = async (req: Request, res: Response) => {
       req.query.limit as string
     );
 
-    const { is_paid, enrollment_id } = req.query;
+    const { is_paid, enrollment_id, status } = req.query;
 
     const where: any = {};
 
     if (is_paid !== undefined) where.is_paid = is_paid === 'true';
     if (enrollment_id) where.enrollment_id = parseInt(enrollment_id as string);
+
+    // Handle status-based filtering
+    if (status) {
+      const now = new Date();
+      switch (status) {
+        case 'paid':
+          where.is_paid = true;
+          break;
+        case 'pending':
+          where.is_paid = false;
+          where.due_date = { gte: now };
+          break;
+        case 'overdue':
+          where.is_paid = false;
+          where.due_date = { lt: now };
+          break;
+      }
+    }
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({

@@ -36,7 +36,7 @@ const NewChatPage = () => {
     try {
       // Get student's enrollments
       const enrollmentsResponse = await enrollmentService.getAll({ student_id: user?.id });
-      const enrolledSubjectIds = enrollmentsResponse.data.data.map((e: Enrollment) => e.subject_id);
+      const enrolledSubjectIds = enrollmentsResponse.data.data.map((e: Enrollment) => e.subject_id).filter(id => id !== null);
 
       if (enrolledSubjectIds.length > 0) {
         // Get subject details with teachers

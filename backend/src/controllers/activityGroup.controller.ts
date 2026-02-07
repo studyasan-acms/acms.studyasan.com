@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
-import { createPaymentSchedule } from '../utils/payment.utils.js';
+import { createPaymentSchedule, createOneTimePayment } from '../utils/payment.utils.js';
 
 // Extended Request type with user info
 interface AuthRequest extends Request {
@@ -403,7 +403,7 @@ export const enrollStudentInActivityGroup = async (req: AuthRequest, res: Respon
       return sendError(res, 'Already enrolled in this activity group', 400);
     }
 
-    const { price, is_recurring, frequency, payment_count } = req.body;
+    const { price, is_recurring, frequency, payment_count, one_time_amount } = req.body;
 
     // Calculate end_date based on payment_count and frequency if recurring
     let end_date: Date | null = null;
@@ -467,6 +467,15 @@ export const enrollStudentInActivityGroup = async (req: AuthRequest, res: Respon
             })),
           });
         }
+      });
+    } else if (!is_recurring && one_time_amount) {
+      // Create one-time payment
+      await createOneTimePayment({
+        enrollmentId: enrollment.id,
+        amount: parseFloat(one_time_amount),
+        userId: enrollment.student.user.id,
+        itemName: enrollment.activity_group?.name || 'Activity Group',
+        type: 'ACTIVITY_GROUP',
       });
     }
 

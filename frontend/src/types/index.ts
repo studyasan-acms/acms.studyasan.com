@@ -425,6 +425,7 @@ export interface CreateEnrollmentData {
   is_recurring?: boolean;
   frequency?: string | null;
   end_date?: string | null;
+  one_time_amount?: number | null;
 }
 
 export interface BulkEnrollmentData {

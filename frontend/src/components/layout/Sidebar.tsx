@@ -116,12 +116,6 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
-    title: "My Results",
-    href: "/tests/my-results",
-    icon: Award,
-    roles: ["STUDENT"],
-  },
-  {
     title: "Enrollments",
     href: "/dashboard/enrollments",
     icon: GraduationCap,
@@ -132,12 +126,6 @@ const navItems: NavItem[] = [
     href: "/dashboard/enquiries",
     icon: GraduationCap,
     roles: ["ADMIN"],
-  },
-  {
-    title: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
 ];
 

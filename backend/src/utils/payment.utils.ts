@@ -12,6 +12,14 @@ interface PaymentScheduleParams {
     createPaymentRecords: (records: { period: string; due_date: Date; amount: number }[]) => Promise<any>;
 }
 
+interface OneTimePaymentParams {
+    enrollmentId: number;
+    amount: number;
+    userId: number;
+    itemName: string;
+    type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+}
+
 export const createPaymentSchedule = async ({
     userId,
     itemName,
@@ -109,6 +117,51 @@ export const createPaymentSchedule = async ({
 
     } catch (error) {
         console.error('Error creating payment schedule:', error);
+        throw error;
+    }
+};
+
+export const createOneTimePayment = async ({
+    enrollmentId,
+    amount,
+    userId,
+    itemName,
+    type,
+}: OneTimePaymentParams) => {
+    try {
+        const now = new Date();
+        const dueDate = new Date(now); // Due immediately
+
+        // Create single payment record
+        await prisma.payment.create({
+            data: {
+                enrollment_id: enrollmentId,
+                type,
+                period: 'ONE_TIME',
+                due_date: dueDate,
+                amount,
+                is_paid: false,
+            },
+        });
+
+        // Send immediate notification
+        const notificationTitle = `Payment Due: ${itemName}`;
+        const notificationDesc = `Payment of ₹${amount} for ${itemName} is due immediately.`;
+
+        await sendNotificationAllChannels({
+            user_id: userId,
+            type: 'WARNING',
+            title: notificationTitle,
+            description: notificationDesc,
+        });
+
+        return {
+            paymentCreated: true,
+            notificationSent: true,
+        };
+
+    } catch (error) {
+        console.error('Error creating one-time payment:', error);
         throw error;
     }
 };

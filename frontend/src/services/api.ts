@@ -525,6 +525,7 @@ export const paymentService = {
     is_paid?: string;
     enrollment_id?: number;
     search?: string;
+    status?: string;
   }): Promise<PaginatedResponse<EnrollmentPayment>> => {
     const response = await api.get<PaginatedResponse<EnrollmentPayment>>('/payments', {
       params,
@@ -1018,7 +1019,7 @@ export const testSeriesService = {
   },
 
   // Enroll in test series
-  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null }): Promise<{ success: boolean; data: TestSeriesEnrollment }> => {
+  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null; one_time_amount?: number | null }): Promise<{ success: boolean; data: TestSeriesEnrollment }> => {
     const response = await api.post(`/test-series/${id}/enroll`, data);
     return response.data;
   },
@@ -1127,7 +1128,7 @@ export const activityGroupService = {
   },
 
   // Enroll in activity group
-  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null }): Promise<{ success: boolean; data: ActivityGroupEnrollment }> => {
+  enroll: async (id: number, data: { student_id?: number; price?: number | null; is_recurring?: boolean; frequency?: string | null; end_date?: string | null; one_time_amount?: number | null }): Promise<{ success: boolean; data: ActivityGroupEnrollment }> => {
     const response = await api.post(`/activity-groups/${id}/enroll`, data);
     return response.data;
   },

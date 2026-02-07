@@ -44,6 +44,7 @@ const CreateEnrollmentPage: React.FC = () => {
     is_recurring: false,
     frequency: null as string | null,
     end_date: null as string | null,
+    one_time_amount: null as number | null,
   });
 
   const [errors, setErrors] = useState<Record<string, any>>({});
@@ -121,6 +122,11 @@ const CreateEnrollmentPage: React.FC = () => {
       if (!formData.frequency) {
         newErrors.frequency = true;
       }
+    } else {
+      // If not recurring, one-time amount is required
+      if (!formData.one_time_amount || formData.one_time_amount <= 0) {
+        newErrors.one_time_amount = true;
+      }
     }
 
     setErrors(newErrors);
@@ -142,6 +148,7 @@ const CreateEnrollmentPage: React.FC = () => {
         is_recurring: formData.is_recurring,
         frequency: formData.frequency,
         end_date: formData.end_date,
+        one_time_amount: formData.one_time_amount,
       };
 
       if (enrollmentType === 'SUBJECT') {
@@ -346,6 +353,27 @@ const CreateEnrollmentPage: React.FC = () => {
                   Enable Recurring Payments
                 </label>
               </div>
+
+              {!formData.is_recurring && (
+                <>
+                  {/* One-time Amount Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">One-time Amount (₹) *</label>
+                    <input
+                      type="number"
+                      value={formData.one_time_amount || ''}
+                      onChange={(e) => setFormData({ ...formData, one_time_amount: parseFloat(e.target.value) || null })}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue ${errors.one_time_amount ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Enter one-time payment amount"
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors.one_time_amount && (
+                      <p className="text-red-600 text-sm mt-1">Please enter a valid amount</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               {formData.is_recurring && (
                 <>

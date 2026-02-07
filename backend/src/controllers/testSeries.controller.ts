@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
-import { createPaymentSchedule } from '../utils/payment.utils.js';
+import { createPaymentSchedule, createOneTimePayment } from '../utils/payment.utils.js';
 
 const prisma = new PrismaClient();
 
@@ -181,7 +181,7 @@ export const getAllGlobalTestSeriesEnrollments = async (req: AuthRequest, res: R
                     },
                     payments: true,
                 },
-                orderBy: { enrolled_at: 'desc' },
+                orderBy: { created_on: 'desc' },
             }),
             prisma.enrollment.count({ where }),
         ]);
@@ -566,7 +566,7 @@ export const enrollInTestSeries = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Already enrolled in this test series', 400);
         }
 
-        const { price, is_recurring, frequency, payment_count } = req.body;
+        const { price, is_recurring, frequency, payment_count, one_time_amount } = req.body;
 
         // Calculate end_date based on payment_count and frequency if recurring
         let end_date: Date | null = null;
@@ -629,6 +629,15 @@ export const enrollInTestSeries = async (req: AuthRequest, res: Response) => {
                         })),
                     });
                 }
+            });
+        } else if (!is_recurring && one_time_amount) {
+            // Create one-time payment
+            await createOneTimePayment({
+                enrollmentId: enrollment.id,
+                amount: parseFloat(one_time_amount),
+                userId: enrollment.student.user.id,
+                itemName: enrollment.test_series?.title || 'Test Series',
+                type: 'TEST_SERIES',
             });
         }
 
@@ -810,8 +819,8 @@ export const getTestSeriesEnrollments = async (req: AuthRequest, res: Response) 
         }
         // Admins can see enrollments for all test series
 
-        const enrollments = await prisma.testSeriesEnrollment.findMany({
-            where: { test_series_id: parseInt(id!) },
+        const enrollments = await prisma.enrollment.findMany({
+            where: { type: 'TEST_SERIES', test_series_id: parseInt(id!) },
             include: {
                 student: {
                     include: {
@@ -826,7 +835,7 @@ export const getTestSeriesEnrollments = async (req: AuthRequest, res: Response) 
                     },
                 },
             },
-            orderBy: { enrolled_at: 'desc' },
+            orderBy: { created_on: 'desc' },
         });
 
         sendSuccess(res, enrollments);

@@ -40,7 +40,7 @@ export class NotificationProcessorService {
           user_id: pending.user_id,
           type: pending.type,
           title: pending.title,
-          description: pending.description || undefined,
+          description: pending.description || '',
         })
       );
 
