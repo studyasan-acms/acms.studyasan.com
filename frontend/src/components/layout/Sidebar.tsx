@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Home,
   Users,
@@ -26,6 +27,7 @@ import {
   DollarSign,
   TrendingUp,
   Settings,
+  Shield,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -34,6 +36,7 @@ interface NavItem {
   href: string;
   icon: React.ElementType;
   roles: string[];
+  permission?: { resource: string; action: string }; // Optional permission check for teachers
 }
 
 const navItems: NavItem[] = [
@@ -66,12 +69,14 @@ const navItems: NavItem[] = [
     href: "/dashboard/students",
     icon: Users,
     roles: ["ADMIN", "TEACHER"],
+    permission: { resource: "students", action: "view" },
   },
   {
     title: "Teachers",
     href: "/dashboard/teachers",
     icon: UserCheck,
     roles: ["ADMIN"],
+    permission: { resource: "teachers", action: "view" },
   },
   {
     title: "Class Sessions",
@@ -120,12 +125,21 @@ const navItems: NavItem[] = [
     href: "/dashboard/enrollments",
     icon: GraduationCap,
     roles: ["ADMIN"],
+    permission: { resource: "enrollments", action: "view" },
   },
   {
     title: "Enquiries",
     href: "/dashboard/enquiries",
     icon: GraduationCap,
     roles: ["ADMIN"],
+    permission: { resource: "enquiries", action: "view" },
+  },
+  {
+    title: "Role Management",
+    href: "/dashboard/admin/roles",
+    icon: Shield,
+    roles: ["ADMIN"],
+    permission: { resource: "roles", action: "view" },
   },
 ];
 
@@ -141,14 +155,27 @@ export default function Sidebar({
   setCollapsed: (v: boolean) => void;
 }) {
   const user = useAuthStore((state) => state.user);
+  const { hasPermission } = usePermissions();
   const [tooltip, setTooltip] = useState<{ title: string; top: number } | null>(
     null
   );
   const iconRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  const filteredNavItems = navItems.filter((item) =>
-    item.roles.includes(user?.role || "")
-  );
+  const filteredNavItems = navItems.filter((item) => {
+    // Check if user has the base role
+    const hasRole = item.roles.includes(user?.role || "");
+
+    // If user is a teacher and item requires ADMIN, check permissions
+    if (user?.role === "TEACHER" && item.roles.includes("ADMIN") && !hasRole) {
+      // If item has permission requirement, check if teacher has that permission
+      if (item.permission) {
+        return hasPermission(item.permission.resource, item.permission.action);
+      }
+      return false;
+    }
+
+    return hasRole;
+  });
 
   return (
     <>

@@ -2,6 +2,7 @@ import type { Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { AuthRequest } from '../types/index.js';
 import { sendError } from '../utils/response.js';
+import { checkTeacherPermission } from '../utils/permission.utils.js';
 
 export const authenticate = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -26,15 +27,24 @@ export const authenticate = (req: AuthRequest, res: Response, next: NextFunction
 };
 
 export const authorize = (...roles: string[]) => {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return sendError(res, 'Unauthorized', 401);
     }
 
-    if (!roles.includes(req.user.role)) {
-      return sendError(res, 'Forbidden', 403);
+    // If user has one of the allowed roles, proceed
+    if (roles.includes(req.user.role)) {
+      return next();
     }
 
-    next();
+    // If TEACHER is trying to access ADMIN-only route, check their custom role permissions
+    if (req.user.role === 'TEACHER' && roles.includes('ADMIN')) {
+      const hasPermission = await checkTeacherPermission(req);
+      if (hasPermission) {
+        return next();
+      }
+    }
+
+    return sendError(res, 'Forbidden', 403);
   };
 };

@@ -45,6 +45,13 @@ export const getAllTeachers = async (req: Request, res: Response) => {
             },
           },
           salary_currency: true,
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+            },
+          },
           address: {
             include: {
               country: { select: { id: true, name: true } },
@@ -380,6 +387,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
     const name = req.body.name;
     const email = req.body.email;
     const phone = req.body.phone;
+    const role_id = req.body.role_id;
 
     const existingTeacher = await prisma.teacher.findUnique({
       where: { id: parseInt(id!) },
@@ -433,6 +441,19 @@ export const updateTeacher = async (req: Request, res: Response) => {
     if (typeof qualification !== 'undefined') updateData.qualification = qualification;
     if (typeof gender !== 'undefined') updateData.gender = gender;
     if (typeof experience !== 'undefined') updateData.experience = experience;
+
+    // Handle role assignment using Prisma relation
+    if (role_id !== undefined) {
+      if (role_id === null || role_id === 'null' || role_id === '') {
+        updateData.role = { disconnect: true };
+      } else {
+        const roleIdNum = typeof role_id === 'string' ? parseInt(role_id, 10) : role_id;
+        if (!isNaN(roleIdNum)) {
+          updateData.role = { connect: { id: roleIdNum } };
+        }
+      }
+    }
+
     if (salaryCurrencyIdNumUp !== undefined) {
       if (salaryCurrencyIdNumUp === null) {
         updateData.salary_currency = { disconnect: true };
@@ -487,6 +508,13 @@ export const updateTeacher = async (req: Request, res: Response) => {
           },
         },
         salary_currency: true,
+        role: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
         address: {
           include: {
             country: { select: { id: true, name: true } },

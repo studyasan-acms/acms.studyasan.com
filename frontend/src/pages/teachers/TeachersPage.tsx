@@ -29,7 +29,8 @@ import {
   UserCheck,
   Search,
   Briefcase,
-  GraduationCap
+  GraduationCap,
+  Shield
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -195,6 +196,7 @@ export default function TeachersPage() {
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider hidden md:table-cell">Qualification</TableHead>
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider hidden md:table-cell">Experience</TableHead>
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Gender</TableHead>
+                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider hidden lg:table-cell">Role</TableHead>
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider hidden xl:table-cell">Salary</TableHead>
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -233,6 +235,14 @@ export default function TeachersPage() {
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       {getGenderSpan(teacher.gender)}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="w-3.5 h-3.5 text-saVividOrange/70" />
+                        <span className="text-xs font-medium text-gray-600">
+                          {(teacher as any).role?.name || "Teacher"}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="hidden xl:table-cell">
                       <span className="text-xs font-mono text-gray-600">{formatSalary(teacher.salary, teacher.salary_currency)}</span>

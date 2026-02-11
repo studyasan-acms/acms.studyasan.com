@@ -32,6 +32,7 @@ import * as analyticsController from '../controllers/analytics.controller.js';
 import * as profileController from '../controllers/profile.controller.js';
 import * as deletionController from '../controllers/deletion.controller.js';
 import * as pushNotificationController from '../controllers/pushNotification.controller.js';
+import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -60,6 +61,17 @@ router.post('/auth/check-password-strength', authController.checkPasswordStrengt
 router.post('/auth/request-password-reset', authController.requestPasswordReset);
 router.post('/auth/verify-password-reset-otp', authController.verifyPasswordResetOTP);
 router.post('/auth/reset-password', authController.resetPassword);
+
+// Teacher Role Management routes (ADMIN only)
+router.get('/teacher-roles', authenticate, authorize('ADMIN'), teacherRoleController.getAllRoles);
+router.get('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.getRoleById);
+router.post('/teacher-roles', authenticate, authorize('ADMIN'), teacherRoleController.createRole);
+router.put('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.updateRole);
+router.delete('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.deleteRole);
+router.post('/teacher-roles/assign', authenticate, authorize('ADMIN'), teacherRoleController.assignRoleToTeacher);
+
+// Get current teacher's permissions (for frontend)
+router.get('/my-permissions', authenticate, authorize('TEACHER'), teacherRoleController.getTeacherPermissions);
 
 // Profile routes
 router.get('/profile', authenticate, profileController.getProfile);

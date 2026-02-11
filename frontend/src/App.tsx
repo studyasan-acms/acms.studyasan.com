@@ -113,6 +113,7 @@ import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
 // Admin imports
 import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
 import CurriculumPage from '@/pages/admin/CurriculumPage';
+import RoleManagementPage from '@/pages/admin/RoleManagementPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -304,6 +305,9 @@ function App() {
 
           {/* Admin Deletion Requests Route */}
           <Route path="admin/deletion-requests" element={<DeletionRequestsPage />} />
+
+          {/* Admin Role Management Route */}
+          <Route path="admin/roles" element={<RoleManagementPage />} />
 
           {/* Analytics Routes */}
           <Route path="analytics" element={<StudentAnalyticsPage />} />

@@ -12,7 +12,16 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { teacherService, locationService, currencyService } from '@/services/api';
+import axios from 'axios';
 import type { Teacher, Country, State, City, Currency } from '@/types';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+interface TeacherRole {
+  id: number;
+  name: string;
+  description: string | null;
+}
 import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown, User, Mail, Phone, Briefcase, GraduationCap, DollarSign, MapPin, Camera, UploadCloud } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import SuccessModal from '@/components/ui/successModal';
@@ -41,6 +50,7 @@ export default function EditTeacherPage() {
   const [states, setStates] = useState<State[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [currencies, setCurrencies] = useState<Currency[]>([]);
+  const [roles, setRoles] = useState<TeacherRole[]>([]);
 
   const [selectedCountryId, setSelectedCountryId] = useState<number | null>(null);
   const [selectedStateId, setSelectedStateId] = useState<number | null>(null);
@@ -77,6 +87,7 @@ export default function EditTeacherPage() {
     name: null as string | null,
     email: null as string | null,
     phone: null as string | null,
+    roleId: null as number | null,
   });
 
   // ================= FETCH DATA =================
@@ -85,6 +96,7 @@ export default function EditTeacherPage() {
       fetchTeacher(parseInt(id));
       fetchCountries();
       fetchCurrencies();
+      fetchRoles();
     }
   }, [id]);
 
@@ -110,6 +122,7 @@ export default function EditTeacherPage() {
         name: teacherData.user.name,
         email: teacherData.user.email,
         phone: teacherData.user.phone,
+        roleId: teacherData.role_id || null,
       };
 
       // If teacher has address, load it
@@ -168,6 +181,20 @@ export default function EditTeacherPage() {
       setCurrencies(data);
     } catch {
       console.error('Failed to load currencies');
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(`${API_URL}teacher-roles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success) {
+        setRoles(response.data.data.roles || []);
+      }
+    } catch (error) {
+      console.error('Failed to load roles:', error);
     }
   };
 
@@ -284,6 +311,7 @@ export default function EditTeacherPage() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
+        role_id: formData.roleId,
         address: hasAllAddressFields ? {
           addressLine: formData.addressLine || '',
           countryId: formData.countryId || 0,
@@ -635,6 +663,28 @@ export default function EditTeacherPage() {
                     </div>
                   </PopoverContent>
                 </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel icon={Briefcase}>Teacher Role</FormLabel>
+                <Select
+                  value={formData.roleId?.toString() || 'none'}
+                  onValueChange={(value) => handleChange('roleId', value === 'none' ? null : parseInt(value))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Role</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500">Assign a custom role to grant additional permissions</p>
               </div>
             </div>
           </CardContent>
