@@ -131,13 +131,13 @@ export default function SubjectsPage() {
             <p className="text-gray-600 font-medium">Loading your subjects...</p>
           </div>
         ) : subjects.length === 0 ? (
-          <Card className="py-16 text-center bg-white/60 backdrop-blur-sm border-2 border-dashed border-gray-300">
+          <Card className="py-12 text-center bg-white/60 backdrop-blur-sm border-2 border-dashed border-gray-300">
             <CardContent>
-              <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-10 h-10 text-gray-400" />
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <BookOpen className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-bold text-gray-700 mb-2">No subjects found</h3>
-              <p className="text-gray-500 text-sm">Try adjusting your filters or search terms</p>
+              <h3 className="text-base font-bold text-gray-700 mb-2">No subjects found</h3>
+              <p className="text-gray-500 text-xs">Try adjusting your filtering criteria</p>
             </CardContent>
           </Card>
         ) : (
@@ -161,35 +161,36 @@ export default function SubjectsPage() {
                     onClick={() => navigate(`/dashboard/subjects/${subject.id}`)}
                   >
                     {/* Card Header with Gradient */}
-                    <div className={`h-32 bg-gradient-to-br ${colorScheme.bg} relative overflow-hidden`}>
+                    <div className={`h-24 bg-gradient-to-br ${colorScheme.bg} relative overflow-hidden`}>
                       <div className="absolute inset-0 bg-black/10"></div>
-                      <div className="absolute top-3 right-3 flex gap-2">
+                      <div className="absolute top-2 right-2 flex gap-1">
                         {subject.is_course && (
-                          <Badge className="bg-white/90 text-gray-800 border-0 shadow-lg">
-                            <Star className="h-3 w-3 mr-1" />
+                          <Badge className="bg-white/90 text-gray-800 border-0 shadow-sm text-[9px] px-2 py-0.5">
+                            <Star className="h-2.5 w-2.5 mr-1" />
                             Course
                           </Badge>
                         )}
                       </div>
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <h3 className="text-xl font-bold text-white drop-shadow-lg line-clamp-2">
+                      <div className="absolute bottom-3 left-4 right-4">
+                        <h3 className="text-lg font-bold text-white drop-shadow-md line-clamp-1">
                           {subject.name}
                         </h3>
                       </div>
                       {/* Decorative circles */}
-                      <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"></div>
-                      <div className="absolute -bottom-8 -left-8 w-24 h-24 bg-white/10 rounded-full"></div>
+                      <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full"></div>
+                      <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-white/10 rounded-full"></div>
                     </div>
 
                     <CardContent className="p-5 space-y-4">
                       {/* Class and Board Info */}
-                      <div className="flex gap-2 flex-wrap">
-                        <Badge variant="outline" className={colorScheme.badge}>
+                      {/* Class and Board Info */}
+                      <div className="flex gap-1.5 flex-wrap">
+                        <Badge variant="outline" className={`${colorScheme.badge} text-[10px] px-2 py-0.5`}>
                           <GraduationCap className="h-3 w-3 mr-1" />
                           {subject.class?.name || "No Class"}
                         </Badge>
                         {subject.board && (
-                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200">
+                          <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-200 text-[10px] px-2 py-0.5">
                             {subject.board.name}
                           </Badge>
                         )}
@@ -205,9 +206,9 @@ export default function SubjectsPage() {
                                 {subject._count?.enrollments || 0} students
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Target className="h-4 w-4" />
-                              <span className="font-medium">
+                            <div className="flex items-center gap-1.5 text-gray-600">
+                              <Target className="h-3.5 w-3.5" />
+                              <span className="font-bold text-xs">
                                 {subject._count?.teacher_subject_junctions || 0} teachers
                               </span>
                             </div>
@@ -235,23 +236,23 @@ export default function SubjectsPage() {
                         </Button>
 
                         <Button
-                          className={`w-full bg-gradient-to-r ${colorScheme.bg} text-white hover:opacity-90`}
+                          className={`w-full h-9 bg-gradient-to-r ${colorScheme.bg} text-white hover:opacity-90 text-xs uppercase font-bold tracking-wider`}
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/dashboard/subjects/${subject.id}/student-modules`);
                           }}
                         >
-                          <PlayCircle className="h-4 w-4 mr-2" />
+                          <PlayCircle className="h-3.5 w-3.5 mr-2" />
                           Start Learning
                         </Button>
 
                         {/* Admin Actions */}
                         {isAdmin && (
-                          <div className="flex gap-2 pt-2">
+                          <div className="flex gap-2 pt-1">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="flex-1 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
+                              className="flex-1 h-8 text-[10px] uppercase font-bold tracking-widest hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/dashboard/subjects/${subject.id}/edit`);
@@ -263,7 +264,7 @@ export default function SubjectsPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="flex-1 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+                              className="flex-1 h-8 text-[10px] uppercase font-bold tracking-widest hover:bg-red-50 hover:text-red-600 hover:border-red-200"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setDeleteSubject(subject);

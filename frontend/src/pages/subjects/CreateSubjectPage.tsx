@@ -167,57 +167,57 @@ export default function CreateSubjectPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 pb-10">
       {/* --------------------------- HEADER --------------------------- */}
-      <div className="flex flex-col space-y-4">
+      <div className="flex flex-col space-y-3">
         <Link
           to="/dashboard/subjects"
-          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-sm font-medium"
+          className="flex items-center text-muted-foreground hover:text-saBlue transition-colors w-fit text-xs font-medium"
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
+          <ArrowLeft className="h-3.5 w-3.5 mr-1" />
           Back to Subjects
         </Link>
 
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 tracking-tight">Add New Subject</h1>
-          <p className="text-gray-500 mt-1">Create a new subject or course and define its curriculum</p>
+          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Add New Subject</h1>
+          <p className="text-gray-500 mt-0.5 text-xs">Create a new subject or course and define its curriculum</p>
         </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="grid gap-6 md:grid-cols-3">
           {/* Cover Image Card */}
-          <Card className="md:col-span-1 rounded-3xl border-gray-100 shadow-sm overflow-hidden">
-            <CardHeader className="pb-4">
+          <Card className="md:col-span-1 rounded-2xl border-gray-100 shadow-sm overflow-hidden">
+            <CardHeader className="pb-3 p-4">
               <FormLabel icon={Camera}>Cover Image</FormLabel>
             </CardHeader>
-            <CardContent className="flex flex-col items-center">
+            <CardContent className="flex flex-col items-center p-4 pt-0">
               <div
-                className="relative group cursor-pointer w-full aspect-video rounded-2xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex items-center justify-center transition-all hover:border-saBlue/50 hover:bg-gray-100/50"
+                className="relative group cursor-pointer w-full aspect-video rounded-xl bg-gray-50 border-2 border-dashed border-gray-200 overflow-hidden flex items-center justify-center transition-all hover:border-saBlue/50 hover:bg-gray-100/50"
                 onClick={() => document.getElementById('cover-image-upload')?.click()}
               >
                 {imagePreview ? (
                   <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                 ) : (
                   <div className="flex flex-col items-center text-gray-400">
-                    <UploadCloud className="w-8 h-8 mb-2" />
-                    <span className="text-[10px] font-semibold uppercase tracking-wider">Upload Image</span>
+                    <UploadCloud className="w-6 h-6 mb-1.5" />
+                    <span className="text-[9px] font-semibold uppercase tracking-wider">Upload Image</span>
                   </div>
                 )}
 
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Camera className="text-white w-6 h-6" />
+                  <Camera className="text-white w-5 h-5" />
                 </div>
               </div>
 
-              <div className="mt-4 text-center">
+              <div className="mt-3 text-center">
                 <Button
                   type="button"
                   variant="ghost"
-                  className="text-saBlue hover:bg-blue-50 text-xs font-bold"
+                  className="text-saBlue hover:bg-blue-50 text-[10px] h-8 font-bold"
                   onClick={() => document.getElementById('cover-image-upload')?.click()}
                 >
                   Change Image
                 </Button>
-                <p className="text-[10px] text-gray-400 mt-1">
+                <p className="text-[9px] text-gray-400 mt-0.5">
                   JPG, PNG, WEBP (Max 5MB)
                 </p>
               </div>
@@ -240,14 +240,14 @@ export default function CreateSubjectPage() {
           </Card>
 
           {/* Basic Information Card */}
-          <Card className="md:col-span-2 rounded-3xl border-gray-100 shadow-sm">
-            <CardHeader>
-              <CardTitle className='text-xl text-gray-700'>Basic Information</CardTitle>
-              <CardDescription>Essential details about the subject</CardDescription>
+          <Card className="md:col-span-2 rounded-2xl border-gray-100 shadow-sm">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className='text-lg text-gray-700'>Basic Information</CardTitle>
+              <CardDescription className="text-xs">Essential details about the subject</CardDescription>
             </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent className="space-y-3 p-4 pt-2">
+              <div className="space-y-1.5">
                 <FormLabel icon={BookOpen} required>Subject Name</FormLabel>
                 <Input
                   id="name"
@@ -256,19 +256,19 @@ export default function CreateSubjectPage() {
                   onChange={(e) => handleChange('name', e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <FormLabel>Type</FormLabel>
                   <Select
                     value={formData.is_course ? 'course' : 'subject'}
                     onValueChange={(value) => handleChange('is_course', value === 'course')}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="is_course" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectTrigger id="is_course" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -278,7 +278,7 @@ export default function CreateSubjectPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <FormLabel icon={Coins}>Price</FormLabel>
                   <Input
                     id="price"
@@ -289,7 +289,7 @@ export default function CreateSubjectPage() {
                     value={formData.price ?? ''}
                     onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
                     disabled={isLoading}
-                    className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                    className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
                   />
                 </div>
               </div>
@@ -302,7 +302,7 @@ export default function CreateSubjectPage() {
                     onValueChange={(value) => handleChange('currency_id', value ? parseInt(value) : null)}
                     disabled={isLoading}
                   >
-                    <SelectTrigger id="currency_id" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectTrigger id="currency_id" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
                       <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
@@ -320,15 +320,15 @@ export default function CreateSubjectPage() {
         </div>
 
         {/* Classification Card */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm">
-          <CardHeader>
-            <CardTitle className='text-xl text-gray-700'>Classification</CardTitle>
-            <CardDescription>Academic assignment for better organization</CardDescription>
+        <Card className="rounded-2xl border-gray-100 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className='text-lg text-gray-700'>Classification</CardTitle>
+            <CardDescription className="text-xs">Academic assignment for better organization</CardDescription>
           </CardHeader>
 
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-2">
+            <div className="grid gap-6 md:grid-cols-2 p-4 pt-2">
+              <div className="space-y-1.5">
                 <FormLabel icon={Users}>Class</FormLabel>
                 <Select
                   value={formData.class_id?.toString() || 'none'}
@@ -337,7 +337,7 @@ export default function CreateSubjectPage() {
                   }
                   disabled={isLoading || formData.is_course}
                 >
-                  <SelectTrigger id="class" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                  <SelectTrigger id="class" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
@@ -354,7 +354,7 @@ export default function CreateSubjectPage() {
                 )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <FormLabel icon={Globe}>Board</FormLabel>
                 <Select
                   value={formData.board_id?.toString() || 'none'}
@@ -363,7 +363,7 @@ export default function CreateSubjectPage() {
                   }
                   disabled={isLoading || formData.is_course}
                 >
-                  <SelectTrigger id="board" className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                  <SelectTrigger id="board" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
                     <SelectValue placeholder="Select board" />
                   </SelectTrigger>
                   <SelectContent>
@@ -384,34 +384,34 @@ export default function CreateSubjectPage() {
         </Card>
 
         {/* Syllabus Card */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm">
-          <CardHeader>
-            <CardTitle className='text-xl text-gray-700'>Syllabus</CardTitle>
-            <CardDescription>Define the curriculum and learning units</CardDescription>
+        <Card className="rounded-2xl border-gray-100 shadow-sm">
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className='text-lg text-gray-700'>Syllabus</CardTitle>
+            <CardDescription className="text-xs">Define the curriculum and learning units</CardDescription>
           </CardHeader>
 
-          <CardContent className="space-y-6">
-            <div className="bg-gray-50/50 p-4 rounded-2xl border border-gray-100 space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-1.5">
+          <CardContent className="space-y-4 p-4 pt-2">
+            <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100 space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
                   <FormLabel>Unit Name</FormLabel>
                   <Input
                     placeholder="e.g. Algebra Basics"
                     value={newUnitName}
                     onChange={(e) => setNewUnitName(e.target.value)}
                     disabled={isLoading}
-                    className="bg-white"
+                    className="bg-white h-9 text-xs"
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   <FormLabel>Content Description</FormLabel>
                   <Input
-                    placeholder="Brief overview of the unit"
+                    placeholder="Brief overview"
                     value={newUnitContent}
                     onChange={(e) => setNewUnitContent(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addUnit()}
                     disabled={isLoading}
-                    className="bg-white"
+                    className="bg-white h-9 text-xs"
                   />
                 </div>
               </div>
@@ -421,56 +421,56 @@ export default function CreateSubjectPage() {
                 onClick={addUnit}
                 disabled={!newUnitName.trim() || !newUnitContent.trim() || isLoading}
                 variant="outline"
-                className="w-full h-11 rounded-xl border-saBlue/20 text-saBlue hover:bg-saBlue/5 font-semibold text-xs uppercase tracking-wider"
+                className="w-full h-9 rounded-lg border-saBlue/20 text-saBlue hover:bg-saBlue/5 font-semibold text-[10px] uppercase tracking-wider"
               >
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
                 Add Syllabus Unit
               </Button>
             </div>
 
             {syllabusUnits.length > 0 ? (
-              <div className="space-y-3">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-2">Current Curriculum</p>
-                <div className="space-y-2 max-h-80 overflow-y-auto px-1 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
+              <div className="space-y-2">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-1">Current Curriculum</p>
+                <div className="space-y-2 max-h-60 overflow-y-auto px-1 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                   {syllabusUnits.map((unit, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 group hover:border-saBlue/30 hover:shadow-sm transition-all">
-                      <div className="w-8 h-8 rounded-full bg-saBlue/10 flex items-center justify-center text-saBlue text-xs font-bold shrink-0">
+                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 group hover:border-saBlue/30 hover:shadow-sm transition-all">
+                      <div className="w-6 h-6 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue text-[10px] font-bold shrink-0">
                         {index + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-gray-700 text-sm truncate">{unit.name}</div>
-                        <div className="text-xs text-gray-400 truncate mt-0.5">{unit.content}</div>
+                        <div className="font-bold text-gray-700 text-xs truncate">{unit.name}</div>
+                        <div className="text-[10px] text-gray-400 truncate mt-0.5">{unit.content}</div>
                       </div>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => removeUnit(index)}
-                        className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-xl"
+                        className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg h-7 w-7"
                         disabled={isLoading}
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div className="text-center py-10 bg-gray-50/30 rounded-2xl border border-dashed border-gray-200">
-                <BookOpen className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-                <p className="text-sm text-gray-400">No units added yet. Define your first unit above.</p>
+              <div className="text-center py-6 bg-gray-50/30 rounded-xl border border-dashed border-gray-200">
+                <BookOpen className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                <p className="text-xs text-gray-400">No units added yet.</p>
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Actions */}
-        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
+        <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-2">
           <Button
             type="button"
             variant="ghost"
             onClick={() => navigate('/dashboard/subjects')}
-            className="w-full sm:w-auto h-12 rounded-xl text-gray-500 hover:text-gray-700 font-medium"
+            className="w-full sm:w-auto h-11 rounded-xl text-gray-500 hover:text-gray-700 font-medium text-xs"
             disabled={isLoading}
           >
             Cancel
@@ -479,7 +479,7 @@ export default function CreateSubjectPage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full sm:w-auto h-12 rounded-xl bg-saBlue hover:bg-saBlue/90 shadow-lg shadow-saBlue/30 min-w-[180px] font-bold uppercase tracking-wider text-xs"
+            className="w-full sm:w-auto h-11 rounded-xl bg-saBlue hover:bg-saBlue/90 shadow-lg shadow-saBlue/30 min-w-[140px] font-bold uppercase tracking-wider text-[10px]"
           >
             {isLoading ? (
               <>

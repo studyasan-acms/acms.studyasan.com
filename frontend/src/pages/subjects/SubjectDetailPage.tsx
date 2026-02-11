@@ -178,39 +178,39 @@ export default function SubjectDetailPage() {
     <Button
       variant="outline"
       onClick={onClick}
-      className="w-full h-14 justify-between px-4 rounded-2xl border-gray-100 hover:border-saBlue/30 hover:bg-saBlue/5 group transition-all"
+      className="w-full h-11 justify-between px-4 rounded-xl border-gray-100 hover:border-saBlue/30 hover:bg-saBlue/5 group transition-all"
     >
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-xl bg-${variant}/10 text-${variant}`}>
+        <div className={`p-1.5 rounded-lg bg-${variant}/10 text-${variant}`}>
           <Icon className="w-4 h-4" />
         </div>
-        <span className="font-bold text-gray-700">{label}</span>
+        <span className="font-bold text-gray-700 text-xs">{label}</span>
       </div>
-      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-saBlue transition-colors" />
+      <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-saBlue transition-colors" />
     </Button>
   );
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-10">
       {/* 1. TOP HEADER SECTION */}
-      <div className="relative overflow-hidden bg-slate-50 rounded-[40px] border border-slate-100 shadow-sm group">
+      <div className="relative overflow-hidden bg-slate-50 rounded-[32px] border border-slate-100 shadow-sm group">
         {/* Animated Background Elements */}
         <div className="absolute top-[-20%] right-[-10%] w-[400px] h-[400px] bg-saBlue/5 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
 
-        <div className="px-6 sm:px-10 pt-8 pb-8 relative z-10">
+        <div className="px-6 sm:px-8 pt-6 pb-6 relative z-10">
           <Button
             variant="ghost"
-            className="mb-6 text-slate-500 hover:text-saBlue hover:bg-saBlue/5 rounded-xl transition-all h-10 px-4 group/back"
+            className="mb-4 text-slate-500 hover:text-saBlue hover:bg-saBlue/5 rounded-xl transition-all h-9 px-3 group/back"
             onClick={() => navigate("/dashboard/subjects")}
           >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover/back:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover/back:-translate-x-1 transition-transform" />
             <span className="text-[10px] font-bold uppercase tracking-widest">Back to Subjects</span>
           </Button>
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-8">
+          <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6">
             <div className="relative group/img shrink-0">
-              <div className="w-40 h-40 rounded-[2.5rem] border-[6px] border-white bg-white shadow-2xl overflow-hidden relative z-10 transition-transform duration-500 group-hover/img:scale-105">
+              <div className="w-32 h-32 rounded-[2rem] border-[4px] border-white bg-white shadow-xl overflow-hidden relative z-10 transition-transform duration-500 group-hover/img:scale-105">
                 <img
                   src={resolveImageUrl(subject.cover_image) || `https://placehold.co/400x300/f3f4f6/3b82f6?text=${encodeURIComponent(subject.name)}`}
                   alt={subject.name}
@@ -220,30 +220,30 @@ export default function SubjectDetailPage() {
               <div className="absolute -inset-4 bg-saBlue/10 rounded-[3rem] blur-2xl opacity-0 group-hover/img:opacity-100 transition-opacity duration-500" />
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-4">
+            <div className="flex-1 text-center sm:text-left space-y-3">
               <div className="space-y-1">
-                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[10px] uppercase font-bold tracking-[0.2em] px-3 py-1 bg-saBlue/5 rounded-full mb-2">
+                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[9px] uppercase font-bold tracking-[0.2em] px-2 py-0.5 bg-saBlue/5 rounded-full mb-1">
                   Academic Catalog
                 </Badge>
-                <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-none">
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight leading-none">
                   {subject.name}
                 </h1>
               </div>
 
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
-                <Badge variant="secondary" className="bg-slate-200/50 text-slate-700 border-none rounded-xl py-2 px-4 font-bold text-xs uppercase tracking-wider">
-                  <LayoutGrid className="w-3.5 h-3.5 mr-2 text-saBlue" />
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <Badge variant="secondary" className="bg-slate-200/50 text-slate-700 border-none rounded-lg py-1 px-3 font-bold text-[10px] uppercase tracking-wider">
+                  <LayoutGrid className="w-3 h-3 mr-1.5 text-saBlue" />
                   {subject.is_course ? "Course" : "Subject"}
                 </Badge>
                 {subject.class && (
-                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-xl py-2 px-4 shadow-sm font-bold text-xs uppercase tracking-wider">
-                    <School className="w-3.5 h-3.5 mr-2 text-saBlue" />
+                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-lg py-1 px-3 shadow-sm font-bold text-[10px] uppercase tracking-wider">
+                    <School className="w-3 h-3 mr-1.5 text-saBlue" />
                     {subject.class.name}
                   </Badge>
                 )}
                 {subject.board && (
-                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-xl py-2 px-4 shadow-sm font-bold text-xs uppercase tracking-wider">
-                    <Globe className="w-3.5 h-3.5 mr-2 text-saBlue" />
+                  <Badge variant="outline" className="border-slate-200 text-slate-500 bg-white rounded-lg py-1 px-3 shadow-sm font-bold text-[10px] uppercase tracking-wider">
+                    <Globe className="w-3 h-3 mr-1.5 text-saBlue" />
                     {subject.board.name}
                   </Badge>
                 )}
@@ -253,9 +253,9 @@ export default function SubjectDetailPage() {
             {isAdmin && (
               <Button
                 onClick={() => navigate(`/dashboard/subjects/${subject.id}/edit`)}
-                className="rounded-2xl bg-saBlue h-14 px-8 shadow-xl shadow-saBlue/20 hover:bg-saBlue/90 font-black uppercase tracking-[0.2em] text-[10px] transition-all active:scale-95 group/edit"
+                className="rounded-xl bg-saBlue h-11 px-6 shadow-xl shadow-saBlue/20 hover:bg-saBlue/90 font-black uppercase tracking-[0.2em] text-[10px] transition-all active:scale-95 group/edit"
               >
-                <Edit className="mr-3 h-4 w-4 group-hover/edit:rotate-12 transition-transform" />
+                <Edit className="mr-2 h-3.5 w-3.5 group-hover/edit:rotate-12 transition-transform" />
                 Edit Configuration
               </Button>
             )}
@@ -266,10 +266,10 @@ export default function SubjectDetailPage() {
       {/* 2. MAIN CONTENT GRID */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
         {/* BASIC INFO */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
+        <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
             <SectionTitle icon={BookOpen} title="Information" description="Standard Details" />
-            <div className="space-y-3">
+            <div className="space-y-2">
               <InfoItem label="Subject Name" value={subject.name} icon={BookOpen} />
               <InfoItem label="Type" value={subject.is_course ? "Course" : "Regular Subject"} icon={GraduationCap} />
               <InfoItem label="Price" value={subject.price ? `${subject.currency?.symbol || '$'} ${subject.price.toLocaleString()}` : 'Free'} icon={Coins} />
@@ -279,10 +279,10 @@ export default function SubjectDetailPage() {
 
         {/* STATISTICS - Hidden for Students */}
         {user?.role !== "STUDENT" && (
-          <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-            <CardContent className="p-6">
+          <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <CardContent className="p-5">
               <SectionTitle icon={LayoutGrid} title="Activity" description="Internal Stats" />
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <InfoItem label="Total Enrolled" value={`${subject._count?.enrollments || 0} Students`} icon={Users} />
                 <InfoItem label="Assigned Teachers" value={`${subject._count?.teacher_subject_junctions || 0} Educators`} icon={UserCheck} />
                 <InfoItem label="Creation Date" value={format(new Date(subject.created_at), "PPP")} icon={CalendarDays} />
@@ -292,10 +292,10 @@ export default function SubjectDetailPage() {
         )}
 
         {/* OPERATIONS / MODULES */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
+        <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+          <CardContent className="p-5">
             <SectionTitle icon={GraduationCap} title="Management" description="Course Content" />
-            <div className="space-y-3">
+            <div className="space-y-2">
               {(user?.role === "TEACHER" || user?.role === "ADMIN") ? (
                 <>
                   <ModuleButton
@@ -318,7 +318,7 @@ export default function SubjectDetailPage() {
                   variant="saVividOrange"
                 />
               ) : (
-                <div className="text-center py-4 text-gray-400 text-xs italic bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <div className="text-center py-4 text-gray-400 text-xs italic bg-gray-50 rounded-xl border border-dashed border-gray-200">
                   Login as teacher or student to see modules
                 </div>
               )}
@@ -331,16 +331,16 @@ export default function SubjectDetailPage() {
       <div className="grid gap-6 md:grid-cols-3 px-2">
         {/* SYLLABUS LIST */}
         <div className="md:col-span-2">
-          <Card className="rounded-3xl border-gray-100 shadow-sm h-full">
-            <CardHeader className="p-6 pb-0">
+          <Card className="rounded-2xl border-gray-100 shadow-sm h-full">
+            <CardHeader className="p-5 pb-0">
               <SectionTitle icon={BookOpen} title="Course Syllabus" description="Curriculum Structure" />
             </CardHeader>
-            <CardContent className="p-6">
+            <CardContent className="p-5">
               {subject.syllabus?.units?.length > 0 ? (
                 <div className="space-y-4">
                   {subject.syllabus.units.map((unit: { name: string; content: string }, index: number) => (
-                    <div key={index} className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all group">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-saBlue font-bold text-sm shadow-sm shrink-0 group-hover:bg-saBlue group-hover:text-white transition-colors">
+                    <div key={index} className="flex gap-4 p-4 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all group">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-saBlue font-bold text-xs shadow-sm shrink-0 group-hover:bg-saBlue group-hover:text-white transition-colors">
                         {index + 1}
                       </div>
                       <div className="flex-1">

@@ -151,49 +151,49 @@ export default function SubjectProgressPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32">
       {/* PREMIUM HEADER SECTION */}
-      <div className="bg-slate-50 rounded-b-[48px] mb-12 shadow-sm border-b border-slate-100 relative overflow-hidden">
+      <div className="bg-slate-50 rounded-b-[32px] mb-8 shadow-sm border-b border-slate-100 relative overflow-hidden">
         {/* Abstract Background Effects */}
         <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-saBlue/10 rounded-full blur-[120px] animate-pulse duration-[5000ms]" />
 
-        <div className="max-w-7xl mx-auto px-6 pt-12 pb-20 relative z-10">
+        <div className="max-w-7xl mx-auto px-6 pt-8 pb-10 relative z-10">
           <Link
             to={`/dashboard/subjects/${subjectId}/modules`}
-            className="group inline-flex items-center text-xs font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-10"
+            className="group inline-flex items-center text-[10px] font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-6"
           >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" />
             Subject Control Hub
           </Link>
 
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-10">
-            <div className="space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-saBlue/20 rounded-2xl border border-saBlue/30 text-saBlue">
-                  <TrendingUp className="w-7 h-7" />
+          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-saBlue/20 rounded-xl border border-saBlue/30 text-saBlue">
+                  <TrendingUp className="w-5 h-5" />
                 </div>
-                <Badge variant="outline" className="border-saBlue/30 text-saBlue text-[10px] uppercase font-bold tracking-[0.25em] px-4 py-1.5 bg-saBlue/5 rounded-full">
+                <Badge variant="outline" className="border-saBlue/30 text-saBlue text-[9px] uppercase font-bold tracking-[0.25em] px-3 py-1 bg-saBlue/5 rounded-full">
                   Learning Analytics
                 </Badge>
               </div>
-              <h1 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight">
+              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
                 {subject?.name} Progress
-                <Sparkles className="w-8 h-8 text-saVividOrange inline-block ml-4 animate-pulse duration-1000" />
+                <Sparkles className="w-6 h-6 text-saVividOrange inline-block ml-3 animate-pulse duration-1000" />
               </h1>
-              <p className="text-slate-500 text-lg font-medium max-w-xl">
+              <p className="text-slate-500 text-sm font-medium max-w-xl leading-relaxed">
                 Comprehensive overview of student engagement, module completion rates, and overall academic performance metrics.
               </p>
             </div>
 
             <div className="flex items-center gap-6">
               <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Success Metric</p>
-                <div className="text-4xl font-black text-slate-900 leading-none tabular-nums">
-                  {averageSubjectProgress}<small className="text-lg text-saBlue ml-1">%</small>
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Success Metric</p>
+                <div className="text-3xl font-black text-slate-900 leading-none tabular-nums">
+                  {averageSubjectProgress}<small className="text-sm text-saBlue ml-1">%</small>
                 </div>
               </div>
-              <div className="h-16 w-px bg-slate-200 mx-2" />
+              <div className="h-10 w-px bg-slate-200 mx-1" />
               <div className="text-right">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cohort Size</p>
-                <div className="text-4xl font-black text-slate-900 leading-none tabular-nums">
+                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cohort Size</p>
+                <div className="text-3xl font-black text-slate-900 leading-none tabular-nums">
                   {studentProgress.length}
                 </div>
               </div>
@@ -220,45 +220,45 @@ export default function SubjectProgressPage() {
         ) : (
           <div className="space-y-12">
             {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <Card className="rounded-3xl border-none shadow-xl shadow-gray-200/50 p-8 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                  <Users className="w-20 h-20 text-saBlue" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                  <Users className="w-16 h-16 text-saBlue" />
                 </div>
-                <div className="p-3 bg-saBlue/10 rounded-2xl text-saBlue inline-block mb-6">
-                  <Users className="w-6 h-6" />
+                <div className="p-2.5 bg-saBlue/10 rounded-xl text-saBlue inline-block mb-4">
+                  <Users className="w-5 h-5" />
                 </div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Enrollments</h4>
-                <p className="text-4xl font-black text-gray-900 tabular-nums">{studentProgress.length}</p>
-                <p className="text-xs font-bold text-saBlue mt-4 flex items-center gap-1.5">
+                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Enrollments</h4>
+                <p className="text-3xl font-black text-gray-900 tabular-nums">{studentProgress.length}</p>
+                <p className="text-[10px] font-bold text-saBlue mt-3 flex items-center gap-1">
                   Active in Subject <ChevronRight className="w-3 h-3" />
                 </p>
               </Card>
 
-              <Card className="rounded-3xl border-none shadow-xl shadow-gray-200/50 p-8 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                  <Award className="w-20 h-20 text-green-500" />
+              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                  <Award className="w-16 h-16 text-green-500" />
                 </div>
-                <div className="p-3 bg-green-50 rounded-2xl text-green-600 inline-block mb-6">
-                  <Award className="w-6 h-6" />
+                <div className="p-2.5 bg-green-50 rounded-xl text-green-600 inline-block mb-4">
+                  <Award className="w-5 h-5" />
                 </div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Certifications Ready</h4>
-                <p className="text-4xl font-black text-gray-900 tabular-nums">{completedAllCount}</p>
-                <p className="text-xs font-bold text-green-600 mt-4 flex items-center gap-1.5">
+                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Certifications Ready</h4>
+                <p className="text-3xl font-black text-gray-900 tabular-nums">{completedAllCount}</p>
+                <p className="text-[10px] font-bold text-green-600 mt-3 flex items-center gap-1">
                   100% Completion <ChevronRight className="w-3 h-3" />
                 </p>
               </Card>
 
-              <Card className="rounded-3xl border-none shadow-xl shadow-gray-200/50 p-8 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
-                  <Zap className="w-20 h-20 text-saVividOrange" />
+              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
+                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
+                  <Zap className="w-16 h-16 text-saVividOrange" />
                 </div>
-                <div className="p-3 bg-saVividOrange/10 rounded-2xl text-saVividOrange inline-block mb-6">
-                  <Zap className="w-6 h-6" />
+                <div className="p-2.5 bg-saVividOrange/10 rounded-xl text-saVividOrange inline-block mb-4">
+                  <Zap className="w-5 h-5" />
                 </div>
-                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Learning Momentum</h4>
-                <p className="text-4xl font-black text-gray-900 tabular-nums">{modules.length}</p>
-                <p className="text-xs font-bold text-saVividOrange mt-4 flex items-center gap-1.5">
+                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Learning Momentum</h4>
+                <p className="text-3xl font-black text-gray-900 tabular-nums">{modules.length}</p>
+                <p className="text-[10px] font-bold text-saVividOrange mt-3 flex items-center gap-1">
                   Total Active Modules <ChevronRight className="w-3 h-3" />
                 </p>
               </Card>
@@ -268,22 +268,22 @@ export default function SubjectProgressPage() {
             <div className="space-y-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
                 <div>
-                  <h3 className="text-2xl font-black text-gray-900 tracking-tight">Roster Performance</h3>
-                  <p className="text-gray-500 text-sm font-medium">Detailed tracking for individual educational paths.</p>
+                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Roster Performance</h3>
+                  <p className="text-gray-500 text-xs font-medium">Detailed tracking for individual educational paths.</p>
                 </div>
 
-                <div className="flex items-center gap-4 w-full md:w-auto">
-                  <div className="relative flex-1 md:w-80">
-                    <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <div className="relative flex-1 md:w-64">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                     <Input
                       placeholder="Search Learner..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="h-14 rounded-2xl border-none bg-white shadow-xl shadow-gray-200/50 pl-12 pr-6 text-sm font-bold focus:ring-4 focus:ring-saBlue/5"
+                      className="h-10 rounded-xl border-none bg-white shadow-lg shadow-gray-200/50 pl-10 pr-4 text-xs font-bold focus:ring-4 focus:ring-saBlue/5"
                     />
                   </div>
-                  <Button variant="outline" className="h-14 w-14 rounded-2xl border-none bg-white shadow-xl shadow-gray-200/50 hover:bg-gray-50">
-                    <Filter className="w-5 h-5 text-gray-400" />
+                  <Button variant="outline" className="h-10 w-10 rounded-xl border-none bg-white shadow-lg shadow-gray-200/50 hover:bg-gray-50">
+                    <Filter className="w-4 h-4 text-gray-400" />
                   </Button>
                 </div>
               </div>
@@ -301,57 +301,57 @@ export default function SubjectProgressPage() {
                     return (
                       <Card
                         key={studentData.student_id}
-                        className="rounded-[40px] border-none shadow-2xl shadow-gray-200/60 overflow-hidden bg-white group hover:shadow-saBlue/5 transition-all duration-500"
+                        className="rounded-[32px] border-none shadow-xl shadow-gray-200/60 overflow-hidden bg-white group hover:shadow-saBlue/5 transition-all duration-500"
                       >
-                        <CardHeader className="p-8 md:p-10 border-b border-gray-50">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
-                            <div className="flex items-center gap-6">
-                              <div className="w-20 h-20 bg-saBlue/5 rounded-3xl flex items-center justify-center border border-saBlue/10 text-saBlue transition-transform duration-500 group-hover:scale-105">
-                                <GraduationCap className="w-10 h-10" />
+                        <CardHeader className="p-6 md:p-8 border-b border-gray-50">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                            <div className="flex items-center gap-5">
+                              <div className="w-16 h-16 bg-saBlue/5 rounded-2xl flex items-center justify-center border border-saBlue/10 text-saBlue transition-transform duration-500 group-hover:scale-105">
+                                <GraduationCap className="w-8 h-8" />
                               </div>
-                              <div className="space-y-2">
-                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{studentData.student_name}</h3>
-                                <div className="flex flex-wrap items-center gap-4">
-                                  <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <Mail className="w-3.5 h-3.5" />
+                              <div className="space-y-1.5">
+                                <h3 className="text-xl font-black text-gray-900 tracking-tight">{studentData.student_name}</h3>
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <Mail className="w-3 h-3" />
                                     {studentData.student_email}
                                   </div>
-                                  <div className="w-1.5 h-1.5 rounded-full bg-gray-200" />
-                                  <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <Layers className="w-3.5 h-3.5" />
+                                  <div className="w-1 h-1 rounded-full bg-gray-200" />
+                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                                    <Layers className="w-3 h-3" />
                                     {studentData.completed_modules} of {studentData.total_modules} Complete
                                   </div>
                                 </div>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-8 px-6 py-4 bg-gray-50 rounded-3xl border border-gray-100/50 shrink-0">
+                            <div className="flex items-center gap-6 px-5 py-3 bg-gray-50 rounded-2xl border border-gray-100/50 shrink-0">
                               <div className="text-right">
-                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Mastery Path</p>
-                                <div className="text-3xl font-black text-saBlue tabular-nums">{overallProgress}%</div>
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mastery Path</p>
+                                <div className="text-2xl font-black text-saBlue tabular-nums">{overallProgress}%</div>
                               </div>
-                              <div className="w-px h-10 bg-gray-200" />
-                              <div className="p-3 bg-white rounded-2xl shadow-sm text-saBlue group-hover:rotate-12 transition-transform">
-                                <TrendingUp className="w-5 h-5 font-black" />
+                              <div className="w-px h-8 bg-gray-200" />
+                              <div className="p-2 bg-white rounded-xl shadow-sm text-saBlue group-hover:rotate-12 transition-transform">
+                                <TrendingUp className="w-4 h-4 font-black" />
                               </div>
                             </div>
                           </div>
                         </CardHeader>
 
-                        <CardContent className="p-8 md:p-10">
-                          <div className="mb-10">
-                            <div className="flex justify-between items-end mb-4 px-1">
-                              <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Learning Milestones</span>
-                              <span className="text-xs font-black text-saBlue bg-saBlue/5 px-4 py-1.5 rounded-full border border-saBlue/10 tabular-nums">
+                        <CardContent className="p-6 md:p-8">
+                          <div className="mb-8">
+                            <div className="flex justify-between items-end mb-3 px-1">
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Learning Milestones</span>
+                              <span className="text-[10px] font-black text-saBlue bg-saBlue/5 px-3 py-1 rounded-full border border-saBlue/10 tabular-nums">
                                 Global Progress: {overallProgress}%
                               </span>
                             </div>
-                            <Progress value={overallProgress} className="h-6 bg-gray-50 rounded-2xl overflow-hidden border-4 border-white shadow-inner">
-                              <div className="h-full bg-gradient-to-r from-saBlue to-blue-400 rounded-2xl shadow-lg transition-all duration-1000" />
+                            <Progress value={overallProgress} className="h-4 bg-gray-50 rounded-xl overflow-hidden border-2 border-white shadow-inner">
+                              <div className="h-full bg-gradient-to-r from-saBlue to-blue-400 rounded-xl shadow-lg transition-all duration-1000" />
                             </Progress>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                             {modules.map((module) => {
                               const prog = getStudentModuleProgress(studentData.student_id, module.module_id);
                               const status = prog?.is_completed ? "COMPLETED" : (prog?.progress_percent ?? 0) > 0 ? "IN_PROGRESS" : "NOT_STARTED";

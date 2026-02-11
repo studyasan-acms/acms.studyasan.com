@@ -138,7 +138,7 @@ export default function StudyModulePage() {
         return (
           <div className="max-w-4xl mx-auto py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="prose prose-slate prose-lg max-w-none">
-              <div className="whitespace-pre-wrap text-gray-800 leading-[1.8] text-lg font-medium tracking-tight bg-white p-10 md:p-14 rounded-[32px] border border-gray-100 shadow-sm transition-all hover:shadow-md">
+              <div className="whitespace-pre-wrap text-gray-800 leading-[1.8] text-base font-medium tracking-tight bg-white p-6 md:p-8 rounded-[24px] border border-gray-100 shadow-sm transition-all hover:shadow-md">
                 {content.text_content}
               </div>
             </div>
@@ -274,7 +274,7 @@ export default function StudyModulePage() {
                     Part {currentContentIndex + 1} of {module.content.length}
                   </span>
                   <span className="text-gray-300">•</span>
-                  <span className="uppercase tracking-wider font-semibold text-[10px]">
+                  <span className="uppercase tracking-wider font-semibold text-[11px]">
                     {progress?.is_completed ? 'Completed' : 'In Progress'}
                   </span>
                 </div>
@@ -300,14 +300,14 @@ export default function StudyModulePage() {
       <div className="max-w-7xl mx-auto px-6 pt-10">
         {module.content.length === 0 ? (
           <div className="py-24 text-center animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <div className="w-24 h-24 bg-white rounded-[40px] flex items-center justify-center mx-auto mb-8 shadow-xl border border-gray-100 ring-1 ring-gray-100">
-              <AlertCircle className="w-12 h-12 text-gray-200" />
+            <div className="w-16 h-16 bg-white rounded-[32px] flex items-center justify-center mx-auto mb-6 shadow-xl border border-gray-100 ring-1 ring-gray-100">
+              <AlertCircle className="w-8 h-8 text-gray-200" />
             </div>
-            <h3 className="text-3xl font-black text-gray-900 tracking-tight">Curriculum Unavailable</h3>
-            <p className="text-gray-500 text-lg mt-4 max-w-sm mx-auto font-medium">This module exists in the syllabus but currently contains no instructional materials.</p>
+            <h3 className="text-2xl font-black text-gray-900 tracking-tight">Curriculum Unavailable</h3>
+            <p className="text-gray-500 text-base mt-3 max-w-sm mx-auto font-medium">This module exists in the syllabus but currently contains no instructional materials.</p>
             <Button
               onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-              className="mt-10 h-14 px-10 rounded-2xl bg-saBlue hover:bg-saBlue/90 font-bold text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20"
+              className="mt-8 h-10 px-8 rounded-xl bg-saBlue hover:bg-saBlue/90 font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-saBlue/20"
             >
               Back to Roadmap
             </Button>
@@ -327,7 +327,7 @@ export default function StudyModulePage() {
               onClick={handlePrevious}
               disabled={currentContentIndex === 0}
               variant="outline"
-              className="h-14 sm:w-14 w-12 rounded-2xl border-gray-200 transition-all active:scale-90 disabled:opacity-30 disabled:grayscale group"
+              className="h-10 sm:w-10 w-10 rounded-xl border-gray-200 transition-all active:scale-90 disabled:opacity-30 disabled:grayscale group"
             >
               <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-saBlue" />
             </Button>
@@ -349,7 +349,7 @@ export default function StudyModulePage() {
                   />
                 ))}
               </div>
-              <span className="sm:hidden text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <span className="sm:hidden text-xs font-black text-gray-500 uppercase tracking-widest">
                 {currentContentIndex + 1} / {module.content.length}
               </span>
             </div>
@@ -359,7 +359,7 @@ export default function StudyModulePage() {
                 <Button
                   onClick={handleCompleteModule}
                   disabled={updating}
-                  className="h-14 px-8 rounded-2xl bg-saVividOrange hover:bg-saVividOrange/90 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-saVividOrange/20 transition-all active:scale-95 group/complete"
+                  className="h-10 px-6 rounded-xl bg-saVividOrange hover:bg-saVividOrange/90 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-saVividOrange/20 transition-all active:scale-95 group/complete"
                 >
                   {updating ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -373,7 +373,7 @@ export default function StudyModulePage() {
               {currentContentIndex < module.content.length - 1 && (
                 <Button
                   onClick={handleNext}
-                  className="h-14 px-8 md:px-10 rounded-2xl bg-saBlue hover:bg-saBlue/90 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/next"
+                  className="h-10 px-6 md:px-8 rounded-xl bg-saBlue hover:bg-saBlue/90 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/next"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4 ml-2 group-hover/next:translate-x-1 transition-transform" />
@@ -383,7 +383,7 @@ export default function StudyModulePage() {
               {currentContentIndex === module.content.length - 1 && progress?.is_completed && (
                 <Button
                   onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                  className="h-14 px-10 rounded-2xl bg-gray-950 hover:bg-gray-900 text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-gray-200 transition-all"
+                  className="h-10 px-8 rounded-xl bg-gray-950 hover:bg-gray-900 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-200 transition-all"
                 >
                   Subject Hub
                 </Button>

@@ -104,7 +104,7 @@ export default function StudentModulesPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <Link
             to="/dashboard/subjects"
             className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-saBlue mb-6 transition-colors"
@@ -132,18 +132,18 @@ export default function StudentModulesPage() {
                   </Badge>
                 )}
               </div>
-              <h1 className="text-3xl font-bold text-gray-900 tracking-tight">{subject?.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{subject?.name}</h1>
             </div>
 
-            <Card className="min-w-[280px] bg-white border-gray-200 shadow-sm">
-              <CardContent className="p-5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium text-gray-600">Progress</span>
-                  <span className="text-2xl font-bold text-gray-900">{overallProgress}%</span>
+            <Card className="min-w-[200px] bg-white border-gray-200 shadow-sm rounded-xl">
+              <CardContent className="p-3">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Progress</span>
+                  <span className="text-sm font-black text-gray-900">{overallProgress}%</span>
                 </div>
-                <Progress value={overallProgress} className="h-2.5 bg-gray-100" />
-                <div className="flex justify-between items-center mt-3 text-xs text-gray-500">
-                  <span>{completedCount} of {modules.length} modules completed</span>
+                <Progress value={overallProgress} className="h-1.5 bg-gray-100" />
+                <div className="flex justify-between items-center mt-2 text-xs font-medium text-gray-500">
+                  <span>{completedCount}/{modules.length} modules</span>
                 </div>
               </CardContent>
             </Card>
@@ -151,7 +151,7 @@ export default function StudentModulesPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {modules.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
             <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -165,7 +165,7 @@ export default function StudentModulesPage() {
         ) : (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-900">Modules</h2>
+              <h2 className="text-lg font-bold text-gray-900">Modules</h2>
               <span className="text-sm text-gray-500">{modules.length} items</span>
             </div>
 
@@ -185,59 +185,60 @@ export default function StudentModulesPage() {
                         isCompleted && "bg-gray-50/50"
                       )}
                     >
-                      <div className="flex flex-col sm:flex-row">
+                      <div className="flex flex-col sm:flex-row items-stretch">
                         {/* Status Indicator Strip */}
                         <div className={cn(
-                          "w-full sm:w-2 h-2 sm:h-auto",
-                          isCompleted ? "bg-green-500" : isStarted ? "bg-saBlue" : "bg-gray-200"
+                          "w-full sm:w-1.5 h-1.5 sm:h-auto",
+                          status === "COMPLETED" ? "bg-green-500" : status === "IN_PROGRESS" ? "bg-saBlue" : "bg-gray-200"
                         )} />
 
-                        <div className="p-6 flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                          <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-gray-50 text-gray-500 font-bold text-lg border border-gray-100">
+                        <div className="p-3 sm:p-4 flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
+                          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 text-gray-500 font-bold text-xs border border-gray-100 mt-0.5 sm:mt-0">
                             {index + 1}
                           </div>
 
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-1">
+                          <div className="flex-1 min-w-0 grid gap-1">
+                            <div className="flex items-center gap-2">
                               <h3 className={cn(
-                                "text-lg font-bold text-gray-900 truncate",
-                                isCompleted && "text-gray-600"
+                                "text-sm font-bold text-gray-900 truncate",
+                                status === "COMPLETED" && "text-gray-500 line-through"
                               )}>
                                 {module.title}
                               </h3>
-                              {isCompleted && <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />}
+                              {status === "COMPLETED" && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
                             </div>
-                            <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+                            <p className="text-xs text-gray-500 line-clamp-1">
                               {module.description}
                             </p>
-                            <div className="flex items-center gap-4 text-xs text-gray-500 font-medium">
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-3 text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
+                              <div className="flex items-center gap-1">
                                 <Clock className="w-3.5 h-3.5" />
                                 <span>{module.estimated_time_minutes} min</span>
                               </div>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1">
                                 <Layers className="w-3.5 h-3.5" />
                                 <span>{module.content?.length || 0} topics</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="self-end sm:self-center pt-4 sm:pt-0 pl-14 sm:pl-0 w-full sm:w-auto">
+                          <div className="self-stretch sm:self-center pt-2 sm:pt-0 w-full sm:w-auto mt-2 sm:mt-0">
                             <Button
                               onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`)}
-                              variant={isCompleted ? "outline" : "default"}
+                              size="sm"
+                              variant={status === "COMPLETED" ? "outline" : "default"}
                               className={cn(
-                                "w-full sm:w-auto font-semibold shadow-none",
-                                !isCompleted && "bg-saBlue hover:bg-saBlueDarkHover text-white",
-                                isCompleted && "text-gray-600 border-gray-300 hover:bg-gray-50"
+                                "w-full sm:w-auto h-9 px-5 rounded-lg font-bold text-xs uppercase tracking-wider shadow-none transition-all active:scale-95",
+                                status !== "COMPLETED" && "bg-saBlue hover:bg-saBlueDarkHover text-white",
+                                status === "COMPLETED" && "text-gray-500 border-gray-200 hover:bg-gray-50"
                               )}
                             >
-                              {isCompleted ? (
+                              {status === "COMPLETED" ? (
                                 <>Review</>
-                              ) : isStarted ? (
-                                <>Continue <Play className="w-3.5 h-3.5 ml-2 fill-current" /></>
+                              ) : status === "IN_PROGRESS" ? (
+                                <>Continue <Play className="w-3 h-3 ml-1.5 fill-current" /></>
                               ) : (
-                                <>Start Learning <ChevronRight className="w-4 h-4 ml-1" /></>
+                                <>Start <ChevronRight className="w-3.5 h-3.5 ml-1" /></>
                               )}
                             </Button>
                           </div>

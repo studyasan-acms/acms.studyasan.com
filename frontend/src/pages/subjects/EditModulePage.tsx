@@ -236,46 +236,36 @@ export default function EditModulePage() {
   return (
     <div className="min-h-screen bg-white pb-32">
       {/* PREMIUM HEADER SECTION */}
-      <div className="relative overflow-hidden bg-slate-50 rounded-b-[40px] mb-12 shadow-sm border-b border-slate-100 group">
+      <div className="relative overflow-hidden bg-slate-50 rounded-b-[32px] mb-8 shadow-sm border-b border-slate-100 group">
         {/* Animated Background Elements */}
         <div className="absolute top-[-20%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
         <div className="absolute bottom-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
 
-        <div className="max-w-5xl mx-auto px-6 pt-12 pb-16 relative z-10">
+        <div className="max-w-5xl mx-auto px-6 pt-8 pb-10 relative z-10">
           <Link
             to={`/dashboard/subjects/${subjectId}/modules`}
-            className="group inline-flex items-center text-xs font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-10"
+            className="group inline-flex items-center text-xs font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-6"
           >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" />
             Subject Modules
           </Link>
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-4 bg-saBlue/10 rounded-2xl text-saBlue animate-in zoom-in duration-500 shadow-sm border border-saBlue/5">
-                <Layers className="w-7 h-7" />
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-saBlue/10 rounded-xl text-saBlue animate-in zoom-in duration-500 shadow-sm border border-saBlue/5">
+                <Layers className="w-6 h-6" />
               </div>
-              <div className="space-y-1">
-                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[10px] uppercase font-bold tracking-[0.2em] px-3 py-1 bg-saBlue/5 rounded-full mb-1">
+              <div className="space-y-0.5">
+                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[9px] uppercase font-bold tracking-[0.2em] px-2 py-0.5 bg-saBlue/5 rounded-full mb-1">
                   Asset Synchronization Active
                 </Badge>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                   Edit: {module.title}
-                  <Sparkles className="w-5 h-5 text-saVividOrange animate-pulse" />
+                  <Sparkles className="w-4 h-4 text-saVividOrange animate-pulse" />
                 </h1>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${moduleId}/study`)}
-                className="h-12 px-6 rounded-xl font-bold text-[10px] uppercase tracking-widest border-gray-200 hover:bg-saBlue/5 hover:text-saBlue transition-all"
-              >
-                <ChevronRight className="w-4 h-4 mr-2" />
-                Preview Mode
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -283,20 +273,20 @@ export default function EditModulePage() {
       <div className="max-w-5xl mx-auto px-6 space-y-10">
         <div className="grid lg:grid-cols-1 gap-10">
           {/* 1. MODULE SETTINGS CARD */}
-          <form onSubmit={handleSubmit} className="space-y-10">
-            <Card className="rounded-[32px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-              <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <Card className="rounded-[24px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
+              <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm">
                     <FileText className="w-4 h-4 text-saBlue" />
                   </div>
                   <div>
                     <CardTitle className="text-lg font-bold tracking-tight">Module Configuration</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Core Identity</CardDescription>
+                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-400">Core Identity</CardDescription>
                   </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-8 space-y-8">
+              <CardContent className="p-6 space-y-6">
                 <div className="grid gap-8">
                   <div className="space-y-3">
                     <Label htmlFor="title" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
@@ -307,13 +297,13 @@ export default function EditModulePage() {
                       value={formData.title}
                       onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                       placeholder="Enter module title"
-                      className="h-14 rounded-2xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all px-6 text-sm font-bold"
+                      className="h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all px-4 text-sm font-bold"
                       required
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <Label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">
                       Module Synopsis <span className="text-red-500">*</span>
                     </Label>
                     <Textarea
@@ -321,14 +311,14 @@ export default function EditModulePage() {
                       value={formData.description}
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="Provide a comprehensive summary of this module..."
-                      rows={4}
-                      className="rounded-2xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-6 text-sm font-medium leading-relaxed resize-none"
+                      rows={3}
+                      className="rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-4 text-sm font-medium leading-relaxed resize-none"
                       required
                     />
                   </div>
 
                   <div className="space-y-3">
-                    <Label htmlFor="estimated_time_minutes" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
+                    <Label htmlFor="estimated_time_minutes" className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">
                       Completion Duration (Minutes)
                     </Label>
                     <div className="relative">
@@ -339,7 +329,7 @@ export default function EditModulePage() {
                         min="0"
                         value={formData.estimated_time_minutes}
                         onChange={(e) => setFormData(prev => ({ ...prev, estimated_time_minutes: parseInt(e.target.value) || 0 }))}
-                        className="h-14 rounded-2xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all pl-12 pr-6 text-sm font-bold"
+                        className="h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all pl-12 pr-4 text-sm font-bold"
                       />
                     </div>
                   </div>
@@ -352,14 +342,14 @@ export default function EditModulePage() {
                 type="button"
                 variant="outline"
                 onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                className="flex-1 sm:flex-none sm:min-w-[200px] h-14 rounded-2xl border-gray-200 font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all"
+                className="flex-1 sm:flex-none sm:min-w-[160px] h-11 rounded-xl border-gray-200 font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all"
               >
                 Discard Changes
               </Button>
               <Button
                 type="submit"
                 disabled={saving}
-                className="flex-1 sm:flex-none sm:min-w-[200px] h-14 bg-saBlue hover:bg-saBlue/90 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-lg shadow-saBlue/20 transition-all active:scale-95"
+                className="flex-1 sm:flex-none sm:min-w-[160px] h-11 bg-saBlue hover:bg-saBlue/90 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-saBlue/20 transition-all active:scale-95"
               >
                 {saving ? (
                   <>
@@ -377,8 +367,8 @@ export default function EditModulePage() {
           </form>
 
           {/* 2. CONTENT REPOSITORY CARD */}
-          <Card className="rounded-[32px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-8">
+          <Card className="rounded-[24px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
+            <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex items-center gap-3">
                   <div className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm">
@@ -403,15 +393,15 @@ export default function EditModulePage() {
                   <Button
                     onClick={() => document.getElementById("file-upload")?.click()}
                     disabled={uploading}
-                    className="h-12 px-6 rounded-xl bg-gray-950 hover:bg-gray-900 font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-gray-200/50 transition-all"
+                    className="h-10 px-5 rounded-xl bg-gray-950 hover:bg-gray-900 font-bold text-xs uppercase tracking-widest shadow-lg shadow-gray-200/50 transition-all"
                   >
-                    {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Upload className="w-4 h-4 mr-2" />}
+                    {uploading ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-2" />}
                     Upload Resources
                   </Button>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8 space-y-10">
+            <CardContent className="p-6 space-y-8">
               {/* Text Entry Section */}
               <div className="space-y-4">
                 <Label htmlFor="text-content" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
@@ -425,13 +415,13 @@ export default function EditModulePage() {
                     onChange={(e) => setTextContent(e.target.value)}
                     placeholder="Compose instructional text, lecture notes, or module summaries..."
                     rows={2}
-                    className="flex-1 rounded-2xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-5 text-sm font-medium resize-none min-h-[80px]"
+                    className="flex-1 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-4 text-sm font-medium resize-none min-h-[60px]"
                   />
                   <Button
                     onClick={handleAddTextContent}
                     disabled={!textContent.trim()}
                     variant="outline"
-                    className="sm:w-32 h-auto sm:aspect-square flex flex-col items-center justify-center gap-2 rounded-2xl border-saBlue/20 text-saBlue hover:bg-saBlue hover:text-white transition-all duration-500"
+                    className="sm:w-28 h-auto sm:aspect-square flex flex-col items-center justify-center gap-2 rounded-xl border-saBlue/20 text-saBlue hover:bg-saBlue hover:text-white transition-all duration-500"
                   >
                     <Plus className="w-5 h-5" />
                     <span className="text-[9px] font-black uppercase tracking-widest">Add Text</span>
@@ -442,7 +432,7 @@ export default function EditModulePage() {
               {/* Assets List */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4 px-1">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">
                     Deployed Content · {module.content?.length || 0} Items
                   </h4>
                 </div>
@@ -452,28 +442,28 @@ export default function EditModulePage() {
                     module.content.map((content) => (
                       <div
                         key={content.content_id}
-                        className="group flex flex-col md:flex-row items-stretch border border-gray-100 rounded-3xl hover:border-saBlue/20 hover:bg-saBlue/[0.02] transition-all duration-300 overflow-hidden"
+                        className="group flex flex-col md:flex-row items-stretch border border-gray-100 rounded-xl hover:border-saBlue/20 hover:bg-saBlue/[0.02] transition-all duration-300 overflow-hidden"
                       >
-                        <div className="flex-1 p-5 flex items-center gap-5">
+                        <div className="flex-1 p-3 flex items-center gap-3">
                           <div className="shrink-0">{getContentIcon(content.type)}</div>
-                          <div className="flex-1 min-w-0 pr-4">
-                            <h5 className="text-sm font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors">
+                          <div className="flex-1 min-w-0 pr-2">
+                            <h5 className="text-xs font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors">
                               {content.type === "text"
                                 ? content.text_content?.substring(0, 80) + (content.text_content?.length! > 80 ? "..." : "")
                                 : content.file_name || "Instructional Material"}
                             </h5>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                              <span className="text-[9px] font-black uppercase tracking-widest text-saBlue/50 bg-saBlue/5 px-2 py-0.5 rounded-full">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-saBlue/50 bg-saBlue/5 px-2 py-0.5 rounded-full">
                                 {content.type}
                               </span>
                               {content.file_size && (
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 tracking-tight">
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 tracking-tight">
                                   <Files className="w-3 h-3" />
                                   {formatFileSize(content.file_size)}
                                 </span>
                               )}
                               {content.uploaded_at && (
-                                <span className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400 tracking-tight">
+                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 tracking-tight">
                                   <Calendar className="w-3 h-3" />
                                   {new Date(content.uploaded_at).toLocaleDateString()}
                                 </span>
@@ -486,7 +476,7 @@ export default function EditModulePage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleRemoveContent(content.content_id)}
-                            className="h-10 w-10 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                            className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -494,9 +484,9 @@ export default function EditModulePage() {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-16 border-2 border-dashed border-gray-100 rounded-[32px] bg-gray-50/30">
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-sm border border-gray-100">
-                        <Plus className="w-8 h-8 text-gray-200" />
+                    <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/30">
+                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
+                        <Plus className="w-6 h-6 text-gray-200" />
                       </div>
                       <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No instructional assets detected</p>
                       <p className="text-xs text-gray-500 mt-2">Upload files or compose text to populate this module.</p>
