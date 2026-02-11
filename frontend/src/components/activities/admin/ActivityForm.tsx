@@ -19,6 +19,9 @@ import MemoryGameBuilder from './builders/MemoryGameBuilder.tsx';
 import QuizGameBuilder from './builders/QuizGameBuilder.tsx';
 import SequenceOrderBuilder from './builders/SequenceOrderBuilder.tsx';
 import TrueFalseBuilder from './builders/TrueFalseBuilder.tsx';
+import ChessBuilder from './builders/ChessBuilder.tsx';
+import HangmanBuilder from './builders/HangmanBuilder.tsx';
+import SudokuBuilder from './builders/SudokuBuilder.tsx';
 
 interface Props {
   activity: Activity | null;
@@ -151,6 +154,12 @@ export default function ActivityForm({
         return <SequenceOrderBuilder {...props} />;
       case 'TRUE_FALSE':
         return <TrueFalseBuilder {...props} />;
+      case 'CHESS':
+        return <ChessBuilder {...props} />;
+      case 'HANGMAN':
+        return <HangmanBuilder {...props} />;
+      case 'SUDOKU':
+        return <SudokuBuilder {...props} />;
       default:
         return <div className="text-center py-8 text-gray-500">Builder for {formData.activity_type} is under construction</div>;
     }
@@ -212,6 +221,9 @@ export default function ActivityForm({
                 <option value="WORD_SEARCH">Word Search</option>
                 <option value="QUIZ_GAME">Quiz Game</option>
                 <option value="TRUE_FALSE">True/False</option>
+                <option value="CHESS">Chess</option>
+                <option value="HANGMAN">Hangman</option>
+                <option value="SUDOKU">Sudoku</option>
               </select>
             </div>
           </div>
