@@ -17,7 +17,8 @@ const generateOTP = (): string => {
 // Request OTP for registration
 export const requestOTP = async (req: Request, res: Response) => {
   try {
-    const { name, email, phone, password } = req.body;
+    let { name, email, phone, password } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate required fields
     if (!name || !email || !phone || !password) {
@@ -85,7 +86,8 @@ export const requestOTP = async (req: Request, res: Response) => {
 // Verify OTP and complete registration
 export const verifyOTP = async (req: Request, res: Response) => {
   try {
-    const { email, otp } = req.body;
+    let { email, otp } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate required fields
     if (!email || !otp) {
@@ -180,7 +182,8 @@ export const verifyOTP = async (req: Request, res: Response) => {
 // Resend OTP
 export const resendOTP = async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+    if (email) email = email.toLowerCase();
 
     if (!email) {
       return sendError(res, 'Email is required', 400);
@@ -314,7 +317,8 @@ export const register = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate input
     if (!email || !password) {
@@ -404,7 +408,8 @@ export const verifyToken = async (req: AuthRequest, res: Response) => {
 // Request password reset OTP
 export const requestPasswordReset = async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate required field
     if (!email) {
@@ -457,7 +462,8 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
 // Verify password reset OTP
 export const verifyPasswordResetOTP = async (req: Request, res: Response) => {
   try {
-    const { email, otp } = req.body;
+    let { email, otp } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate required fields
     if (!email || !otp) {
@@ -506,7 +512,8 @@ export const verifyPasswordResetOTP = async (req: Request, res: Response) => {
 // Reset password with verified OTP
 export const resetPassword = async (req: Request, res: Response) => {
   try {
-    const { email, otp, newPassword } = req.body;
+    let { email, otp, newPassword } = req.body;
+    if (email) email = email.toLowerCase();
 
     // Validate required fields
     if (!email || !otp || !newPassword) {

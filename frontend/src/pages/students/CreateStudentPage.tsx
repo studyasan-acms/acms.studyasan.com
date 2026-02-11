@@ -181,6 +181,7 @@ export default function CreateStudentPage() {
 
       const transformedData = {
         ...formData,
+        email: formData.email.toLowerCase(),
         blood_group: formData.blood_group ? bloodGroupMap[formData.blood_group] : null,
         addressLine: formData.addressLine || '',
         school: formData.school || '',

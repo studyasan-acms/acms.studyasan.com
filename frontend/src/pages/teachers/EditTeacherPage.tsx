@@ -309,7 +309,7 @@ export default function EditTeacherPage() {
         gender: formData.gender,
         experience: formData.experience,
         name: formData.name,
-        email: formData.email,
+        email: formData.email?.toLowerCase() ?? null,
         phone: formData.phone,
         role_id: formData.roleId,
         address: hasAllAddressFields ? {

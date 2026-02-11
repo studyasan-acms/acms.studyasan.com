@@ -179,6 +179,8 @@ export const createStudent = async (req: Request, res: Response) => {
       postalCode,
     } = req.body;
 
+    if (email) req.body.email = email.toLowerCase();
+
     const profileImage = req.file;
 
     // Check if we're creating a new user or using existing user_id
@@ -374,6 +376,8 @@ export const updateStudent = async (req: Request, res: Response) => {
       email,
       phone,
     } = req.body;
+
+    if (email) req.body.email = email.toLowerCase();
 
     const existingStudent = await prisma.student.findUnique({
       where: { id: parseInt(id!) },

@@ -320,11 +320,21 @@ export default function ActivitiesPage() {
               </div>
             </div>
 
-            <div className={`w-full h-32 sm:h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
-              <h3 className="text-lg sm:text-2xl font-bold text-white text-center px-4">
-                {activity.title}
-              </h3>
-            </div>
+            {activity.cover_image || activity.group?.cover_image ? (
+              <div className="w-full h-32 sm:h-40 rounded-md mb-3 overflow-hidden bg-gray-100">
+                <img
+                  src={activity.cover_image || activity.group?.cover_image}
+                  alt={activity.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className={`w-full h-32 sm:h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
+                <h3 className="text-lg sm:text-2xl font-bold text-white text-center px-4">
+                  {activity.title}
+                </h3>
+              </div>
+            )}
 
             {activity.description && (
               <p className="text-gray-600 text-sm mb-3 line-clamp-2">

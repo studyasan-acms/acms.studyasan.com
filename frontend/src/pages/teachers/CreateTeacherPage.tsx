@@ -191,7 +191,7 @@ export default function CreateTeacherPage() {
     try {
       const transformedData = {
         name: formData.name,
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         phone: formData.phone,
         password: formData.password,
         salary: formData.salary,

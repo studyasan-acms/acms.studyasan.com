@@ -115,7 +115,7 @@ export default function RegisterPage() {
     try {
       const registerData = {
         name: formData.name,
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         phone: formData.phone,
         password: formData.password,
       };
@@ -145,7 +145,7 @@ export default function RegisterPage() {
 
     try {
       const response = await authService.verifyOtp({
-        email: formData.email,
+        email: formData.email.toLowerCase(),
         otp: otpCode,
       });
       setAuth(response.data.user, response.data.token);
@@ -171,7 +171,7 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      await authService.resendOtp(formData.email);
+      await authService.resendOtp(formData.email.toLowerCase());
       setResendCooldown(30);
       setOtp(["", "", "", "", "", ""]);
     } catch (err: unknown) {
@@ -431,18 +431,18 @@ export default function RegisterPage() {
                             <div
                               key={index}
                               className={`h-1.5 flex-1 rounded-full transition-colors ${index <= passwordStrength.score
-                                  ? getStrengthColor(passwordStrength.score)
-                                  : "bg-gray-200"
+                                ? getStrengthColor(passwordStrength.score)
+                                : "bg-gray-200"
                                 }`}
                             />
                           ))}
                         </div>
                         <span
                           className={`text-xs font-medium ${passwordStrength.score >= 3
-                              ? "text-green-600"
-                              : passwordStrength.score >= 2
-                                ? "text-yellow-600"
-                                : "text-red-600"
+                            ? "text-green-600"
+                            : passwordStrength.score >= 2
+                              ? "text-yellow-600"
+                              : "text-red-600"
                             }`}
                         >
                           {isCheckingPassword ? "..." : getStrengthLabel(passwordStrength.score)}

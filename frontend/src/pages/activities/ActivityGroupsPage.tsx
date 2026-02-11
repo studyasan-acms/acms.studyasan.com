@@ -156,11 +156,23 @@ export default function ActivityGroupsPage() {
               </div>
             </div>
 
-            <div className={`w-full h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
-              <h3 className="text-3xl font-bold text-white text-center px-4">
-                {group.name}
-              </h3>
-            </div>
+            {group.cover_image ? (
+              <div className="w-full h-40 rounded-md mb-3 overflow-hidden bg-gray-100">
+                <img
+                  src={group.cover_image}
+                  alt={group.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div
+                className={`w-full h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}
+              >
+                <h3 className="text-3xl font-bold text-white text-center px-4">
+                  {group.name}
+                </h3>
+              </div>
+            )}
 
             {group.description && (
               <p className="text-gray-600 text-sm mb-3">{group.description}</p>

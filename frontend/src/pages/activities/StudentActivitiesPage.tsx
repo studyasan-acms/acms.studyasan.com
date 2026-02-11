@@ -253,9 +253,28 @@ export default function StudentActivitiesPage() {
             key={activity.id}
             className="overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
           >
-            <div className={`w-full h-32 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
-              <h3 className="text-2xl font-bold text-white text-center px-4">{activity.title}</h3>
-            </div>
+            {activity.cover_image || activity.group?.cover_image ? (
+              <div className="w-full h-32 relative">
+                <img
+                  src={activity.cover_image || activity.group?.cover_image}
+                  alt={activity.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                  <h3 className="text-2xl font-bold text-white text-center px-4 drop-shadow-md">
+                    {activity.title}
+                  </h3>
+                </div>
+              </div>
+            ) : (
+              <div
+                className={`w-full h-32 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}
+              >
+                <h3 className="text-2xl font-bold text-white text-center px-4">
+                  {activity.title}
+                </h3>
+              </div>
+            )}
             <div className="px-6 pb-6 pt-4">
               <div className="flex items-center gap-2 mb-2">
                 <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />

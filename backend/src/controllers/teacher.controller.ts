@@ -155,6 +155,9 @@ export const createTeacher = async (req: Request, res: Response) => {
       experience,
       address
     } = req.body;
+
+    if (email) req.body.email = email.toLowerCase();
+
     const profileImage = req.file;
 
     // Check if we're creating a new user or using existing user_id
@@ -385,7 +388,8 @@ export const updateTeacher = async (req: Request, res: Response) => {
     const experience = req.body.experience;
     const address = req.body.address;
     const name = req.body.name;
-    const email = req.body.email;
+    let email = req.body.email;
+    if (email) email = email.toLowerCase();
     const phone = req.body.phone;
     const role_id = req.body.role_id;
 

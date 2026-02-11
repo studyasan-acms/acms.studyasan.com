@@ -82,7 +82,8 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.user?.id;
-    const { name, phone, password } = req.body;
+    let { name, email, phone, password } = req.body;
+    if (email) email = email.toLowerCase();
     const profileImage = req.file;
 
     if (!userId) {
@@ -103,6 +104,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
     const updateData: any = {};
 
     if (name) updateData.name = name;
+    if (email) updateData.email = email;
     if (phone) updateData.phone = phone;
 
     // Handle password update

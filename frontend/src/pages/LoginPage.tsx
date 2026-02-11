@@ -41,7 +41,10 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await authService.login(formData);
+      const response = await authService.login({
+        ...formData,
+        email: formData.email.toLowerCase(),
+      });
       setAuth(response.data.user, response.data.token);
       if (response.data.user.role === 'STUDENT') {
         navigate("/dashboard/home");

@@ -233,6 +233,7 @@ export interface Teacher {
     state: { id: number; name: string };
     city: { id: number; name: string };
   } | null;
+  role_id: number | null;
   created_at: string;
   updated_at: string;
   user: {

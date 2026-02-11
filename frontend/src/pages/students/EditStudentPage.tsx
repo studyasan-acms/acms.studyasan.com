@@ -340,6 +340,7 @@ export default function EditStudentPage() {
       // Transform blood group from frontend format (A+) to backend format (A_POS)
       const transformedData = {
         ...formData,
+        email: formData.email?.toLowerCase(),
         blood_group: formData.blood_group
           ? formData.blood_group.replace("+", "_POS").replace("-", "_NEG")
           : null,
