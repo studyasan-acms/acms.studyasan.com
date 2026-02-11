@@ -992,3 +992,80 @@ export interface ActivityGroupEnrollment {
   activity_group?: ActivityGroup;
   student?: Student;
 }
+
+// ================== JOBS & INTERNSHIPS ==================
+export type JobType = 'JOB' | 'INTERNSHIP';
+export type JobStatus = 'OPEN' | 'CLOSED';
+export type ApplicationStatus = 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+
+export interface Job {
+  id: number;
+  title: string;
+  company: string;
+  location?: string;
+  type: JobType;
+  description: string;
+  requirements?: string;
+  skills?: string[];
+  salary_range?: string;
+  duration?: string;
+  application_deadline?: string;
+  status: JobStatus;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  _count?: {
+    applications: number;
+  };
+}
+
+export interface JobApplication {
+  id: number;
+  job_id: number;
+  student_id: number;
+  cv_url: string;
+  cover_letter: string;
+  status: ApplicationStatus;
+  reviewed_by?: number;
+  reviewed_at?: string;
+  feedback?: string;
+  applied_at: string;
+  updated_at: string;
+  job?: {
+    id: number;
+    title: string;
+    company: string;
+    location?: string;
+    type: JobType;
+    status: JobStatus;
+  };
+  student?: Student;
+}
+
+export interface CreateJobData {
+  title: string;
+  company: string;
+  location?: string;
+  type: JobType;
+  description: string;
+  requirements?: string;
+  skills?: string[];
+  salary_range?: string;
+  duration?: string;
+  application_deadline?: string;
+}
+
+export interface UpdateJobData extends Partial<CreateJobData> {
+  status?: JobStatus;
+}
+
+export interface ApplyJobData {
+  job_id: number;
+  cover_letter: string;
+}
+
+export interface ReviewApplicationData {
+  status: ApplicationStatus;
+  feedback?: string;
+}
+

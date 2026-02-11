@@ -1304,5 +1304,106 @@ export const uploadService = {
   },
 };
 
+// ================== JOB/INTERNSHIP SERVICE ==================
+export const jobService = {
+  // Get all jobs (with filters)
+  getAllJobs: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    type?: 'JOB' | 'INTERNSHIP';
+    status?: 'OPEN' | 'CLOSED';
+  }) => {
+    const response = await api.get('/jobs', { params });
+    return response.data;
+  },
+
+  // Get job by ID
+  getJobById: async (id: number) => {
+    const response = await api.get(`/jobs/${id}`);
+    return response.data;
+  },
+
+  // Create job (Admin)
+  createJob: async (data: any) => {
+    const response = await api.post('/jobs', data);
+    return response.data;
+  },
+
+  // Update job (Admin)
+  updateJob: async (id: number, data: any) => {
+    const response = await api.put(`/jobs/${id}`, data);
+    return response.data;
+  },
+
+  // Delete job (Admin)
+  deleteJob: async (id: number) => {
+    const response = await api.delete(`/jobs/${id}`);
+    return response.data;
+  },
+
+  // Apply for job (Student)
+  applyForJob: async (jobId: number, coverLetter: string, cvFile: File) => {
+    const formData = new FormData();
+    formData.append('job_id', jobId.toString());
+    formData.append('cover_letter', coverLetter);
+    formData.append('cv', cvFile);
+
+    const response = await api.post('/jobs/apply', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  // Get my applications (Student)
+  getMyApplications: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+  }) => {
+    const response = await api.get('/jobs/applications/my', { params });
+    return response.data;
+  },
+
+  // Withdraw application (Student)
+  withdrawApplication: async (id: number) => {
+    const response = await api.delete(`/jobs/applications/${id}`);
+    return response.data;
+  },
+
+  // Get all applications (Admin)
+  getAllApplications: async (params?: {
+    page?: number;
+    limit?: number;
+    status?: 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+    job_id?: number;
+  }) => {
+    const response = await api.get('/jobs/applications/all', { params });
+    return response.data;
+  },
+
+  // Get applications for a specific job (Admin)
+  getJobApplications: async (jobId: number, params?: {
+    page?: number;
+    limit?: number;
+    status?: 'PENDING' | 'REVIEWED' | 'ACCEPTED' | 'REJECTED';
+  }) => {
+    const response = await api.get(`/jobs/${jobId}/applications`, { params });
+    return response.data;
+  },
+
+  // Get application by ID (Admin)
+  getApplicationById: async (id: number) => {
+    const response = await api.get(`/jobs/applications/${id}`);
+    return response.data;
+  },
+
+  // Review application (Admin)
+  reviewApplication: async (id: number, status: 'REVIEWED' | 'ACCEPTED' | 'REJECTED', feedback?: string) => {
+    const response = await api.patch(`/jobs/applications/${id}/review`, { status, feedback });
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };

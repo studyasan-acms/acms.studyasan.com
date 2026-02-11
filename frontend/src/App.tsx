@@ -105,6 +105,12 @@ import HomeworkPage from '@/pages/homework/HomeworkPage';
 import CreateHomeworkPage from '@/pages/homework/CreateHomeworkPage';
 import HomeworkDetailPage from '@/pages/homework/HomeworkDetailPage';
 
+// Job imports
+import JobsPage from '@/pages/jobs/JobsPage';
+import JobFormPage from '@/pages/jobs/JobFormPage';
+import JobDetailPage from '@/pages/jobs/JobDetailPage';
+import AdminApplicationsPage from '@/pages/jobs/AdminApplicationsPage';
+
 // Analytics imports
 import StudentAnalyticsPage from '@/pages/analytics/StudentAnalyticsPage';
 import TeacherAnalyticsPage from '@/pages/analytics/TeacherAnalyticsPage';
@@ -296,6 +302,15 @@ function App() {
           <Route path="homework" element={<HomeworkPage />} />
           <Route path="homework/create" element={<CreateHomeworkPage />} />
           <Route path="homework/:id" element={<HomeworkDetailPage />} />
+
+          {/* Job/Internship Routes */}
+          <Route path="jobs" element={<JobsPage />} />
+          <Route path="jobs/new" element={<JobFormPage />} />
+          <Route path="jobs/:id" element={<JobDetailPage />} />
+          <Route path="jobs/:id/edit" element={<JobFormPage />} />
+          <Route path="jobs/:job_id/applications" element={<AdminApplicationsPage />} />
+          <Route path="applications/my" element={<Navigate to="/dashboard/jobs?tab=applications" replace />} />
+          <Route path="applications/all" element={<AdminApplicationsPage />} />
 
           {/* Student Home Route */}
           <Route path="home" element={<StudentHomePage />} />

@@ -34,6 +34,7 @@ import * as deletionController from '../controllers/deletion.controller.js';
 import * as pushNotificationController from '../controllers/pushNotification.controller.js';
 import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
+import * as jobController from '../controllers/job.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -695,5 +696,27 @@ router.get('/analytics/admin/business', authenticate, authorize('ADMIN'), analyt
 
 // ================== ID CARD ROUTES ==================
 router.post('/id-cards/send-email', authenticate, idCardController.sendIDCardEmail);
+
+// ================== JOB/INTERNSHIP ROUTES ==================
+
+// Public job listings (Admin & Students can view)
+router.get('/jobs', authenticate, jobController.getAllJobs);
+router.get('/jobs/:id', authenticate, jobController.getJobById);
+
+// Admin: Manage jobs
+router.post('/jobs', authenticate, authorize('ADMIN'), jobController.createJob);
+router.put('/jobs/:id', authenticate, authorize('ADMIN'), jobController.updateJob);
+router.delete('/jobs/:id', authenticate, authorize('ADMIN'), jobController.deleteJob);
+
+// Student: Apply for jobs
+router.post('/jobs/apply', authenticate, authorize('STUDENT'), upload.single('cv'), jobController.applyForJob);
+router.get('/jobs/applications/my', authenticate, authorize('STUDENT'), jobController.getMyApplications);
+router.delete('/jobs/applications/:id', authenticate, authorize('STUDENT'), jobController.withdrawApplication);
+
+// Admin: Manage applications
+router.get('/jobs/:job_id/applications', authenticate, authorize('ADMIN'), jobController.getJobApplications);
+router.get('/jobs/applications/all', authenticate, authorize('ADMIN'), jobController.getAllApplications);
+router.get('/jobs/applications/:id', authenticate, authorize('ADMIN'), jobController.getApplicationById);
+router.patch('/jobs/applications/:id/review', authenticate, authorize('ADMIN'), jobController.reviewApplication);
 
 export default router;

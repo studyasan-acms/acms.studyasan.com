@@ -23,11 +23,11 @@ import {
   Gamepad2,
   FolderOpen,
   Play,
-  ClipboardCheck,
   DollarSign,
   TrendingUp,
   Settings,
   Shield,
+  Briefcase,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -107,6 +107,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/homework",
     icon: FileText,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
+  },
+  {
+    title: "Jobs & Internships",
+    href: "/dashboard/jobs",
+    icon: Briefcase,
+    roles: ["ADMIN", "STUDENT"],
   },
   {
     title: "Chats",

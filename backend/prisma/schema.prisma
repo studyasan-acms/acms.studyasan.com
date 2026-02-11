@@ -126,6 +126,7 @@ model Student {
   enquiries               Enquiry[]
   homework_assignments    HomeworkAssignment[]
   homework_responses      HomeworkResponse[]
+  job_applications        JobApplication[]
 
   @@map("students")
 }
@@ -988,5 +989,67 @@ model VideoRoomAttendanceLog {
   attendance          ClassSessionAttendance   @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
 
   @@map("video_room_attendance_logs")
+}
+
+// Job / Internship Types
+enum JobType {
+  JOB
+  INTERNSHIP
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+enum ApplicationStatus {
+  PENDING
+  REVIEWED
+  ACCEPTED
+  REJECTED
+}
+
+// Job / Internship Posting
+model Job {
+  id              Int        @id @default(autoincrement())
+  title           String
+  company         String
+  location        String?
+  type            JobType    @default(JOB)
+  description     String
+  requirements    String?    // HTML or markdown text
+  skills          Json?      // Array of required skills
+  salary_range    String?
+  duration        String?    // For internships
+  application_deadline DateTime?
+  status          JobStatus  @default(OPEN)
+  created_by      Int        // Admin who posted
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+  
+  applications    JobApplication[]
+  
+  @@map("jobs")
+}
+
+// Job/Internship Applications
+model JobApplication {
+  id              Int               @id @default(autoincrement())
+  job_id          Int
+  student_id      Int
+  cv_url          String            // URL to uploaded CV
+  cover_letter    String            // Text cover letter
+  status          ApplicationStatus @default(PENDING)
+  reviewed_by     Int?              // Admin who reviewed
+  reviewed_at     DateTime?
+  feedback        String?           // Admin feedback
+  applied_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+  
+  job             Job               @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  student         Student           @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  
+  @@unique([job_id, student_id])
+  @@map("job_applications")
 }
 
