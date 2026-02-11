@@ -2,15 +2,14 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/store/authStore";
@@ -32,8 +32,16 @@ import {
   FileText,
   MessageSquare,
   Loader2,
-  Eye,
   Calendar,
+  BookOpen,
+  User,
+  Users,
+  AlertCircle,
+  Send,
+  X,
+  FileSearch,
+  CheckCircle2,
+  ClipboardCheck,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -89,7 +97,7 @@ interface Homework {
 }
 
 export default function HomeworkDetailPage() {
-  usePageTitle("Homework Details");
+  usePageTitle("Assignment Detail");
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuthStore();
@@ -102,6 +110,10 @@ export default function HomeworkDetailPage() {
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackFile, setFeedbackFile] = useState<File | null>(null);
+
+  const isAdmin = user?.role === 'ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
+  const isStudent = user?.role === 'STUDENT';
 
   const fetchHomework = async () => {
     try {
@@ -120,88 +132,26 @@ export default function HomeworkDetailPage() {
       }
     } catch (error) {
       console.error('Error fetching homework:', error);
-      toast.error("Failed to load homework details");
+      toast.error("Failed to load assignment");
     } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (id) {
-      fetchHomework();
-    }
-  }, [id]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setResponseFile(file);
-    }
-  };
-
-  const handleSubmitResponse = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!responseText.trim() && !responseFile) {
-      toast.error("Please provide a response text or upload a file");
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const submitData = new FormData();
-      submitData.append('response_text', responseText);
-
-      if (responseFile) {
-        submitData.append('response_media', responseFile);
-      }
-
-      const response = await fetch(`/api/homework/${id}/response`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: submitData
-      });
-
-      if (response.ok) {
-        toast.success("Homework response submitted successfully");
-        fetchHomework(); // Refresh the data
-        setResponseText("");
-        setResponseFile(null);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to submit response');
-      }
-    } catch (error: any) {
-      console.error('Error submitting response:', error);
-      toast.error(error.message || "Failed to submit response");
-    } finally {
-      setSubmitting(false);
     }
   };
 
   const handleCheckResponse = async (responseId: number, feedback: string, isChecked: boolean, file?: File) => {
     try {
       let response;
-
       if (file) {
-        // Use FormData for file upload
         const formData = new FormData();
         formData.append('feedback', feedback);
         formData.append('is_checked', isChecked.toString());
         formData.append('feedback_media', file);
-
         response = await fetch(`/api/homework/responses/${responseId}/check`, {
           method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          },
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
           body: formData
         });
       } else {
-        // Use JSON for text-only feedback
         response = await fetch(`/api/homework/responses/${responseId}/check`, {
           method: 'PATCH',
           headers: {
@@ -214,448 +164,395 @@ export default function HomeworkDetailPage() {
 
       if (response.ok) {
         toast.success("Response checked successfully");
-        fetchHomework(); // Refresh the data
+        fetchHomework();
       } else {
         throw new Error('Failed to check response');
       }
     } catch (error: any) {
-      console.error('Error checking response:', error);
-      toast.error(error.message || "Failed to check response");
+      toast.error(error.message);
     }
   };
 
-  const handleFeedbackSubmit = async () => {
-    if (selectedResponseId) {
-      await handleCheckResponse(selectedResponseId, feedbackText, true, feedbackFile || undefined);
-      setFeedbackModalOpen(false);
-      setFeedbackText("");
-      setFeedbackFile(null);
-      setSelectedResponseId(null);
+  useEffect(() => {
+    if (id) {
+      fetchHomework();
+    }
+  }, [id]);
+
+  const handleSubmitResponse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!responseText.trim() && !responseFile) {
+      toast.error("Please add content or a file before submitting");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const submitData = new FormData();
+      submitData.append('response_text', responseText);
+      if (responseFile) submitData.append('response_media', responseFile);
+
+      const response = await fetch(`/api/homework/${id}/response`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: submitData
+      });
+
+      if (response.ok) {
+        toast.success("Assignment submitted!");
+        fetchHomework();
+        setResponseText("");
+        setResponseFile(null);
+      } else {
+        const error = await response.json();
+        throw new Error(error.message || 'Submission failed');
+      }
+    } catch (error: any) {
+      toast.error(error.message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const getUserResponse = () => {
-    if (!homework || user?.role !== 'STUDENT') return null;
-    return homework.responses.find(r => r.student.user.id === user.id);
-  };
-
-  const isOverdue = () => {
-    if (!homework?.due_date) return false;
-    return new Date(homework.due_date) < new Date();
+    if (!homework || !isStudent) return null;
+    return homework.responses.find(r => r.student.user.id === user?.id);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="h-10 w-10 rounded-full border-4 border-blue-50 border-t-saBlue animate-spin" />
+        <p className="text-gray-500 font-medium text-sm">Opening assignment...</p>
       </div>
     );
   }
 
-  if (!homework) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 px-4">
-        <h3 className="text-lg sm:text-xl font-medium text-center mb-4">Homework not found</h3>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/dashboard/homework')}
-          className="w-full sm:w-auto"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Homework
-        </Button>
-      </div>
-    );
-  }
+  if (!homework) return null;
 
-  const userResponse = getUserResponse();
+  const result = getUserResponse();
+  const overDue = homework.due_date && new Date(homework.due_date) < new Date();
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/dashboard/homework')}
-          className="inline-flex items-center text-blue-600 hover:underline cursor-pointer text-sm mb-1 w-fit"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Homework
-        </Button>
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+      {/* Simple Header */}
+      <div className="bg-saBlue rounded-2xl p-6 md:p-8 text-white shadow-sm overflow-hidden relative">
+        <div className="relative z-10 space-y-4">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate('/dashboard/homework')}
+            className="text-white hover:bg-white/10 rounded-lg h-8 px-3 -ml-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-          <div className="flex flex-col md:flex-row md:items-center md:gap-4 gap-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">{homework.title}</h1>
-              {isOverdue() && <Badge variant="destructive" className="flex-shrink-0">Overdue</Badge>}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <Badge className="bg-white/20 text-white rounded-full px-3 py-0.5 border-none text-[10px] font-bold">
+                {homework.subject.name}
+              </Badge>
+              {overDue && !result && (
+                <Badge variant="destructive" className="rounded-full px-3 py-0.5 border-none text-[10px] font-bold">
+                  LATE SUBMISSION
+                </Badge>
+              )}
             </div>
-            <p className="text-gray-600 text-sm md:mt-0 mt-1">
-              Subject: {homework.subject.name} • Teacher: {homework.teacher.user.name}
-            </p>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
+              {homework.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-blue-50">
+              <div className="flex items-center gap-1.5">
+                <User className="h-3.5 w-3.5" />
+                <span>Prof. {homework.teacher.user.name}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Due: {homework.due_date ? new Date(homework.due_date).toLocaleDateString() : "No limit"}</span>
+              </div>
+            </div>
           </div>
         </div>
+        {/* Subtle Decorative Elements */}
+        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Homework Details */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl text-gray-600">Homework Details</CardTitle>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Main Content */}
+        <div className="lg:col-span-8 space-y-6">
+          <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
+            <CardHeader className="p-5 pb-3 border-b border-gray-50 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <FileSearch className="h-5 w-5 text-saBlue" />
+                Instructions
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {homework.description && (
-                <div>
-                  <h4 className="font-medium mb-2">Description</h4>
-                  <p className="text-gray-700">{homework.description}</p>
+            <CardContent className="p-6 space-y-6">
+              {homework.description ? (
+                <div className="text-gray-600 font-medium whitespace-pre-wrap">
+                  {homework.description}
                 </div>
+              ) : (
+                <div className="py-8 text-center text-gray-400 italic text-sm">No instructions provided.</div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center">
-                  <Calendar className="w-5 h-5 mr-2 text-saBlue/50" />
-                  <div>
-                    <p className="text-gray-600">Created</p>
-                    <p className="font-semibold">{new Date(homework.created_at).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                {homework.due_date && (
-                  <div className={`flex items-center ${isOverdue() ? 'text-red-600' : ''}`}>
-                    <Clock className="w-5 h-5 mr-2 text-saBlue/50" />
+              {homework.document_url && (
+                <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between gap-4 border border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-saBlue">
+                      <FileText className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="text-gray-600">Due Date</p>
-                      <p className="font-semibold">{new Date(homework.due_date).toLocaleDateString()}</p>
+                      <h4 className="font-bold text-gray-800 text-sm">Material File</h4>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Reference</p>
                     </div>
                   </div>
-                )}
-              </div>
-
-              {homework.document_url && (
-                <div className="pt-4 border-t">
-                  <h4 className="font-medium mb-2">Attached Document</h4>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(homework.document_url, '_blank')}
+                    className="rounded-lg h-9 px-4 border-blue-100 text-saBlue font-bold hover:bg-saBlue hover:text-white"
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Download Document
+                    Download
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Student Response Section */}
-          {user?.role === 'STUDENT' && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl text-gray-600">Your Response</CardTitle>
-                <CardDescription>
-                  {userResponse ? 'Your submitted response' : 'Submit your homework response'}
-                </CardDescription>
+          {/* Submission Section */}
+          {isStudent && (
+            <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden bg-white">
+              <CardHeader className="p-5 pb-3 border-b border-gray-50">
+                <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <Upload className="h-5 w-5 text-saBlue" />
+                  Your Submission
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                {userResponse ? (
-                  <div className="space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                      <Badge variant={userResponse.is_checked ? "default" : "secondary"} className="w-fit">
-                        {userResponse.is_checked ? (
-                          <>
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Checked
-                          </>
-                        ) : (
-                          'Submitted'
-                        )}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        Submitted on {new Date(userResponse.submitted_at).toLocaleDateString()}
-                      </span>
+              <CardContent className="p-6">
+                {result ? (
+                  <div className="space-y-5">
+                    <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                        <div>
+                          <p className="text-emerald-900 font-bold text-sm">Submitted</p>
+                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{new Date(result.submitted_at).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+                      {result.is_checked ?
+                        <Badge className="bg-emerald-500 text-[9px] font-bold tracking-wider">CHECKED</Badge> :
+                        <Badge className="bg-blue-500 text-[9px] font-bold tracking-wider">WAITING</Badge>
+                      }
                     </div>
 
-                    {userResponse.response_text && (
-                      <div>
-                        <h4 className="font-medium mb-2">Your Answer</h4>
-                        <p className="text-gray-700">{userResponse.response_text}</p>
+                    {result.response_text && (
+                      <div className="p-4 bg-gray-50 rounded-xl text-gray-700 font-medium text-sm">
+                        {result.response_text}
                       </div>
                     )}
 
-                    {userResponse.response_media_url && (
-                      <div>
-                        <h4 className="font-medium mb-2">Attached File</h4>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(userResponse.response_media_url, '_blank')}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Your File
-                        </Button>
-                      </div>
+                    {result.response_media_url && (
+                      <Button variant="outline" size="sm" className="rounded-lg font-bold" onClick={() => window.open(result.response_media_url, '_blank')}>
+                        <Download className="h-4 w-4 mr-2" />
+                        View Attachment
+                      </Button>
                     )}
 
-                    {userResponse.is_checked && userResponse.feedback && (
-                      <div className="bg-muted p-4 rounded-lg">
-                        <h4 className="font-medium mb-2 flex items-center">
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Teacher Feedback
-                        </h4>
-                        <p className="text-gray-700">{userResponse.feedback}</p>
-                      </div>
-                    )}
-
-                    {userResponse.is_checked && userResponse.feedback_media_url && (
-                      <div className="mt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open(userResponse.feedback_media_url, '_blank')}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download Feedback File
-                        </Button>
+                    {result.feedback && (
+                      <div className="p-5 rounded-xl border border-blue-100 bg-blue-50/50 space-y-2">
+                        <div className="flex items-center gap-2 text-saBlue font-bold text-xs uppercase tracking-wider">
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          Feedback
+                        </div>
+                        <p className="text-gray-800 font-medium italic text-sm">"{result.feedback}"</p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmitResponse} className="space-y-4">
+                  <form onSubmit={handleSubmitResponse} className="space-y-5">
                     <div className="space-y-2">
-                      <label className="text-sm font-medium">Your Answer</label>
+                      <Label className="font-bold text-gray-800 text-sm">Response Body</Label>
                       <Textarea
-                        placeholder="Write your response here..."
+                        placeholder="Complete your work here..."
+                        rows={8}
+                        className="rounded-xl border-gray-100 bg-gray-50/50 p-4 focus:ring-1 focus:ring-saBlue tracking-tight font-medium"
                         value={responseText}
                         onChange={(e) => setResponseText(e.target.value)}
-                        rows={6}
                       />
                     </div>
 
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Attach File (Optional)</label>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                        <input
-                          type="file"
-                          accept="image/*,.pdf,.doc,.docx,.txt"
-                          onChange={handleFileChange}
-                          className="hidden"
-                          id="response-file"
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => document.getElementById('response-file')?.click()}
-                          className="w-full sm:w-auto"
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          {responseFile ? responseFile.name : 'Upload File'}
-                        </Button>
-                        {responseFile && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setResponseFile(null)}
-                          >
-                            Remove
-                          </Button>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Supported formats: Images, PDF, DOC, DOCX, TXT
-                      </p>
+                    <div className="flex flex-col gap-3">
+                      <Input
+                        type="file"
+                        id="file-up"
+                        className="hidden"
+                        onChange={(e) => setResponseFile(e.target.files?.[0] || null)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('file-up')?.click()}
+                        className="h-12 rounded-xl border-dashed border-gray-300 hover:border-saBlue hover:bg-blue-50 font-bold text-gray-500 text-xs"
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        {responseFile ? responseFile.name : "Attach a file"}
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={submitting}
+                        className="h-10 rounded-xl bg-saBlue text-white font-bold text-sm shadow-sm"
+                      >
+                        {submitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Submit Assignment"}
+                      </Button>
                     </div>
-
-                    <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
-                      {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Submit Response
-                    </Button>
                   </form>
                 )}
               </CardContent>
             </Card>
           )}
 
-          {/* Teacher Responses View */}
-          {(user?.role === 'ADMIN' || user?.role === 'TEACHER') && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl text-gray-600">Student Responses ({homework.responses.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {homework.responses.length === 0 ? (
-                  <p className="text-gray-600">No responses submitted yet.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {homework.responses.map((response) => (
-                      <Card key={response.id} className="p-4">
-                        <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center mb-2 gap-2 sm:gap-0">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm sm:text-base">{response.student.user.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              Submitted {new Date(response.submitted_at).toLocaleDateString()}
-                            </p>
+          {/* Teacher View */}
+          {(isAdmin || isTeacher) && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-bold text-gray-900 ml-2">Submissions</h2>
+              {homework.responses.length === 0 ? (
+                <div className="p-12 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
+                  <Users className="h-10 w-10 text-gray-100 mx-auto mb-3" />
+                  <p className="text-gray-400 font-bold text-sm">No submissions yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {homework.responses.map(res => (
+                    <Card key={res.id} className="rounded-xl border border-gray-100 shadow-sm bg-white">
+                      <CardContent className="p-5 space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-saBlue font-bold text-sm">
+                              {res.student.user.name[0]}
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-gray-900 text-sm">{res.student.user.name}</h4>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{new Date(res.submitted_at).toLocaleDateString()}</p>
+                            </div>
                           </div>
-                          <Badge variant={response.is_checked ? "default" : "secondary"} className="w-fit">
-                            {response.is_checked ? 'Checked' : 'Pending'}
+                          <Badge className={res.is_checked ? "bg-emerald-500 text-[10px]" : "bg-amber-500 text-[10px]"}>
+                            {res.is_checked ? "CHECKED" : "PENDING"}
                           </Badge>
                         </div>
 
-                        {response.response_text && (
-                          <div className="mb-2">
-                            <p className="text-sm text-gray-700">{response.response_text}</p>
-                          </div>
-                        )}
+                        <div className="p-4 bg-gray-50 rounded-xl text-gray-700 font-medium text-sm">
+                          {res.response_text || "No text body."}
+                        </div>
 
-                        {response.response_media_url && (
-                          <div className="mb-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(response.response_media_url, '_blank')}
-                              className="w-full sm:w-auto"
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download File
+                        <div className="flex flex-wrap items-center gap-3">
+                          {res.response_media_url && (
+                            <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(res.response_media_url, '_blank')}>
+                              <Download className="h-3 w-3 mr-1.5" /> Download
                             </Button>
-                          </div>
-                        )}
-
-                        {response.is_checked && response.feedback && (
-                          <div className="bg-muted p-3 rounded text-sm">
-                            <strong>Feedback:</strong> {response.feedback}
-                          </div>
-                        )}
-
-                        {response.is_checked && response.feedback_media_url && (
-                          <div className="mt-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => window.open(response.feedback_media_url, '_blank')}
-                              className="w-full sm:w-auto"
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              Download Feedback File
-                            </Button>
-                          </div>
-                        )}
-
-                        {!response.is_checked && (
-                          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                          )}
+                          {!res.is_checked && (
                             <Button
                               size="sm"
-                              onClick={() => handleCheckResponse(response.id, '', true)}
-                              className="w-full sm:w-auto"
+                              onClick={() => { setSelectedResponseId(res.id); setFeedbackModalOpen(true); }}
+                              className="rounded-lg bg-saBlue font-bold h-8 text-[11px]"
                             >
-                              <CheckCircle className="h-4 w-4 mr-1" />
-                              Mark as Checked
+                              Check now
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedResponseId(response.id);
-                                setFeedbackModalOpen(true);
-                              }}
-                              className="w-full sm:w-auto"
-                            >
-                              <MessageSquare className="h-4 w-4 mr-1" />
-                              Check with Feedback
-                            </Button>
-                          </div>
-                        )}
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg text-gray-600">Assignment Info</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Total Students:</span>
-                <span className="font-semibold">{homework.assignments.length}</span>
+        <div className="lg:col-span-4 space-y-6">
+          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white p-6 space-y-6 sticky top-6">
+            {(isAdmin || isTeacher) && (
+              <>
+                <div className="space-y-3">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Insights</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <span className="text-gray-500 font-bold text-xs uppercase tracking-tight">Assigned</span>
+                      <span className="text-base font-bold text-gray-900">{homework.assignments.length}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-blue-50 p-3 rounded-xl border border-blue-100">
+                      <span className="text-saBlue font-bold text-xs uppercase tracking-tight">Received</span>
+                      <span className="text-base font-bold text-saBlue">{homework.responses.length}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5">
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                    <span>Progress</span>
+                    <span>{Math.round((homework.responses.length / (homework.assignments.length || 1)) * 100)}%</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-saBlue rounded-full transition-all duration-700"
+                      style={{ width: `${(homework.responses.length / (homework.assignments.length || 1)) * 100}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="pt-4 border-t border-gray-100" />
+              </>
+            )}
+
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                <AlertCircle className="h-5 w-5" />
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Submitted:</span>
-                <span className="font-semibold">{homework.responses.length}</span>
+              <div>
+                <h5 className="font-bold text-xs text-gray-900">Need help?</h5>
+                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-tight">Ask teacher</p>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Pending:</span>
-                <span className="font-semibold">
-                  {homework.assignments.length - homework.responses.length}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Checked:</span>
-                <span className="font-semibold">
-                  {homework.responses.filter(r => r.is_checked).length}
-                </span>
-              </div>
-            </CardContent>
+            </div>
           </Card>
         </div>
       </div>
 
-      {/* Feedback Modal */}
+      {/* Grade Dialog */}
       <Dialog open={feedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
-        <DialogContent className="max-w-md sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl">Provide Feedback</DialogTitle>
-            <DialogDescription>
-              Enter your feedback for this homework response and optionally attach a document or media file.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div>
+        <DialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden max-w-lg bg-white">
+          <div className="bg-saBlue p-6 text-white">
+            <DialogTitle className="text-lg font-bold">Grade submission</DialogTitle>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="font-bold text-gray-800 text-sm">Feedback Message</Label>
               <Textarea
-                placeholder="Enter your feedback here..."
+                placeholder="Good work! Just check your..."
+                rows={4}
+                className="rounded-xl bg-gray-50 border-gray-200 font-medium text-sm"
                 value={feedbackText}
                 onChange={(e) => setFeedbackText(e.target.value)}
-                rows={4}
-                className="resize-none"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">
-                Attach Document/Media (optional)
-              </label>
-              <input
-                type="file"
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.mp4,.avi,.mov"
-                onChange={(e) => setFeedbackFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-              {feedbackFile && (
-                <p className="mt-2 text-sm text-gray-600">
-                  Selected: {feedbackFile.name}
-                </p>
-              )}
+            <div className="space-y-2">
+              <Label className="font-bold text-gray-800 text-sm">Return File (Optional)</Label>
+              <Input type="file" onChange={(e) => setFeedbackFile(e.target.files?.[0] || null)} className="rounded-xl border-gray-100 text-xs" />
             </div>
           </div>
-          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+          <DialogFooter className="p-6 bg-gray-50 flex items-center justify-end gap-2">
+            <Button variant="ghost" onClick={() => setFeedbackModalOpen(false)} className="rounded-xl font-bold text-xs">Cancel</Button>
             <Button
-              variant="outline"
-              onClick={() => {
-                setFeedbackModalOpen(false);
-                setFeedbackText("");
-                setFeedbackFile(null);
-                setSelectedResponseId(null);
+              onClick={async () => {
+                if (selectedResponseId) {
+                  await handleCheckResponse(selectedResponseId, feedbackText, true, feedbackFile || undefined);
+                  setFeedbackModalOpen(false);
+                }
               }}
-              className="w-full sm:w-auto"
+              className="rounded-xl bg-saBlue font-bold text-xs px-6"
             >
-              Cancel
-            </Button>
-            <Button onClick={handleFeedbackSubmit} className="w-full sm:w-auto">
-              Submit Feedback
+              Finish Review
             </Button>
           </DialogFooter>
         </DialogContent>

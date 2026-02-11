@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -10,30 +9,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 import { subjectService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
@@ -43,15 +23,19 @@ import type { Subject } from "@/types";
 import {
   Plus,
   Eye,
-  Edit,
   Loader2,
-  ChevronLeft,
-  ChevronRight,
   FileText,
-  Upload,
   CheckCircle,
   Clock,
-  User,
+  BookOpen,
+  Calendar,
+  Users,
+  Search,
+  Filter,
+  ChevronRight,
+  TrendingUp,
+  AlertCircle,
+  ClipboardCheck,
 } from "lucide-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -100,27 +84,28 @@ export default function HomeworkPage() {
   const [homework, setHomework] = useState<Homework[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedSubject, setSelectedSubject] = useState<string>("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const isAdmin = user?.role === 'ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
+  const isStudent = user?.role === 'STUDENT';
 
   const fetchHomework = useCallback(async () => {
     try {
       setLoading(true);
       let response;
 
-      if (user?.role === 'STUDENT') {
+      if (isStudent) {
         response = await fetch('/api/homework/student', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
       } else {
-        // For teachers and admins, get homework by subject or all
         const url = selectedSubject && selectedSubject !== 'all'
           ? `/api/subjects/${selectedSubject}/homework`
-          : '/api/homework/teacher'; // We'll need to create this endpoint
+          : '/api/homework/teacher';
         response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -132,8 +117,7 @@ export default function HomeworkPage() {
         const data = await response.json();
         let homeworkData = data.data.data || [];
 
-        // For student homework, normalize the structure to match teacher homework
-        if (user?.role === 'STUDENT') {
+        if (isStudent) {
           homeworkData = homeworkData.map((item: any) => ({
             ...item.homework,
             response: item.response,
@@ -142,27 +126,26 @@ export default function HomeworkPage() {
         }
 
         setHomework(homeworkData);
-        setTotalPages(data.data.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching homework:', error);
     } finally {
       setLoading(false);
     }
-  }, [user?.role, selectedSubject]);
+  }, [isStudent, selectedSubject]);
 
   const fetchSubjects = useCallback(async () => {
     try {
       const params: any = {};
-      if (user?.role === 'TEACHER') {
-        params.teacher_id = user.id;
+      if (isTeacher) {
+        params.teacher_id = user?.id;
       }
       const response = await subjectService.getAll(params);
       setSubjects(response.data.data || response.data);
     } catch (error) {
       console.error('Error fetching subjects:', error);
     }
-  }, [user]);
+  }, [user, isTeacher]);
 
   useEffect(() => {
     fetchSubjects();
@@ -172,169 +155,206 @@ export default function HomeworkPage() {
     fetchHomework();
   }, [fetchHomework]);
 
-  const handleCreateHomework = () => {
-    navigate('/dashboard/homework/create');
-  };
+  const filteredHomework = homework.filter(item =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.subject.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleViewHomework = (homeworkId: number) => {
-    navigate(`/dashboard/homework/${homeworkId}`);
-  };
-
-  const getStatusBadge = (homework: Homework) => {
-    if (user?.role === 'STUDENT') {
-      if (homework.response?.is_checked) {
-        return <Badge variant="default" className="bg-green-500">Checked</Badge>;
-      } else if (homework.response) {
-        return <Badge variant="secondary">Submitted</Badge>;
+  const getStatusBadge = (item: Homework) => {
+    if (isStudent) {
+      if (item.response?.is_checked) {
+        return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 px-2 py-0.5 rounded-full text-[10px] font-bold">COMPLETED</Badge>;
+      } else if (item.response) {
+        return <Badge className="bg-blue-50 text-blue-700 border-blue-100 px-2 py-0.5 rounded-full text-[10px] font-bold">SUBMITTED</Badge>;
       } else {
-        return <Badge variant="destructive">Pending</Badge>;
+        return <Badge className="bg-amber-50 text-amber-700 border-amber-100 px-2 py-0.5 rounded-full text-[10px] font-bold">PENDING</Badge>;
       }
     }
     return null;
   };
 
-  const getSubmissionStatus = (homework: Homework) => {
-    const submitted = homework._count.responses;
-    const total = homework._count.assignments;
-    return `${submitted}/${total} submitted`;
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+        <div className="relative">
+          <div className="h-12 w-12 rounded-full border-4 border-blue-50 border-t-saBlue animate-spin" />
+          <Loader2 className="h-6 w-6 text-saBlue absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+        </div>
+        <p className="text-gray-500 font-medium text-sm animate-pulse">Loading assignments...</p>
       </div>
     );
   }
 
+  const stats = {
+    total: homework.length,
+    pending: isStudent ? homework.filter(h => !h.response).length : homework.filter(h => h._count.responses < h._count.assignments).length,
+    completed: isStudent ? homework.filter(h => h.response?.is_checked).length : homework.filter(h => h._count.responses === h._count.assignments && h._count.assignments > 0).length
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Homework</h1>
-          <p className="text-muted-foreground">
-            {user?.role === 'STUDENT'
-              ? 'View and submit your homework assignments'
-              : 'Manage homework assignments for your subjects'
-            }
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6 animate-in fade-in duration-500">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Homework</h1>
+          <p className="text-gray-500 text-sm">
+            {isStudent ? "Your current assignments and learning tasks." : "Manage and track student submissions."}
           </p>
         </div>
-        {(user?.role === 'ADMIN' || user?.role === 'TEACHER') && (
-          <Button onClick={handleCreateHomework}>
+        {(isAdmin || isTeacher) && (
+          <Button
+            onClick={() => navigate('/dashboard/homework/create')}
+            className="bg-saBlue hover:bg-saBlueDarkHover text-white h-10 px-6 rounded-xl shadow-sm transition-all font-semibold"
+          >
             <Plus className="h-4 w-4 mr-2" />
-            Create Homework
+            New Assignment
           </Button>
         )}
       </div>
 
-      {/* Subject Filter for Teachers/Admins */}
-      {(user?.role === 'ADMIN' || user?.role === 'TEACHER') && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Filter by Subject</CardTitle>
-          </CardHeader>
-          <CardContent>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-gray-100 shadow-sm rounded-2xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center text-saBlue shrink-0">
+              <ClipboardCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Tasks</p>
+              <p className="text-xl font-bold text-gray-900">{stats.total}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-100 shadow-sm rounded-2xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600 shrink-0">
+              <Clock className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Waiting</p>
+              <p className="text-xl font-bold text-gray-900">{stats.pending}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-gray-100 shadow-sm rounded-2xl">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0">
+              <CheckCircle className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Finished</p>
+              <p className="text-xl font-bold text-gray-900">{stats.completed}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Control Bar */}
+      <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-2 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            placeholder="Search tasks..."
+            className="pl-10 h-10 bg-gray-50 border-none rounded-xl focus-visible:ring-1 focus-visible:ring-saBlue transition-all text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          {(isAdmin || isTeacher) && (
             <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-              <SelectTrigger className="w-full max-w-sm">
-                <SelectValue placeholder="Select a subject" />
+              <SelectTrigger className="h-10 min-w-[160px] bg-gray-50 border-none rounded-xl font-medium text-gray-700 text-sm">
+                <Filter className="h-3.5 w-3.5 mr-2" />
+                <SelectValue placeholder="All Subjects" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="rounded-xl border-gray-100">
                 <SelectItem value="all">All Subjects</SelectItem>
                 {subjects.map((subject) => (
-                  <SelectItem key={subject.id} value={subject.id.toString()}>
-                    {subject.name}
-                  </SelectItem>
+                  <SelectItem key={subject.id} value={subject.id.toString()}>{subject.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Homework List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {user?.role === 'STUDENT' ? 'My Homework' : 'Homework Assignments'}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {homework.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">No homework found</h3>
-              <p className="text-muted-foreground">
-                {user?.role === 'STUDENT'
-                  ? 'You have no homework assignments yet.'
-                  : 'Create your first homework assignment.'
-                }
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {homework.map((item) => (
-                <Card key={item.id} className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="font-semibold">{item.title}</h3>
-                        {getStatusBadge(item)}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Subject: {item.subject?.name || 'Unknown Subject'}
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        Teacher: {item.teacher?.user?.name || 'Unknown Teacher'}
-                      </p>
-                      {item.due_date && (
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Due: {new Date(item.due_date).toLocaleDateString()}
-                        </p>
-                      )}
-                      {user?.role !== 'STUDENT' && (
-                        <p className="text-sm text-muted-foreground">
-                          {getSubmissionStatus(item)}
-                        </p>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleViewHomework(item.id)}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+      {/* Homework Grid */}
+      {filteredHomework.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 bg-gray-50/50 rounded-3xl border border-dashed border-gray-200">
+          <div className="h-16 w-16 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-4">
+            <FileText className="h-8 w-8 text-gray-300" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900">No Assignments</h3>
+          <p className="text-gray-500 text-sm">You're all caught up!</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredHomework.map((item) => {
+            const isFinished = isStudent ? !!item.response?.is_checked : (item._count.responses === item._count.assignments && item._count.assignments > 0);
+            const isLate = !isFinished && item.due_date && new Date(item.due_date) < new Date();
+
+            return (
+              <Card
+                key={item.id}
+                className="group relative bg-white rounded-2xl border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden cursor-pointer"
+                onClick={() => navigate(`/dashboard/homework/${item.id}`)}
+              >
+                <CardContent className="p-5">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-saBlue flex items-center justify-center text-white group-hover:scale-105 transition-transform">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    {getStatusBadge(item)}
+                    {isLate && !isStudent && <Badge className="bg-red-50 text-red-700 border-red-100 rounded-full text-[10px] font-bold">LATE</Badge>}
+                  </div>
+
+                  <div className="space-y-1 mb-4">
+                    <h3 className="text-lg font-bold text-gray-900 leading-tight group-hover:text-saBlue transition-colors line-clamp-1">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-gray-500 font-medium text-xs">
+                      <span className="truncate">{item.subject.name}</span>
+                      <span className="h-1 w-1 rounded-full bg-gray-300" />
+                      <span className="truncate">{item.teacher.user.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 pt-4 border-t border-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-gray-400 font-bold text-[9px] uppercase tracking-wider">
+                        <Calendar className="h-3 w-3" />
+                        Due Date
+                      </div>
+                      <span className={`text-xs font-bold ${isLate ? 'text-red-600' : 'text-gray-900'}`}>
+                        {item.due_date ? new Date(item.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : "No Limit"}
+                      </span>
+                    </div>
+
+                    {!isStudent && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider text-gray-400">
+                          <span>Submissions</span>
+                          <span>{Math.round((item._count.responses / (item._count.assignments || 1)) * 100)}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-saBlue rounded-full transition-all duration-700"
+                            style={{ width: `${(item._count.responses / (item._count.assignments || 1)) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center justify-end">
+                    <div className="h-8 w-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300 group-hover:bg-saBlue group-hover:text-white transition-all">
+                      <ChevronRight className="h-4 w-4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

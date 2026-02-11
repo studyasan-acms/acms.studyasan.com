@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { uploadToS3 } from '../utils/s3.js';
+import { sendNotificationToMultipleUsers } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -144,6 +145,20 @@ export const createHomework = async (req: Request, res: Response) => {
         }
       }
     });
+
+    // Send notifications to all assigned students
+    try {
+      const studentUserIds = homework.assignments.map(a => a.student.user.id);
+      await sendNotificationToMultipleUsers(studentUserIds, {
+        type: 'INFO',
+        title: `New Homework: ${homework.title}`,
+        description: `${homework.teacher.user.name} has assigned new homework in ${homework.subject.name}${homework.due_date ? ` (Due: ${new Date(homework.due_date).toLocaleDateString()})` : ''}`,
+      });
+      console.log(`✓ Notifications sent to ${studentUserIds.length} students for homework: ${homework.title}`);
+    } catch (notifError) {
+      console.error('Error sending homework creation notifications:', notifError);
+      // Don't fail the request if notifications fail
+    }
 
     sendSuccess(res, homework, 'Homework created successfully');
   } catch (error: any) {
@@ -469,6 +484,20 @@ export const submitHomeworkResponse = async (req: Request, res: Response) => {
       }
     });
 
+    // Send notification to the teacher
+    try {
+      const teacherUserId = response.homework.teacher.user.id;
+      await sendNotificationToMultipleUsers([teacherUserId], {
+        type: 'INFO',
+        title: `Homework Submitted: ${response.homework.title}`,
+        description: `${response.student.user.name} has submitted their homework for ${response.homework.subject.name}`,
+      });
+      console.log(`✓ Notification sent to teacher for homework submission: ${response.homework.title}`);
+    } catch (notifError) {
+      console.error('Error sending homework submission notification:', notifError);
+      // Don't fail the request if notifications fail
+    }
+
     sendSuccess(res, response, 'Homework response submitted successfully');
   } catch (error: any) {
     console.error('Submit homework response error:', error);
@@ -505,7 +534,7 @@ export const getHomeworkResponses = async (req: Request, res: Response) => {
 
     // Check if user has access to this homework
     const homework = await prisma.homework.findFirst({
-      where: user_role === 'ADMIN' 
+      where: user_role === 'ADMIN'
         ? { id: parseInt(homework_id) }
         : { id: parseInt(homework_id), teacher_id: teacher!.id }
     });
@@ -650,6 +679,21 @@ export const checkHomeworkResponse = async (req: Request, res: Response) => {
         }
       }
     });
+
+    // Send notification to the student
+    try {
+      const studentUserId = updatedResponse.student.user.id;
+      const checkerName = updatedResponse.checker?.name || 'Teacher';
+      await sendNotificationToMultipleUsers([studentUserId], {
+        type: 'INFO',
+        title: `Homework Checked: ${updatedResponse.homework.title}`,
+        description: `${checkerName} has reviewed your homework for ${updatedResponse.homework.subject.name}${feedback ? ' with feedback' : ''}`,
+      });
+      console.log(`✓ Notification sent to student for homework check: ${updatedResponse.homework.title}`);
+    } catch (notifError) {
+      console.error('Error sending homework check notification:', notifError);
+      // Don't fail the request if notifications fail
+    }
 
     sendSuccess(res, updatedResponse, 'Homework response checked successfully');
   } catch (error: any) {
