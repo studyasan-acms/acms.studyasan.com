@@ -12,21 +12,21 @@ export const getAllSubjects = async (req: Request, res: Response) => {
       req.query.page as string,
       req.query.limit as string
     );
-    
+
     const { search, class_id, board_id, is_course, teacher_id, student_id, user_id, role } = req.query;
-    
+
     console.log('🔍 [GET_ALL_SUBJECTS] Query params:', req.query);
-    
+
     const where: any = {};
-    
+
     if (search) {
       where.name = { contains: search as string, mode: 'insensitive' };
     }
-    
+
     if (class_id) where.class_id = parseInt(class_id as string);
     if (board_id) where.board_id = parseInt(board_id as string);
     if (is_course !== undefined) where.is_course = is_course === 'true';
-    
+
     // Filter by teacher if teacher_id is provided
     if (teacher_id) {
       where.teacher_subject_junctions = {
@@ -43,7 +43,7 @@ export const getAllSubjects = async (req: Request, res: Response) => {
       const student = await prisma.student.findUnique({
         where: { user_id: parsedStudentId }
       });
-      
+
       if (student) {
         where.enrollments = {
           some: {
@@ -68,7 +68,7 @@ export const getAllSubjects = async (req: Request, res: Response) => {
           where: { user_id: parseInt(user_id as string) }
         });
         console.log('🔍 [GET_ALL_SUBJECTS] Student found:', student);
-        
+
         if (student) {
           where.enrollments = {
             some: {
@@ -85,7 +85,7 @@ export const getAllSubjects = async (req: Request, res: Response) => {
           where: { user_id: parseInt(user_id as string) }
         });
         console.log('🔍 [GET_ALL_SUBJECTS] Teacher found:', teacher);
-        
+
         if (teacher) {
           where.teacher_subject_junctions = {
             some: {
@@ -100,9 +100,9 @@ export const getAllSubjects = async (req: Request, res: Response) => {
         }
       }
     }
-    
+
     console.log('🔍 [GET_ALL_SUBJECTS] Final where clause:', JSON.stringify(where, null, 2));
-    
+
     const [subjects, total] = await Promise.all([
       prisma.subject.findMany({
         where,
@@ -120,9 +120,9 @@ export const getAllSubjects = async (req: Request, res: Response) => {
       }),
       prisma.subject.count({ where }),
     ]);
-    
+
     console.log(`✅ [GET_ALL_SUBJECTS] Found ${total} subjects, returning ${subjects.length} items`);
-    
+
     const response = createPaginatedResponse(subjects, total, page, limit);
     sendSuccess(res, response);
   } catch (error: any) {
@@ -133,13 +133,19 @@ export const getAllSubjects = async (req: Request, res: Response) => {
 export const getSubjectById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(id!) },
       include: {
         class: true,
         board: true,
         currency: true,
+        _count: {
+          select: {
+            enrollments: true,
+            teacher_subject_junctions: true,
+          },
+        },
         enrollments: {
           include: {
             student: {
@@ -149,6 +155,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
                     id: true,
                     name: true,
                     email: true,
+                    profile_url: true,
                   },
                 },
               },
@@ -164,6 +171,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
                     id: true,
                     name: true,
                     email: true,
+                    profile_url: true,
                   },
                 },
               },
@@ -172,11 +180,11 @@ export const getSubjectById = async (req: Request, res: Response) => {
         },
       },
     });
-    
+
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
-    
+
     sendSuccess(res, subject);
   } catch (error: any) {
     sendError(res, error.message, 500);
@@ -258,11 +266,11 @@ export const updateSubject = async (req: Request, res: Response) => {
 export const deleteSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.subject.delete({
       where: { id: parseInt(id!) },
     });
-    
+
     sendSuccess(res, null, 'Subject deleted successfully');
   } catch (error: any) {
     sendError(res, error.message, 500);

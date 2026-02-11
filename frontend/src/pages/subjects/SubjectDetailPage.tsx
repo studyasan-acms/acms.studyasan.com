@@ -400,7 +400,7 @@ export default function SubjectDetailPage() {
                     onClick={() => user?.role !== "STUDENT" && navigate(`/dashboard/teachers/${junction.teacher.id}`)}
                   >
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-gray-100">
-                      <AvatarImage src={resolveImageUrl((junction.teacher.user as any).profile_url)} />
+                      <AvatarImage src={resolveImageUrl(junction.teacher.user.profile_url)} />
                       <AvatarFallback className="bg-saBlue text-white text-[10px] uppercase font-bold">{getInitials(junction.teacher.user.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
@@ -414,7 +414,7 @@ export default function SubjectDetailPage() {
           )}
 
           {/* STUDENTS */}
-          {isAdmin && (subject.enrollments?.length ?? 0) > 0 && (
+          {(isAdmin || user?.role === "TEACHER") && (subject.enrollments?.length ?? 0) > 0 && (
             <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden">
               <CardHeader className="p-6 pb-0">
                 <SectionTitle icon={Users} title="Top Students" description="Active Enrollees" />
@@ -423,7 +423,7 @@ export default function SubjectDetailPage() {
                 {subject.enrollments?.slice(0, 5).map((enrollment) => (
                   <div key={enrollment.id} className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100 cursor-pointer" onClick={() => navigate(`/dashboard/students/${enrollment.student.id}`)}>
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-gray-100">
-                      <AvatarImage src={resolveImageUrl((enrollment.student.user as any).profile_url)} />
+                      <AvatarImage src={resolveImageUrl(enrollment.student.user.profile_url)} />
                       <AvatarFallback className="bg-green-500 text-white text-[10px] uppercase font-bold">{getInitials(enrollment.student.user.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

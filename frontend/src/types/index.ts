@@ -337,11 +337,11 @@ export interface Subject {
   _count?: { enrollments: number; teacher_subject_junctions: number };
   enrollments?: {
     id: number;
-    student: { id: number; user: { id: number; name: string; email: string } };
+    student: { id: number; user: { id: number; name: string; email: string; profile_url?: string } };
   }[];
   teacher_subject_junctions?: {
     id: number;
-    teacher: { id: number; user: { id: number; name: string; email: string } };
+    teacher: { id: number; user: { id: number; name: string; email: string; profile_url?: string } };
   }[];
 }
 

@@ -116,8 +116,12 @@ const EnrollmentsPage: React.FC = () => {
   const confirmDelete = async () => {
     if (!selectedEnrollment) return;
     try {
-      await enrollmentService.delete(selectedEnrollment.id);
-      setEnrollments(enrollments.filter((e) => e.id !== selectedEnrollment.id));
+      const enrollmentId = selectedEnrollment.id;
+      await enrollmentService.delete(enrollmentId);
+
+      // Update the list of displayed enrollments
+      setAllEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId));
+
       setDeleteModalOpen(false);
       setSelectedEnrollment(null);
     } catch (error) {

@@ -278,6 +278,11 @@ export default function StudentsPage() {
                             <Edit className="w-4 h-4" />
                           </Button>
                         )}
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500" onClick={() => setDeleteStudent(student)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
