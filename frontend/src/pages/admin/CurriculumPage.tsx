@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import {
     BookOpen,
     LayoutDashboard,
@@ -38,32 +37,32 @@ export default function CurriculumPage() {
     }, [activeTab, setSearchParams]);
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+        <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
                     Curriculum Management
                 </h1>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-muted-foreground text-xs sm:text-sm">
                     Manage your educational offerings, including subjects, classes, boards, and test series.
                 </p>
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <div className="overflow-x-auto pb-2">
-                    <TabsList className="h-auto p-1 bg-muted/50 rounded-xl inline-flex min-w-full sm:min-w-fit">
+                <div className="overflow-x-auto -mx-1 px-1 pb-2 scrollbar-none">
+                    <TabsList className="h-auto p-1 bg-muted/50 rounded-xl inline-flex w-max sm:w-auto">
                         <TabsTrigger
                             value="subjects"
-                            className="rounded-lg px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                            className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                         >
-                            <BookOpen className="h-4 w-4" />
+                            <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Subjects
                         </TabsTrigger>
 
                         <TabsTrigger
                             value="test-series"
-                            className="rounded-lg px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                            className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                         >
-                            <Library className="h-4 w-4" />
+                            <Library className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             Test Series
                         </TabsTrigger>
 
@@ -71,25 +70,25 @@ export default function CurriculumPage() {
                             <>
                                 <TabsTrigger
                                     value="activity-groups"
-                                    className="rounded-lg px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                                    className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                                 >
-                                    <FolderOpen className="h-4 w-4" />
-                                    Activity Groups
+                                    <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                    Activities
                                 </TabsTrigger>
 
                                 <TabsTrigger
                                     value="classes"
-                                    className="rounded-lg px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                                    className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                                 >
-                                    <LayoutDashboard className="h-4 w-4" />
+                                    <LayoutDashboard className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                     Classes
                                 </TabsTrigger>
 
                                 <TabsTrigger
                                     value="boards"
-                                    className="rounded-lg px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-2"
+                                    className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                                 >
-                                    <ClipboardList className="h-4 w-4" />
+                                    <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                                     Boards
                                 </TabsTrigger>
                             </>

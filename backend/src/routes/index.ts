@@ -33,6 +33,7 @@ import * as profileController from '../controllers/profile.controller.js';
 import * as deletionController from '../controllers/deletion.controller.js';
 import * as pushNotificationController from '../controllers/pushNotification.controller.js';
 import * as teacherRoleController from '../controllers/teacherRole.controller.js';
+import * as uploadController from '../controllers/upload.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -45,6 +46,9 @@ const upload = multer({
 });
 
 const router = express.Router();
+
+// ================== GENERIC UPLOAD ROUTE ==================
+router.post('/upload', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('file'), uploadController.uploadFile);
 
 // Auth routes
 router.post('/auth/register', authController.register);

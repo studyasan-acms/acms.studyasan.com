@@ -271,6 +271,8 @@ export const boardService = {
     page?: number;
     limit?: number;
     search?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
   }): Promise<PaginatedResponse<Board>> => {
     const response = await api.get<PaginatedResponse<Board>>('/boards', {
       params,
@@ -306,6 +308,8 @@ export const classService = {
     page?: number;
     limit?: number;
     search?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
   }): Promise<PaginatedResponse<Class>> => {
     const response = await api.get<PaginatedResponse<Class>>('/classes', {
       params,
@@ -1280,6 +1284,23 @@ export const idCardService = {
   sendEmail: async (data: { userId: string | number; userType: 'STUDENT' | 'TEACHER'; imageData: string }): Promise<{ success: boolean; message: string }> => {
     const response = await api.post('/id-cards/send-email', data);
     return response.data;
+  },
+};
+
+export const uploadService = {
+  /**
+   * Upload a single file to S3 via the backend.
+   * @param file - The File object to upload
+   * @param folder - Optional S3 folder name (default: 'uploads')
+   * @returns The public S3 URL of the uploaded file
+   */
+  uploadFile: async (file: File, folder: string = 'uploads'): Promise<{ url: string; key: string; filename: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post(`/upload?folder=${encodeURIComponent(folder)}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data.data;
   },
 };
 
