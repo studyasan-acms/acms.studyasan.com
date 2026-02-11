@@ -725,6 +725,7 @@ export interface TestAttempt {
   score: number | null;
   total_marks: number;
   is_passed: boolean | null;
+  is_practice: boolean;
   is_graded: boolean;
   graded_by: number | null;
   graded_at: string | null;
