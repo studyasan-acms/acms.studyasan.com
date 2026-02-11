@@ -1,5 +1,5 @@
 // Activity Types
-export type ActivityType = 
+export type ActivityType =
   | 'MATCH_PAIRS'
   | 'WORD_SEARCH'
   | 'CROSSWORD'
@@ -9,7 +9,10 @@ export type ActivityType =
   | 'QUIZ_GAME'
   | 'SEQUENCE_ORDER'
   | 'TRUE_FALSE'
-  | 'PICTURE_REVEAL';
+  | 'PICTURE_REVEAL'
+  | 'CHESS'
+  | 'HANGMAN'
+  | 'SUDOKU';
 
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 

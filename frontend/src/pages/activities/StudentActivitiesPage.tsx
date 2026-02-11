@@ -33,6 +33,9 @@ import MatchPairsGame from '../../components/activities/games/MatchPairsGame.tsx
 import QuizGameComponent from '../../components/activities/games/QuizGameComponent.tsx';
 import WordSearchGame from '../../components/activities/games/WordSearchGame.tsx';
 import TrueFalseGame from '../../components/activities/games/TrueFalseGame.tsx';
+import ChessGame from '../../components/activities/games/ChessGame.tsx';
+import HangmanGame from '../../components/activities/games/HangmanGame.tsx';
+import SudokuGame from '../../components/activities/games/SudokuGame.tsx';
 import StudentLiveQuiz from '../../components/activities/games/StudentLiveQuiz.tsx';
 import StudentLiveMatchPairs from '../../components/activities/games/StudentLiveMatchPairs.tsx';
 import StudentLiveWordSearch from '../../components/activities/games/StudentLiveWordSearch.tsx';
@@ -173,6 +176,12 @@ export default function StudentActivitiesPage() {
         return <WordSearchGame {...gameProps} />;
       case 'TRUE_FALSE':
         return <TrueFalseGame {...gameProps} />;
+      case 'CHESS':
+        return <ChessGame {...gameProps} />;
+      case 'HANGMAN':
+        return <HangmanGame {...gameProps} />;
+      case 'SUDOKU':
+        return <SudokuGame {...gameProps} />;
       default:
         return (
           <div className="text-center py-12">

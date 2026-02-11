@@ -667,6 +667,9 @@ enum ActivityType {
   SEQUENCE_ORDER // Arrange items in correct order
   TRUE_FALSE // True or False questions
   PICTURE_REVEAL // Reveal picture by answering questions
+  CHESS // Chess game
+  HANGMAN // Hangman game
+  SUDOKU // Sudoku game
 }
 
 // Activity Group - Collection of activities for organizing
