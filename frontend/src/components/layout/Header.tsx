@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +12,24 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
-import { Bell, LogOut, User, Settings, Menu } from "lucide-react";
+import { Bell, LogOut, User, Settings, Menu, Languages, Globe } from "lucide-react";
 import NotificationPanel from "@/components/dashboard/NotificationPanel";
+
+// Add language options
+const languages = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'zh', name: '中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+  { code: 'pt', name: 'Português', flag: '🇵🇹' },
+  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+];
 
 export default function Header({
   toggleSidebar,
@@ -25,9 +41,66 @@ export default function Header({
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const { unreadCount } = useNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      // Check for Google Translate cookie
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+      };
+
+      const googtrans = getCookie('googtrans');
+      if (googtrans) {
+        // Cookie format is usually /source/target or /auto/target
+        // We want the target language (last part)
+        const parts = googtrans.split('/');
+        const lang = parts[parts.length - 1];
+        if (lang && languages.find(l => l.code === lang)) {
+          return lang;
+        }
+      }
+
+      // Check localStorage for saved preference
+      const saved = localStorage.getItem('preferredLanguage');
+      if (saved && languages.find(lang => lang.code === saved)) {
+        return saved;
+      }
+    }
+    return 'en';
+  });
 
   // Debug log
   console.log('Header user data:', user);
+
+  const handleLanguageChange = (langCode: string) => {
+    const language = languages.find(lang => lang.code === langCode);
+    if (!language) return;
+
+    console.log('Changing language to:', langCode, language.name);
+
+    // Save preference
+    localStorage.setItem('preferredLanguage', langCode);
+    setCurrentLanguage(langCode);
+
+    // Show loading feedback
+    const button = document.querySelector('[title="Translate Page"]');
+    if (button) {
+      button.textContent = '⏳';
+      setTimeout(() => {
+        button.innerHTML = '';
+        button.appendChild(document.createElement('div')); // Reset content
+      }, 1000);
+    }
+
+    // Set the cookie for Google Translate
+    const cookieValue = langCode === 'en' ? '/en/en' : `/en/${langCode}`;
+    document.cookie = `googtrans=${cookieValue}; path=/; domain=${window.location.hostname}`;
+    document.cookie = `googtrans=${cookieValue}; path=/;`; // Fallback for some browsers
+
+    console.log('Setting language cookie:', cookieValue);
+    window.location.reload();
+  };
 
   const handleLogout = () => {
     clearAuth();
@@ -69,8 +142,62 @@ export default function Header({
             </div>
           </div>
 
-          {/* RIGHT — Notifications + User Menu */}
-          <div className="flex items-center gap-4">
+          {/* RIGHT — Language + Notifications + User Menu */}
+          <div className="flex items-center gap-3">
+            {/* Language Selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-saBlueDarkHover/20 relative"
+                  title={`Translate Page - Current: ${languages.find(lang => lang.code === currentLanguage)?.name || 'English'}`}
+                >
+                  <Globe className="h-5 w-5 text-white" />
+                  <span className="absolute -bottom-1 -right-1 text-xs">
+                    {languages.find(lang => lang.code === currentLanguage)?.flag}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent
+                align="end"
+                className="w-48 max-h-64 overflow-y-auto bg-white border border-gray-200 shadow-lg"
+              >
+                <DropdownMenuLabel className="text-gray-700 font-semibold border-b border-gray-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Languages className="h-4 w-4" />
+                    Choose Language
+                  </div>
+                </DropdownMenuLabel>
+
+                {languages.map((language) => (
+                  <DropdownMenuItem
+                    key={language.code}
+                    onClick={() => handleLanguageChange(language.code)}
+                    className={`cursor-pointer flex items-center gap-3 py-2 px-3 hover:bg-blue-50 transition-colors ${currentLanguage === language.code ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
+                      }`}
+                  >
+                    <span className="text-lg">{language.flag}</span>
+                    <span className="font-medium">{language.name}</span>
+                    {currentLanguage === language.code && (
+                      <span className="ml-auto text-blue-600 text-xs font-bold">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+
+                {/* Reset to English option */}
+                <div className="border-t border-gray-100 mt-2 pt-2">
+                  <DropdownMenuItem
+                    onClick={() => handleLanguageChange('en')}
+                    className="cursor-pointer flex items-center gap-3 py-2 px-3 hover:bg-gray-50 text-gray-600 focus:text-gray-700 transition-colors"
+                  >
+                    <span className="text-lg">🔄</span>
+                    <span className="font-medium">Back to English</span>
+                  </DropdownMenuItem>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {/* Notifications */}
             <div className="relative">
               <Button

@@ -1,0 +1,61 @@
+/* Google Translate Custom Styles */
+
+/* Hide Google Translate banner */
+.goog-te-banner-frame {
+  display: none !important;
+}
+
+/* Hide Google Translate widget */
+.goog-te-gadget {
+  display: none !important;
+}
+
+/* Prevent body shifting when Google Translate loads */
+body {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* Hide the actual select dropdown */
+.goog-te-combo {
+  display: none !important;
+}
+
+/* Hide skip translation link */
+.skiptranslate {
+  display: none !important;
+}
+
+/* Hide Google Translate toolbar */
+.goog-te-ftab {
+  display: none !important;
+}
+
+/* Style for translated content to prevent layout issues */
+.translated-ltr {
+  direction: ltr !important;
+}
+
+.translated-rtl {
+  direction: rtl !important;
+}
+
+/* Prevent Google Translate from adding margin to body */
+body.translated-ltr,
+body.translated-rtl {
+  margin-top: 0 !important;
+}
+
+/* Fix for Google Translate affecting font rendering */
+font[style*="color: inherit"] {
+  color: inherit !important;
+}
+
+/* Preserve original styling on translated text */
+.notranslate {
+  -webkit-transform: none !important;
+  -moz-transform: none !important;
+  -o-transform: none !important;
+  -ms-transform: none !important;
+  transform: none !important;
+}
