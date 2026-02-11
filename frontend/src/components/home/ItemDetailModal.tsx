@@ -134,10 +134,14 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                     </div>
 
                     {/* Syllabus */}
-                    {item.syllabus && (
+                    {item.type === 'SUBJECT' || item.type === 'COURSE' ? (
                         <div>
                             <h3 className="font-semibold text-gray-700 mb-2">Syllabus</h3>
-                            {item.syllabus.units && Array.isArray(item.syllabus.units) && item.syllabus.units.length > 0 ? (
+                            {item.syllabus && 
+                             typeof item.syllabus === 'object' && 
+                             item.syllabus.units && 
+                             Array.isArray(item.syllabus.units) && 
+                             item.syllabus.units.length > 0 ? (
                                 <div className="space-y-3">
                                     {item.syllabus.units.map((unit: any, index: number) => (
                                         <div
@@ -157,11 +161,11 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                                 </div>
                             ) : (
                                 <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 text-center">
-                                    No syllabus units available
+                                    No syllabus defined yet
                                 </div>
                             )}
                         </div>
-                    )}
+                    ) : null}
 
                     <Separator />
 

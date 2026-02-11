@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { analyticsService, homeService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
-import QuickActions from '@/components/dashboard/QuickActions';
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,6 @@ import {
     GraduationCap,
     Clock,
     TrendingUp,
-    Star,
     Search,
     Filter,
     Activity,
@@ -251,67 +249,73 @@ export default function StudentDashboard() {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
 
-            {/* 1. Analytics & Actions Section */}
+            {/* 1. Analytics Section */}
             {analytics ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {/* Left: Quick Snapshot */}
-                    <div className="md:col-span-2 space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard
-                                title="Tests Taken"
-                                value={analytics.tests.attempted}
-                                icon={FileText}
-                                description={`Avg: ${analytics.tests.averageScore.toFixed(0)}%`}
-                                className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
-                            />
-                            <StatCard
-                                title="Modules Done"
-                                value={`${analytics.modules.completed}/${analytics.modules.total}`}
-                                icon={GraduationCap}
-                                description={`${moduleCompletionRate.toFixed(0)}% Complete`}
-                                className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800"
-                            />
-                            <StatCard
-                                title="Activities"
-                                value={analytics.activities.played}
-                                icon={Gamepad2}
-                                description="Games Played"
-                                className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"
-                            />
-                            <StatCard
-                                title="Study Hours"
-                                value={analytics.totalHoursSpent.toFixed(1)}
-                                icon={Clock}
-                                description="Total Time"
-                                className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"
-                            />
-                        </div>
-
-                        {/* Performance Chart */}
-                        <Card className="border-none shadow-md">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5 text-primary" />
-                                    Your Performance Trend
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <AnalyticsChart
-                                    title=""
-                                    data={performanceData}
-                                    type="bar"
-                                    dataKey="value"
-                                    xAxisKey="name"
-                                    colors={['#3b82f6', '#f59e0b', '#10b981']}
+                <div className="space-y-6">
+                    {/* Stats Cards - Horizontal Scroll */}
+                    <div className="relative">
+                        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth" style={{
+                            scrollbarWidth: 'thin',
+                            scrollbarColor: 'rgba(59, 130, 246, 0.3) transparent'
+                        }}>
+                            <div className="flex-shrink-0 w-72 snap-start">
+                                <StatCard
+                                    title="Tests Taken"
+                                    value={analytics.tests.attempted}
+                                    icon={FileText}
+                                    description={`Avg: ${analytics.tests.averageScore.toFixed(0)}%`}
+                                    className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
                                 />
-                            </CardContent>
-                        </Card>
+                            </div>
+                            <div className="flex-shrink-0 w-72 snap-start">
+                                <StatCard
+                                    title="Modules Done"
+                                    value={`${analytics.modules.completed}/${analytics.modules.total}`}
+                                    icon={GraduationCap}
+                                    description={`${moduleCompletionRate.toFixed(0)}% Complete`}
+                                    className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800"
+                                />
+                            </div>
+                            <div className="flex-shrink-0 w-72 snap-start">
+                                <StatCard
+                                    title="Activities"
+                                    value={analytics.activities.played}
+                                    icon={Gamepad2}
+                                    description="Games Played"
+                                    className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"
+                                />
+                            </div>
+                            <div className="flex-shrink-0 w-72 snap-start">
+                                <StatCard
+                                    title="Study Hours"
+                                    value={analytics.totalHoursSpent.toFixed(1)}
+                                    icon={Clock}
+                                    description="Total Time"
+                                    className="bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-800"
+                                />
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Right: Quick Actions */}
-                    <div className="space-y-6">
-                        <QuickActions />
-                    </div>
+                    {/* Performance Chart */}
+                    <Card className="border-none shadow-md">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <TrendingUp className="h-5 w-5 text-primary" />
+                                Your Performance Trend
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <AnalyticsChart
+                                title=""
+                                data={performanceData}
+                                type="bar"
+                                dataKey="value"
+                                xAxisKey="name"
+                                colors={['#3b82f6', '#f59e0b', '#10b981']}
+                            />
+                        </CardContent>
+                    </Card>
                 </div>
             ) : (
                 <div className="p-8 text-center text-muted-foreground">
