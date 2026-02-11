@@ -118,7 +118,7 @@ const navItems: NavItem[] = [
     title: "Chats",
     href: "/dashboard/chats",
     icon: MessageCircle,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
+    roles: ["TEACHER", "STUDENT"],
   },
   {
     title: "All Chats",
