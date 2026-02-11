@@ -16,10 +16,12 @@ import {
   Video,
   Award,
   Eye,
+  Copy,
 } from "lucide-react";
 import { testService, testAttemptService } from "@/services/api";
 import type { Test, Question, UpdateQuestionData, QuestionType } from "@/types";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -204,6 +206,19 @@ export default function TestDetailPage() {
     } finally { setLoading(false); }
   };
 
+  const isCertificationTest = (test: Test) => {
+    return test.is_certification ||
+      test.title.includes('[CERTIFICATION]') ||
+      test.description?.includes('[CERTIFICATION]');
+  };
+
+  const handleCopyLink = () => {
+    if (!test) return;
+    const link = `${window.location.origin}/certification/${test.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Public test link copied to clipboard");
+  };
+
   const getTestStatus = () => {
     if (!test) return { label: "Unknown", color: "bg-gray-400", canAttempt: false, canPractice: false };
     const isTestSeriesTest = !!test.test_series_id;
@@ -281,6 +296,16 @@ export default function TestDetailPage() {
                 <Users className="w-4 h-4 mr-1" /> Attempts
               </Button>
             </>
+          )}
+          {isTeacherOrAdmin && (isCertificationTest(test) || test.title.includes('[CERTIFICATION]')) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCopyLink}
+              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            >
+              <Copy className="w-4 h-4 mr-1" /> Copy Link
+            </Button>
           )}
           {isStudent && status.canAttempt && (
             <Button onClick={handleStartTest} className="bg-saBlue hover:bg-saBlueDarkHover text-white" size="sm">

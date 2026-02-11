@@ -1,4 +1,4 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import { PrismaClient, QuestionType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -129,6 +129,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       available_from,
       available_until,
       is_published,
+      is_certification,
     } = req.body;
 
     const userId = (req as any).user!.id;
@@ -168,6 +169,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         available_from: new Date(available_from),
         available_until: new Date(available_until),
         is_published: is_published || false,
+        is_certification: is_certification || false,
       },
       include: {
         subject: true,
@@ -307,7 +309,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
     let parsedOptions = null;
     if (options) {
       parsedOptions = typeof options === 'string' ? JSON.parse(options) : options;
-      
+
       // If options have media, upload the files
       if (Array.isArray(parsedOptions) && files) {
         parsedOptions = await Promise.all(parsedOptions.map(async (option: any, index: number) => {
@@ -601,6 +603,70 @@ export const getTestById = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Get Public Test by ID (No Auth)
+export const getPublicTestById = async (req: Request, res: Response) => {
+  try {
+    const { testId } = req.params;
+
+    if (!testId) {
+      return sendError(res, 'Test ID is required', 400);
+    }
+
+    const test = await prisma.test.findUnique({
+      where: { id: parseInt(testId) },
+      include: {
+        subject: true,
+        creator: {
+          select: {
+            name: true,
+          },
+        },
+        questions: {
+          orderBy: { order: 'asc' },
+          select: {
+            id: true,
+            question_type: true,
+            question_text: true,
+            options: true,
+            marks: true,
+            order: true, // No correct_answer
+            media_url: true,
+            media_type: true,
+          }
+        },
+      },
+    });
+
+    if (!test) {
+      return sendError(res, 'Test not found', 404);
+    }
+
+    // Check if it is a certification test
+    const isCertification = test.is_certification ||
+      (test.description && test.description.includes('[CERTIFICATION]')) ||
+      test.title.includes('[CERTIFICATION]');
+
+    if (!isCertification) {
+      return sendError(res, 'This test is not available publicly', 403);
+    }
+
+    if (!test.is_published) {
+      return sendError(res, 'This test is not currently active', 403);
+    }
+
+    // Check availability
+    const now = new Date();
+    if (now < new Date(test.available_from) || now > new Date(test.available_until)) {
+      return sendError(res, 'This test is not currently available', 403);
+    }
+
+    return sendSuccess(res, test, 'Test fetched successfully');
+  } catch (error) {
+    console.error('Error fetching public test:', error);
+    return sendError(res, 'Failed to fetch test');
+  }
+};
+
 // Update test
 export const updateTest = async (req: AuthRequest, res: Response) => {
   try {
@@ -621,6 +687,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       available_from,
       available_until,
       is_published,
+      is_certification,
     } = req.body;
 
     const data: any = {
@@ -630,6 +697,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       passing_marks,
       duration_minutes,
       is_published,
+      is_certification,
     };
 
     // Handle subject_id update (can be set to null)

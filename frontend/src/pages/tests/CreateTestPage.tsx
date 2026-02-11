@@ -74,6 +74,7 @@ export default function CreateTestPage() {
     available_from: "",
     available_until: "",
     is_published: false,
+    is_certification: false,
   });
 
   usePageTitle(isEditing ? (formData.title ? `Edit Test: ${formData.title}` : "Edit Test") : "Create Test");
@@ -144,6 +145,7 @@ export default function CreateTestPage() {
           available_from: test.available_from.replace("Z", ""),
           available_until: test.available_until.replace("Z", ""),
           is_published: test.is_published,
+          is_certification: test.is_certification ?? false,
         });
         setTestId(test.id);
 
@@ -537,18 +539,35 @@ export default function CreateTestPage() {
           </div>
 
           {/* Published */}
-          <label className="flex items-center gap-3 cursor-pointer select-none">
-            <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.is_published ? 'bg-green-500' : 'bg-gray-300'}`}>
-              <input
-                type="checkbox"
-                checked={formData.is_published}
-                onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                className="sr-only"
-              />
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.is_published ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
-            </div>
-            <span className="text-sm text-gray-700">Publish test immediately</span>
-          </label>
+          <div className="flex flex-col sm:flex-row gap-6">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.is_published ? 'bg-green-500' : 'bg-gray-300'}`}>
+                <input
+                  type="checkbox"
+                  checked={formData.is_published}
+                  onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
+                  className="sr-only"
+                />
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.is_published ? 'translate-x-[18px]' : 'translate-x-[0.5px]'}`} />
+              </div>
+              <span className="text-sm text-gray-700">Publish test immediately</span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.is_certification ? 'bg-saBlue' : 'bg-gray-300'}`}>
+                <input
+                  type="checkbox"
+                  checked={formData.is_certification || false}
+                  onChange={(e) => setFormData({ ...formData, is_certification: e.target.checked })}
+                  className="sr-only"
+                />
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.is_certification ? 'translate-x-[18px]' : 'translate-x-[0.5px]'}`} />
+              </div>
+              <span className="text-sm text-gray-700 font-medium flex items-center gap-1">
+                <Award className="w-4 h-4 text-saBlue" /> Certification Test
+              </span>
+            </label>
+          </div>
 
           {/* Save Button */}
           <div className="flex justify-end pt-2">

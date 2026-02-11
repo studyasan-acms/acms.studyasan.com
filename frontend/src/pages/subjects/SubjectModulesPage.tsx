@@ -55,27 +55,21 @@ export default function SubjectModulesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const promises = [
+      const [subjectRes, modulesRes, progressRes] = await Promise.all([
         subjectService.getById(parseInt(subjectId!)),
         moduleService.getModulesBySubject(parseInt(subjectId!)),
-      ];
-      
-      // Add progress fetching for students
+        user?.role === "STUDENT"
+          ? progressService.getStudentProgress(user.id, parseInt(subjectId!))
+          : Promise.resolve({ success: true, data: [] as StudentModuleProgress[] })
+      ]);
+
+      setSubject(subjectRes.data);
+      setModules(Array.isArray(modulesRes.data) ? modulesRes.data : []);
+
       if (user?.role === "STUDENT") {
-        promises.push(progressService.getStudentProgress(user.id, parseInt(subjectId!)));
+        setProgress(Array.isArray(progressRes.data) ? progressRes.data : []);
       }
 
-      const responses = await Promise.all(promises);
-      const [subjectResponse, modulesResponse, progressResponse] = responses;
-
-      setSubject(subjectResponse.data);
-      const moduleData = modulesResponse.data;
-      setModules(Array.isArray(moduleData) ? moduleData : []);
-      
-      if (progressResponse) {
-        setProgress(Array.isArray(progressResponse.data) ? progressResponse.data : []);
-      }
-      
       setError(null);
     } catch (err: any) {
       console.error("Error loading modules:", err);
@@ -244,147 +238,147 @@ export default function SubjectModulesPage() {
                 .map((module, index) => {
                   const isCompleted = user?.role === "STUDENT" && isModuleCompleted(module.module_id);
                   const moduleProgress = getModuleProgress(module.module_id);
-                  
-                  return (
-                  <Card
-                    key={module.module_id}
-                    className={cn(
-                      "group border transition-all duration-500 rounded-[24px] overflow-hidden",
-                      isCompleted
-                        ? "border-green-200 bg-green-50/30 hover:border-green-300 hover:shadow-xl hover:shadow-green-500/10"
-                        : "border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5"
-                    )}
-                  >
-                    <CardContent className="p-0">
-                      <div className="flex flex-col md:flex-row items-stretch">
-                        {/* Module Order Indicator */}
-                        <div className={cn(
-                          "md:w-20 flex flex-row md:flex-col items-center justify-center p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-100 transition-colors duration-500 shrink-0",
-                          isCompleted
-                            ? "bg-green-100 group-hover:bg-green-200/50"
-                            : "bg-gray-50 group-hover:bg-saBlue/5"
-                        )}>
-                          <span className={cn(
-                            "text-[10px] font-black uppercase tracking-[0.2em] mb-0 md:mb-1 mr-3 md:mr-0 transition-colors",
-                            isCompleted
-                              ? "text-green-600 group-hover:text-green-700"
-                              : "text-gray-500 group-hover:text-saBlue/40"
-                          )}>Module</span>
-                          <span className={cn(
-                            "text-2xl font-black transition-all duration-500 tabular-nums leading-none",
-                            isCompleted
-                              ? "text-green-600 group-hover:text-green-700"
-                              : "text-gray-200 group-hover:text-saBlue"
-                          )}>
-                            {(index + 1).toString().padStart(2, '0')}
-                          </span>
-                        </div>
 
-                        {/* Module Info */}
-                        <div className="flex-1 p-5 md:p-6 flex flex-col justify-between">
-                          <div>
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <h3 className={cn(
-                                  "text-lg font-black tracking-tight transition-colors duration-300",
-                                  isCompleted
-                                    ? "text-green-800 group-hover:text-green-900"
-                                    : "text-gray-800 group-hover:text-saBlue"
-                                )}>
-                                  {module.title}
-                                </h3>
-                                {isCompleted && (
-                                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                  return (
+                    <Card
+                      key={module.module_id}
+                      className={cn(
+                        "group border transition-all duration-500 rounded-[24px] overflow-hidden",
+                        isCompleted
+                          ? "border-green-200 bg-green-50/30 hover:border-green-300 hover:shadow-xl hover:shadow-green-500/10"
+                          : "border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5"
+                      )}
+                    >
+                      <CardContent className="p-0">
+                        <div className="flex flex-col md:flex-row items-stretch">
+                          {/* Module Order Indicator */}
+                          <div className={cn(
+                            "md:w-20 flex flex-row md:flex-col items-center justify-center p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-100 transition-colors duration-500 shrink-0",
+                            isCompleted
+                              ? "bg-green-100 group-hover:bg-green-200/50"
+                              : "bg-gray-50 group-hover:bg-saBlue/5"
+                          )}>
+                            <span className={cn(
+                              "text-[10px] font-black uppercase tracking-[0.2em] mb-0 md:mb-1 mr-3 md:mr-0 transition-colors",
+                              isCompleted
+                                ? "text-green-600 group-hover:text-green-700"
+                                : "text-gray-500 group-hover:text-saBlue/40"
+                            )}>Module</span>
+                            <span className={cn(
+                              "text-2xl font-black transition-all duration-500 tabular-nums leading-none",
+                              isCompleted
+                                ? "text-green-600 group-hover:text-green-700"
+                                : "text-gray-200 group-hover:text-saBlue"
+                            )}>
+                              {(index + 1).toString().padStart(2, '0')}
+                            </span>
+                          </div>
+
+                          {/* Module Info */}
+                          <div className="flex-1 p-5 md:p-6 flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <h3 className={cn(
+                                    "text-lg font-black tracking-tight transition-colors duration-300",
+                                    isCompleted
+                                      ? "text-green-800 group-hover:text-green-900"
+                                      : "text-gray-800 group-hover:text-saBlue"
+                                  )}>
+                                    {module.title}
+                                  </h3>
+                                  {isCompleted && (
+                                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                  )}
+                                </div>
+                                {isTeacher && (
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:bg-gray-50 rounded-lg">
+                                        <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="rounded-xl border-gray-100 p-1 min-w-[140px] shadow-lg">
+                                      <DropdownMenuItem
+                                        onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
+                                        className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-gray-600 focus:bg-saBlue/5 focus:text-saBlue cursor-pointer"
+                                      >
+                                        <Edit className="w-3.5 h-3.5 mr-2" />
+                                        Edit Details
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        onClick={() => handleDeleteModule(module.module_id)}
+                                        className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                        Delete Module
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 )}
                               </div>
-                              {isTeacher && (
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:bg-gray-50 rounded-lg">
-                                      <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="rounded-xl border-gray-100 p-1 min-w-[140px] shadow-lg">
-                                    <DropdownMenuItem
-                                      onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
-                                      className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-gray-600 focus:bg-saBlue/5 focus:text-saBlue cursor-pointer"
-                                    >
-                                      <Edit className="w-3.5 h-3.5 mr-2" />
-                                      Edit Details
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteModule(module.module_id)}
-                                      className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                      Delete Module
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              )}
+                              <p className="text-gray-500 mb-6 max-w-3xl leading-relaxed text-xs">
+                                {module.description}
+                              </p>
                             </div>
-                            <p className="text-gray-500 mb-6 max-w-3xl leading-relaxed text-xs">
-                              {module.description}
-                            </p>
-                          </div>
 
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-50">
-                            <div className="flex items-center gap-4">
-                              <div className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
-                                isCompleted
-                                  ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
-                                  : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
-                              )}>
-                                <Clock className="w-3.5 h-3.5 text-saBlue/60" />
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{module.estimated_time_minutes} min</span>
-                              </div>
-                              <div className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
-                                isCompleted
-                                  ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
-                                  : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
-                              )}>
-                                <FileText className="w-3.5 h-3.5 text-saBlue/60" />
-                                <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                                  {module.content?.length || 0} Content
-                                </span>
-                              </div>
-                              {isCompleted && user?.role === "STUDENT" && (
-                                <div className="bg-green-100 border-green-200 px-3 py-1.5 rounded-xl border">
-                                  <span className="text-[10px] font-black text-green-700 uppercase tracking-widest flex items-center gap-1.5">
-                                    <CheckCircle className="w-3 h-3" />
-                                    Completed
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-50">
+                              <div className="flex items-center gap-4">
+                                <div className={cn(
+                                  "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
+                                  isCompleted
+                                    ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
+                                    : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
+                                )}>
+                                  <Clock className="w-3.5 h-3.5 text-saBlue/60" />
+                                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{module.estimated_time_minutes} min</span>
+                                </div>
+                                <div className={cn(
+                                  "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
+                                  isCompleted
+                                    ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
+                                    : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
+                                )}>
+                                  <FileText className="w-3.5 h-3.5 text-saBlue/60" />
+                                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
+                                    {module.content?.length || 0} Content
                                   </span>
                                 </div>
-                              )}
-                            </div>
+                                {isCompleted && user?.role === "STUDENT" && (
+                                  <div className="bg-green-100 border-green-200 px-3 py-1.5 rounded-xl border">
+                                    <span className="text-[10px] font-black text-green-700 uppercase tracking-widest flex items-center gap-1.5">
+                                      <CheckCircle className="w-3 h-3" />
+                                      Completed
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
 
-                            <Button
-                              onClick={() => {
-                                if (isTeacher) {
-                                  navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`);
-                                } else {
-                                  navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`);
-                                }
-                              }}
-                              className={cn(
-                                "h-9 px-5 rounded-xl font-bold text-xs uppercase tracking-[0.15em] transition-all active:scale-95 group/btn-go",
-                                isTeacher
-                                  ? "bg-gray-50 text-gray-700 hover:bg-saBlue hover:text-white border border-gray-100"
-                                  : isCompleted
-                                    ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
-                                    : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
-                              )}
-                            >
-                              {isTeacher ? "Manage" : isCompleted ? "Review" : "Start"}
-                              <ChevronRight className="w-3 h-3 ml-2 group-hover/btn-go:translate-x-1 transition-transform" />
-                            </Button>
+                              <Button
+                                onClick={() => {
+                                  if (isTeacher) {
+                                    navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`);
+                                  } else {
+                                    navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`);
+                                  }
+                                }}
+                                className={cn(
+                                  "h-9 px-5 rounded-xl font-bold text-xs uppercase tracking-[0.15em] transition-all active:scale-95 group/btn-go",
+                                  isTeacher
+                                    ? "bg-gray-50 text-gray-700 hover:bg-saBlue hover:text-white border border-gray-100"
+                                    : isCompleted
+                                      ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
+                                      : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
+                                )}
+                              >
+                                {isTeacher ? "Manage" : isCompleted ? "Review" : "Start"}
+                                <ChevronRight className="w-3 h-3 ml-2 group-hover/btn-go:translate-x-1 transition-transform" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </CardContent>
+                    </Card>
                   );
                 })}
             </div>

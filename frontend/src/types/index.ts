@@ -678,6 +678,7 @@ export interface Test {
   available_from: string;
   available_until: string;
   is_published: boolean;
+  is_certification: boolean;
   created_at: string;
   updated_at: string;
   subject?: {
@@ -760,6 +761,7 @@ export interface CreateTestData {
   available_from: string;
   available_until: string;
   is_published?: boolean;
+  is_certification?: boolean;
 }
 
 export interface UpdateTestData {
@@ -771,6 +773,7 @@ export interface UpdateTestData {
   available_from?: string;
   available_until?: string;
   is_published?: boolean;
+  is_certification?: boolean;
 }
 
 export interface GenerateQuestionsData {

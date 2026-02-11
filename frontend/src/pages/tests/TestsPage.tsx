@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Clock, Users, FileText, Calendar, Trash2, Award, Search, Filter, MoreHorizontal, Eye, Edit } from "lucide-react";
+import { Plus, Clock, Users, FileText, Calendar, Trash2, Award, Search, Filter, MoreHorizontal, Eye, Edit, Copy, ExternalLink, CheckCheck } from "lucide-react";
 import { testService, subjectService } from "@/services/api";
 import type { Test, Subject } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,7 @@ import {
 import { useAuthStore } from "@/store/authStore";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { toast } from "sonner";
 
 interface FetchParams {
   user_id?: number;
@@ -106,8 +107,20 @@ export default function TestsPage() {
       setSelectedTest(null);
     } catch (error) {
       console.error("Error deleting test:", error);
-      alert("Failed to delete test");
+      toast.error("Failed to delete test.");
     }
+  };
+
+  const handleCopyLink = (test: Test) => {
+    const link = `${window.location.origin}/certification/${test.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success("Public test link copied to clipboard");
+  };
+
+  const isCertificationTest = (test: Test) => {
+    return test.is_certification ||
+      test.title.includes('[CERTIFICATION]') ||
+      test.description?.includes('[CERTIFICATION]');
   };
 
   const getTestStatus = (test: Test) => {
@@ -299,6 +312,11 @@ export default function TestsPage() {
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/tests/${test.id}`); }}>
                               <Eye className="mr-2 h-4 w-4 text-saBlue" /> View Details
                             </DropdownMenuItem>
+                            {isCertificationTest(test) && (
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleCopyLink(test); }}>
+                                <Copy className="mr-2 h-4 w-4 text-purple-600" /> Copy Public Link
+                              </DropdownMenuItem>
+                            )}
                             {isTeacherOrAdmin && (
                               <>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/tests/${test.id}/edit`); }}>

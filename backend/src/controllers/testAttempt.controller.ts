@@ -1,7 +1,8 @@
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import type { AuthRequest } from '../types/index.js';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { sendCertificateEmail } from '../services/email.service.js';
 import { uploadToS3, getFileType } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
@@ -410,7 +411,7 @@ export const getTestAttempt = async (req: AuthRequest, res: Response) => {
     }
 
     // Students can only view their own attempts
-    if (userRole === 'STUDENT' && attempt.student.user.id !== userId) {
+    if (userRole === 'STUDENT' && attempt.student?.user.id !== userId) {
       return sendError(res, 'Unauthorized', 403);
     }
 
@@ -617,5 +618,228 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error grading test:', error);
     return sendError(res, 'Failed to grade test');
+  }
+};
+
+// ==========================================
+// PUBLIC CERTIFICATION TEST METHODS
+// ==========================================
+
+// Helper to get Guest Student ID
+const getGuestStudentId = async () => {
+  let guestUser = await prisma.user.findUnique({ where: { email: 'guest@studyasan.com' } });
+
+  if (!guestUser) {
+    // Create Guest User if not exists
+    const hashedPassword = await import('bcrypt').then(m => m.hash('GUEST_PWD_' + Date.now(), 10));
+    guestUser = await prisma.user.create({
+      data: {
+        name: 'Guest User',
+        email: 'guest@studyasan.com',
+        password: hashedPassword,
+        role: 'STUDENT',
+        phone: '0000000000'
+      }
+    });
+  }
+
+  let guestStudent = await prisma.student.findUnique({ where: { user_id: guestUser.id } });
+  if (!guestStudent) {
+    guestStudent = await prisma.student.create({
+      data: { user_id: guestUser.id }
+    });
+  }
+  return guestStudent.id;
+};
+
+// Start Public Test Attempt
+export const startPublicTestAttempt = async (req: Request, res: Response) => {
+  try {
+    const { testId } = req.params;
+    const { candidateName, candidateEmail } = req.body;
+
+    if (!testId || !candidateName) {
+      return sendError(res, 'Test ID and Name are required', 400);
+    }
+
+    const test = await prisma.test.findUnique({
+      where: { id: parseInt(testId) },
+      include: { questions: true }
+    });
+
+    if (!test) return sendError(res, 'Test not found', 404);
+
+    // Verify Certification Mode
+    const isCertification = test.is_certification ||
+      (test.description && test.description.includes('[CERTIFICATION]')) ||
+      test.title.includes('[CERTIFICATION]');
+
+    if (!isCertification) {
+      return sendError(res, 'This test is not available publicly', 403);
+    }
+
+    if (!test.is_published) return sendError(res, 'Test is not active', 403);
+
+    // Check dates
+    const now = new Date();
+    if (now < test.available_from || now > test.available_until) {
+      return sendError(res, 'Test is not available at this time', 403);
+    }
+
+    // Get Guest Student ID
+    const guestStudentId = await getGuestStudentId();
+
+    // Create Attempt
+    const testAttempt = await prisma.testAttempt.create({
+      data: {
+        test_id: parseInt(testId),
+        student_id: guestStudentId,
+        total_marks: test.total_marks,
+        guest_info: { name: candidateName, email: candidateEmail },
+      },
+      include: {
+        test: {
+          include: {
+            questions: {
+              orderBy: { order: 'asc' },
+              select: {
+                id: true,
+                question_type: true,
+                question_text: true,
+                options: true,
+                marks: true,
+                order: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return sendSuccess(res, { attempt: testAttempt, candidateName }, 'Test started successfully', 201);
+  } catch (error) {
+    console.error('Error starting public test:', error);
+    return sendError(res, 'Failed to start test');
+  }
+};
+
+// Submit Public Test
+export const submitPublicTest = async (req: Request, res: Response) => {
+  try {
+    const { attemptId } = req.params;
+    const { answers, candidateName } = req.body; // array of { question_id, answer_text }
+
+    if (!attemptId) return sendError(res, 'Attempt ID is required', 400);
+
+    const attempt = await prisma.testAttempt.findUnique({
+      where: { id: parseInt(attemptId) },
+      include: { test: true }
+    });
+
+    if (!attempt) return sendError(res, 'Attempt not found', 404);
+    if (attempt.submitted_at) return sendError(res, 'Already submitted', 403);
+
+    // Process Answers
+    let score = 0;
+    const processedAnswers = [];
+
+    // Fetch all questions to grade
+    const questions = await prisma.question.findMany({
+      where: { test_id: attempt.test_id }
+    });
+
+    for (const ans of answers) {
+      const question = questions.find(q => q.id === parseInt(ans.question_id));
+      if (!question) continue;
+
+      let isCorrect = false;
+      let marksObtained = 0;
+
+      if (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE') {
+        if (ans.answer_text?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase()) {
+          isCorrect = true;
+          marksObtained = question.marks;
+        }
+      }
+      // Auto-pass descriptive for now or mark as 0? 
+      // For certification, usually only MCQs are auto-graded. 
+      // If manual grading needed, public test is tricky. We assume auto-grade for certification.
+
+      score += marksObtained;
+
+      // Create Answer Record
+      await prisma.answer.create({
+        data: {
+          test_attempt_id: attempt.id,
+          question_id: question.id,
+          answer_text: ans.answer_text,
+          is_correct: isCorrect,
+          marks_obtained: marksObtained
+        }
+      });
+    }
+
+    const isPassed = score >= attempt.test.passing_marks;
+
+    // Update Attempt
+    const updatedAttempt = await prisma.testAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        submitted_at: new Date(),
+        score,
+        is_graded: true, // Auto-graded
+        is_passed: isPassed
+      }
+    });
+
+    // Generate Certificate if passed
+    let certificate = null;
+    let certificateCode: string | undefined;
+
+    if (isPassed) {
+      // Generate Unique Code (e.g., SA-CERT-<TESTID>-<ATTEMPTID>-<RANDOM>)
+      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+      certificateCode = `SA-CERT-${attempt.test_id}-${attempt.id}-${randomPart}`;
+
+      certificate = await prisma.certificate.create({
+        data: {
+          test_id: attempt.test_id,
+          test_attempt_id: attempt.id,
+          recipient_name: candidateName,
+          code: certificateCode,
+        }
+      });
+
+      // Send Certificate Email (if email is available in guest_info)
+      const guestInfo = attempt.guest_info as any;
+      const candidateEmail = guestInfo?.email;
+
+      if (candidateEmail) {
+        // Send email asynchronously (don't await to block response)
+        sendCertificateEmail(
+          candidateEmail,
+          candidateName,
+          attempt.test.title,
+          certificateCode,
+          score,
+          attempt.test.total_marks
+        ).catch((err: any) => console.error('Failed to send certificate email:', err));
+      }
+    }
+
+    return sendSuccess(res, {
+      score,
+      total_marks: attempt.test.total_marks,
+      is_passed: isPassed,
+      candidateName,
+      attemptId: attempt.id,
+      testTitle: attempt.test.title,
+      certificateDate: new Date(),
+      certificateCode: certificateCode
+    }, 'Test submitted successfully');
+
+  } catch (error) {
+    console.error('Error submitting public test:', error);
+    return sendError(res, 'Failed to submit test');
   }
 };

@@ -16,6 +16,7 @@ import AboutPage from '@/pages/public/AboutPage';
 import ContactPage from '@/pages/public/ContactPage';
 import CareerPage from '@/pages/public/CareerPage';
 import BlogPage from '@/pages/public/BlogPage';
+import CertificationPage from '@/pages/public/CertificationPage';
 
 // Student imports
 import StudentsPage from '@/pages/students/StudentsPage';
@@ -199,6 +200,7 @@ function App() {
           <Route path="contact" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />
           <Route path="blog" element={<BlogPage />} />
+          <Route path="certification/:testId" element={<CertificationPage />} />
         </Route>
 
         {/* Auth Routes */}
@@ -415,7 +417,7 @@ function App() {
       </Routes>
       <PWAUpdatePrompt />
       <Toaster />
-    </Router>
+    </Router >
   );
 }
 

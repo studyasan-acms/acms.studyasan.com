@@ -402,6 +402,8 @@ model Test {
   creator          User          @relation(fields: [created_by], references: [id])
   questions        Question[]
   test_attempts    TestAttempt[]
+  is_certification Boolean       @default(false)
+  certificates     Certificate[]
 
   @@map("tests")
 }
@@ -435,7 +437,8 @@ model Question {
 model TestAttempt {
   id           Int       @id @default(autoincrement())
   test_id      Int
-  student_id   Int
+  student_id   Int?
+  guest_info   Json?     // Stores guest user details { name, email, phone }
   started_at   DateTime  @default(now())
   submitted_at DateTime?
   score        Int?
@@ -447,13 +450,29 @@ model TestAttempt {
   graded_at    DateTime?
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
+  
   test         Test      @relation(fields: [test_id], references: [id], onDelete: Cascade)
-  student      Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  student      Student?  @relation(fields: [student_id], references: [id], onDelete: Cascade)
   grader       User?     @relation(fields: [graded_by], references: [id])
   answers      Answer[]
+  certificate  Certificate?
 
   @@index([test_id, student_id, is_practice])
   @@map("test_attempts")
+}
+
+model Certificate {
+  id              String      @id @default(uuid())
+  test_id         Int
+  test_attempt_id Int         @unique
+  recipient_name  String
+  issued_at       DateTime    @default(now())
+  code            String      @unique // Short code for verification
+  
+  test            Test        @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  attempt         TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
+  
+  @@map("certificates")
 }
 
 model Answer {

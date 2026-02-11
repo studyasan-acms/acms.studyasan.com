@@ -72,7 +72,7 @@ export const getJobById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const job = await prisma.job.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
       include: {
         _count: { select: { applications: true } },
       },
@@ -151,7 +151,7 @@ export const updateJob = async (req: Request, res: Response) => {
     } = req.body;
 
     const job = await prisma.job.update({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
       data: {
         title,
         company,
@@ -180,7 +180,7 @@ export const deleteJob = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     await prisma.job.delete({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
     });
 
     sendSuccess(res, null, 'Job deleted successfully');
@@ -221,7 +221,7 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
 
     // Check if job exists and is open
     const job = await prisma.job.findUnique({
-      where: { id: parseInt(job_id) },
+      where: { id: parseInt(job_id as string) },
     });
 
     if (!job) {
@@ -241,7 +241,7 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
     const existingApplication = await prisma.jobApplication.findUnique({
       where: {
         job_id_student_id: {
-          job_id: parseInt(job_id),
+          job_id: parseInt(job_id as string),
           student_id: student.id,
         },
       },
@@ -261,7 +261,7 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
     // Create application
     const application = await prisma.jobApplication.create({
       data: {
-        job_id: parseInt(job_id),
+        job_id: parseInt(job_id as string),
         student_id: student.id,
         cv_url: uploadResult.url,
         cover_letter,
@@ -359,7 +359,7 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
 
     // Check if application exists and belongs to student
     const application = await prisma.jobApplication.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
     });
 
     if (!application) {
@@ -380,7 +380,7 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
 
     // Delete application
     await prisma.jobApplication.delete({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
     });
 
     sendSuccess(res, null, 'Application withdrawn successfully');
@@ -402,7 +402,7 @@ export const getJobApplications = async (req: Request, res: Response) => {
     );
 
     const { status } = req.query;
-    const where: any = { job_id: parseInt(job_id) };
+    const where: any = { job_id: parseInt(job_id as string) };
 
     if (status) where.status = status;
 
@@ -509,7 +509,7 @@ export const reviewApplication = async (req: AuthRequest, res: Response) => {
     }
 
     const application = await prisma.jobApplication.update({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
       data: {
         status,
         feedback,
@@ -546,7 +546,7 @@ export const getApplicationById = async (req: Request, res: Response) => {
     const { id } = req.params;
 
     const application = await prisma.jobApplication.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: parseInt(id as string) },
       include: {
         job: true,
         student: {

@@ -672,6 +672,12 @@ export const testService = {
     return response.data;
   },
 
+  // Get public test by ID
+  getPublicById: async (testId: number): Promise<{ success: boolean; data: Test }> => {
+    const response = await api.get(`/public/tests/${testId}`);
+    return response.data;
+  },
+
   // Create test
   create: async (data: CreateTestData): Promise<{ success: boolean; data: Test }> => {
     const response = await api.post('/tests', data);
@@ -791,6 +797,17 @@ export const testAttemptService = {
   // Grade test attempt
   gradeAttempt: async (attemptId: number, data: GradeTestData): Promise<{ success: boolean; data: TestAttempt }> => {
     const response = await api.post(`/test-attempts/${attemptId}/grade`, data);
+    return response.data;
+  },
+
+  // Public Certification Methods
+  startPublicAttempt: async (testId: number, data: { candidateName: string; candidateEmail?: string }): Promise<{ success: boolean; data: { attempt: TestAttempt; candidateName: string } }> => {
+    const response = await api.post(`/public/tests/${testId}/start`, data);
+    return response.data;
+  },
+
+  submitPublicTest: async (attemptId: number, data: { answers: any[]; candidateName: string }): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post(`/public/test-attempts/${attemptId}/submit`, data);
     return response.data;
   },
 };

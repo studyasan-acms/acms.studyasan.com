@@ -316,6 +316,11 @@ router.put(
   moduleProgressController.updateMyProgress
 );
 
+// ========== PUBLIC CERTIFICATION ROUTES ==========
+router.get('/public/tests/:testId', testController.getPublicTestById);
+router.post('/public/tests/:testId/start', testAttemptController.startPublicTestAttempt);
+router.post('/public/test-attempts/:attemptId/submit', testAttemptController.submitPublicTest);
+
 // ========== TEST ROUTES ==========
 // Get all tests (with filters)
 router.get('/tests', authenticate, testController.getTests);
