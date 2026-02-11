@@ -52,13 +52,16 @@ export function AnalyticsChart({
                     <BarChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} />
                         <XAxis dataKey={xAxisKey} axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} domain={[0, 100]} />
                         <Tooltip
                             contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                             cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                         />
-                        <Legend />
-                        <Bar dataKey={dataKey} fill={colors[0]} radius={[4, 4, 0, 0]} />
+                        <Bar dataKey={dataKey} radius={[8, 8, 0, 0]}>
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill || colors[index % colors.length]} />
+                            ))}
+                        </Bar>
                     </BarChart>
                 );
             case 'line':

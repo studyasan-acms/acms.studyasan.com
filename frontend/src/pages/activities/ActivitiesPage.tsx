@@ -16,6 +16,7 @@ import HangmanGame from '../../components/activities/games/HangmanGame.tsx';
 import SudokuGame from '../../components/activities/games/SudokuGame.tsx';
 import { toast } from 'sonner';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { resolveImageUrl } from '@/lib/utils';
 
 const getRandomGradient = () => {
   const gradients = [
@@ -323,7 +324,7 @@ export default function ActivitiesPage() {
             {activity.cover_image || activity.group?.cover_image ? (
               <div className="w-full h-32 sm:h-40 rounded-md mb-3 overflow-hidden bg-gray-100">
                 <img
-                  src={activity.cover_image || activity.group?.cover_image}
+                  src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
                   alt={activity.title}
                   className="w-full h-full object-cover"
                 />

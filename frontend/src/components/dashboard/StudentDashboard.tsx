@@ -69,84 +69,82 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
 }) => {
     const scrollLeft = () => {
         const container = document.getElementById(`slider-${title.replace(/\s+/g, '-')}`);
-        if (container) container.scrollLeft -= 200;
+        if (container) {
+            container.scrollTo({
+                left: container.scrollLeft - 300,
+                behavior: 'smooth'
+            });
+        }
     };
 
     const scrollRight = () => {
         const container = document.getElementById(`slider-${title.replace(/\s+/g, '-')}`);
-        if (container) container.scrollLeft += 200;
+        if (container) {
+            container.scrollTo({
+                left: container.scrollLeft + 300,
+                behavior: 'smooth'
+            });
+        }
     };
 
     return (
-        <div className="space-y-3 md:space-y-4">
+        <div className="space-y-4 md:space-y-5">
             <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                    <Icon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                    <h2 className="text-lg md:text-xl font-semibold text-foreground">{title}</h2>
+                <div className="flex items-center space-x-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                        <Icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h3>
                 </div>
-                {items.length > 3 && (
-                    <div className="hidden md:flex space-x-1 md:space-x-2">
+                {items.length > 2 && (
+                    <div className="flex space-x-2">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={scrollLeft}
-                            className="p-1 h-7 w-7 md:h-9 md:w-9"
+                            className="h-8 w-8 md:h-9 md:w-9 p-0 rounded-full hover:bg-saBlue hover:text-white transition-colors"
                         >
-                            <ChevronLeft className="h-3 w-3 md:h-4 md:w-4" />
+                            <ChevronLeft className="h-4 w-4" />
                         </Button>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={scrollRight}
-                            className="p-1 h-7 w-7 md:h-9 md:w-9"
+                            className="h-8 w-8 md:h-9 md:w-9 p-0 rounded-full hover:bg-saBlue hover:text-white transition-colors"
                         >
-                            <ChevronRight className="h-3 w-3 md:h-4 md:w-4" />
+                            <ChevronRight className="h-4 w-4" />
                         </Button>
                     </div>
                 )}
             </div>
 
-            {/* Mobile: Grid layout, Desktop: Horizontal scroll */}
-            <div className="block md:hidden">
+            {/* Horizontal Slider for all screen sizes */}
+            <div
+                id={`slider-${title.replace(/\s+/g, '-')}`}
+                className="flex space-x-3 md:space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                style={{ 
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: 'rgba(59, 130, 246, 0.3) transparent'
+                }}
+            >
                 {items.length === 0 ? (
-                    <div className="flex items-center justify-center w-full py-6">
-                        <p className="text-muted-foreground text-sm">No {title.toLowerCase()} available</p>
+                    <div className="flex flex-col items-center justify-center w-full py-12 md:py-16 px-4 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                        <div className="p-4 rounded-full bg-gray-100 mb-4">
+                            <Icon className="h-8 w-8 md:h-10 md:w-10 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 text-sm md:text-base font-medium">No {title.toLowerCase()} available</p>
+                        <p className="text-gray-400 text-xs md:text-sm mt-1">Check back later for new content</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {items.slice(0, 6).map((item) => (
-                            <div key={`${item.type}-${item.id}`} className="w-full">
-                                <HomeItemCard
-                                    item={item}
-                                    onClick={() => onItemClick(item)}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            <div className="hidden md:block">
-                <div
-                    id={`slider-${title.replace(/\s+/g, '-')}`}
-                    className="flex space-x-2 md:space-x-4 overflow-x-auto scrollbar-hide pb-4"
-                    style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                    {items.length === 0 ? (
-                        <div className="flex items-center justify-center w-full py-6 md:py-8">
-                            <p className="text-muted-foreground text-sm md:text-base">No {title.toLowerCase()} available</p>
+                    items.map((item) => (
+                        <div key={`${item.type}-${item.id}`} className="flex-shrink-0 w-56 sm:w-64 md:w-72 snap-start">
+                            <HomeItemCard
+                                item={item}
+                                onClick={() => onItemClick(item)}
+                            />
                         </div>
-                    ) : (
-                        items.map((item) => (
-                            <div key={`${item.type}-${item.id}`} className="flex-shrink-0 w-40 sm:w-48 md:w-64">
-                                <HomeItemCard
-                                    item={item}
-                                    onClick={() => onItemClick(item)}
-                                />
-                            </div>
-                        ))
-                    )}
-                </div>
+                    ))
+                )}
             </div>
         </div>
     );
@@ -240,9 +238,9 @@ export default function StudentDashboard() {
         : 0;
 
     const performanceData = analytics ? [
-        { name: 'Tests', score: analytics.tests.averageScore },
-        { name: 'Activities', score: analytics.activities.averageScore },
-        { name: 'Modules', score: analytics.modules.averageProgress }
+        { name: 'Tests', value: analytics.tests.averageScore, fill: '#3b82f6' },
+        { name: 'Activities', value: analytics.activities.averageScore, fill: '#f59e0b' },
+        { name: 'Modules', value: analytics.modules.averageProgress, fill: '#10b981' }
     ] : [];
 
     // Derived States for Home Items
@@ -302,8 +300,9 @@ export default function StudentDashboard() {
                                     title=""
                                     data={performanceData}
                                     type="bar"
-                                    dataKey="score"
+                                    dataKey="value"
                                     xAxisKey="name"
+                                    colors={['#3b82f6', '#f59e0b', '#10b981']}
                                 />
                             </CardContent>
                         </Card>
@@ -312,17 +311,6 @@ export default function StudentDashboard() {
                     {/* Right: Quick Actions */}
                     <div className="space-y-6">
                         <QuickActions />
-
-                        {/* Top Performer Highlight */}
-                        <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl p-6 border border-primary/20 flex flex-col items-center justify-center text-center space-y-4">
-                            <div className="bg-background p-3 rounded-full shadow-sm">
-                                <Star className="h-8 w-8 text-yellow-400 fill-yellow-400" />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg">Top Performer?</h3>
-                                <p className="text-sm text-muted-foreground">Keep up the great work! You've maintained a {analytics.tests.averageScore.toFixed(0)}% average.</p>
-                            </div>
-                        </div>
                     </div>
                 </div>
             ) : (
@@ -332,28 +320,31 @@ export default function StudentDashboard() {
             )}
 
             {/* 2. Explore Learning Section (Unified Home Logic) */}
-            <div className="space-y-6 pt-6 border-t">
+            <div className="space-y-6 pt-8 mt-8 border-t border-gray-200">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <h2 className="text-2xl font-bold tracking-tight">Explore Learning</h2>
+                    <div>
+                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Explore Learning</h2>
+                        <p className="text-sm text-gray-500 mt-1">Discover courses, activities, and tests</p>
+                    </div>
 
                     {/* Search & Filter */}
-                    <div className="flex gap-2 w-full md:w-auto">
-                        <div className="relative flex-1 md:w-64">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="flex gap-3 w-full md:w-auto">
+                        <div className="relative flex-1 md:w-72">
+                            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                placeholder="Search..."
+                                placeholder="Search courses, subjects..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 h-9"
+                                className="pl-10 h-10 rounded-xl border-gray-200 focus:border-saBlue focus:ring-saBlue"
                             />
                         </div>
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-[140px] h-9">
-                                <Filter className="h-3 w-3 mr-2" />
-                                <SelectValue placeholder="Type" />
+                            <SelectTrigger className="w-[160px] h-10 rounded-xl border-gray-200">
+                                <Filter className="h-4 w-4 mr-2" />
+                                <SelectValue placeholder="All Types" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">All</SelectItem>
+                                <SelectItem value="ALL">All Types</SelectItem>
                                 <SelectItem value="COURSE">Courses</SelectItem>
                                 <SelectItem value="SUBJECT">Subjects</SelectItem>
                                 <SelectItem value="ACTIVITY_GROUP">Activities</SelectItem>
@@ -364,11 +355,12 @@ export default function StudentDashboard() {
                 </div>
 
                 {itemsLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-2xl">
+                        <Loader2 className="h-10 w-10 animate-spin text-saBlue mb-4" />
+                        <p className="text-gray-500 font-medium">Loading content...</p>
                     </div>
                 ) : (
-                    <div className="space-y-8">
+                    <div className="space-y-10">
                         <ItemSlider
                             title="Subjects & Courses"
                             items={subjectsAndCourses}

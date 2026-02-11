@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { resolveImageUrl } from '@/lib/utils';
 import {
   Select,
   SelectContent,
@@ -461,7 +462,7 @@ export default function ActivityGroupsPage() {
               {/* Cover image or gradient */}
               {group.cover_image ? (
                 <div className="w-full h-32 overflow-hidden bg-gray-100">
-                  <img src={group.cover_image} alt={group.name} className="w-full h-full object-cover" />
+                  <img src={resolveImageUrl(group.cover_image) || group.cover_image} alt={group.name} className="w-full h-full object-cover" />
                 </div>
               ) : (
                 <div className="w-full h-32 bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">

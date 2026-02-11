@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { BookOpen, Gamepad2, FileText, GraduationCap, X, FileCheck, Clock } from 'lucide-react';
+import { resolveImageUrl } from '@/lib/utils';
 import EnquiryForm from './EnquiryForm';
 
 interface ItemDetailModalProps {
@@ -89,7 +90,7 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                 {item.cover_image && (
                     <div className="w-full h-64 rounded-lg overflow-hidden">
                         <img
-                            src={item.cover_image}
+                            src={resolveImageUrl(item.cover_image) || item.cover_image}
                             alt={item.name}
                             className="w-full h-full object-cover"
                         />

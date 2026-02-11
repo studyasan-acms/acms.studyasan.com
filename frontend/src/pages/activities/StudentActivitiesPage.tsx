@@ -11,6 +11,7 @@ import {
   DialogFooter,
 } from '../../components/ui/dialog'; // Assuming Dialog components exist
 import { activityAPI, activityAttemptAPI, quizSessionAPI } from '../../services/activity.service';
+import { resolveImageUrl } from '@/lib/utils';
 
 const getRandomGradient = () => {
   const gradients = [
@@ -256,7 +257,7 @@ export default function StudentActivitiesPage() {
             {activity.cover_image || activity.group?.cover_image ? (
               <div className="w-full h-32 relative">
                 <img
-                  src={activity.cover_image || activity.group?.cover_image}
+                  src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
                   alt={activity.title}
                   className="w-full h-full object-cover"
                 />

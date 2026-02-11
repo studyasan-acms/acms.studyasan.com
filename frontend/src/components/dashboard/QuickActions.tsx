@@ -63,14 +63,14 @@ export default function QuickActions() {
     },
     {
       title: "My Subjects",
-      icon: FileText,
+      icon: BookOpen,
       action: () => navigate("/dashboard/subjects"),
       roles: ["STUDENT"],
     },
     {
       title: "Settings",
       icon: Settings,
-      action: () => navigate("/dashboard/settings"),
+      action: () => navigate("/dashboard/profile"),
       roles: ["ADMIN", "TEACHER", "STUDENT"],
     },
   ];
