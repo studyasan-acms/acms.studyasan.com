@@ -417,6 +417,7 @@ export interface EnrollmentPayment {
   updated_at: string;
   enrollment?: Enrollment;
   type?: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  original_price?: number | null;
 }
 
 export interface CreateEnrollmentData {

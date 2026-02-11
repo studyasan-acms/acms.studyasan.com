@@ -13,7 +13,7 @@ export const getAllPayments = async (req: Request, res: Response) => {
       req.query.limit as string
     );
 
-    const { is_paid, enrollment_id, status } = req.query;
+    const { is_paid, enrollment_id, status, search } = req.query;
 
     const where: any = {};
 
@@ -36,6 +36,48 @@ export const getAllPayments = async (req: Request, res: Response) => {
           where.due_date = { lt: now };
           break;
       }
+    }
+
+    // Handle search functionality
+    if (search) {
+      where.enrollment = {
+        OR: [
+          {
+            student: {
+              user: {
+                name: {
+                  contains: search as string,
+                  mode: 'insensitive',
+                },
+              },
+            },
+          },
+          {
+            subject: {
+              name: {
+                contains: search as string,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            test_series: {
+              title: {
+                contains: search as string,
+                mode: 'insensitive',
+              },
+            },
+          },
+          {
+            activity_group: {
+              name: {
+                contains: search as string,
+                mode: 'insensitive',
+              },
+            },
+          },
+        ],
+      };
     }
 
     const [payments, total] = await Promise.all([
@@ -62,7 +104,27 @@ export const getAllPayments = async (req: Request, res: Response) => {
       prisma.payment.count({ where }),
     ]);
 
-    const response = createPaginatedResponse(payments, total, page, limit);
+    // Add original_price to each payment based on the enrollment item
+    const paymentsWithOriginalPrice = payments.map((payment) => {
+      let original_price: number | null = null;
+
+      if (payment.enrollment) {
+        if (payment.enrollment.subject) {
+          original_price = payment.enrollment.subject.price;
+        } else if (payment.enrollment.test_series) {
+          original_price = payment.enrollment.test_series.price;
+        } else if (payment.enrollment.activity_group) {
+          original_price = payment.enrollment.activity_group.price;
+        }
+      }
+
+      return {
+        ...payment,
+        original_price,
+      };
+    });
+
+    const response = createPaginatedResponse(paymentsWithOriginalPrice, total, page, limit);
     sendSuccess(res, response);
   } catch (error: any) {
     sendError(res, error.message, 500);

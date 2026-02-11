@@ -327,6 +327,7 @@ const PaymentsPage: React.FC = () => {
                     <th className="text-left py-3 px-4 font-medium">Student</th>
                     <th className="text-left py-3 px-4 font-medium">Subject</th>
                     <th className="text-left py-3 px-4 font-medium">Period</th>
+                    <th className="text-left py-3 px-4 font-medium">Original Price</th>
                     <th className="text-left py-3 px-4 font-medium">Amount</th>
                     <th className="text-left py-3 px-4 font-medium">Due Date</th>
                     <th className="text-left py-3 px-4 font-medium">Status</th>
@@ -351,6 +352,11 @@ const PaymentsPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         {payment.period}
+                      </td>
+                      <td className="py-3 px-4 font-medium text-gray-600">
+                        {payment.original_price !== null && payment.original_price !== undefined
+                          ? `₹${payment.original_price.toLocaleString()}`
+                          : '-'}
                       </td>
                       <td className="py-3 px-4 font-medium">
                         ₹{payment.amount.toLocaleString()}
