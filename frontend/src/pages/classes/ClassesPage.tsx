@@ -235,7 +235,7 @@ const ClassesPage: React.FC = () => {
               )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="w-full max-w-full overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-gray-50 hover:bg-gray-50">
@@ -305,13 +305,12 @@ const ClassesPage: React.FC = () => {
           )}
         </CardContent>
 
-        {/* Footer Pagination */}
         {totalPages > 1 && (
-          <div className="border-t border-gray-100 p-4 bg-gray-50/30 flex items-center justify-between">
+          <div className="border-t border-gray-100 p-4 bg-gray-50/30 flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-0">
             <span className="text-sm text-gray-500">
               Page {currentPage} of {totalPages}
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-center">
               <Button
                 variant="outline"
                 size="sm"

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { chatService, teacherService, studentService } from '@/services/api';
+import { socketService } from '@/services/socket';
 import { useAuthStore } from '@/store/authStore';
 import type { Chat, Message, Teacher, Student, ChatMessagesResponse, MessageType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageCircle, Search, Send, Paperclip, File, Image, Video, FileText, X, UserPlus, ChevronLeft } from 'lucide-react';
+import { MessageCircle, Search, Send, Paperclip, File, Image, Video, FileText, X, UserPlus, ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -26,6 +27,9 @@ const ChatsPageNew = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loadingChats, setLoadingChats] = useState(true);
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+
+  // Ref for selectedChat to access in socket callbacks
+  const selectedChatRef = useRef<Chat | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -48,10 +52,16 @@ const ChatsPageNew = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    selectedChatRef.current = selectedChat;
+  }, [selectedChat]);
+
+  useEffect(() => {
     const checkScreenSize = () => {
       const width = window.innerWidth;
       setIsMobile(width < 768);
       setIsTablet(width >= 768 && width < 1024);
+      // On desktop, we always show lists, so viewMode doesn't restrict visibility as hard
+      // but on resize we might want to reset
       if (width >= 1024) {
         setViewMode('chats');
       }
@@ -63,12 +73,50 @@ const ChatsPageNew = () => {
   }, []);
 
   useEffect(() => {
+    // If on mobile/tablet, switch view based on state
     if (isMobile || isTablet) {
       if (selectedChat) setViewMode('messages');
       else if (showContacts) setViewMode('contacts');
       else setViewMode('chats');
     }
   }, [selectedChat, showContacts, isMobile, isTablet]);
+
+  // Socket Connection
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    const handleReceiveMessage = (message: Message) => {
+      // Update messages if looking at this chat
+      if (selectedChatRef.current?.id === message.chat_id) {
+        setMessages(prev => [...prev, message]);
+      }
+
+      // Update last message in sidebar
+      setChats(prevChats => {
+        const updated = prevChats.map(c => {
+          if (c.id === message.chat_id) {
+            return {
+              ...c,
+              messages: [message],
+              updated_at: message.created_at
+            };
+          }
+          return c;
+        });
+        return updated.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      });
+    };
+
+    socket?.on('receive_message', handleReceiveMessage);
+
+    return () => {
+      socket?.off('receive_message', handleReceiveMessage);
+      // Do not disconnect socketService globally here as it might be used elsewhere, 
+      // but for this implementation we can leave it connected. 
+      // Or disconnect if we want to save resources.
+      // socketService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -80,13 +128,25 @@ const ChatsPageNew = () => {
     load();
   }, [user?.role]);
 
+  // Join/Leave rooms based on chats list (for notifications) and selected chat
+  useEffect(() => {
+    // Join all chat rooms to receive updates/notifications in sidebar
+    chats.forEach(chat => socketService.joinChat(chat.id));
+
+    return () => {
+      // Ideally we leave when component unmounts or chats change widely
+      // chats.forEach(chat => socketService.leaveChat(chat.id));
+    };
+  }, [chats]);
+
   useEffect(() => {
     if (chatId && !loadingChats) {
       const run = async () => {
         const chat = chats.find(c => c.id === parseInt(chatId));
         if (chat) {
-          await selectChat(chat);
+          await selectChat(chat, false); // Don't double navigate
         } else if (user?.role === 'ADMIN') {
+          // If admin and chat not in list (shouldn't happen if using getAllChats, but safe fallback)
           await loadMessagesDirectly(parseInt(chatId));
         }
       };
@@ -102,7 +162,14 @@ const ChatsPageNew = () => {
 
   const loadChats = async () => {
     try {
-      const response = await chatService.getUserChats();
+      setLoadingChats(true);
+      // Admin gets ALL chats, others get their chats
+      let response;
+      if (user?.role === 'ADMIN') {
+        response = await chatService.getAllChats();
+      } else {
+        response = await chatService.getUserChats();
+      }
       setChats(response.data);
     } catch (error: unknown) {
       console.error('Error loading chats:', error instanceof Error ? error.message : error);
@@ -114,18 +181,25 @@ const ChatsPageNew = () => {
 
   const loadMessagesDirectly = async (chatIdParam: number) => {
     setLoadingMessages(true);
-    setSelectedChat({
+    // Create detailed placeholder
+    const chatPlaceholder = {
       id: chatIdParam,
       participants: [],
       messages: [],
       _count: { messages: 0 },
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    } as Chat);
+    } as Chat;
+
+    setSelectedChat(chatPlaceholder);
 
     try {
       const response: ChatMessagesResponse = await chatService.getChatMessages(chatIdParam, { limit: 100 });
       setMessages(response.data.messages);
+      // Update participants if returned
+      // (The response typically doesn't include chat metadata, only messages/pagination)
+      // So we might want to fetch chat details if possible.
+      // But for now, we just show messages.
     } catch (error: unknown) {
       console.error('Error loading messages:', error instanceof Error ? error.message : error);
       toast.error('Failed to load messages');
@@ -146,12 +220,13 @@ const ChatsPageNew = () => {
       }
     } catch (error: unknown) {
       console.error('Error loading contacts:', error instanceof Error ? error.message : error);
-      toast.error('Failed to load contacts');
+      // toast.error('Failed to load contacts'); // Suppress to avoid noise if not needed
     } finally {
       setLoadingContacts(false);
     }
   };
-  const selectChat = async (chat: Chat) => {
+
+  const selectChat = async (chat: Chat, shouldNavigate = true) => {
     setSelectedChat(chat);
     setShowContacts(false);
 
@@ -159,7 +234,12 @@ const ChatsPageNew = () => {
       setViewMode('messages');
     }
 
-    navigate(`/dashboard/chats/${chat.id}`, { replace: !(isMobile || isTablet) });
+    // Join room explicitly (failsafe)
+    socketService.joinChat(chat.id);
+
+    if (shouldNavigate) {
+      navigate(`/dashboard/chats/${chat.id}`, { replace: !(isMobile || isTablet) });
+    }
     await loadMessages(chat.id);
   };
 
@@ -186,12 +266,18 @@ const ChatsPageNew = () => {
         messageType: selectedFile ? getMessageType(selectedFile) : 'TEXT'
       };
 
+      // Send via API (which emits socket event from backend)
       await chatService.sendMessage(selectedChat.id, messageData, selectedFile || undefined);
 
       setMessageText('');
       setSelectedFile(null);
-      await loadMessages(selectedChat.id);
-      toast.success('Message sent');
+      // We don't strictly need to reload messages if socket works, 
+      // but it's a good fallback or to confirm send success.
+      // Actually, if we rely on socket, we might get duplicate if we optimistically update.
+      // Current logic: wait for socket event to append.
+      // But we can also re-fetch to be safe.
+      // Let's rely on socket event for "appearing" and re-fetch for sync.
+
     } catch (error: unknown) {
       console.error('Error sending message:', error instanceof Error ? error.message : error);
       toast.error('Failed to send message');
@@ -263,6 +349,7 @@ const ChatsPageNew = () => {
     if (otherParticipants.length === 1) {
       return otherParticipants[0].user.name;
     }
+    if (otherParticipants.length === 0) return "Me (Draft)"; // Self chat or bug
     return `Group Chat (${otherParticipants.length} members)`;
   };
 
@@ -303,7 +390,8 @@ const ChatsPageNew = () => {
   const containerHeight =
     isMobile || isTablet ? 'h-[calc(100vh-6rem)]' : 'h-[calc(100vh-8rem)]';
 
-  const cardHeight = isMobile || isTablet ? 'h-full' : 'h-full';
+  const cardHeight = 'h-full';
+
   return (
     <div
       className={cn(
@@ -315,47 +403,51 @@ const ChatsPageNew = () => {
       {/* Left Sidebar - Chat List */}
       <Card
         className={cn(
-          "flex flex-col",
+          "flex-col",
           "lg:w-80",
           (isMobile || isTablet) && viewMode !== 'chats' ? "hidden" : "flex",
           "w-full md:w-full lg:w-80",
           cardHeight
         )}
       >
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 px-4 py-3 shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl text-gray-600">Chats</CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setShowContacts(true);
-                setViewMode('contacts');
-              }}
-            >
-              <UserPlus className="h-4 w-4 text-[#0276D3]" />
-            </Button>
+            {user?.role !== 'ADMIN' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setShowContacts(true);
+                  setViewMode('contacts');
+                }}
+              >
+                <UserPlus className="h-4 w-4 text-[#0276D3]" />
+              </Button>
+            )}
           </div>
         </CardHeader>
 
         <CardContent className="flex-1 p-0 overflow-hidden">
           <ScrollArea className="h-full">
             {loadingChats ? (
-              <div className="p-4 text-center text-muted-foreground">Loading...</div>
+              <div className="flex justify-center p-4"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : chats.length === 0 ? (
               <div className="p-4 text-center">
                 <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">No chats yet</p>
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={() => {
-                    setShowContacts(true);
-                    setViewMode('contacts');
-                  }}
-                >
-                  Start Chat
-                </Button>
+                {user?.role !== 'ADMIN' && (
+                  <Button
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      setShowContacts(true);
+                      setViewMode('contacts');
+                    }}
+                  >
+                    Start Chat
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="divide-y">
@@ -400,19 +492,20 @@ const ChatsPageNew = () => {
       {/* Center - Chat Messages */}
       <Card
         className={cn(
-          "flex flex-col",
+          "flex-col",
           "lg:flex-1",
+          (isMobile || isTablet) && viewMode === 'chats' ? "hidden" : "flex",
           "w-full md:w-full lg:flex-1",
           cardHeight
         )}
       >
         {selectedChat ? (
           <>
-            <CardHeader className="pb-3 border-b">
+            <CardHeader className="pb-3 border-b px-4 py-3 shrink-0">
               <div className="flex items-center space-x-3">
                 {(isMobile || isTablet) && (
-                  <Button variant="ghost" size="icon" onClick={handleBackToChats}>
-                    <ChevronLeft className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" onClick={handleBackToChats} className="-ml-2">
+                    <ChevronLeft className="h-5 w-5" />
                   </Button>
                 )}
 
@@ -425,24 +518,22 @@ const ChatsPageNew = () => {
                 <div>
                   <CardTitle className="text-lg">{getChatDisplayName(selectedChat)}</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {selectedChat.participants.length} participants
+                    {selectedChat.participants?.length ?? 0} participants
                   </p>
                 </div>
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 p-4 overflow-hidden flex flex-col">
-              <ScrollArea className="flex-1 pr-4">
+            <CardContent className="flex-1 p-0 overflow-hidden flex flex-col relative">
+              <ScrollArea className="flex-1 p-4">
                 {loadingMessages ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Loading messages...
-                  </div>
+                  <div className="flex justify-center p-4"><Loader2 className="animate-spin text-muted-foreground" /></div>
                 ) : messages.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     No messages yet. Start the conversation!
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 pb-4">
                     {messages.map((message) => (
                       <div
                         key={message.id}
@@ -450,31 +541,31 @@ const ChatsPageNew = () => {
                           }`}
                       >
                         <div
-                          className={`flex space-x-2 max-w-[70%] ${message.sender_id === user?.id
-                              ? 'flex-row-reverse space-x-reverse'
-                              : ''
+                          className={`flex space-x-2 max-w-[85%] md:max-w-[70%] ${message.sender_id === user?.id
+                            ? 'flex-row-reverse space-x-reverse'
+                            : ''
                             }`}
                         >
-                          <Avatar className="h-8 w-8">
+                          <Avatar className="h-8 w-8 shrink-0">
                             <AvatarFallback className="text-xs">
-                              {message.sender.name.charAt(0).toUpperCase()}
+                              {message.sender?.name?.charAt(0).toUpperCase() || '?'}
                             </AvatarFallback>
                           </Avatar>
 
                           <div
                             className={`rounded-lg p-3 ${message.sender_id === user?.id
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
                               }`}
                           >
-                            {message.sender_id !== user?.id && (
-                              <div className="text-xs font-medium mb-1">
+                            {message.sender_id !== user?.id && message.sender && (
+                              <div className="text-xs font-medium mb-1 opacity-70">
                                 {message.sender.name}
                               </div>
                             )}
 
                             {message.content && (
-                              <div className="text-sm mb-2">{message.content}</div>
+                              <div className="text-sm mb-2 whitespace-pre-wrap">{message.content}</div>
                             )}
 
                             {message.attachment_url && (
@@ -483,20 +574,20 @@ const ChatsPageNew = () => {
                                   <img
                                     src={message.attachment_url}
                                     alt="Attachment"
-                                    className="max-w-full h-auto rounded cursor-pointer"
+                                    className="max-w-full h-auto rounded cursor-pointer max-h-60 object-contain bg-black/10"
                                     onClick={() =>
                                       window.open(message.attachment_url!, '_blank')
                                     }
                                   />
                                 ) : (
                                   <div
-                                    className="flex items-center space-x-2 p-2 bg-background rounded cursor-pointer hover:bg-muted/50"
+                                    className="flex items-center space-x-2 p-2 bg-background/50 rounded cursor-pointer hover:bg-background/80 transition-colors"
                                     onClick={() =>
                                       window.open(message.attachment_url!, '_blank')
                                     }
                                   >
                                     {getFileIcon(message.message_type)}
-                                    <span className="text-sm truncate">
+                                    <span className="text-sm truncate max-w-[150px]">
                                       {message.attachment_url.split('/').pop()}
                                     </span>
                                   </div>
@@ -504,7 +595,7 @@ const ChatsPageNew = () => {
                               </div>
                             )}
 
-                            <div className="text-xs opacity-70">
+                            <div className="text-[10px] opacity-70 text-right">
                               {formatTime(message.created_at)}
                             </div>
                           </div>
@@ -516,10 +607,10 @@ const ChatsPageNew = () => {
                 )}
               </ScrollArea>
 
-              <div className="mt-4 space-y-2">
+              <div className="p-4 border-t bg-background mt-auto">
                 {selectedFile && (
-                  <div className="flex items-center justify-between p-2 bg-muted rounded">
-                    <div className="flex items-center space-x-2">
+                  <div className="flex items-center justify-between p-2 bg-muted rounded mb-2">
+                    <div className="flex items-center space-x-2 overflow-hidden">
                       {getFileIcon(getMessageType(selectedFile))}
                       <span className="text-sm truncate">{selectedFile.name}</span>
                     </div>
@@ -531,13 +622,25 @@ const ChatsPageNew = () => {
                 )}
 
                 <div className="flex space-x-2">
-                  <Input
-                    placeholder="Type a message..."
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                    disabled={sending}
-                  />
+                  <div className="flex-1 relative">
+                    <Input
+                      placeholder="Type a message..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
+                      disabled={sending}
+                      className="pr-10"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={sending}
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </Button>
+                  </div>
 
                   <input
                     type="file"
@@ -548,175 +651,99 @@ const ChatsPageNew = () => {
                   />
 
                   <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={sending}
-                  >
-                    <Paperclip className="h-4 w-4" />
-                  </Button>
-
-                  <Button
                     onClick={handleSendMessage}
                     disabled={sending || (!messageText.trim() && !selectedFile)}
+                    size="icon"
                   >
-                    <Send className="h-4 w-4" />
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
             </CardContent>
           </>
         ) : (
-          <CardContent className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MessageCircle className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl text-gray-600 mb-2">Select a chat</h3>
-              <p className="text-muted-foreground">
-                Choose a conversation from the left or start a new one
+          <CardContent className="flex-1 flex items-center justify-center bg-gray-50/50">
+            <div className="text-center p-6">
+              <MessageCircle className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">Select a chat</h3>
+              <p className="text-muted-foreground max-w-xs mx-auto">
+                Choose a conversation from the list to start messaging
               </p>
             </div>
           </CardContent>
         )}
       </Card>
 
-      {/* Right Sidebar - Contacts */}
+      {/* Right Sidebar - Contacts (Overlay on mobile, shouldn't exist on desktop based on current requirement but logic handles it) */}
       {showContacts && (
-        <>
-          {(isMobile || isTablet) && (
-            <div
-              className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm top-16"
-              onClick={handleBackFromContacts}
-            />
-          )}
-
-          <Card
-            className={cn(
-              "flex flex-col",
-              "lg:w-80",
-              isMobile || isTablet
-                ? "fixed inset-y-16 right-0 z-50 w-[80%] animate-in slide-in-from-right"
-                : "relative w-full md:w-full lg:w-80",
-              cardHeight
-            )}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">
-                  {user?.role === 'STUDENT' ? 'Teachers' : 'Students'}
-                </CardTitle>
-
-                <Button size="sm" variant="ghost" onClick={handleBackFromContacts}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="mt-2">
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search..."
-                    value={contactSearch}
-                    onChange={(e) => setContactSearch(e.target.value)}
-                    className="pl-8"
-                  />
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <Card className="w-full max-w-md h-[80vh] flex flex-col shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between py-3 border-b">
+              <CardTitle className="text-lg">
+                Select {user?.role === 'STUDENT' ? 'Teacher' : 'Student'}
+              </CardTitle>
+              <Button size="icon" variant="ghost" onClick={handleBackFromContacts}>
+                <X className="h-4 w-4" />
+              </Button>
             </CardHeader>
-
-            <CardContent className="flex-1 p-0 overflow-hidden">
+            <div className="p-4 border-b">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search..."
+                  value={contactSearch}
+                  onChange={(e) => setContactSearch(e.target.value)}
+                  className="pl-8"
+                />
+              </div>
+            </div>
+            <CardContent className="flex-1 overflow-hidden p-0">
               <ScrollArea className="h-full">
+                {/* Contacts List Logic */}
                 {loadingContacts ? (
-                  <div className="p-4 text-center text-muted-foreground">Loading...</div>
-                ) : user?.role === 'STUDENT' ? (
+                  <div className="flex justify-center p-8"><Loader2 className="animate-spin text-muted-foreground" /></div>
+                ) : (
                   <div className="divide-y">
-                    {filteredTeachers.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground text-sm">
-                        No teachers found
-                      </div>
-                    ) : (
-                      filteredTeachers.map((teacher) => (
-                        <div key={teacher.id} className="p-3 hover:bg-muted transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback>
-                                  {teacher.user.name.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{teacher.user.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {teacher.user.email}
-                                </p>
-                                {teacher.qualification && (
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {teacher.qualification}
-                                  </p>
-                                )}
-                              </div>
+                    {user?.role === 'STUDENT' ? (
+                      filteredTeachers.map(teacher => (
+                        <div key={teacher.id} className="p-3 hover:bg-muted transition-colors flex items-center justify-between cursor-pointer" onClick={() => startNewChat(teacher.user.id)}>
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarFallback>{teacher.user.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{teacher.user.name}</p>
+                              <p className="text-xs text-muted-foreground">{teacher.user.email}</p>
                             </div>
-
-                            <Button
-                              size="sm"
-                              onClick={() => startNewChat(teacher.user.id)}
-                              disabled={startingChat}
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </Button>
                           </div>
+                          <Button size="sm" variant="ghost"><MessageCircle className="h-4 w-4" /></Button>
+                        </div>
+                      ))
+                    ) : (
+                      filteredStudents.map(student => (
+                        <div key={student.id} className="p-3 hover:bg-muted transition-colors flex items-center justify-between cursor-pointer" onClick={() => startNewChat(student.user.id)}>
+                          <div className="flex items-center space-x-3">
+                            <Avatar>
+                              <AvatarFallback>{student.user.name[0]}</AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-medium text-sm">{student.user.name}</p>
+                              <p className="text-xs text-muted-foreground">{student.user.email}</p>
+                            </div>
+                          </div>
+                          <Button size="sm" variant="ghost"><MessageCircle className="h-4 w-4" /></Button>
                         </div>
                       ))
                     )}
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {filteredStudents.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground text-sm">
-                        No students found
-                      </div>
-                    ) : (
-                      filteredStudents.map((student) => (
-                        <div key={student.id} className="p-3 hover:bg-muted transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-3">
-                              <Avatar className="h-10 w-10">
-                                <AvatarFallback>
-                                  {student.user.name.charAt(0).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{student.user.name}</p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {student.user.email}
-                                </p>
-
-                                {student.class && (
-                                  <Badge variant="secondary" className="text-xs mt-1">
-                                    {student.class.name}
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-
-                            <Button
-                              size="sm"
-                              onClick={() => startNewChat(student.user.id)}
-                              disabled={startingChat}
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ))
+                    {((user?.role === 'STUDENT' && filteredTeachers.length === 0) || (user?.role !== 'STUDENT' && filteredStudents.length === 0)) && (
+                      <div className="p-8 text-center text-muted-foreground">No contacts found</div>
                     )}
                   </div>
                 )}
               </ScrollArea>
             </CardContent>
           </Card>
-        </>
+        </div>
       )}
     </div>
   );

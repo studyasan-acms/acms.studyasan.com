@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <main
           className={cn(
-            "flex-1 p-6 transition-all duration-300",
+            "flex-1 p-6 transition-all duration-300 w-full overflow-x-hidden max-w-full",
             sidebarCollapsed ? "lg:ml-14" : "lg:ml-56" // <- ADJUST WIDTH
           )}
         >

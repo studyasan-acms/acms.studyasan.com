@@ -37,7 +37,7 @@ export default function CurriculumPage() {
     }, [activeTab, setSearchParams]);
 
     return (
-        <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
+        <div className="space-y-6">
             <div className="flex flex-col gap-1.5 sm:gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-gray-900">
                     Curriculum Management
@@ -48,8 +48,8 @@ export default function CurriculumPage() {
             </div>
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-                <div className="overflow-x-auto -mx-1 px-1 pb-2 scrollbar-none">
-                    <TabsList className="h-auto p-1 bg-muted/50 rounded-xl inline-flex w-max sm:w-auto">
+                <div className="w-full">
+                    <TabsList className="h-auto p-1 bg-muted/50 rounded-xl flex flex-wrap gap-1 w-full sm:w-auto sm:inline-flex">
                         <TabsTrigger
                             value="subjects"
                             className="rounded-lg px-3 sm:px-4 py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
@@ -97,7 +97,7 @@ export default function CurriculumPage() {
                 </div>
 
                 <TabsContent value="subjects" className="focus-visible:outline-none focus-visible:ring-0">
-                    <SubjectsPage />
+                    <SubjectsPage embedded={true} />
                 </TabsContent>
 
                 <TabsContent value="test-series" className="focus-visible:outline-none focus-visible:ring-0">

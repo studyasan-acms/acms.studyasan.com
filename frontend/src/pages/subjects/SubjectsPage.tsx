@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   subjectService,
 } from "@/services/api";
@@ -26,7 +27,7 @@ import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-export default function SubjectsPage() {
+export default function SubjectsPage({ embedded = false }: { embedded?: boolean }) {
   usePageTitle("Subjects");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -93,23 +94,51 @@ export default function SubjectsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 pb-10">
-      {/* Simple, Fun Header */}
-      <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 py-6 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-12 w-12 bg-gradient-to-br from-saBlue to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <BookOpen className="h-6 w-6 text-white" />
+    <div className={cn(
+      !embedded && "min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 pb-10"
+    )}>
+      {/* Simple, Fun Header - Only show if not embedded */}
+      {!embedded && (
+        <div className="bg-white/80 backdrop-blur-sm border-b border-gray-200 px-4 sm:px-6 py-6 sticky top-0 z-10 shadow-sm">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 bg-gradient-to-br from-saBlue to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-800">My Subjects</h1>
+                  <p className="text-sm text-gray-500">Let's learn something awesome today!</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">My Subjects</h1>
-                <p className="text-sm text-gray-500">Let's learn something awesome today!</p>
-              </div>
+              {isAdmin && (
+                <Button
+                  className="bg-gradient-to-r from-saBlue to-cyan-500 hover:from-saBlue/90 hover:to-cyan-600 text-white shadow-lg"
+                  onClick={() => navigate("/dashboard/subjects/new")}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Subject
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className={cn(
+        "space-y-6 w-full max-w-full",
+        !embedded && "max-w-7xl mx-auto px-4 sm:px-6 py-8"
+      )}>
+        {/* Embedded Title/Actions */}
+        {embedded && (
+          <div className="flex items-center justify-between mb-6">
+            <div className="hidden sm:block">
+              {/* Empty placeholder or small title if needed */}
             </div>
             {isAdmin && (
               <Button
-                className="bg-gradient-to-r from-saBlue to-cyan-500 hover:from-saBlue/90 hover:to-cyan-600 text-white shadow-lg"
+                size="sm"
+                className="bg-saBlue hover:bg-saBlue/90 text-white"
                 onClick={() => navigate("/dashboard/subjects/new")}
               >
                 <Plus className="mr-2 h-4 w-4" />
@@ -117,10 +146,8 @@ export default function SubjectsPage() {
               </Button>
             )}
           </div>
-        </div>
-      </div>
+        )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Loading State */}
         {isLoading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-4">
@@ -143,7 +170,7 @@ export default function SubjectsPage() {
         ) : (
           <>
             {/* Subject Cards Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full">
               {subjects.map((subject, index) => {
                 const colors = [
                   { bg: "from-blue-500 to-cyan-500", badge: "bg-blue-100 text-blue-700 border-blue-200" },
@@ -283,11 +310,11 @@ export default function SubjectsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between pt-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between pt-4 gap-4 sm:gap-0">
               <p className="text-sm text-gray-600 font-medium">
                 Showing {Math.min(currentPage * limit, total)} of {total} subjects
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto justify-center">
                 <Button
                   variant="outline"
                   size="sm"

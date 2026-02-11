@@ -3,6 +3,7 @@ import type { AuthRequest } from '../types/index.js';
 import { PrismaClient, MessageType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { uploadToS3 } from '../utils/s3.js';
+import { getIo } from '../socket/socket.js';
 
 const prisma = new PrismaClient();
 
@@ -43,7 +44,7 @@ export const startChat = async (req: AuthRequest, res: Response) => {
       const chatUserIds = chat.participants.map(p => p.user_id).sort();
       const requestedUserIds = allParticipantIds.sort();
       return chatUserIds.length === requestedUserIds.length &&
-             chatUserIds.every(id => requestedUserIds.includes(id));
+        chatUserIds.every(id => requestedUserIds.includes(id));
     });
 
     if (existingChat) {
@@ -102,11 +103,11 @@ export const startChat = async (req: AuthRequest, res: Response) => {
 export const sendMessage = async (req: AuthRequest, res: Response) => {
   try {
     const { chatId } = req.params;
-    
+
     if (!chatId) {
       return sendError(res, 'Chat ID is required', 400);
     }
-    
+
     const { content, messageType = 'TEXT' } = req.body;
     const userId = (req as any).user!.id;
     const file = req.file; // Assuming multer is used for file upload
@@ -160,6 +161,13 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    try {
+      const io = getIo();
+      io.to(`chat_${chatId}`).emit('receive_message', message);
+    } catch (error) {
+      console.error('Socket error:', error);
+    }
+
     return sendSuccess(res, message, 'Message sent successfully', 201);
   } catch (error) {
     console.error('Error sending message:', error);
@@ -171,11 +179,11 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 export const getChatMessages = async (req: AuthRequest, res: Response) => {
   try {
     const { chatId } = req.params;
-    
+
     if (!chatId) {
       return sendError(res, 'Chat ID is required', 400);
     }
-    
+
     const { page = '1', limit = '50' } = req.query;
     const userId = (req as any).user!.id;
     const userRole = (req as any).user!.role;
@@ -346,7 +354,7 @@ export const getAllChats = async (req: AuthRequest, res: Response) => {
 // Helper function to determine message type from file
 const getMessageTypeFromFile = (filename: string): MessageType => {
   const ext = filename.split('.').pop()?.toLowerCase();
-  
+
   if (['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(ext || '')) {
     return MessageType.IMAGE;
   }
@@ -356,6 +364,6 @@ const getMessageTypeFromFile = (filename: string): MessageType => {
   if (ext === 'pdf') {
     return MessageType.PDF;
   }
-  
+
   return MessageType.FILE;
 };
