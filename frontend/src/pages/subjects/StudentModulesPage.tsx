@@ -3,13 +3,18 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   BookOpen,
   CheckCircle,
@@ -17,14 +22,8 @@ import {
   Play,
   ArrowLeft,
   ChevronRight,
-  Target,
-  Trophy,
-  Sparkles,
   Loader2,
-  Calendar,
   Layers,
-  Zap,
-  Plus,
 } from "lucide-react";
 import { moduleService, progressService, subjectService } from "@/services/api";
 import type { Module, Subject, StudentModuleProgress } from "@/types";
@@ -104,38 +103,39 @@ export default function StudentModulesPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-white border-b border-gray-200">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Link
             to="/dashboard/subjects"
-            className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-saBlue mb-6 transition-colors"
+            className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-saBlue mb-4 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Subjects
           </Link>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-2 mb-1.5">
                 {subject?.board && (
-                  <Badge variant="secondary" className="bg-blue-50 text-saBlue hover:bg-blue-100 border-none">
+                  <Badge variant="secondary" className="bg-blue-50 text-saBlue hover:bg-blue-100 border-none text-xs">
                     {subject.board.name}
                   </Badge>
                 )}
                 {subject?.class && (
-                  <Badge variant="outline" className="text-gray-500 border-gray-200">
+                  <Badge variant="outline" className="text-gray-500 border-gray-200 text-xs">
                     {subject.class.name}
                   </Badge>
                 )}
                 {overallProgress === 100 && (
-                  <Badge variant="secondary" className="bg-green-50 text-green-700 hover:bg-green-100 border-none">
+                  <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none text-xs font-semibold">
+                    <CheckCircle className="w-3 h-3 mr-1" />
                     Completed
                   </Badge>
                 )}
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{subject?.name}</h1>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight">{subject?.name}</h1>
             </div>
 
-            <Card className="min-w-[200px] bg-white border-gray-200 shadow-sm rounded-xl">
+            <Card className="min-w-[180px] bg-white border-gray-200 shadow-sm rounded-xl">
               <CardContent className="p-3">
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Progress</span>
@@ -163,90 +163,141 @@ export default function StudentModulesPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900">Modules</h2>
-              <span className="text-sm text-gray-500">{modules.length} items</span>
+              <h2 className="text-lg font-bold text-gray-900">Learning Modules</h2>
+              <span className="text-sm text-gray-500">{modules.length} modules</span>
             </div>
 
-            <div className="grid gap-4">
-              {[...modules]
-                .sort((a, b) => a.order - b.order)
-                .map((module, index) => {
-                  const status = getProgressStatus(module.module_id);
-                  const isCompleted = status === "COMPLETED";
-                  const isStarted = status === "IN_PROGRESS";
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 w-16">
+                      Module
+                    </TableHead>
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[250px]">
+                      Title
+                    </TableHead>
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden md:table-cell">
+                      Duration
+                    </TableHead>
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px] hidden lg:table-cell">
+                      Content
+                    </TableHead>
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[100px]">
+                      Status
+                    </TableHead>
+                    <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...modules]
+                    .sort((a, b) => a.order - b.order)
+                    .map((module, index) => {
+                      const status = getProgressStatus(module.module_id);
+                      const moduleProgress = getModuleProgress(module.module_id);
+                      const progressPercent = moduleProgress?.progress_percent || 0;
+                      const isCompleted = status === "COMPLETED";
 
-                  return (
-                    <div
-                      key={module.module_id}
-                      className={cn(
-                        "group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden",
-                        isCompleted && "bg-gray-50/50"
-                      )}
-                    >
-                      <div className="flex flex-col sm:flex-row items-stretch">
-                        {/* Status Indicator Strip */}
-                        <div className={cn(
-                          "w-full sm:w-1.5 h-1.5 sm:h-auto",
-                          status === "COMPLETED" ? "bg-green-500" : status === "IN_PROGRESS" ? "bg-saBlue" : "bg-gray-200"
-                        )} />
-
-                        <div className="p-3 sm:p-4 flex-1 flex flex-col sm:flex-row items-start sm:items-center gap-3 md:gap-4">
-                          <div className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-gray-50 text-gray-500 font-bold text-xs border border-gray-100 mt-0.5 sm:mt-0">
-                            {index + 1}
-                          </div>
-
-                          <div className="flex-1 min-w-0 grid gap-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className={cn(
-                                "text-sm font-bold text-gray-900 truncate",
-                                status === "COMPLETED" && "text-gray-500 line-through"
-                              )}>
-                                {module.title}
-                              </h3>
-                              {status === "COMPLETED" && <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+                      return (
+                        <TableRow
+                          key={module.module_id}
+                          className={cn(
+                            "hover:bg-blue-50/30 border-b-gray-50 transition-colors",
+                            isCompleted && "bg-green-50/50 hover:bg-green-100/30"
+                          )}
+                        >
+                          <TableCell className="pl-6 py-3">
+                            <div className={cn(
+                              "flex items-center justify-center w-8 h-8 rounded-lg font-bold text-sm",
+                              isCompleted 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-gray-100 text-gray-600"
+                            )}>
+                              {index + 1}
                             </div>
-                            <p className="text-xs text-gray-500 line-clamp-1">
-                              {module.description}
-                            </p>
-                            <div className="flex items-center gap-3 text-xs text-gray-500 font-bold uppercase tracking-wider mt-1">
-                              <div className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>{module.estimated_time_minutes} min</span>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm text-gray-900">
+                                  {module.title}
+                                </span>
+                                {isCompleted && (
+                                  <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                )}
                               </div>
-                              <div className="flex items-center gap-1">
-                                <Layers className="w-3.5 h-3.5" />
-                                <span>{module.content?.length || 0} topics</span>
-                              </div>
+                              {module.description && (
+                                <p className="text-xs text-gray-500 line-clamp-1">
+                                  {module.description}
+                                </p>
+                              )}
                             </div>
-                          </div>
-
-                          <div className="self-stretch sm:self-center pt-2 sm:pt-0 w-full sm:w-auto mt-2 sm:mt-0">
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell py-3">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Clock className="w-4 h-4 text-gray-400" />
+                              <span>{module.estimated_time_minutes} min</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden lg:table-cell py-3">
+                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                              <Layers className="w-4 h-4 text-gray-400" />
+                              <span>{module.content?.length || 0} topics</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {isCompleted ? (
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-none font-semibold">
+                                Completed
+                              </Badge>
+                            ) : status === "IN_PROGRESS" ? (
+                              <div className="flex flex-col gap-1">
+                                <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none font-semibold">
+                                  In Progress
+                                </Badge>
+                                <span className="text-xs text-gray-500">{progressPercent}%</span>
+                              </div>
+                            ) : (
+                              <Badge variant="outline" className="text-gray-500 border-gray-200">
+                                Not Started
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right pr-6 py-3">
                             <Button
                               onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`)}
                               size="sm"
-                              variant={status === "COMPLETED" ? "outline" : "default"}
+                              variant={isCompleted ? "outline" : "default"}
                               className={cn(
-                                "w-full sm:w-auto h-9 px-5 rounded-lg font-bold text-xs uppercase tracking-wider shadow-none transition-all active:scale-95",
-                                status !== "COMPLETED" && "bg-saBlue hover:bg-saBlueDarkHover text-white",
-                                status === "COMPLETED" && "text-gray-500 border-gray-200 hover:bg-gray-50"
+                                "h-8 px-4 rounded-lg font-semibold text-xs transition-all active:scale-95",
+                                !isCompleted && "bg-saBlue hover:bg-saBlue/90 text-white",
+                                isCompleted && "text-green-700 border-green-200 hover:bg-green-50"
                               )}
                             >
-                              {status === "COMPLETED" ? (
+                              {isCompleted ? (
                                 <>Review</>
                               ) : status === "IN_PROGRESS" ? (
-                                <>Continue <Play className="w-3 h-3 ml-1.5 fill-current" /></>
+                                <>
+                                  Continue
+                                  <Play className="w-3 h-3 ml-1.5 fill-current" />
+                                </>
                               ) : (
-                                <>Start <ChevronRight className="w-3.5 h-3.5 ml-1" /></>
+                                <>
+                                  Start
+                                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                                </>
                               )}
                             </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}

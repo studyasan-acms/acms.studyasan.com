@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   ArrowLeft,
   CheckCircle,
@@ -138,7 +137,13 @@ export default function StudyModulePage() {
         return (
           <div className="max-w-4xl mx-auto py-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="prose prose-slate prose-lg max-w-none">
-              <div className="whitespace-pre-wrap text-gray-800 leading-[1.8] text-base font-medium tracking-tight bg-white p-6 md:p-8 rounded-[24px] border border-gray-100 shadow-sm transition-all hover:shadow-md">
+              <div 
+                className="whitespace-pre-wrap text-gray-800 leading-[1.8] text-base font-medium tracking-tight bg-gradient-to-br from-white to-gray-50/50 p-8 md:p-10 rounded-[28px] border border-gray-200 shadow-lg select-none"
+                onCopy={(e) => e.preventDefault()}
+                onCut={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{ userSelect: 'none', WebkitUserSelect: 'none', msUserSelect: 'none' }}
+              >
                 {content.text_content}
               </div>
             </div>
@@ -148,22 +153,22 @@ export default function StudyModulePage() {
       case "image":
         return (
           <div className="max-w-5xl mx-auto py-6 animate-in zoom-in-95 duration-700">
-            <div className="bg-white p-6 rounded-[40px] border border-gray-100 shadow-xl overflow-hidden group relative">
+            <div className="bg-gradient-to-br from-white to-gray-50 p-8 rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden group relative select-none">
               <img
                 src={assetUrl}
                 alt={content.filename || content.file_name || "Instructional Asset"}
-                className="w-full h-auto max-h-[700px] object-contain rounded-[32px] transition-transform duration-700 group-hover:scale-[1.01]"
+                className="w-full h-auto max-h-[700px] object-contain rounded-[32px] pointer-events-none select-none"
+                draggable={false}
+                onDragStart={(e) => e.preventDefault()}
                 onContextMenu={(e) => e.preventDefault()}
+                style={{ userSelect: 'none', WebkitUserSelect: 'none' }}
               />
-              <div className="absolute bottom-10 right-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button variant="secondary" size="icon" className="rounded-full bg-white/90 backdrop-blur-sm shadow-xl">
-                  <Maximize2 className="h-4 w-4" />
-                </Button>
-              </div>
+              {/* Invisible overlay to prevent interactions */}
+              <div className="absolute inset-0 pointer-events-none" />
             </div>
             <p className="text-center mt-6 text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-green-500/50" />
-              Secure Instructional Content
+              <ShieldCheck className="w-4 h-4 text-green-500" />
+              Protected Educational Content
             </p>
           </div>
         );
@@ -171,12 +176,14 @@ export default function StudyModulePage() {
       case "video":
         return (
           <div className="max-w-6xl mx-auto py-6 animate-in fade-in zoom-in-95 duration-700">
-            <div className="bg-gray-950 rounded-[40px] overflow-hidden shadow-2xl ring-1 ring-white/10 relative group">
+            <div className="bg-gradient-to-br from-gray-900 to-gray-950 rounded-[40px] overflow-hidden shadow-2xl ring-1 ring-white/10 relative group select-none p-1">
               <video
                 controls
-                controlsList="nodownload"
-                className="w-full aspect-video shadow-2xl"
+                controlsList="nodownload noremoteplayback"
+                disablePictureInPicture
+                className="w-full aspect-video shadow-2xl rounded-[36px]"
                 onContextMenu={(e) => e.preventDefault()}
+                style={{ pointerEvents: 'auto' }}
               >
                 <source src={assetUrl} />
                 Learning content unavailable in this browser.
@@ -188,8 +195,11 @@ export default function StudyModulePage() {
                   <Play className="w-5 h-5" fill="currentColor" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-gray-800">Dynamic Video Lecture</h4>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Multimedia Module</p>
+                  <h4 className="text-sm font-bold text-gray-800">Video Lecture</h4>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <ShieldCheck className="w-3 h-3 text-green-500" />
+                    Protected Content
+                  </p>
                 </div>
               </div>
             </div>
@@ -199,25 +209,30 @@ export default function StudyModulePage() {
       case "pdf":
         return (
           <div className="max-w-6xl mx-auto py-6 animate-in fade-in duration-700">
-            <div className="bg-white p-3 rounded-[40px] border border-gray-100 shadow-2xl overflow-hidden min-h-[700px]">
-              <div className="w-full h-[750px] rounded-[32px] overflow-hidden bg-gray-50 flex flex-col">
-                <div className="p-4 bg-gray-50 border-b flex items-center justify-between shrink-0">
+            <div className="bg-gradient-to-br from-white to-gray-50 p-4 rounded-[40px] border border-gray-200 shadow-2xl overflow-hidden min-h-[700px] select-none">
+              <div className="w-full h-[750px] rounded-[32px] overflow-hidden bg-white border border-gray-200 flex flex-col relative">
+                <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 flex items-center justify-between shrink-0">
                   <div className="flex items-center gap-2.5">
                     <FileText className="w-4 h-4 text-red-500" />
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest">
                       {content.filename || content.file_name || "Document Viewer"}
                     </span>
                   </div>
-                  <Badge variant="outline" className="text-[9px] font-bold tracking-widest uppercase py-1 border-gray-200">
-                    Encrypted PDF
+                  <Badge variant="outline" className="text-[9px] font-bold tracking-widest uppercase py-1 border-green-200 bg-green-50 text-green-700">
+                    <ShieldCheck className="w-3 h-3 mr-1" />
+                    Protected PDF
                   </Badge>
                 </div>
-                <iframe
-                  src={`${assetUrl}#toolbar=0&navpanes=0`}
-                  className="w-full flex-1 border-none"
-                  title="PDF Document"
-                  onContextMenu={(e) => e.preventDefault()}
-                />
+                <div className="flex-1 relative">
+                  <iframe
+                    src={`${assetUrl}#toolbar=0&navpanes=0&view=FitH`}
+                    className="w-full h-full border-none pointer-events-auto"
+                    title="PDF Document"
+                    onContextMenu={(e) => e.preventDefault()}
+                  />
+                  {/* Overlay to prevent right-click on iframe */}
+                  <div className="absolute inset-0 pointer-events-none" />
+                </div>
               </div>
             </div>
           </div>
@@ -255,14 +270,14 @@ export default function StudyModulePage() {
   return (
     <div className="min-h-screen bg-white pb-40">
       {/* IMMERSIVE HEADER */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+      <div className="bg-white/95 backdrop-blur-lg border-b border-gray-200 sticky top-0 z-[60] shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-4 min-w-0">
               <Button
                 variant="ghost"
                 onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                className="hover:bg-gray-100 rounded-full h-10 w-10 p-0 text-gray-500"
+                className="hover:bg-gray-100 rounded-full h-10 w-10 p-0 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -274,23 +289,51 @@ export default function StudyModulePage() {
                     Part {currentContentIndex + 1} of {module.content.length}
                   </span>
                   <span className="text-gray-300">•</span>
-                  <span className="uppercase tracking-wider font-semibold text-[11px]">
-                    {progress?.is_completed ? 'Completed' : 'In Progress'}
-                  </span>
+                  {progress?.is_completed ? (
+                    <Badge className="bg-green-100 text-green-700 border-green-200 hover:bg-green-100 text-[10px] font-bold uppercase tracking-wider">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      Completed
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-100 text-[10px] font-bold uppercase tracking-wider">
+                      In Progress
+                    </Badge>
+                  )}
                 </div>
               </div>
             </div>
 
             <div className="hidden md:flex flex-col items-end w-64 flex-shrink-0">
               <div className="flex items-center justify-between w-full mb-1.5">
-                <span className="text-xs font-medium text-gray-500">Progress</span>
-                <span className="text-xs font-bold text-gray-900">{Math.round(progressPercent)}%</span>
+                <span className={cn(
+                  "text-xs font-semibold",
+                  progress?.is_completed ? "text-green-700" : "text-gray-600"
+                )}>Module Progress</span>
+                <span className={cn(
+                  "text-xs font-bold",
+                  progress?.is_completed ? "text-green-700" : "text-gray-900"
+                )}>{Math.round(progress?.progress_percent || 0)}%</span>
               </div>
-              <Progress value={progressPercent} className="h-2 w-full bg-gray-100" />
+              <div className={cn(
+                "relative h-2.5 w-full overflow-hidden rounded-full transition-all duration-500",
+                progress?.is_completed ? "bg-green-100" : "bg-gray-100"
+              )}>
+                <div
+                  className={cn(
+                    "h-full transition-all duration-500 ease-in-out",
+                    progress?.is_completed ? "bg-green-600" : "bg-saBlue"
+                  )}
+                  style={{ width: `${Math.round(progress?.progress_percent || 0)}%` }}
+                />
+              </div>
             </div>
 
-            <div className="md:hidden flex items-center">
-              <span className="text-sm font-bold text-saBlue">{Math.round(progressPercent)}%</span>
+            <div className="md:hidden flex items-center gap-2">
+              {progress?.is_completed && <CheckCircle className="w-4 h-4 text-green-600" />}
+              <span className={cn(
+                "text-sm font-bold",
+                progress?.is_completed ? "text-green-600" : "text-saBlue"
+              )}>{Math.round(progress?.progress_percent || 0)}%</span>
             </div>
           </div>
         </div>
@@ -321,35 +364,45 @@ export default function StudyModulePage() {
 
       {/* FLOAT NAVIGATION CONTROLS */}
       <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-3xl px-6">
-        <Card className="bg-white/90 backdrop-blur-2xl border border-white/20 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-[32px] overflow-hidden p-3 md:p-4">
+        <Card className="bg-white/95 backdrop-blur-2xl border border-gray-200 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] rounded-[32px] overflow-hidden p-4 md:p-5">
           <div className="flex items-center justify-between gap-4">
             <Button
               onClick={handlePrevious}
               disabled={currentContentIndex === 0}
               variant="outline"
-              className="h-10 sm:w-10 w-10 rounded-xl border-gray-200 transition-all active:scale-90 disabled:opacity-30 disabled:grayscale group"
+              className="h-11 w-11 rounded-xl border-gray-300 hover:border-saBlue hover:bg-saBlue/5 transition-all active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed group"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-saBlue" />
+              <ChevronLeft className="w-6 h-6 text-gray-600 group-hover:text-saBlue transition-colors" />
             </Button>
 
             <div className="flex-1 flex items-center justify-center gap-2">
-              <div className="hidden sm:flex items-center gap-1.5 px-4 h-10 bg-gray-50 rounded-full border border-gray-100">
+              <div className={cn(
+                "hidden sm:flex items-center gap-1.5 px-4 h-10 bg-gray-50 rounded-full border transition-all duration-500",
+                progress?.is_completed ? "border-green-200 bg-green-50/50" : "border-gray-200"
+              )}>
                 {module.content.map((_, index) => (
                   <div
                     key={index}
                     onClick={() => setCurrentContentIndex(index)}
                     className={cn(
                       "cursor-pointer transition-all duration-500 rounded-full",
-                      index === currentContentIndex
-                        ? "w-4 h-2 bg-saBlue"
-                        : index < currentContentIndex
-                          ? "w-2 h-2 bg-green-400"
-                          : "w-2 h-2 bg-gray-200 hover:bg-gray-300"
+                      progress?.is_completed
+                        ? index === currentContentIndex
+                          ? "w-4 h-2 bg-green-600 shadow-sm shadow-green-400/50"
+                          : "w-2 h-2 bg-green-500"
+                        : index === currentContentIndex
+                          ? "w-4 h-2 bg-saBlue shadow-sm shadow-saBlue/50"
+                          : index < currentContentIndex
+                            ? "w-2 h-2 bg-green-400"
+                            : "w-2 h-2 bg-gray-300 hover:bg-gray-400"
                     )}
                   />
                 ))}
               </div>
-              <span className="sm:hidden text-xs font-black text-gray-500 uppercase tracking-widest">
+              <span className={cn(
+                "sm:hidden text-xs font-black uppercase tracking-widest",
+                progress?.is_completed ? "text-green-600" : "text-gray-500"
+              )}>
                 {currentContentIndex + 1} / {module.content.length}
               </span>
             </div>
@@ -359,21 +412,21 @@ export default function StudyModulePage() {
                 <Button
                   onClick={handleCompleteModule}
                   disabled={updating}
-                  className="h-10 px-6 rounded-xl bg-saVividOrange hover:bg-saVividOrange/90 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-saVividOrange/20 transition-all active:scale-95 group/complete"
+                  className="h-11 px-7 rounded-xl bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-green-500/30 transition-all active:scale-95 group/complete"
                 >
                   {updating ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
-                    <Sparkles className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
+                    <CheckCircle className="w-4 h-4 mr-2 group-hover/complete:scale-110 transition-transform" />
                   )}
-                  Finish Session
+                  Complete Module
                 </Button>
               )}
 
               {currentContentIndex < module.content.length - 1 && (
                 <Button
                   onClick={handleNext}
-                  className="h-10 px-6 md:px-8 rounded-xl bg-saBlue hover:bg-saBlue/90 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/next"
+                  className="h-11 px-7 md:px-9 rounded-xl bg-gradient-to-r from-saBlue to-blue-600 hover:from-saBlue/90 hover:to-blue-700 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-saBlue/30 transition-all active:scale-95 group/next"
                 >
                   Continue
                   <ChevronRight className="w-4 h-4 ml-2 group-hover/next:translate-x-1 transition-transform" />
@@ -383,9 +436,10 @@ export default function StudyModulePage() {
               {currentContentIndex === module.content.length - 1 && progress?.is_completed && (
                 <Button
                   onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                  className="h-10 px-8 rounded-xl bg-gray-950 hover:bg-gray-900 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-200 transition-all"
+                  className="h-11 px-8 rounded-xl bg-gradient-to-r from-gray-900 to-gray-800 hover:from-gray-950 hover:to-gray-900 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-300 transition-all group/back"
                 >
-                  Subject Hub
+                  <CheckCircle className="w-4 h-4 mr-2 text-green-400" />
+                  Back to Modules
                 </Button>
               )}
             </div>

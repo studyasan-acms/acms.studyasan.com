@@ -20,10 +20,11 @@ import {
   Layers,
   Sparkles,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  CheckCircle
 } from "lucide-react";
-import { moduleService, subjectService } from "@/services/api";
-import type { Module, Subject } from "@/types";
+import { moduleService, subjectService, progressService } from "@/services/api";
+import type { Module, Subject, StudentModuleProgress } from "@/types";
 import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
@@ -41,6 +42,7 @@ export default function SubjectModulesPage() {
   const { user } = useAuthStore();
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
+  const [progress, setProgress] = useState<StudentModuleProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,14 +55,27 @@ export default function SubjectModulesPage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [subjectResponse, modulesResponse] = await Promise.all([
+      const promises = [
         subjectService.getById(parseInt(subjectId!)),
         moduleService.getModulesBySubject(parseInt(subjectId!)),
-      ]);
+      ];
+      
+      // Add progress fetching for students
+      if (user?.role === "STUDENT") {
+        promises.push(progressService.getStudentProgress(user.id, parseInt(subjectId!)));
+      }
+
+      const responses = await Promise.all(promises);
+      const [subjectResponse, modulesResponse, progressResponse] = responses;
 
       setSubject(subjectResponse.data);
       const moduleData = modulesResponse.data;
       setModules(Array.isArray(moduleData) ? moduleData : []);
+      
+      if (progressResponse) {
+        setProgress(Array.isArray(progressResponse.data) ? progressResponse.data : []);
+      }
+      
       setError(null);
     } catch (err: any) {
       console.error("Error loading modules:", err);
@@ -89,6 +104,15 @@ export default function SubjectModulesPage() {
   };
 
   const isTeacher = user?.role === "TEACHER" || user?.role === "ADMIN";
+
+  const getModuleProgress = (moduleId: number) => {
+    return progress.find((p) => p.module_id === moduleId);
+  };
+
+  const isModuleCompleted = (moduleId: number) => {
+    const moduleProgress = getModuleProgress(moduleId);
+    return moduleProgress?.is_completed || false;
+  };
 
   if (loading) {
     return (
@@ -217,17 +241,41 @@ export default function SubjectModulesPage() {
             <div className="space-y-6">
               {[...modules]
                 .sort((a, b) => a.order - b.order)
-                .map((module, index) => (
+                .map((module, index) => {
+                  const isCompleted = user?.role === "STUDENT" && isModuleCompleted(module.module_id);
+                  const moduleProgress = getModuleProgress(module.module_id);
+                  
+                  return (
                   <Card
                     key={module.module_id}
-                    className="group border border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5 transition-all duration-500 rounded-[24px] overflow-hidden"
+                    className={cn(
+                      "group border transition-all duration-500 rounded-[24px] overflow-hidden",
+                      isCompleted
+                        ? "border-green-200 bg-green-50/30 hover:border-green-300 hover:shadow-xl hover:shadow-green-500/10"
+                        : "border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5"
+                    )}
                   >
                     <CardContent className="p-0">
                       <div className="flex flex-col md:flex-row items-stretch">
                         {/* Module Order Indicator */}
-                        <div className="md:w-20 bg-gray-50 flex flex-row md:flex-col items-center justify-center p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-100 group-hover:bg-saBlue/5 transition-colors duration-500 shrink-0">
-                          <span className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] mb-0 md:mb-1 mr-3 md:mr-0 group-hover:text-saBlue/40 transition-colors">Module</span>
-                          <span className="text-2xl font-black text-gray-200 group-hover:text-saBlue transition-all duration-500 tabular-nums leading-none">
+                        <div className={cn(
+                          "md:w-20 flex flex-row md:flex-col items-center justify-center p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-100 transition-colors duration-500 shrink-0",
+                          isCompleted
+                            ? "bg-green-100 group-hover:bg-green-200/50"
+                            : "bg-gray-50 group-hover:bg-saBlue/5"
+                        )}>
+                          <span className={cn(
+                            "text-[10px] font-black uppercase tracking-[0.2em] mb-0 md:mb-1 mr-3 md:mr-0 transition-colors",
+                            isCompleted
+                              ? "text-green-600 group-hover:text-green-700"
+                              : "text-gray-500 group-hover:text-saBlue/40"
+                          )}>Module</span>
+                          <span className={cn(
+                            "text-2xl font-black transition-all duration-500 tabular-nums leading-none",
+                            isCompleted
+                              ? "text-green-600 group-hover:text-green-700"
+                              : "text-gray-200 group-hover:text-saBlue"
+                          )}>
                             {(index + 1).toString().padStart(2, '0')}
                           </span>
                         </div>
@@ -236,9 +284,19 @@ export default function SubjectModulesPage() {
                         <div className="flex-1 p-5 md:p-6 flex flex-col justify-between">
                           <div>
                             <div className="flex items-start justify-between mb-2">
-                              <h3 className="text-lg font-black text-gray-800 tracking-tight group-hover:text-saBlue transition-colors duration-300">
-                                {module.title}
-                              </h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className={cn(
+                                  "text-lg font-black tracking-tight transition-colors duration-300",
+                                  isCompleted
+                                    ? "text-green-800 group-hover:text-green-900"
+                                    : "text-gray-800 group-hover:text-saBlue"
+                                )}>
+                                  {module.title}
+                                </h3>
+                                {isCompleted && (
+                                  <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+                                )}
+                              </div>
                               {isTeacher && (
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
@@ -272,16 +330,34 @@ export default function SubjectModulesPage() {
 
                           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-50">
                             <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 group-hover:bg-white group-hover:border-saBlue/10 transition-all duration-500">
+                              <div className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
+                                isCompleted
+                                  ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
+                                  : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
+                              )}>
                                 <Clock className="w-3.5 h-3.5 text-saBlue/60" />
                                 <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{module.estimated_time_minutes} min</span>
                               </div>
-                              <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 group-hover:bg-white group-hover:border-saBlue/10 transition-all duration-500">
+                              <div className={cn(
+                                "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
+                                isCompleted
+                                  ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
+                                  : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
+                              )}>
                                 <FileText className="w-3.5 h-3.5 text-saBlue/60" />
                                 <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
                                   {module.content?.length || 0} Content
                                 </span>
                               </div>
+                              {isCompleted && user?.role === "STUDENT" && (
+                                <div className="bg-green-100 border-green-200 px-3 py-1.5 rounded-xl border">
+                                  <span className="text-[10px] font-black text-green-700 uppercase tracking-widest flex items-center gap-1.5">
+                                    <CheckCircle className="w-3 h-3" />
+                                    Completed
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             <Button
@@ -296,10 +372,12 @@ export default function SubjectModulesPage() {
                                 "h-9 px-5 rounded-xl font-bold text-xs uppercase tracking-[0.15em] transition-all active:scale-95 group/btn-go",
                                 isTeacher
                                   ? "bg-gray-50 text-gray-700 hover:bg-saBlue hover:text-white border border-gray-100"
-                                  : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
+                                  : isCompleted
+                                    ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
+                                    : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
                               )}
                             >
-                              {isTeacher ? "Manage" : "Start"}
+                              {isTeacher ? "Manage" : isCompleted ? "Review" : "Start"}
                               <ChevronRight className="w-3 h-3 ml-2 group-hover/btn-go:translate-x-1 transition-transform" />
                             </Button>
                           </div>
@@ -307,7 +385,8 @@ export default function SubjectModulesPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
             </div>
           </div>
         )}
