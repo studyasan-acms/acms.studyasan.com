@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Save } from 'lucide-react';
-import { enrollmentService, studentService, subjectService } from '@/services/api';
-import type { Student, Subject, CreateEnrollmentData } from '@/types';
+import { enrollmentService, studentService, subjectService, testSeriesService, activityGroupService } from '@/services/api';
+import type { Student, Subject, TestSeries, ActivityGroup } from '@/types';
 import type { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,14 +11,23 @@ import { useAuthStore } from '@/store/authStore';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+type EnrollmentType = 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
 
 const CreateEnrollmentPage: React.FC = () => {
   usePageTitle("New Enrollment");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuthStore();
+
+  const [enrollmentType, setEnrollmentType] = useState<EnrollmentType>('SUBJECT');
 
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [testSeries, setTestSeries] = useState<TestSeries[]>([]);
+  const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   // SUCCESS MODAL
@@ -28,79 +37,95 @@ const CreateEnrollmentPage: React.FC = () => {
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const [formData, setFormData] = useState<CreateEnrollmentData>({
+  const [formData, setFormData] = useState({
     student_id: 0,
-    subject_id: 0,
-    price: null,
+    item_id: 0,
+    price: null as number | null,
     is_recurring: false,
-    frequency: null,
-    end_date: null,
+    frequency: null as string | null,
+    end_date: null as string | null,
+    one_time_amount: null as number | null,
   });
 
-  const [errors, setErrors] = useState<Partial<CreateEnrollmentData>>({});
+  const [errors, setErrors] = useState<Record<string, any>>({});
   const isAdmin = user?.role === 'ADMIN';
 
-  // ----------------------------
-  // Fetch Students
-  // ----------------------------
-  const fetchStudents = useCallback(async () => {
-    try {
-      const response = await studentService.getAll({ limit: 100 });
-      setStudents(response.data.data);
-    } catch {
-      setErrorMessage('Failed to load students.');
-      setErrorOpen(true);
-    }
-  }, []);
+  useEffect(() => {
+    const typeParam = searchParams.get('type');
+    if (typeParam === 'test-series') setEnrollmentType('TEST_SERIES');
+    else if (typeParam === 'activity-groups') setEnrollmentType('ACTIVITY_GROUP');
+    else setEnrollmentType('SUBJECT');
+  }, [searchParams]);
 
   // ----------------------------
-  // Fetch Subjects
+  // Fetch Data
   // ----------------------------
-  const fetchSubjects = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const params: Record<string, unknown> = { limit: 100 };
+      setLoading(true);
+      // Fetch Students
+      const studentRes = await studentService.getAll({ limit: 100 });
+      setStudents(studentRes.data.data);
 
-      if (user?.role === 'TEACHER' && user.id) {
-        params.user_id = user.id;
-        params.role = user.role;
+      // Fetch Items based on type
+      if (enrollmentType === 'SUBJECT') {
+        const params: Record<string, unknown> = { limit: 100 };
+        if (user?.role === 'TEACHER' && user.id) {
+          params.user_id = user.id;
+          params.role = user.role;
+        }
+        const subjectRes = await subjectService.getAll(params);
+        setSubjects(subjectRes.data.data);
+      } else if (enrollmentType === 'TEST_SERIES') {
+        const testRes = await testSeriesService.getAll({ limit: 100 });
+        setTestSeries(testRes.data.data);
+      } else if (enrollmentType === 'ACTIVITY_GROUP') {
+        const activityRes = await activityGroupService.getAll({ limit: 100 });
+        setActivityGroups(activityRes.data.activityGroups);
       }
-
-      const response = await subjectService.getAll(params);
-      setSubjects(response.data.data);
-    } catch {
-      setErrorMessage('Failed to load subjects.');
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setErrorMessage('Failed to load data.');
       setErrorOpen(true);
+    } finally {
+      setLoading(false);
     }
-  }, [user]);
+  }, [enrollmentType, user]);
 
-  // ----------------------------
-  // useEffect
-  // ----------------------------
   useEffect(() => {
     if (!isAdmin) {
       navigate('/dashboard/enrollments');
       return;
     }
-    fetchStudents();
-    fetchSubjects();
-  }, [isAdmin, navigate, fetchStudents, fetchSubjects]);
+    fetchData();
+  }, [isAdmin, navigate, fetchData]);
+
+  // Reset item_id when type changes
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, item_id: 0 }));
+  }, [enrollmentType]);
 
   // ----------------------------
   // Validate Form
   // ----------------------------
   const validateForm = (): boolean => {
-    const newErrors: Partial<CreateEnrollmentData> = {};
+    const newErrors: Record<string, any> = {};
 
-    if (!formData.student_id) newErrors.student_id = 0;
-    if (!formData.subject_id) newErrors.subject_id = 0;
+    if (!formData.student_id) newErrors.student_id = true;
+    if (!formData.item_id) newErrors.item_id = true;
 
     // If recurring is enabled, price and frequency are required
     if (formData.is_recurring) {
       if (!formData.price || formData.price <= 0) {
-        newErrors.price = 0;
+        newErrors.price = true;
       }
       if (!formData.frequency) {
-        newErrors.frequency = '';
+        newErrors.frequency = true;
+      }
+    } else {
+      // If not recurring, one-time amount is required
+      if (!formData.one_time_amount || formData.one_time_amount <= 0) {
+        newErrors.one_time_amount = true;
       }
     }
 
@@ -117,12 +142,30 @@ const CreateEnrollmentPage: React.FC = () => {
 
     setLoading(true);
     try {
-      await enrollmentService.create(formData);
+      const commonData = {
+        student_id: formData.student_id,
+        price: formData.price,
+        is_recurring: formData.is_recurring,
+        frequency: formData.frequency,
+        end_date: formData.end_date,
+        one_time_amount: formData.one_time_amount,
+      };
+
+      if (enrollmentType === 'SUBJECT') {
+        await enrollmentService.create({
+          ...commonData,
+          subject_id: formData.item_id,
+        });
+      } else if (enrollmentType === 'TEST_SERIES') {
+        await testSeriesService.enroll(formData.item_id, commonData);
+      } else if (enrollmentType === 'ACTIVITY_GROUP') {
+        await activityGroupService.enroll(formData.item_id, commonData);
+      }
+
       setSuccessOpen(true);
     } catch (err: unknown) {
       let message = "Failed to create enrollment. Please try again.";
 
-      // ---- FIX: NO ANY USED ----
       const axiosErr = err as AxiosError<{ message?: string }>;
 
       if (axiosErr.response?.data?.message) {
@@ -137,7 +180,11 @@ const CreateEnrollmentPage: React.FC = () => {
   };
 
   const selectedStudent = students.find((s) => s.id === formData.student_id);
-  const selectedSubject = subjects.find((s) => s.id === formData.subject_id);
+
+  let selectedItem: any = null;
+  if (enrollmentType === 'SUBJECT') selectedItem = subjects.find(s => s.id === formData.item_id);
+  else if (enrollmentType === 'TEST_SERIES') selectedItem = testSeries.find(s => s.id === formData.item_id);
+  else if (enrollmentType === 'ACTIVITY_GROUP') selectedItem = activityGroups.find(s => s.id === formData.item_id);
 
   return (
     <div className="relative space-y-6">
@@ -147,9 +194,9 @@ const CreateEnrollmentPage: React.FC = () => {
         open={successOpen}
         title="Enrollment Successful"
         description={
-          selectedStudent && selectedSubject
-            ? `${selectedStudent.user.name} has been enrolled in ${selectedSubject.name} successfully.`
-            : "Enrollment completed successfully."
+          selectedStudent && selectedItem
+            ? `${selectedStudent.user.name} has been enrolled in ${selectedItem.name || selectedItem.title} successfully. A payment notification has been sent to the student.`
+            : "Enrollment completed successfully. A payment notification has been sent to the student."
         }
         showButtons={true}
         cancelText=""
@@ -183,7 +230,7 @@ const CreateEnrollmentPage: React.FC = () => {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-600">Create Enrollment</h1>
           <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Enroll a student in a subject
+            Enroll a student in a Subject, Test Series, or Activity Group
           </p>
         </div>
       </div>
@@ -195,6 +242,20 @@ const CreateEnrollmentPage: React.FC = () => {
         </CardHeader>
 
         <CardContent>
+
+          {/* Enrollment Type Tabs */}
+          <Tabs
+            value={enrollmentType}
+            onValueChange={(val) => setEnrollmentType(val as EnrollmentType)}
+            className="mb-6"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="SUBJECT">Subject</TabsTrigger>
+              <TabsTrigger value="TEST_SERIES">Test Series</TabsTrigger>
+              <TabsTrigger value="ACTIVITY_GROUP">Activity Group</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Student Dropdown */}
@@ -202,7 +263,7 @@ const CreateEnrollmentPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Student *</label>
 
               <Select
-                value={formData.student_id.toString()}
+                value={formData.student_id ? formData.student_id.toString() : ''}
                 onValueChange={(value) =>
                   setFormData({ ...formData, student_id: parseInt(value) })
                 }
@@ -230,37 +291,48 @@ const CreateEnrollmentPage: React.FC = () => {
               )}
             </div>
 
-            {/* Subject Dropdown */}
+            {/* Item Dropdown */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {enrollmentType === 'SUBJECT' ? 'Subject' : enrollmentType === 'TEST_SERIES' ? 'Test Series' : 'Activity Group'} *
+              </label>
 
               <Select
-                value={formData.subject_id.toString()}
+                value={formData.item_id ? formData.item_id.toString() : ''}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, subject_id: parseInt(value) })
+                  setFormData({ ...formData, item_id: parseInt(value) })
                 }
               >
-                <SelectTrigger className={`${errors.subject_id ? 'border-red-500' : ''} h-11`}>
-                  <SelectValue placeholder="Select a subject" />
+                <SelectTrigger className={`${errors.item_id ? 'border-red-500' : ''} h-11`}>
+                  <SelectValue placeholder={`Select a ${enrollmentType === 'SUBJECT' ? 'subject' : enrollmentType === 'TEST_SERIES' ? 'test series' : 'activity group'}`} />
                 </SelectTrigger>
 
                 <SelectContent className="max-h-60 overflow-y-auto">
-                  {subjects.map((subject) => (
+                  {enrollmentType === 'SUBJECT' && subjects.map((subject) => (
                     <SelectItem key={subject.id} value={subject.id.toString()} className="py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">{subject.name}</span>
                         <span className="text-xs text-gray-500">
-                          Class: {subject.class?.name ?? 'N/A'} • Board: {subject.board?.name ?? 'N/A'}{' '}
-                          {subject.is_course && '• Course'}
+                          Class: {subject.class?.name ?? 'N/A'} • {subject.is_course && 'Course'}
                         </span>
                       </div>
+                    </SelectItem>
+                  ))}
+                  {enrollmentType === 'TEST_SERIES' && testSeries.map((series) => (
+                    <SelectItem key={series.id} value={series.id.toString()}>
+                      {series.title}
+                    </SelectItem>
+                  ))}
+                  {enrollmentType === 'ACTIVITY_GROUP' && activityGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id.toString()}>
+                      {group.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
-              {errors.subject_id && (
-                <p className="text-red-600 text-sm mt-1">Please select a subject</p>
+              {errors.item_id && (
+                <p className="text-red-600 text-sm mt-1">Please select an item</p>
               )}
             </div>
 
@@ -275,12 +347,33 @@ const CreateEnrollmentPage: React.FC = () => {
                   id="is_recurring"
                   checked={formData.is_recurring}
                   onChange={(e) => setFormData({ ...formData, is_recurring: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className="h-4 w-4 text-saBlue focus:ring-saBlue border-gray-300 rounded"
                 />
                 <label htmlFor="is_recurring" className="text-sm font-medium text-gray-700">
                   Enable Recurring Payments
                 </label>
               </div>
+
+              {!formData.is_recurring && (
+                <>
+                  {/* One-time Amount Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">One-time Amount (₹) *</label>
+                    <input
+                      type="number"
+                      value={formData.one_time_amount || ''}
+                      onChange={(e) => setFormData({ ...formData, one_time_amount: parseFloat(e.target.value) || null })}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue ${errors.one_time_amount ? 'border-red-500' : 'border-gray-300'}`}
+                      placeholder="Enter one-time payment amount"
+                      min="0"
+                      step="0.01"
+                    />
+                    {errors.one_time_amount && (
+                      <p className="text-red-600 text-sm mt-1">Please enter a valid amount</p>
+                    )}
+                  </div>
+                </>
+              )}
 
               {formData.is_recurring && (
                 <>
@@ -291,7 +384,7 @@ const CreateEnrollmentPage: React.FC = () => {
                       type="number"
                       value={formData.price || ''}
                       onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || null })}
-                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
+                      className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue ${errors.price ? 'border-red-500' : 'border-gray-300'}`}
                       placeholder="Enter price per period"
                       min="0"
                       step="0.01"
@@ -329,7 +422,7 @@ const CreateEnrollmentPage: React.FC = () => {
                       type="date"
                       value={formData.end_date || ''}
                       onChange={(e) => setFormData({ ...formData, end_date: e.target.value || null })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue"
                       min={new Date().toISOString().split('T')[0]}
                     />
                     <p className="text-xs text-gray-500 mt-1">Leave empty for ongoing payments</p>
@@ -339,19 +432,15 @@ const CreateEnrollmentPage: React.FC = () => {
             </div>
 
             {/* Preview */}
-            {selectedStudent && selectedSubject && (
+            {selectedStudent && selectedItem && (
               <div className="bg-gray-50 rounded-lg p-4 sm:p-5">
                 <h3 className="text-sm font-medium text-gray-900 mb-2">Enrollment Preview</h3>
 
                 <div className="text-sm text-gray-600 space-y-1">
                   <p><strong>Student:</strong> {selectedStudent.user.name}</p>
                   <p><strong>Email:</strong> {selectedStudent.user.email}</p>
-                  <p><strong>Class:</strong> {selectedStudent.class?.name ?? 'N/A'}</p>
-                  <p><strong>Board:</strong> {selectedStudent.board?.name ?? 'N/A'}</p>
-                  <p><strong>Subject:</strong> {selectedSubject.name}</p>
-                  <p><strong>Subject Class:</strong> {selectedSubject.class?.name ?? 'N/A'}</p>
-                  <p><strong>Subject Board:</strong> {selectedSubject.board?.name ?? 'N/A'}</p>
-                  <p><strong>Type:</strong> {selectedSubject.is_course ? 'Course' : 'Subject'}</p>
+                  <p><strong>Type:</strong> {enrollmentType.replace('_', ' ')}</p>
+                  <p><strong>Item:</strong> {selectedItem.name || selectedItem.title}</p>
                 </div>
               </div>
             )}
@@ -368,7 +457,7 @@ const CreateEnrollmentPage: React.FC = () => {
                 Cancel
               </Button>
 
-              <Button type="submit" className="w-full sm:w-auto" disabled={loading}>
+              <Button type="submit" className="w-full sm:w-auto bg-saBlue hover:bg-saBlueDarkHover" disabled={loading}>
                 {loading ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

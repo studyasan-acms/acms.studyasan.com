@@ -459,7 +459,9 @@ export const getTests = async (req: AuthRequest, res: Response) => {
       });
 
       if (student) {
-        const enrolledSubjectIds = student.enrollments.map(e => e.subject_id);
+        const enrolledSubjectIds = student.enrollments
+          .map(e => e.subject_id)
+          .filter(id => id !== null);
 
         // If subject_id filter is provided, ensure it's in enrolled subjects
         if (subject_id) {

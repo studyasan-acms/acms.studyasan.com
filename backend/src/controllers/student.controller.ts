@@ -31,32 +31,45 @@ export const getAllStudents = async (req: Request, res: Response) => {
     if (gender) where.gender = gender;
 
     // Filter by teacher's subjects if user_id and role are provided
+    // BUT only if the teacher doesn't have explicit students.view permission
     if (user_id && role === 'TEACHER') {
-      // Find the teacher by user_id
+      // Find the teacher by user_id with their role
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: parseInt(user_id as string) },
         include: {
+          role: true,
           teacher_subject_junctions: {
             select: { subject_id: true }
           }
         }
       });
 
-      if (teacher && teacher.teacher_subject_junctions.length > 0) {
-        // Get subject IDs the teacher teaches
-        const subjectIds = teacher.teacher_subject_junctions.map(j => j.subject_id);
-
-        // Filter students who are enrolled in any of these subjects
-        where.enrollments = {
-          some: {
-            subject_id: { in: subjectIds }
-          }
-        };
-      } else {
-        // Teacher has no subjects assigned, return empty list
-        const response = createPaginatedResponse([], 0, page, limit);
-        return sendSuccess(res, response);
+      // Check if teacher has custom role with students.view permission
+      let hasStudentsViewPermission = false;
+      if (teacher?.role && teacher.role.is_active) {
+        const permissions = teacher.role.permissions as any;
+        hasStudentsViewPermission = permissions?.students?.view === true;
       }
+
+      // Only filter by subjects if teacher doesn't have students.view permission
+      if (!hasStudentsViewPermission) {
+        if (teacher && teacher.teacher_subject_junctions.length > 0) {
+          // Get subject IDs the teacher teaches
+          const subjectIds = teacher.teacher_subject_junctions.map(j => j.subject_id);
+
+          // Filter students who are enrolled in any of these subjects
+          where.enrollments = {
+            some: {
+              subject_id: { in: subjectIds }
+            }
+          };
+        } else {
+          // Teacher has no subjects assigned and no custom permission, return empty list
+          const response = createPaginatedResponse([], 0, page, limit);
+          return sendSuccess(res, response);
+        }
+      }
+      // If hasStudentsViewPermission is true, don't add any filtering - show all students
     }
 
     const [students, total] = await Promise.all([
@@ -109,8 +122,13 @@ export const getStudentById = async (req: Request, res: Response) => {
         user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
         class: true,
         board: true,
-        enrollments: { include: { subject: true } },
-        test_series_enrollments: { include: { test_series: true } },
+        enrollments: {
+          include: {
+            subject: true,
+            test_series: true,
+            activity_group: true,
+          },
+        },
         address: { include: { country: true, state: true, city: true } },
         activity_enrollments: {
           include: {
@@ -124,7 +142,6 @@ export const getStudentById = async (req: Request, res: Response) => {
         _count: {
           select: {
             enrollments: true,
-            test_series_enrollments: true,
             activity_enrollments: true,
           },
         },

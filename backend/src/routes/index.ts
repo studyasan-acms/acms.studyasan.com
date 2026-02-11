@@ -32,6 +32,7 @@ import * as analyticsController from '../controllers/analytics.controller.js';
 import * as profileController from '../controllers/profile.controller.js';
 import * as deletionController from '../controllers/deletion.controller.js';
 import * as pushNotificationController from '../controllers/pushNotification.controller.js';
+import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
 
@@ -60,6 +61,17 @@ router.post('/auth/check-password-strength', authController.checkPasswordStrengt
 router.post('/auth/request-password-reset', authController.requestPasswordReset);
 router.post('/auth/verify-password-reset-otp', authController.verifyPasswordResetOTP);
 router.post('/auth/reset-password', authController.resetPassword);
+
+// Teacher Role Management routes (ADMIN only)
+router.get('/teacher-roles', authenticate, authorize('ADMIN'), teacherRoleController.getAllRoles);
+router.get('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.getRoleById);
+router.post('/teacher-roles', authenticate, authorize('ADMIN'), teacherRoleController.createRole);
+router.put('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.updateRole);
+router.delete('/teacher-roles/:id', authenticate, authorize('ADMIN'), teacherRoleController.deleteRole);
+router.post('/teacher-roles/assign', authenticate, authorize('ADMIN'), teacherRoleController.assignRoleToTeacher);
+
+// Get current teacher's permissions (for frontend)
+router.get('/my-permissions', authenticate, authorize('TEACHER'), teacherRoleController.getTeacherPermissions);
 
 // Profile routes
 router.get('/profile', authenticate, profileController.getProfile);
@@ -401,6 +413,9 @@ router.get('/test-series', authenticate, testSeriesController.getAllTestSeries);
 // Get my enrolled test series (students)
 router.get('/test-series/my-enrollments', authenticate, testSeriesController.getMyTestSeries);
 
+// Get ALL test series enrollments (global admin)
+router.get('/test-series/enrollments/global', authenticate, authorize('ADMIN'), testSeriesController.getAllGlobalTestSeriesEnrollments);
+
 // Get test series by ID
 router.get('/test-series/:id', authenticate, testSeriesController.getTestSeriesById);
 
@@ -437,6 +452,9 @@ router.get('/test-series/:id/teachers', authenticate, authorize('ADMIN', 'TEACHE
 // Get all activity groups
 router.get('/activity-groups', authenticate, activityGroupController.getAllActivityGroups);
 
+// Get ALL activity group enrollments (global admin)
+router.get('/activity-groups/enrollments/global', authenticate, authorize('ADMIN'), activityGroupController.getAllGlobalActivityGroupEnrollments);
+
 // Get activity group by ID
 router.get('/activity-groups/:id', authenticate, activityGroupController.getActivityGroupById);
 
@@ -448,6 +466,9 @@ router.put('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGro
 
 // Delete activity group
 router.delete('/activity-groups/:id', authenticate, authorize('ADMIN'), activityGroupController.deleteActivityGroup);
+
+// Enroll student in activity group
+router.post('/activity-groups/:id/enroll', authenticate, activityGroupController.enrollStudentInActivityGroup);
 
 // Assign teacher to activity group
 router.post('/activity-groups/assign-teacher', authenticate, authorize('ADMIN'), activityGroupController.assignTeacherToActivityGroup);

@@ -4,6 +4,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { NotificationProcessorService } from '../services/notificationProcessor.service.js';
 import { sendNotificationAllChannels } from '../services/notification.service.js';
+import { createOneTimePayment } from '../utils/payment.utils.js';
 
 const prisma = new PrismaClient();
 
@@ -13,14 +14,17 @@ export const getAllEnrollments = async (req: Request, res: Response) => {
       req.query.page as string,
       req.query.limit as string
     );
-    
-    const { student_id, subject_id } = req.query;
-    
+
+    const { student_id, subject_id, test_series_id, activity_group_id, type } = req.query;
+
     const where: any = {};
-    
+
     if (student_id) where.student_id = parseInt(student_id as string);
     if (subject_id) where.subject_id = parseInt(subject_id as string);
-    
+    if (test_series_id) where.test_series_id = parseInt(test_series_id as string);
+    if (activity_group_id) where.activity_group_id = parseInt(activity_group_id as string);
+    if (type) where.type = type as string;
+
     const [enrollments, total] = await Promise.all([
       prisma.enrollment.findMany({
         where,
@@ -39,12 +43,14 @@ export const getAllEnrollments = async (req: Request, res: Response) => {
             },
           },
           subject: true,
+          test_series: true,
+          activity_group: true,
         },
         orderBy: { created_on: 'desc' },
       }),
       prisma.enrollment.count({ where }),
     ]);
-    
+
     const response = createPaginatedResponse(enrollments, total, page, limit);
     sendSuccess(res, response);
   } catch (error: any) {
@@ -55,7 +61,7 @@ export const getAllEnrollments = async (req: Request, res: Response) => {
 export const getEnrollmentById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const enrollment = await prisma.enrollment.findUnique({
       where: { id: parseInt(id!) },
       include: {
@@ -71,13 +77,15 @@ export const getEnrollmentById = async (req: Request, res: Response) => {
           },
         },
         subject: true,
+        test_series: true,
+        activity_group: true,
       },
     });
-    
+
     if (!enrollment) {
       return sendError(res, 'Enrollment not found', 404);
     }
-    
+
     sendSuccess(res, enrollment);
   } catch (error: any) {
     sendError(res, error.message, 500);
@@ -86,7 +94,7 @@ export const getEnrollmentById = async (req: Request, res: Response) => {
 
 export const createEnrollment = async (req: Request, res: Response) => {
   try {
-    const { student_id, subject_id, price, is_recurring, frequency, end_date } = req.body;
+    const { student_id, subject_id, price, is_recurring, frequency, end_date, one_time_amount } = req.body;
 
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
@@ -115,6 +123,7 @@ export const createEnrollment = async (req: Request, res: Response) => {
 
     const enrollment = await prisma.enrollment.create({
       data: {
+        type: 'SUBJECT',
         student_id,
         subject_id,
         price,
@@ -139,9 +148,17 @@ export const createEnrollment = async (req: Request, res: Response) => {
       },
     });
 
-    // If this is a paid enrollment with recurring payments, create payment schedule
-    if (price && is_recurring && frequency) {
+    // If this is a paid enrollment, create payment schedule or one-time payment
+    if (is_recurring && price && frequency) {
       await createPaymentSchedule(enrollment.id, price, frequency, end_date ? new Date(end_date) : null, student.user_id, subject);
+    } else if (!is_recurring && one_time_amount) {
+      await createOneTimePayment({
+        enrollmentId: enrollment.id,
+        amount: one_time_amount,
+        userId: student.user_id,
+        itemName: subject.name,
+        type: 'SUBJECT',
+      });
     }
 
     sendSuccess(res, enrollment, 'Enrollment created successfully', 201);
@@ -153,11 +170,11 @@ export const createEnrollment = async (req: Request, res: Response) => {
 export const deleteEnrollment = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     await prisma.enrollment.delete({
       where: { id: parseInt(id!) },
     });
-    
+
     sendSuccess(res, null, 'Enrollment deleted successfully');
   } catch (error: any) {
     sendError(res, error.message, 500);
@@ -200,8 +217,8 @@ async function createPaymentSchedule(
       const period = frequency === 'monthly'
         ? `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`
         : frequency === 'yearly'
-        ? `${dueDate.getFullYear()}`
-        : `Q${Math.ceil((dueDate.getMonth() + 1) / 3)}-${dueDate.getFullYear()}`;
+          ? `${dueDate.getFullYear()}`
+          : `Q${Math.ceil((dueDate.getMonth() + 1) / 3)}-${dueDate.getFullYear()}`;
 
       // Create payment record
       paymentRecords.push({
@@ -211,8 +228,9 @@ async function createPaymentSchedule(
         amount: price,
       });
 
-      const notificationTitle = `Payment Due: ${subject.name} - ${period}`;
-      const notificationDesc = `Payment of ₹${price} for ${subject.name} (${period}) is due on ${dueDate.toLocaleDateString()}.`;
+      const subjectName = subject?.name || 'Subject';
+      const notificationTitle = `Payment Due: ${subjectName} - ${period}`;
+      const notificationDesc = `Payment of ₹${price} for ${subjectName} (${period}) is due on ${dueDate.toLocaleDateString()}.`;
 
       if (periodCount === 0) {
         // Immediate notification for current period
@@ -240,13 +258,18 @@ async function createPaymentSchedule(
 
     // Create payment records
     if (paymentRecords.length > 0) {
-      await prisma.enrollmentPayment.createMany({
-        data: paymentRecords,
+      // Map to Payment model
+      await prisma.payment.createMany({
+        data: paymentRecords.map(r => ({
+          ...r,
+          type: 'SUBJECT' // Default for this controller which handles Subjects
+        })),
       });
     }
 
     // Send immediate notifications via all channels (in-app, FCM, email)
     if (immediateNotifications.length > 0) {
+      // Use map to return promises
       const notificationPromises = immediateNotifications.map(notification =>
         sendNotificationAllChannels(notification)
       );

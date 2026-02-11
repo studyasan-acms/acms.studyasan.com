@@ -104,14 +104,7 @@ export interface Student {
   };
   class: { id: number; name: string } | null;
   board: { id: number; name: string } | null;
-  enrollments?: Array<{
-    id: number;
-    subject: { id: number; name: string };
-  }>;
-  test_series_enrollments?: Array<{
-    id: number;
-    test_series: { id: number; title: string };
-  }>;
+  enrollments?: Enrollment[];
   activity_enrollments?: Array<{
     id: number;
     activity: {
@@ -129,7 +122,6 @@ export interface Student {
   };
   _count?: {
     enrollments: number;
-    test_series_enrollments: number;
     activity_enrollments: number;
   };
   blood_group?: 'A_POS' | 'A_NEG' | 'B_POS' | 'B_NEG' | 'AB_POS' | 'AB_NEG' | 'O_POS' | 'O_NEG' | null;
@@ -377,8 +369,11 @@ export interface UpdateSubjectData {
 // ================== ENROLLMENTS ==================
 export interface Enrollment {
   id: number;
+  type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
   student_id: number;
-  subject_id: number;
+  subject_id: number | null;
+  test_series_id: number | null;
+  activity_group_id: number | null;
   price: number | null;
   is_recurring: boolean;
   frequency: string | null;
@@ -391,13 +386,21 @@ export interface Enrollment {
     class: { id: number; name: string } | null;
     board: { id: number; name: string } | null;
   };
-  subject: {
+  subject?: {
     id: number;
     name: string;
     is_course: boolean;
     class: { id: number; name: string } | null;
     board: { id: number; name: string } | null;
-  };
+  } | null;
+  test_series?: {
+    id: number;
+    title: string;
+  } | null;
+  activity_group?: {
+    id: number;
+    name: string;
+  } | null;
   payments?: EnrollmentPayment[];
 }
 
@@ -411,7 +414,8 @@ export interface EnrollmentPayment {
   paid_date: string | null;
   created_at: string;
   updated_at: string;
-  enrollment: Enrollment;
+  enrollment?: Enrollment;
+  type?: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
 }
 
 export interface CreateEnrollmentData {
@@ -421,6 +425,7 @@ export interface CreateEnrollmentData {
   is_recurring?: boolean;
   frequency?: string | null;
   end_date?: string | null;
+  one_time_amount?: number | null;
 }
 
 export interface BulkEnrollmentData {
@@ -974,5 +979,14 @@ export interface TestSeriesEnrollment {
   student_id: number;
   enrolled_at: string;
   test_series?: TestSeries;
+  student?: Student;
+}
+
+export interface ActivityGroupEnrollment {
+  id: number;
+  activity_group_id: number;
+  student_id: number;
+  enrolled_at: string;
+  activity_group?: ActivityGroup;
   student?: Student;
 }

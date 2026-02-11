@@ -267,17 +267,17 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
 
         // Payment analytics
         const [totalRevenue, paidPayments, pendingPayments, totalPayments] = await Promise.all([
-            prisma.enrollmentPayment.aggregate({
+            prisma.payment.aggregate({
                 where: { is_paid: true },
                 _sum: { amount: true }
             }),
-            prisma.enrollmentPayment.count({ where: { is_paid: true } }),
-            prisma.enrollmentPayment.count({ where: { is_paid: false } }),
-            prisma.enrollmentPayment.count()
+            prisma.payment.count({ where: { is_paid: true } }),
+            prisma.payment.count({ where: { is_paid: false } }),
+            prisma.payment.count()
         ]);
 
         // Revenue last 30 days
-        const revenueLast30Days = await prisma.enrollmentPayment.aggregate({
+        const revenueLast30Days = await prisma.payment.aggregate({
             where: {
                 is_paid: true,
                 paid_date: { gte: thirtyDaysAgo }
@@ -299,8 +299,8 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
 
         // Test series enrollments
         const [totalTestSeriesEnrollments, testSeriesEnrollmentsLast30Days] = await Promise.all([
-            prisma.testSeriesEnrollment.count(),
-            prisma.testSeriesEnrollment.count({ where: { enrolled_at: { gte: thirtyDaysAgo } } })
+            prisma.enrollment.count({ where: { type: 'TEST_SERIES' } }),
+            prisma.enrollment.count({ where: { type: 'TEST_SERIES', created_on: { gte: thirtyDaysAgo } } })
         ]);
 
         // Calculate potential revenue from activity groups and test series
@@ -317,8 +317,8 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
             }
         });
 
-        const testSeriesRevenue = await prisma.testSeriesEnrollment.findMany({
-            where: { enrolled_at: { gte: thirtyDaysAgo } },
+        const testSeriesRevenue = await prisma.enrollment.findMany({
+            where: { type: 'TEST_SERIES', created_on: { gte: thirtyDaysAgo } },
             include: {
                 test_series: {
                     include: { currency: true }
@@ -336,7 +336,7 @@ export const getAdminBusinessAnalytics = async (req: Request, res: Response) => 
         });
 
         testSeriesRevenue.forEach(enrollment => {
-            if (enrollment.test_series.price) {
+            if (enrollment.test_series?.price) {
                 testSeriesRevenueTotal += enrollment.test_series.price;
             }
         });

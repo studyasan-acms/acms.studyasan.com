@@ -56,33 +56,43 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
     if (isOpen && student) {
       const invoiceItems: InvoiceItem[] = [];
 
-      // Add subject enrollments
+      // Add unified enrollments
       if (student.enrollments) {
         student.enrollments.forEach((enrollment) => {
-          invoiceItems.push({
-            id: `subject-${enrollment.id}`,
-            name: enrollment.subject.name,
-            type: "subject",
-            price: 0, // Default price, user can set
-            selected: true,
-          });
+          if (enrollment.type === 'SUBJECT' && enrollment.subject) {
+            invoiceItems.push({
+              id: `subject-${enrollment.id}`,
+              name: enrollment.subject.name,
+              type: "subject",
+              price: 0,
+              selected: true,
+            });
+          } else if (enrollment.type === 'TEST_SERIES' && enrollment.test_series) {
+            invoiceItems.push({
+              id: `test-series-${enrollment.id}`,
+              name: enrollment.test_series.title,
+              type: "test_series",
+              price: 0,
+              selected: true,
+            });
+          } else if (enrollment.type === 'ACTIVITY_GROUP' && enrollment.activity_group) {
+            // Avoid duplicates if added multiple times?
+            // Use group ID as key suffix to match legacy behavior
+            const itemId = `activity-${enrollment.activity_group.id}`;
+            if (!invoiceItems.some(i => i.id === itemId)) {
+              invoiceItems.push({
+                id: itemId,
+                name: enrollment.activity_group.name,
+                type: "activity_group",
+                price: 0,
+                selected: true,
+              });
+            }
+          }
         });
       }
 
-      // Add test series enrollments
-      if (student.test_series_enrollments) {
-        student.test_series_enrollments.forEach((enrollment) => {
-          invoiceItems.push({
-            id: `test-series-${enrollment.id}`,
-            name: enrollment.test_series?.title || 'Unknown Test Series',
-            type: "test_series",
-            price: 0, // Default price, user can set
-            selected: true,
-          });
-        });
-      }
-
-      // Add unique activity groups
+      // Add unique activity groups from legacy activity_enrollments (if any not covered above)
       if (student.activity_enrollments) {
         const uniqueGroups = new Map<number, string>();
         student.activity_enrollments.forEach((enrollment) => {
@@ -92,13 +102,16 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
         });
 
         uniqueGroups.forEach((groupName, groupId) => {
-          invoiceItems.push({
-            id: `activity-${groupId}`,
-            name: groupName,
-            type: "activity_group",
-            price: 0, // Default price, user can set
-            selected: true,
-          });
+          const itemId = `activity-${groupId}`;
+          if (!invoiceItems.some(i => i.id === itemId)) {
+            invoiceItems.push({
+              id: itemId,
+              name: groupName,
+              type: "activity_group",
+              price: 0,
+              selected: true,
+            });
+          }
         });
       }
 

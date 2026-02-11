@@ -78,7 +78,7 @@ const EnrollmentDetailPage: React.FC = () => {
       {
         date: enrollment.created_on,
         event: 'Enrolled',
-        description: `Student enrolled in ${enrollment.subject.name}`,
+        description: `Student enrolled in ${enrollment.subject?.name || 'Unknown Subject'}`,
       },
       {
         date: enrollment.updated_on,
@@ -203,21 +203,21 @@ const EnrollmentDetailPage: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-600">Subject Name</label>
-                  <p className="text-lg font-semibold text-gray-500">{enrollment.subject.name}</p>
+                  <p className="text-lg font-semibold text-gray-500">{enrollment.subject?.name || 'Unknown Subject'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Type</label>
-                  <Badge variant={enrollment.subject.is_course ? 'default' : 'secondary'}>
-                    {enrollment.subject.is_course ? 'Course' : 'Subject'}
+                  <Badge variant={enrollment.subject?.is_course ? 'default' : 'secondary'}>
+                    {enrollment.subject?.is_course ? 'Course' : 'Subject'}
                   </Badge>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Class</label>
-                  <p className="text-gray-500">{enrollment.subject.class?.name || 'N/A'}</p>
+                  <p className="text-gray-500">{enrollment.subject?.class?.name || 'N/A'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Board</label>
-                  <p className="text-gray-500">{enrollment.subject.board?.name || 'N/A'}</p>
+                  <p className="text-gray-500">{enrollment.subject?.board?.name || 'N/A'}</p>
                 </div>
               </div>
             </CardContent>
@@ -272,12 +272,14 @@ const EnrollmentDetailPage: React.FC = () => {
                   View Student Profile
                 </Button>
               </Link>
-              <Link to={`/dashboard/subjects/${enrollment.subject.id}`}>
-                <Button variant="outline" className="w-full justify-start text-gray-500 border border-saBlue/50">
-                  <BookOpen className="h-4 w-4 mr-2" />
-                  View Subject Details
-                </Button>
-              </Link>
+              {enrollment.subject && (
+                <Link to={`/dashboard/subjects/${enrollment.subject.id}`}>
+                  <Button variant="outline" className="w-full justify-start text-gray-500 border border-saBlue/50">
+                    <BookOpen className="h-4 w-4 mr-2" />
+                    View Subject Details
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -307,12 +309,12 @@ const EnrollmentDetailPage: React.FC = () => {
             {/* Column 2: Subject Info */}
             <div className="space-y-1">
               <p className="font-medium text-gray-600">Subject</p>
-              <p className="font-semibold text-gray-600">{enrollment.subject.name}</p>
+              <p className="font-semibold text-gray-600">{enrollment.subject?.name || 'Unknown Subject'}</p>
               <div className="flex gap-1 flex-wrap mt-1">
                 <Badge variant="secondary" className="text-[10px] sm:text-xs">
-                  Class: {enrollment.subject.class?.name || 'N/A'}
+                  Class: {enrollment.subject?.class?.name || 'N/A'}
                 </Badge>
-                {enrollment.subject.is_course && (
+                {enrollment.subject?.is_course && (
                   <Badge variant="outline" className="text-[10px] sm:text-xs">
                     Course
                   </Badge>

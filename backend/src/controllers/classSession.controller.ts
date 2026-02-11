@@ -810,7 +810,9 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
     }
 
     // Get subject IDs the student is enrolled in
-    const enrolledSubjectIds = student.enrollments.map((e) => e.subject_id);
+    const enrolledSubjectIds = student.enrollments
+      .map((e) => e.subject_id)
+      .filter((id) => id !== null);
 
     if (enrolledSubjectIds.length === 0) {
       return sendSuccess(res, createPaginatedResponse([], 0, 1, limit));
@@ -910,7 +912,9 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
       });
 
       if (student) {
-        const enrolledSubjectIds = student.enrollments.map((e) => e.subject_id);
+        const enrolledSubjectIds = student.enrollments
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
         where.subject_id = { in: enrolledSubjectIds };
       }
     } else if (userRole === 'TEACHER') {
@@ -991,7 +995,9 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
       });
 
       if (student) {
-        const enrolledSubjectIds = student.enrollments.map((e) => e.subject_id);
+        const enrolledSubjectIds = student.enrollments
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
         where.subject_id = { in: enrolledSubjectIds };
       }
     } else if (userRole === 'TEACHER') {

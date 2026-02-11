@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Clock, Users, FileText, Calendar, Trash2 } from "lucide-react";
+import { Plus, Clock, Users, FileText, Calendar, Trash2, Award } from "lucide-react";
 import { testService, subjectService } from "@/services/api";
 import type { Test, Subject } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -111,15 +111,26 @@ export default function TestsPage() {
             Manage and view all tests
           </p>
         </div>
-        {isTeacherOrAdmin && (
-          <Button
-            className="bg-saBlue hover:bg-saBlueDarkHover text-white w-full sm:w-auto flex items-center justify-center"
-            onClick={() => navigate("/tests/create")}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create Test
-          </Button>
-        )}
+        <div className="flex gap-2 w-full sm:w-auto">
+          {isTeacherOrAdmin && (
+            <Button
+              className="bg-saBlue hover:bg-saBlueDarkHover text-white flex items-center justify-center"
+              onClick={() => navigate("/tests/create")}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Test
+            </Button>
+          )}
+          {isStudent && (
+            <Button
+              className="bg-saBlue hover:bg-saBlueDarkHover text-white flex items-center justify-center"
+              onClick={() => navigate("/tests/my-results")}
+            >
+              <Award className="w-4 h-4 mr-2" />
+              View My Results
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Filters */}

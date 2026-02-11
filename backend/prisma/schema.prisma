@@ -119,8 +119,9 @@ model Student {
   enrollments             Enrollment[]
   module_progress         StudentModuleProgress[]
   test_attempts           TestAttempt[]
-  test_series_enrollments TestSeriesEnrollment[]
+  // test_series_enrollments TestSeriesEnrollment[] // Removed
   activity_enrollments    ActivityEnrollment[]
+  // activity_group_enrollments ActivityGroupEnrollment[] // Removed
   activity_attempts       ActivityAttempt[]
   enquiries               Enquiry[]
   homework_assignments    HomeworkAssignment[]
@@ -160,27 +161,46 @@ model Subject {
   @@map("subjects")
 }
 
+enum EnrollmentType {
+  SUBJECT
+  TEST_SERIES
+  ACTIVITY_GROUP
+}
+
 model Enrollment {
   id         Int      @id @default(autoincrement())
+  type       EnrollmentType @default(SUBJECT)
   student_id Int
-  subject_id Int
+  
+  subject_id         Int?
+  test_series_id     Int?
+  activity_group_id  Int?
+
   price      Float?   // Enrollment fee amount
   is_recurring Boolean @default(false)
   frequency  String?  // "monthly", "yearly", "quarterly", etc.
   end_date   DateTime? // When recurring payments should stop
   created_on DateTime @default(now())
   updated_on DateTime @updatedAt
+  
   student    Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  subject    Subject  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  payments   EnrollmentPayment[]
+  
+  subject         Subject?       @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  test_series     TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  activity_group  ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
+  
+  payments   Payment[]
 
   @@unique([student_id, subject_id])
+  @@unique([student_id, test_series_id])
+  @@unique([student_id, activity_group_id])
   @@map("enrollments")
 }
 
-model EnrollmentPayment {
+model Payment {
   id             Int         @id @default(autoincrement())
   enrollment_id  Int
+  type           EnrollmentType @default(SUBJECT)
   period         String      // Format: "YYYY-MM" for monthly, "YYYY" for yearly
   due_date       DateTime
   amount         Float
@@ -193,9 +213,25 @@ model EnrollmentPayment {
   @@map("enrollment_payments")
 }
 
+// Teacher Role - Custom roles with permissions for teachers
+model TeacherRole {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  permissions Json      // JSON structure defining what this role can do
+  is_active   Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  
+  teachers    Teacher[]
+  
+  @@map("teacher_roles")
+}
+
 model Teacher {
   id                        Int                            @id @default(autoincrement())
   user_id                   Int                            @unique
+  role_id                   Int?                           // Link to custom teacher role
   salary                    Int?
   salary_currency_id        Int?
   salary_currency           Currency?                      @relation(fields: [salary_currency_id], references: [id])
@@ -206,6 +242,7 @@ model Teacher {
   created_at                DateTime                       @default(now())
   updated_at                DateTime                       @updatedAt
   user                      User                           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role                      TeacherRole?                   @relation(fields: [role_id], references: [id], onDelete: SetNull)
   teacher_subject_junctions TeacherSubjectJunction[]
   class_sessions            ClassSession[]
   activity_group_junctions  ActivityGroupTeacherJunction[]
@@ -598,24 +635,10 @@ model TestSeries {
 
   creator           User                        @relation("TestSeriesCreator", fields: [created_by], references: [id])
   tests             Test[]
-  enrollments       TestSeriesEnrollment[]
+  enrollments       Enrollment[] // Unified
   teacher_junctions TestSeriesTeacherJunction[]
 
   @@map("test_series")
-}
-
-// Test Series Enrollment - Links students to test series
-model TestSeriesEnrollment {
-  id             Int      @id @default(autoincrement())
-  test_series_id Int
-  student_id     Int
-  enrolled_at    DateTime @default(now())
-
-  test_series TestSeries @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
-  student     Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
-
-  @@unique([test_series_id, student_id])
-  @@map("test_series_enrollments")
 }
 
 // Test Series Teacher Junction - Links teachers to test series
@@ -663,6 +686,7 @@ model ActivityGroup {
   creator           User                           @relation("ActivityGroupCreator", fields: [created_by], references: [id])
   activities        Activity[]
   teacher_junctions ActivityGroupTeacherJunction[]
+  enrollments       Enrollment[] // Unified
 
   @@map("activity_groups")
 }

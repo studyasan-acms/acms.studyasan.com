@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, DollarSign, Filter, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, Search } from 'lucide-react';
 import { paymentService } from '@/services/api';
 import type { EnrollmentPayment, PaginatedResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
@@ -25,7 +24,7 @@ const PaymentsPage: React.FC = () => {
   const [limit] = useState(10);
 
   // Filters
-  const [isPaid, setIsPaid] = useState<string>('all');
+  const [paymentStatus, setPaymentStatus] = useState<string>('overdue');
   const [search, setSearch] = useState('');
 
   // SUCCESS MODAL
@@ -35,6 +34,9 @@ const PaymentsPage: React.FC = () => {
   // ERROR MODAL
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [overdueCount, setOverdueCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [paidCount, setPaidCount] = useState(0);
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -51,8 +53,9 @@ const PaymentsPage: React.FC = () => {
         limit,
       };
 
-      if (isPaid !== 'all') {
-        params.is_paid = isPaid;
+      // Use status parameter for backend filtering
+      if (paymentStatus !== 'all') {
+        params.status = paymentStatus;
       }
 
       if (search) {
@@ -68,7 +71,33 @@ const PaymentsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, page, limit, isPaid, search]);
+  }, [isAdmin, page, limit, paymentStatus, search]);
+
+  // ----------------------------
+  // Fetch Payment Counts
+  // ----------------------------
+  const fetchPaymentCounts = useCallback(async () => {
+    if (!isAdmin) return;
+
+    try {
+      const baseParams: Record<string, unknown> = { limit: 1 };
+      if (search) {
+        baseParams.search = search;
+      }
+
+      const [overdueRes, pendingRes, paidRes] = await Promise.all([
+        paymentService.getAll({ ...baseParams, status: 'overdue' }),
+        paymentService.getAll({ ...baseParams, status: 'pending' }),
+        paymentService.getAll({ ...baseParams, status: 'paid' }),
+      ]);
+
+      setOverdueCount(overdueRes.data.pagination.total);
+      setPendingCount(pendingRes.data.pagination.total);
+      setPaidCount(paidRes.data.pagination.total);
+    } catch (err: any) {
+      console.error('Failed to fetch payment counts:', err);
+    }
+  }, [isAdmin, search]);
 
   // ----------------------------
   // useEffect
@@ -80,6 +109,12 @@ const PaymentsPage: React.FC = () => {
     }
     fetchPayments();
   }, [isAdmin, navigate, fetchPayments]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchPaymentCounts();
+    }
+  }, [isAdmin, search, fetchPaymentCounts]);
 
   // ----------------------------
   // Mark Payment as Paid
@@ -93,6 +128,24 @@ const PaymentsPage: React.FC = () => {
     } catch (err: any) {
       setErrorMessage('Failed to mark payment as paid.');
       setErrorOpen(true);
+    }
+  };
+
+  // ----------------------------
+  // Get enrollment item name safely
+  // ----------------------------
+  const getEnrollmentItemName = (enrollment: any) => {
+    if (!enrollment) return 'Unknown Item';
+
+    switch (enrollment.type) {
+      case 'SUBJECT':
+        return enrollment.subject?.name || 'Unknown Subject';
+      case 'TEST_SERIES':
+        return enrollment.test_series?.title || 'Unknown Test Series';
+      case 'ACTIVITY_GROUP':
+        return enrollment.activity_group?.name || 'Unknown Activity Group';
+      default:
+        return 'Unknown Item';
     }
   };
 
@@ -135,7 +188,6 @@ const PaymentsPage: React.FC = () => {
   const totalAmount = payments.reduce((sum, payment) => sum + payment.amount, 0);
   const paidAmount = payments.filter(p => p.is_paid).reduce((sum, payment) => sum + payment.amount, 0);
   const pendingAmount = totalAmount - paidAmount;
-  const overdueCount = payments.filter(p => !p.is_paid && new Date(p.due_date) < new Date()).length;
 
   if (!isAdmin) {
     return null;
@@ -195,37 +247,63 @@ const PaymentsPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Filters</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search by student name or subject..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <Select value={isPaid} onValueChange={setIsPaid}>
-              <SelectTrigger className="w-full sm:w-48">
-                <SelectValue placeholder="Payment Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Payments</SelectItem>
-                <SelectItem value="true">Paid</SelectItem>
-                <SelectItem value="false">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
+      <div className="flex flex-col space-y-4">
+        {/* Status Tabs */}
+        <div className="flex items-center justify-between">
+          <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+            <Button
+              variant={paymentStatus === 'overdue' ? 'default' : 'ghost'}
+              size="sm"
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                paymentStatus === 'overdue'
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-200'
+              }`}
+              onClick={() => setPaymentStatus('overdue')}
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Overdue ({overdueCount})
+            </Button>
+            <Button
+              variant={paymentStatus === 'pending' ? 'default' : 'ghost'}
+              size="sm"
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                paymentStatus === 'pending'
+                  ? 'bg-yellow-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-200'
+              }`}
+              onClick={() => setPaymentStatus('pending')}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              Pending ({pendingCount})
+            </Button>
+            <Button
+              variant={paymentStatus === 'paid' ? 'default' : 'ghost'}
+              size="sm"
+              className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${
+                paymentStatus === 'paid'
+                  ? 'bg-green-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-200'
+              }`}
+              onClick={() => setPaymentStatus('paid')}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Paid ({paidCount})
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+
+        {/* Search */}
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search by student name or subject..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {/* Payments Table */}
       <Card>
@@ -260,12 +338,16 @@ const PaymentsPage: React.FC = () => {
                     <tr key={payment.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div>
-                          <div className="font-medium">{payment.enrollment.student.user.name}</div>
-                          <div className="text-xs text-gray-500">{payment.enrollment.student.user.email}</div>
+                          <div className="font-medium">
+                            {payment.enrollment?.student?.user?.name || 'Unknown Student'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {payment.enrollment?.student?.user?.email || 'No email'}
+                          </div>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        {payment.enrollment.subject.name}
+                        {payment.enrollment ? getEnrollmentItemName(payment.enrollment) : 'Unknown Item'}
                       </td>
                       <td className="py-3 px-4">
                         {payment.period}

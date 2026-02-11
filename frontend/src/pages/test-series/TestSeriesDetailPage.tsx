@@ -150,7 +150,7 @@ export default function TestSeriesDetailPage() {
 
     const handleEnrollStudent = async (studentId: number) => {
         try {
-            await testSeriesService.enroll(parseInt(id!), studentId);
+            await testSeriesService.enroll(parseInt(id!), { student_id: studentId });
             toast.success("Student enrolled successfully");
             fetchEnrollments();
             setIsEnrollDialogOpen(false);
