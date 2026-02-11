@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { BookOpen, Gamepad2, FileText, GraduationCap, X } from 'lucide-react';
+import { BookOpen, Gamepad2, FileText, GraduationCap, X, FileCheck, Clock } from 'lucide-react';
 import EnquiryForm from './EnquiryForm';
 
 interface ItemDetailModalProps {
@@ -136,13 +136,29 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                     {item.syllabus && (
                         <div>
                             <h3 className="font-semibold text-gray-700 mb-2">Syllabus</h3>
-                            <div className="bg-gray-50 p-3 rounded-lg">
-                                <pre className="text-sm text-gray-600 whitespace-pre-wrap">
-                                    {typeof item.syllabus === 'string'
-                                        ? item.syllabus
-                                        : JSON.stringify(item.syllabus, null, 2)}
-                                </pre>
-                            </div>
+                            {item.syllabus.units && Array.isArray(item.syllabus.units) && item.syllabus.units.length > 0 ? (
+                                <div className="space-y-3">
+                                    {item.syllabus.units.map((unit: any, index: number) => (
+                                        <div
+                                            key={index}
+                                            className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                        >
+                                            <h4 className="font-semibold text-gray-800 text-sm mb-2">
+                                                {unit.name}
+                                            </h4>
+                                            {unit.content && (
+                                                <p className="text-xs text-gray-600">
+                                                    {unit.content}
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 text-center">
+                                    No syllabus units available
+                                </div>
+                            )}
                         </div>
                     )}
 

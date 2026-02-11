@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { sendNotificationToMultipleUsers } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -68,6 +69,32 @@ export const createEnquiry = async (req: Request, res: Response) => {
                 },
             },
         });
+
+        // Send notification to all admins
+        try {
+            const admins = await prisma.user.findMany({
+                where: { role: 'ADMIN' },
+                select: { id: true, name: true, email: true },
+            });
+
+            console.log('Found admins:', admins.length, admins);
+
+            if (admins.length > 0) {
+                const adminIds = admins.map(admin => admin.id);
+                console.log('Sending notifications to admin IDs:', adminIds);
+                await sendNotificationToMultipleUsers(adminIds, {
+                    type: 'INFO',
+                    title: 'New Enquiry Received',
+                    description: `${student_name} has submitted an enquiry for ${item_type.toLowerCase().replace('_', ' ')}.`,
+                });
+                console.log('✓ Notifications sent to all admins');
+            } else {
+                console.log('⚠ No admin users found in database');
+            }
+        } catch (notificationError) {
+            console.error('Error sending notification to admins:', notificationError);
+            // Don't fail the enquiry creation if notification fails
+        }
 
         res.status(201).json({
             message: 'Enquiry submitted successfully',
