@@ -53,6 +53,26 @@ export default function ActivityForm({
   const [aiTopic, setAiTopic] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
 
+  // Default instructions for each activity type
+  const getDefaultInstructions = (activityType: ActivityType): string => {
+    const instructionsMap: Record<ActivityType, string> = {
+      MATCH_PAIRS: 'Click on a term from the left column, then click on its matching definition from the right column. Match all pairs correctly to complete the activity!',
+      WORD_SEARCH: 'Find and select all the hidden words in the grid. Click and drag across letters to highlight words. Words can be placed horizontally, vertically, or diagonally.',
+      QUIZ_GAME: 'Read each question carefully and select the correct answer from the given options. You have a limited time for each question. Answer all questions to complete the quiz!',
+      TRUE_FALSE: 'Read each statement and decide whether it is true or false. Click on the True or False button to submit your answer.',
+      FILL_BLANKS: 'Read the sentence and fill in the missing word(s) by typing your answer in the blank space provided.',
+      DRAG_DROP: 'Drag items from the left and drop them into their correct positions on the right. Complete all matches to finish the activity.',
+      MEMORY_GAME: 'Click on cards to flip them over and find matching pairs. Remember the positions of cards you\'ve seen. Match all pairs to win!',
+      SEQUENCE_ORDER: 'Arrange the items in the correct order by dragging and dropping them. Make sure the sequence is logically correct.',
+      CHESS: 'Play chess against the computer. Use strategy to checkmate your opponent\'s king while protecting your own pieces.',
+      HANGMAN: 'Guess the hidden word letter by letter. Select letters to reveal the word before the hangman is complete!',
+      SUDOKU: 'Fill the 9x9 grid with numbers 1-9 so that each row, column, and 3x3 box contains all digits without repetition.',
+      CROSSWORD: 'Fill in the crossword puzzle by solving the clues. Click on a clue to highlight the corresponding word in the grid, then type your answer.',
+      PICTURE_REVEAL: 'Answer questions correctly to reveal parts of the hidden picture. Complete all questions to see the full image!'
+    };
+    return instructionsMap[activityType] || 'Complete the activity by following the on-screen instructions.';
+  };
+
   useEffect(() => {
     if (activity) {
       setFormData({
@@ -209,13 +229,15 @@ export default function ActivityForm({
                 required
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                 value={formData.activity_type}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const newType = e.target.value as ActivityType;
                   setFormData({
                     ...formData,
-                    activity_type: e.target.value as ActivityType,
+                    activity_type: newType,
                     items: [], // Reset items when type changes
-                  })
-                }
+                    instructions: formData.instructions || getDefaultInstructions(newType), // Set default instructions if empty
+                  });
+                }}
               >
                 <option value="MATCH_PAIRS">Match Pairs</option>
                 <option value="WORD_SEARCH">Word Search</option>

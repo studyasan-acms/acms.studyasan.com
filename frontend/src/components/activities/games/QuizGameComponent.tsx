@@ -165,40 +165,40 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
   const question = questions[currentQuestion];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col overflow-hidden font-sans">
+    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col overflow-auto font-sans">
       {/* Dynamic Background */}
-      <div className="absolute top-0 left-0 w-full h-full -z-10">
+      <div className="fixed top-0 left-0 w-full h-full -z-10">
         <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
       </div>
 
       {/* Header */}
-      <div className="p-4 flex justify-between items-center bg-black/20 backdrop-blur-sm border-b border-white/5">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/10 px-4 py-2 rounded-full font-bold text-blue-300 border border-white/10">
+      <div className="p-3 md:p-4 flex justify-between items-center bg-black/20 backdrop-blur-sm border-b border-white/5 flex-wrap gap-2">
+        <div className="flex items-center gap-2 md:gap-4">
+          <div className="bg-white/10 px-2 md:px-4 py-1 md:py-2 rounded-full font-bold text-sm md:text-base text-blue-300 border border-white/10">
             {currentQuestion + 1} / {totalQuestions}
           </div>
           <button
             onClick={() => setIsMuted(!isMuted)}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
+            className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors"
           >
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+            {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center bg-yellow-400/10 px-4 py-2 rounded-full text-yellow-400 border border-yellow-400/20">
-            <Star className="w-5 h-5 mr-2 fill-current" />
-            <span className="font-bold text-lg">{score}</span>
+        <div className="flex items-center gap-2 md:gap-6">
+          <div className="flex items-center bg-yellow-400/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-yellow-400 border border-yellow-400/20">
+            <Star className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 fill-current" />
+            <span className="font-bold text-sm md:text-lg">{score}</span>
           </div>
-          <div className="flex items-center bg-blue-400/10 px-4 py-2 rounded-full text-blue-400 border border-blue-400/20">
-            <Clock className="w-5 h-5 mr-2" />
-            <span className={`font-bold text-lg ${timeLeft <= 5 ? 'animate-pulse text-red-400' : ''}`}>
+          <div className="flex items-center bg-blue-400/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-blue-400 border border-blue-400/20">
+            <Clock className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
+            <span className={`font-bold text-sm md:text-lg ${timeLeft <= 5 ? 'animate-pulse text-red-400' : ''}`}>
               {timeLeft}s
             </span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 rounded-full h-10 w-10 p-0">
-            <X className="w-6 h-6" />
+          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 rounded-full h-8 w-8 md:h-10 md:w-10 p-0">
+            <X className="w-4 h-4 md:w-6 md:h-6" />
           </Button>
         </div>
       </div>
@@ -212,19 +212,19 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center">
-        <div className="max-w-4xl w-full space-y-8">
+      <div className="flex-1 overflow-y-auto p-3 md:p-8 flex flex-col items-center justify-start md:justify-center">
+        <div className="max-w-4xl w-full space-y-4 md:space-y-8 py-4">
           {/* Question Section */}
-          <div className="text-center space-y-6">
-            <Card className="gamified-card p-8 md:p-12 mb-8">
-              <h3 className="text-2xl md:text-4xl font-extrabold leading-tight tracking-tight">
+          <div className="text-center space-y-4 md:space-y-6">
+            <Card className="gamified-card p-4 md:p-12 mb-4 md:mb-8">
+              <h3 className="text-lg md:text-4xl font-extrabold leading-tight tracking-tight">
                 {question.content.question}
               </h3>
             </Card>
           </div>
 
           {/* Answers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 pb-4 md:pb-20">
             {question.content.options.map((option: string, index: number) => {
               const isSelected = selectedAnswer === index;
               const isCorrectOption = index === question.content.correctAnswer;
@@ -243,12 +243,12 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
                   disabled={showResult}
-                  className={`btn-3d group min-h-[100px] flex items-center p-6 text-left transition-all duration-300 ${statusClass}`}
+                  className={`btn-3d group min-h-[80px] md:min-h-[100px] flex items-center p-3 md:p-6 text-left transition-all duration-300 ${statusClass}`}
                 >
-                  <span className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mr-4 font-bold text-xl group-hover:bg-black/20 shrink-0">
+                  <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/10 flex items-center justify-center mr-2 md:mr-4 font-bold text-base md:text-xl group-hover:bg-black/20 shrink-0">
                     {String.fromCharCode(65 + index)}
                   </span>
-                  <span className="text-xl md:text-2xl font-bold line-clamp-2">{option}</span>
+                  <span className="text-base md:text-2xl font-bold line-clamp-3 md:line-clamp-2">{option}</span>
                 </button>
               );
             })}
@@ -258,11 +258,11 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
 
       {/* Footer Submission */}
       {!showResult && (
-        <div className="p-6 bg-black/40 backdrop-blur-md border-t border-white/5 flex justify-center">
+        <div className="p-3 md:p-6 bg-black/40 backdrop-blur-md border-t border-white/5 flex justify-center">
           <button
             onClick={handleSubmitAnswer}
             disabled={selectedAnswer === null}
-            className={`btn-3d max-w-md w-full py-4 text-2xl font-black uppercase tracking-widest transition-all duration-300 ${selectedAnswer !== null
+            className={`btn-3d max-w-md w-full py-3 md:py-4 text-lg md:text-2xl font-black uppercase tracking-widest transition-all duration-300 ${selectedAnswer !== null
               ? 'btn-3d-primary animate-pulse'
               : 'opacity-50 cursor-not-allowed bg-gray-700'
               }`}
@@ -275,7 +275,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       {/* Result Popup Overlay */}
       {showResult && (
         <div className="absolute inset-0 z-50 pointer-events-none flex flex-col items-center justify-center bg-black/40 backdrop-blur-[2px]">
-          <div className={`text-6xl md:text-9xl font-black uppercase tracking-tighter animate-bounce drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${isCorrect ? 'text-green-400' : 'text-red-500'
+          <div className={`text-4xl md:text-9xl font-black uppercase tracking-tighter animate-bounce drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] ${isCorrect ? 'text-green-400' : 'text-red-500'
             }`}>
             {isCorrect ? 'Awesome!' : 'Oops!'}
           </div>

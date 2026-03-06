@@ -164,45 +164,45 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-auto">
       {/* Background Effects */}
-      <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[url('/grid.svg')] opacity-20" />
-      <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/40 blur-[100px] rounded-full" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/40 blur-[100px] rounded-full" />
+      <div className="fixed top-0 left-0 w-full h-full -z-10 bg-[url('/grid.svg')] opacity-20" />
+      <div className="fixed top-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/40 blur-[100px] rounded-full" />
+      <div className="fixed bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/40 blur-[100px] rounded-full" />
 
       {/* Header */}
-      <div className="p-6 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
-        <div className="flex items-center gap-6">
-          <h2 className="text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+      <div className="p-3 md:p-6 flex flex-wrap justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
+        <div className="flex items-center gap-2 md:gap-6">
+          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
             {activity.title}
           </h2>
-          <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-            {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+          <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
+            {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-8">
-          <div className="flex items-center bg-yellow-400/10 px-6 py-2 rounded-full text-yellow-400 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-            <Star className="w-6 h-6 mr-3 fill-current animate-pulse" />
-            <span className="font-bold text-xl">{Math.round(score)}</span>
+        <div className="flex items-center gap-2 md:gap-8">
+          <div className="flex items-center bg-yellow-400/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-yellow-400 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+            <Star className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3 fill-current animate-pulse" />
+            <span className="font-bold text-sm md:text-xl">{Math.round(score)}</span>
           </div>
-          <div className="flex items-center bg-blue-400/10 px-6 py-2 rounded-full text-blue-400 border border-blue-400/20">
-            <Clock className="w-6 h-6 mr-3" />
-            <span className="font-bold text-xl font-mono">{timeElapsed}s</span>
+          <div className="flex items-center bg-blue-400/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-blue-400 border border-blue-400/20">
+            <Clock className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3" />
+            <span className="font-bold text-sm md:text-xl font-mono">{timeElapsed}s</span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors">
-            <X className="w-8 h-8" />
+          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors p-1 md:p-2">
+            <X className="w-5 h-5 md:w-8 md:h-8" />
           </Button>
         </div>
       </div>
 
       {/* Game Board */}
-      <div className="flex-1 overflow-y-auto p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-        <div className="flex-1 grid grid-cols-2 gap-12 h-full">
+      <div className="flex-1 overflow-y-auto p-3 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 h-full">
           {/* Left Column */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-black text-center text-blue-300 uppercase tracking-widest mb-6 border-b border-blue-500/30 pb-2">Terms</h3>
-            <div className="grid gap-4">
+          <div className="space-y-2 md:space-y-4">
+            <h3 className="text-base md:text-xl font-black text-center text-blue-300 uppercase tracking-widest mb-2 md:mb-6 border-b border-blue-500/30 pb-2">Terms</h3>
+            <div className="grid gap-2 md:gap-4">
               {leftItems.map((pair, index) => {
                 const isSelected = selectedLeft === index;
                 const isMatched = matched.has(`L${index}`);
@@ -212,7 +212,7 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
                     key={index}
                     onClick={() => handleLeftClick(index)}
                     disabled={isMatched}
-                    className={`btn-3d w-full min-h-[5rem] p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-4 group 
+                    className={`btn-3d w-full min-h-[4rem] md:min-h-[5rem] p-2 md:p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-2 md:gap-4 group 
                                     ${isMatched
                         ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                         : isSelected
@@ -220,12 +220,12 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
                           : 'btn-3d-neutral hover:scale-102'}`}
                   >
                     {pair.imageLeft && (
-                      <img src={pair.imageLeft} alt="" className="w-16 h-16 object-cover rounded-lg bg-black/30" />
+                      <img src={pair.imageLeft} alt="" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-lg bg-black/30" />
                     )}
-                    <span className={`text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>
+                    <span className={`text-sm md:text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>
                       {pair.left}
                     </span>
-                    {isMatched && <div className="ml-auto text-green-400"><Star className="w-5 h-5 fill-current" /></div>}
+                    {isMatched && <div className="ml-auto text-green-400"><Star className="w-4 h-4 md:w-5 md:h-5 fill-current" /></div>}
                   </button>
                 );
               })}
@@ -233,9 +233,9 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
           </div>
 
           {/* Right Column */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-black text-center text-purple-300 uppercase tracking-widest mb-6 border-b border-purple-500/30 pb-2">Definitions</h3>
-            <div className="grid gap-4">
+          <div className="space-y-2 md:space-y-4">
+            <h3 className="text-base md:text-xl font-black text-center text-purple-300 uppercase tracking-widest mb-2 md:mb-6 border-b border-purple-500/30 pb-2">Definitions</h3>
+            <div className="grid gap-2 md:gap-4">
               {rightItems.map((pair, index) => {
                 const isSelected = selectedRight === index;
                 const isMatched = matched.has(`R${index}`);
@@ -246,7 +246,7 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
                     key={index}
                     onClick={() => handleRightClick(index)}
                     disabled={isMatched || !isVisible}
-                    className={`btn-3d w-full min-h-[5rem] p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-4 group 
+                    className={`btn-3d w-full min-h-[4rem] md:min-h-[5rem] p-2 md:p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-2 md:gap-4 group 
                                     ${isMatched
                         ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                         : isSelected
@@ -256,16 +256,16 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
                             : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-102 shadow-lg'}`}
                   >
                     {!isVisible && !isMatched ? (
-                      <HelpCircle className="w-8 h-8 text-slate-600 animate-pulse" />
+                      <HelpCircle className="w-6 h-6 md:w-8 md:h-8 text-slate-600 animate-pulse" />
                     ) : (
                       <>
                         {pair.imageRight && (
-                          <img src={pair.imageRight} alt="" className="w-16 h-16 object-cover rounded-lg bg-black/30" />
+                          <img src={pair.imageRight} alt="" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-lg bg-black/30" />
                         )}
-                        <span className={`text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>
+                        <span className={`text-sm md:text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>
                           {pair.right}
                         </span>
-                        {isMatched && <div className="ml-auto text-green-400"><Star className="w-5 h-5 fill-current" /></div>}
+                        {isMatched && <div className="ml-auto text-green-400"><Star className="w-4 h-4 md:w-5 md:h-5 fill-current" /></div>}
                       </>
                     )}
                   </button>

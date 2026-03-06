@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Play, Trophy, Clock, Star, Users, Gamepad2 } from 'lucide-react';
+import { Play, Trophy, Clock, Star, Users, Gamepad2, Search } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input'; // Assuming Input component exists
@@ -49,6 +49,7 @@ export default function StudentActivitiesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const [attemptId, setAttemptId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Live Quiz State
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -194,7 +195,12 @@ export default function StudentActivitiesPage() {
         );
     }
   };
-
+  // Filter activities based on search query
+  const filteredActivities = activities.filter((activity) =>
+    activity.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    activity.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    activity.activity_type.toLowerCase().includes(searchQuery.toLowerCase())
+  );
   if (activeLiveSession) {
     return renderGame();
   }
@@ -219,13 +225,24 @@ export default function StudentActivitiesPage() {
         </h1>
         <p className="text-gray-600 mb-6">Choose an activity to play and learn!</p>
 
-        <Button
-          onClick={() => setShowJoinModal(true)}
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-lg px-8 py-6 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105"
-        >
-          <Gamepad2 className="w-6 h-6 mr-2" />
-          Join Live Game
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-4">
+          <div className="relative w-full sm:w-96">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Input
+              placeholder="Search games by name or type..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
+          </div>
+          <Button
+            onClick={() => setShowJoinModal(true)}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-lg px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 w-full sm:w-auto"
+          >
+            <Gamepad2 className="w-6 h-6 mr-2" />
+            Join Live Game
+          </Button>
+        </div>
       </div>
 
       {/* Join Game Modal */}
@@ -249,7 +266,7 @@ export default function StudentActivitiesPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {activities.map((activity) => (
+        {filteredActivities.map((activity) => (
           <Card
             key={activity.id}
             className="overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
@@ -336,6 +353,16 @@ export default function StudentActivitiesPage() {
             No Activities Available
           </h3>
           <p className="text-gray-500">Check back later for new activities!</p>
+        </div>
+      )}
+
+      {activities.length > 0 && filteredActivities.length === 0 && (
+        <div className="text-center py-12 col-span-full">
+          <Search className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">
+            No games found
+          </h3>
+          <p className="text-gray-500">Try searching with different keywords</p>
         </div>
       )}
     </div>
