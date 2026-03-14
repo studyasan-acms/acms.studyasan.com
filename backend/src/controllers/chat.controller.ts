@@ -4,8 +4,119 @@ import { PrismaClient, MessageType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { uploadToS3 } from '../utils/s3.js';
 import { getIo } from '../socket/socket.js';
+import { scheduleUnreadMessageNotifications } from '../services/chatMessageTracker.service.js';
 
 const prisma = new PrismaClient();
+
+const canTeacherMessageStudent = async (teacherUserId: number, studentUserId: number) => {
+  const [teacher, student] = await Promise.all([
+    prisma.teacher.findUnique({
+      where: { user_id: teacherUserId },
+      include: {
+        role: true,
+        teacher_subject_junctions: { select: { subject_id: true } },
+      },
+    }),
+    prisma.student.findUnique({
+      where: { user_id: studentUserId },
+      include: {
+        enrollments: { select: { subject_id: true } },
+      },
+    }),
+  ]);
+
+  if (!teacher || !student) {
+    return {
+      allowed: false,
+      reason: 'Chat is disabled because teacher/student relationship is no longer valid.',
+    };
+  }
+
+  const hasViewAll = !!teacher.role?.is_active && ((teacher.role.permissions as any)?.students?.view === true);
+  if (hasViewAll) {
+    return { allowed: true };
+  }
+
+  const teacherSubjects = new Set(teacher.teacher_subject_junctions.map((j) => j.subject_id));
+  const studentSubjects = new Set(
+    student.enrollments
+      .map((enrollment) => enrollment.subject_id)
+      .filter((subjectId): subjectId is number => subjectId !== null)
+  );
+
+  const hasCommonSubject = [...studentSubjects].some((subjectId) => teacherSubjects.has(subjectId));
+  if (!hasCommonSubject) {
+    return {
+      allowed: false,
+      reason: 'Chat is disabled because this student is no longer enrolled in your assigned subjects.',
+    };
+  }
+
+  return { allowed: true };
+};
+
+const canStudentMessageTeacher = async (studentUserId: number, teacherUserId: number) => {
+  const result = await canTeacherMessageStudent(teacherUserId, studentUserId);
+  if (!result.allowed) {
+    return {
+      allowed: false,
+      reason: 'Chat is disabled because this teacher is no longer assigned to your enrolled subjects.',
+    };
+  }
+
+  return { allowed: true };
+};
+
+const canUserSendInChat = async (chatId: number, userId: number, userRole: string) => {
+  if (userRole === 'ADMIN') {
+    return { allowed: true };
+  }
+
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    include: {
+      participants: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              role: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!chat) {
+    return { allowed: false, reason: 'Chat not found.' };
+  }
+
+  const isParticipant = chat.participants.some((participant) => participant.user_id === userId);
+  if (!isParticipant) {
+    return { allowed: false, reason: 'You are not a participant in this chat.' };
+  }
+
+  // For group chats or non-student/teacher combinations, keep chat enabled.
+  if (chat.participants.length !== 2) {
+    return { allowed: true };
+  }
+
+  const otherParticipant = chat.participants.find((participant) => participant.user_id !== userId);
+  if (!otherParticipant) {
+    return { allowed: true };
+  }
+
+  if (userRole === 'TEACHER' && otherParticipant.user.role === 'STUDENT') {
+    return canTeacherMessageStudent(userId, otherParticipant.user_id);
+  }
+
+  if (userRole === 'STUDENT' && otherParticipant.user.role === 'TEACHER') {
+    return canStudentMessageTeacher(userId, otherParticipant.user_id);
+  }
+
+  return { allowed: true };
+};
 
 // Start a new chat between users
 export const startChat = async (req: AuthRequest, res: Response) => {
@@ -110,6 +221,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     const { content, messageType = 'TEXT' } = req.body;
     const userId = (req as any).user!.id;
+    const userRole = (req as any).user!.role;
     const file = req.file; // Assuming multer is used for file upload
 
     // Verify user is participant in the chat
@@ -124,6 +236,11 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
 
     if (!participant) {
       return sendError(res, 'You are not a participant in this chat', 403);
+    }
+
+    const chatPermission = await canUserSendInChat(parseInt(chatId), userId, userRole);
+    if (!chatPermission.allowed) {
+      return sendError(res, chatPermission.reason || 'You can no longer send messages in this chat.', 403);
     }
 
     let attachmentUrl: string | undefined;
@@ -168,6 +285,20 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       console.error('Socket error:', error);
     }
 
+    const chatParticipants = await prisma.chatParticipant.findMany({
+      where: { chat_id: parseInt(chatId) },
+      select: { user_id: true },
+    });
+
+    scheduleUnreadMessageNotifications({
+      messageId: message.id,
+      senderId: userId,
+      senderName: message.sender.name,
+      content: message.content,
+      messageType: message.message_type,
+      recipientIds: chatParticipants.map((participantItem) => participantItem.user_id),
+    });
+
     return sendSuccess(res, message, 'Message sent successfully', 201);
   } catch (error) {
     console.error('Error sending message:', error);
@@ -206,6 +337,8 @@ export const getChatMessages = async (req: AuthRequest, res: Response) => {
 
     const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
 
+    const chatPermission = await canUserSendInChat(parseInt(chatId), userId, userRole);
+
     const messages = await prisma.message.findMany({
       where: { chat_id: parseInt(chatId) },
       include: {
@@ -228,6 +361,8 @@ export const getChatMessages = async (req: AuthRequest, res: Response) => {
 
     return sendSuccess(res, {
       messages: messages.reverse(), // Return in chronological order
+      can_send: chatPermission.allowed,
+      can_send_reason: chatPermission.allowed ? null : (chatPermission.reason || 'You can no longer send messages in this chat.'),
       pagination: {
         page: parseInt(page as string),
         limit: parseInt(limit as string),

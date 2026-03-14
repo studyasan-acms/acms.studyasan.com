@@ -33,6 +33,8 @@ const ChatsPageNew = () => {
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [canSendMessages, setCanSendMessages] = useState(true);
+  const [canSendReason, setCanSendReason] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [sending, setSending] = useState(false);
@@ -86,9 +88,21 @@ const ChatsPageNew = () => {
     const socket = socketService.connect();
 
     const handleReceiveMessage = (message: Message) => {
+      if (message.sender_id !== user?.id && selectedChatRef.current?.id !== message.chat_id) {
+        toast.info(`New message from ${message.sender?.name || 'User'}`);
+      }
+
       // Update messages if looking at this chat
       if (selectedChatRef.current?.id === message.chat_id) {
         setMessages(prev => [...prev, message]);
+
+        if (message.sender_id !== user?.id && user?.id) {
+          socketService.markMessageSeen({
+            messageId: message.id,
+            userId: user.id,
+            chatId: message.chat_id,
+          });
+        }
       }
 
       // Update last message in sidebar
@@ -116,7 +130,7 @@ const ChatsPageNew = () => {
       // Or disconnect if we want to save resources.
       // socketService.disconnect();
     };
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => {
     const load = async () => {
@@ -196,6 +210,8 @@ const ChatsPageNew = () => {
     try {
       const response: ChatMessagesResponse = await chatService.getChatMessages(chatIdParam, { limit: 100 });
       setMessages(response.data.messages);
+      setCanSendMessages(response.data.can_send ?? true);
+      setCanSendReason(response.data.can_send_reason ?? null);
       // Update participants if returned
       // (The response typically doesn't include chat metadata, only messages/pagination)
       // So we might want to fetch chat details if possible.
@@ -256,6 +272,20 @@ const ChatsPageNew = () => {
     try {
       const response: ChatMessagesResponse = await chatService.getChatMessages(chatIdParam, { limit: 100 });
       setMessages(response.data.messages);
+      setCanSendMessages(response.data.can_send ?? true);
+      setCanSendReason(response.data.can_send_reason ?? null);
+
+      if (user?.id) {
+        response.data.messages.forEach((message) => {
+          if (message.sender_id !== user.id) {
+            socketService.markMessageSeen({
+              messageId: message.id,
+              userId: user.id,
+              chatId: chatIdParam,
+            });
+          }
+        });
+      }
     } catch (error: unknown) {
       console.error('Error loading messages:', error instanceof Error ? error.message : error);
       toast.error('Failed to load messages');
@@ -265,7 +295,7 @@ const ChatsPageNew = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!selectedChat || (!messageText.trim() && !selectedFile)) return;
+    if (!selectedChat || !canSendMessages || (!messageText.trim() && !selectedFile)) return;
 
     setSending(true);
     try {
@@ -288,7 +318,11 @@ const ChatsPageNew = () => {
 
     } catch (error: unknown) {
       console.error('Error sending message:', error instanceof Error ? error.message : error);
-      toast.error('Failed to send message');
+      const message = error instanceof Error ? error.message : 'Failed to send message';
+      toast.error(message);
+
+      // Refresh permission state in case relationship changed while chat was open.
+      await loadMessages(selectedChat.id);
     } finally {
       setSending(false);
     }
@@ -636,7 +670,7 @@ const ChatsPageNew = () => {
                       value={messageText}
                       onChange={(e) => setMessageText(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSendMessage()}
-                      disabled={sending}
+                      disabled={sending || !canSendMessages}
                       className="pr-10"
                     />
                     <Button
@@ -644,7 +678,7 @@ const ChatsPageNew = () => {
                       size="icon"
                       className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={sending}
+                      disabled={sending || !canSendMessages}
                     >
                       <Paperclip className="h-4 w-4" />
                     </Button>
@@ -660,12 +694,18 @@ const ChatsPageNew = () => {
 
                   <Button
                     onClick={handleSendMessage}
-                    disabled={sending || (!messageText.trim() && !selectedFile)}
+                    disabled={sending || !canSendMessages || (!messageText.trim() && !selectedFile)}
                     size="icon"
                   >
                     {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   </Button>
                 </div>
+
+                {!canSendMessages && (
+                  <p className="text-xs text-destructive mt-2">
+                    {canSendReason || 'You can no longer send messages in this chat.'}
+                  </p>
+                )}
               </div>
             </CardContent>
           </>

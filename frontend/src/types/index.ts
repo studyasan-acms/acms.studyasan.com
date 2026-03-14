@@ -880,6 +880,8 @@ export interface ChatMessagesResponse {
   message: string;
   data: {
     messages: Message[];
+    can_send?: boolean;
+    can_send_reason?: string | null;
     pagination: {
       page: number;
       limit: number;

@@ -49,6 +49,10 @@ class SocketService {
     leaveChat(chatId: string | number) {
         this.socket?.emit('leave_chat', chatId);
     }
+
+    markMessageSeen(payload: { messageId: number; userId: number; chatId: string | number }) {
+        this.socket?.emit('message_seen', payload);
+    }
 }
 
 export const socketService = new SocketService();
