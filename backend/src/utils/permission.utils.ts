@@ -11,6 +11,7 @@ const routeToResource: Record<string, string> = {
     '/subjects': 'subjects',
     '/boards': 'boards',
     '/classes': 'classes',
+    '/class-sessions': 'classSessions',
     '/enrollments': 'enrollments',
     '/payments': 'payments',
     '/test-series': 'testSeries',

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePermissions } from '@/hooks/usePermissions';
 
 interface SessionParams {
   subject_id?: number;
@@ -35,7 +36,10 @@ export default function ClassSessionsPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
+  const { canCreate, canUpdate } = usePermissions();
   const canManage = isAdmin || isTeacher;
+  const canAddSession = isAdmin || canCreate('classSessions');
+  const canEditSession = isAdmin || canUpdate('classSessions');
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -262,7 +266,7 @@ export default function ClassSessionsPage() {
               {status.canJoin ? 'Join Now' : 'View Session'}
             </Button>
 
-            {canManage && (
+            {canEditSession && (
               <Button
                 variant="outline"
                 size="icon"
@@ -371,7 +375,7 @@ export default function ClassSessionsPage() {
             {isStudent ? 'Learning Path' : 'Management'}
           </p>
         </div>
-        {canManage && (
+        {canAddSession && (
           <div className="flex gap-2">
             <Button
               variant="outline"

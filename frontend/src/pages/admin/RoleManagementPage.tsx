@@ -23,6 +23,7 @@ const defaultPermissions: PermissionsType = {
     subjects: { view: false, create: false, update: false, delete: false },
     boards: { view: false, create: false, update: false, delete: false },
     classes: { view: false, create: false, update: false, delete: false },
+    classSessions: { view: false, create: false, update: false, delete: false },
     enrollments: { view: false, create: false, update: false, delete: false },
     payments: { view: false, create: false, update: false, delete: false },
     testSeries: { view: false, create: false, update: false, delete: false },
@@ -40,6 +41,7 @@ const permissionLabels: Record<string, string> = {
     subjects: 'Subject Management',
     boards: 'Board Management',
     classes: 'Class Management',
+    classSessions: 'Class Session Management',
     enrollments: 'Enrollment Management',
     payments: 'Payment Management',
     testSeries: 'Test Series Management',
@@ -100,10 +102,18 @@ const RoleManagementPage: React.FC = () => {
 
     const handleEditRole = (role: TeacherRole) => {
         setEditingRole(role);
+        // Merge defaultPermissions so any newly added resources (e.g. classSessions)
+        // always appear in the form even for roles created before the resource existed.
+        const mergedPermissions = Object.fromEntries(
+            Object.entries(defaultPermissions).map(([resource, defaults]) => [
+                resource,
+                { ...defaults, ...(role.permissions[resource] || {}) },
+            ])
+        ) as PermissionsType;
         setFormData({
             name: role.name,
             description: role.description || '',
-            permissions: role.permissions,
+            permissions: mergedPermissions,
         });
         setShowModal(true);
     };

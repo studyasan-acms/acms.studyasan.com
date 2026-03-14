@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -41,6 +42,11 @@ const ClassesPage: React.FC = () => {
   usePageTitle("Classes");
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
+  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const canAddClass = isAdmin || canCreate('classes');
+  const canEditClass = isAdmin || canUpdate('classes');
+  const canDeleteClass = isAdmin || canDelete('classes');
+  const canManageClass = canEditClass || canDeleteClass;
 
   // Data State
   const [classes, setClasses] = useState<Class[]>([]);
@@ -186,7 +192,7 @@ const ClassesPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Classes</h1>
           <p className="text-gray-500 mt-1">Manage academic class levels</p>
         </div>
-        {isAdmin && (
+        {canAddClass && (
           <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all hover:shadow-md">
             <Plus className="h-4 w-4 mr-2" />
             Create Class
@@ -227,7 +233,7 @@ const ClassesPage: React.FC = () => {
               <p className="text-gray-500 max-w-sm">
                 {searchTerm ? 'Try a different search term.' : 'Get started by creating a new class.'}
               </p>
-              {!searchTerm && isAdmin && (
+              {!searchTerm && canAddClass && (
                 <Button variant="outline" onClick={handleCreate} className="mt-2">
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Class
@@ -266,7 +272,7 @@ const ClassesPage: React.FC = () => {
                         {renderSortIcon('created_at')}
                       </div>
                     </TableHead>
-                    {isAdmin && <TableHead className="text-right font-semibold text-gray-600">Actions</TableHead>}
+                    {canManageClass && <TableHead className="text-right font-semibold text-gray-600">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -275,9 +281,10 @@ const ClassesPage: React.FC = () => {
                       <TableCell className="font-medium text-gray-900">#{item.id}</TableCell>
                       <TableCell className="font-medium text-gray-800">{item.name}</TableCell>
                       <TableCell className="text-gray-500">{formatDate(item.created_at)}</TableCell>
-                      {isAdmin && (
+                      {canManageClass && (
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {canEditClass && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -286,6 +293,8 @@ const ClassesPage: React.FC = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            )}
+                            {canDeleteClass && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -294,6 +303,7 @@ const ClassesPage: React.FC = () => {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            )}
                           </div>
                         </TableCell>
                       )}

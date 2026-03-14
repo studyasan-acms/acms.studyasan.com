@@ -9,6 +9,7 @@ interface Permissions {
     subjects?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     boards?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     classes?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
+    classSessions?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     enrollments?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     payments?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     testSeries?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
