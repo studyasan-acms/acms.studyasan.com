@@ -212,10 +212,18 @@ const ChatsPageNew = () => {
     setLoadingContacts(true);
     try {
       if (user?.role === 'STUDENT') {
-        const teachersResponse = await teacherService.getAll({ limit: 1000 });
+        const teachersResponse = await teacherService.getAll({
+          limit: 1000,
+          user_id: user.id,
+          role: user.role,
+        });
         setTeachers(Array.isArray(teachersResponse.data.data) ? teachersResponse.data.data : []);
       } else if (user?.role === 'TEACHER') {
-        const studentsResponse = await studentService.getAll({ limit: 1000 });
+        const studentsResponse = await studentService.getAll({
+          limit: 1000,
+          user_id: user.id,
+          role: user.role,
+        });
         setStudents(Array.isArray(studentsResponse.data.data) ? studentsResponse.data.data : []);
       }
     } catch (error: unknown) {

@@ -324,7 +324,8 @@ export default function EditTeacherPage() {
       // Remove undefined values
       const cleanData: any = {};
       Object.entries(transformedData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        // Keep `role_id: null` so backend can disconnect an existing role.
+        if (value !== undefined && (value !== null || key === 'role_id')) {
           cleanData[key] = value;
         }
       });
@@ -344,6 +345,8 @@ export default function EditTeacherPage() {
         Object.entries(cleanData).forEach(([key, value]) => {
           if (key === 'address' && value) {
             formDataPayload.append(key, JSON.stringify(value));
+          } else if (key === 'role_id' && value === null) {
+            formDataPayload.append(key, 'null');
           } else if (value !== null && value !== undefined) {
             formDataPayload.append(key, value.toString());
           }

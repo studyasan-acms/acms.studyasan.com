@@ -14,7 +14,7 @@ export const getAllTeachers = async (req: Request, res: Response) => {
       req.query.limit as string
     );
 
-    const { search, gender } = req.query;
+    const { search, gender, user_id, role } = req.query;
 
     const where: any = {};
 
@@ -28,6 +28,42 @@ export const getAllTeachers = async (req: Request, res: Response) => {
     }
 
     if (gender) where.gender = gender;
+
+    // Filter by student's enrolled subjects if user_id and role are provided
+    if (user_id && role === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { user_id: parseInt(user_id as string) },
+        include: {
+          enrollments: {
+            select: { subject_id: true },
+          },
+        },
+      });
+
+      if (student && student.enrollments.length > 0) {
+        const subjectIds = [
+          ...new Set(
+            student.enrollments
+              .map((enrollment) => enrollment.subject_id)
+              .filter((subjectId): subjectId is number => subjectId !== null)
+          ),
+        ];
+
+        if (subjectIds.length > 0) {
+          where.teacher_subject_junctions = {
+            some: {
+              subject_id: { in: subjectIds },
+            },
+          };
+        } else {
+          const response = createPaginatedResponse([], 0, page, limit);
+          return sendSuccess(res, response);
+        }
+      } else {
+        const response = createPaginatedResponse([], 0, page, limit);
+        return sendSuccess(res, response);
+      }
+    }
 
     const [teachers, total] = await Promise.all([
       prisma.teacher.findMany({

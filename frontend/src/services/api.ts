@@ -346,6 +346,8 @@ export const teacherService = {
     limit?: number;
     search?: string;
     gender?: string;
+    user_id?: number;
+    role?: string;
   }): Promise<PaginatedResponse<Teacher>> => {
     const response = await api.get<PaginatedResponse<Teacher>>('/teachers', {
       params,
