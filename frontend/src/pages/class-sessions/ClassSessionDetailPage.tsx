@@ -144,6 +144,11 @@ export default function ClassSessionDetailPage() {
   }
 
   const status = getSessionStatus();
+  const now = new Date();
+  const sessionStart = new Date(session.start_time);
+  const sessionEnd = new Date(session.end_time);
+  const isWithinSessionTime = now >= sessionStart && now <= sessionEnd;
+  const canJoinNow = canJoin && isWithinSessionTime;
 
   return (
     <div className="space-y-6">
@@ -195,8 +200,8 @@ export default function ClassSessionDetailPage() {
         <CardContent className="p-6 space-y-6">
           {/* Join Section */}
           {session.mode === 'ONLINE' && (
-            <div className={`p-4 rounded-lg ${canJoin ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
-              {canJoin ? (
+            <div className={`p-4 rounded-lg ${canJoinNow ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'}`}>
+              {canJoinNow ? (
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <p className="font-semibold text-green-800">Class is now accessible!</p>
@@ -213,7 +218,11 @@ export default function ClassSessionDetailPage() {
                 </div>
               ) : (
                 <div className="text-center text-gray-600">
-                  <p className="font-medium">{joinReason || 'Meeting not available'}</p>
+                  <p className="font-medium">
+                    {!isWithinSessionTime && now < sessionStart
+                      ? 'Meeting will be available at the session start time.'
+                      : joinReason || 'Meeting not available'}
+                  </p>
                 </div>
               )}
             </div>

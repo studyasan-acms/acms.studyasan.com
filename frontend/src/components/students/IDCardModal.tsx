@@ -287,10 +287,6 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
                     </div>
 
                     <div className="space-y-4">
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                            <h4 className="font-semibold text-blue-900 mb-2 text-sm">Valid Until</h4>
-                            <p className="text-2xl font-bold text-blue-600">MAR {year + 1}</p>
-                        </div>
 
                         <div className="space-y-2">
                             <Button onClick={handleDownloadImage} disabled={loading} className="w-full" variant="outline">

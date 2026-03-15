@@ -495,6 +495,9 @@ export default function ProfilePage() {
                         id="qualification"
                         value={teacherForm.qualification}
                         onChange={(e) => setTeacherForm({...teacherForm, qualification: e.target.value})}
+                        readOnly
+                        disabled
+                        className="bg-gray-100"
                       />
                     </div>
                     
@@ -504,7 +507,8 @@ export default function ProfilePage() {
                         id="gender"
                         value={teacherForm.gender || ''}
                         onChange={(e) => setTeacherForm({...teacherForm, gender: e.target.value as 'M' | 'F' | 'OTHER'})}
-                        className="w-full p-2 border border-gray-300 rounded-md"
+                        className="w-full p-2 border border-gray-300 rounded-md bg-gray-100"
+                        disabled
                       >
                         <option value="">Select Gender</option>
                         <option value="M">Male</option>
@@ -521,6 +525,9 @@ export default function ProfilePage() {
                       value={teacherForm.experience}
                       onChange={(e) => setTeacherForm({...teacherForm, experience: e.target.value})}
                       placeholder="Describe your teaching experience"
+                      readOnly
+                      disabled
+                      className="bg-gray-100"
                     />
                   </div>
 
@@ -531,6 +538,9 @@ export default function ProfilePage() {
                       type="number"
                       value={teacherForm.salary || ''}
                       onChange={(e) => setTeacherForm({...teacherForm, salary: Number(e.target.value)})}
+                      readOnly
+                      disabled
+                      className="bg-gray-100"
                     />
                   </div>
 

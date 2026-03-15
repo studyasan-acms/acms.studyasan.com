@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuthStore } from '@/store/authStore';
@@ -26,6 +27,7 @@ export default function CreateClassSessionPage() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjectSearch, setSubjectSearch] = useState('');
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -198,9 +200,15 @@ export default function CreateClassSessionPage() {
     setFormData(prev => ({ ...prev, class_id: classId, subject_id: 0 }));
   };
 
-  const filteredSubjects = formData.class_id
-    ? subjects.filter(s => s.class_id === formData.class_id)
-    : subjects;
+  const filteredSubjects = subjects.filter((subject) => {
+    const matchesClass = formData.class_id ? subject.class_id === formData.class_id : true;
+    const matchesSearch = subject.name.toLowerCase().includes(subjectSearch.toLowerCase());
+    const isEndedCourse = Boolean(
+      subject.is_course && subject.end_date && new Date(subject.end_date) < new Date()
+    );
+
+    return matchesClass && matchesSearch && !isEndedCourse;
+  });
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -471,19 +479,35 @@ export default function CreateClassSessionPage() {
                       <div className="space-y-6">
                         <div>
                           <Label className='text-[10px] font-bold text-saBlue uppercase tracking-widest'>Subject *</Label>
-                          <select
-                            className="w-full p-3 border border-saBlue/20 bg-white rounded-xl mt-2 text-sm focus:border-saBlue focus:ring-2 focus:ring-saBlue/5 outline-none font-bold text-gray-800"
-                            value={formData.subject_id || ''}
-                            onChange={(e) => handleSubjectChange(parseInt(e.target.value))}
-                            required
+                          <Select
+                            value={formData.subject_id ? String(formData.subject_id) : ''}
+                            onValueChange={(value) => handleSubjectChange(parseInt(value))}
                           >
-                            <option value="">Choose a subject...</option>
-                            {filteredSubjects.map((subject) => (
-                              <option key={subject.id} value={subject.id}>
-                                {subject.name} {subject.class?.name ? `(${subject.class.name})` : ''}
-                              </option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="w-full h-11 border border-saBlue/20 bg-white rounded-xl mt-2 text-sm focus:border-saBlue focus:ring-2 focus:ring-saBlue/5 font-bold text-gray-800">
+                              <SelectValue placeholder="Choose a subject..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <div className="px-2 py-1.5 sticky top-0 bg-popover border-b">
+                                <Input
+                                  className="h-7 text-xs"
+                                  placeholder="Search subject..."
+                                  value={subjectSearch}
+                                  onChange={(e) => setSubjectSearch(e.target.value)}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                              </div>
+                              <div className="max-h-52 overflow-y-auto">
+                                {filteredSubjects.map((subject) => (
+                                  <SelectItem key={subject.id} value={String(subject.id)}>
+                                    {subject.name} {subject.class?.name ? `(${subject.class.name})` : ''}
+                                  </SelectItem>
+                                ))}
+                              </div>
+                            </SelectContent>
+                          </Select>
+                          {filteredSubjects.length === 0 && (
+                            <p className="text-[10px] text-gray-400 mt-2 px-1">No active subjects match your filters.</p>
+                          )}
                         </div>
 
                         <div>
