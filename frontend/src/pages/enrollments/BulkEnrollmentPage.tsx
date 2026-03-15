@@ -7,6 +7,7 @@ import type { AxiosError } from 'axios';
 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,15 @@ const BulkEnrollmentPage: React.FC = () => {
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const [studentSearch, setStudentSearch] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [studentClassFilter, setStudentClassFilter] = useState('all');
+  const [studentBoardFilter, setStudentBoardFilter] = useState('all');
+  const [subjectClassFilter, setSubjectClassFilter] = useState('all');
+  const [subjectBoardFilter, setSubjectBoardFilter] = useState('all');
+  const [subjectCourseFilter, setSubjectCourseFilter] = useState<'all' | 'course' | 'non-course'>('all');
+  const [subjectStatusFilter, setSubjectStatusFilter] = useState<'active' | 'all'>('active');
 
   const [formData, setFormData] = useState<BulkEnrollmentData>({
     student_ids: [],
@@ -136,9 +146,40 @@ const BulkEnrollmentPage: React.FC = () => {
   const handleSelectAll = (checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      student_ids: checked ? students.map(s => s.id) : [],
+      student_ids: checked ? filteredStudents.map(s => s.id) : [],
     }));
   };
+
+  const studentClassOptions = Array.from(new Set(students.map(s => s.class?.name).filter(Boolean))) as string[];
+  const studentBoardOptions = Array.from(new Set(students.map(s => s.board?.name).filter(Boolean))) as string[];
+  const subjectClassOptions = Array.from(new Set(subjects.map(s => s.class?.name).filter(Boolean))) as string[];
+  const subjectBoardOptions = Array.from(new Set(subjects.map(s => s.board?.name).filter(Boolean))) as string[];
+
+  const filteredStudents = students.filter(s => {
+    const matchesSearch =
+      s.user.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+      s.user.email.toLowerCase().includes(studentSearch.toLowerCase());
+    const matchesClass = studentClassFilter === 'all' || (s.class?.name ?? '') === studentClassFilter;
+    const matchesBoard = studentBoardFilter === 'all' || (s.board?.name ?? '') === studentBoardFilter;
+
+    return matchesSearch && matchesClass && matchesBoard;
+  });
+
+  const filteredSubjects = subjects.filter(s => {
+    const matchesSearch = s.name.toLowerCase().includes(subjectSearch.toLowerCase());
+    const matchesClass = subjectClassFilter === 'all' || (s.class?.name ?? '') === subjectClassFilter;
+    const matchesBoard = subjectBoardFilter === 'all' || (s.board?.name ?? '') === subjectBoardFilter;
+
+    const isEndedCourse = Boolean(s.is_course && s.end_date && new Date(s.end_date) < new Date());
+    const matchesStatus = subjectStatusFilter === 'all' || !isEndedCourse;
+
+    const matchesCourseType =
+      subjectCourseFilter === 'all' ||
+      (subjectCourseFilter === 'course' && s.is_course) ||
+      (subjectCourseFilter === 'non-course' && !s.is_course);
+
+    return matchesSearch && matchesClass && matchesBoard && matchesStatus && matchesCourseType;
+  });
 
   const selectedSubject = subjects.find(s => s.id === formData.subject_id);
   const selectedStudents = students.filter(s => formData.student_ids.includes(s.id));
@@ -211,8 +252,57 @@ const BulkEnrollmentPage: React.FC = () => {
                   <SelectValue placeholder="Select a subject" />
                 </SelectTrigger>
 
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {subjects.map(subject => (
+                <SelectContent>
+                  <div className="px-2 py-1.5 sticky top-0 bg-popover border-b">
+                    <Input
+                      placeholder="Search subject..."
+                      value={subjectSearch}
+                      onChange={(e) => setSubjectSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-7 text-xs"
+                    />
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <select
+                        value={subjectClassFilter}
+                        onChange={(e) => setSubjectClassFilter(e.target.value)}
+                        className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                      >
+                        <option value="all">All Classes</option>
+                        {subjectClassOptions.map((className) => (
+                          <option key={className} value={className}>{className}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={subjectBoardFilter}
+                        onChange={(e) => setSubjectBoardFilter(e.target.value)}
+                        className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                      >
+                        <option value="all">All Boards</option>
+                        {subjectBoardOptions.map((boardName) => (
+                          <option key={boardName} value={boardName}>{boardName}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={subjectCourseFilter}
+                        onChange={(e) => setSubjectCourseFilter(e.target.value as 'all' | 'course' | 'non-course')}
+                        className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                      >
+                        <option value="all">All Types</option>
+                        <option value="course">Courses Only</option>
+                        <option value="non-course">Non-courses</option>
+                      </select>
+                      <select
+                        value={subjectStatusFilter}
+                        onChange={(e) => setSubjectStatusFilter(e.target.value as 'active' | 'all')}
+                        className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                      >
+                        <option value="active">Active Only</option>
+                        <option value="all">Include Ended</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="max-h-52 overflow-y-auto">
+                  {filteredSubjects.map(subject => (
                     <SelectItem key={subject.id} value={subject.id.toString()} className="py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">{subject.name}</span>
@@ -223,6 +313,10 @@ const BulkEnrollmentPage: React.FC = () => {
                       </div>
                     </SelectItem>
                   ))}
+                  {filteredSubjects.length === 0 && (
+                    <p className="py-4 text-center text-xs text-gray-400">No subjects found</p>
+                  )}
+                  </div>
                 </SelectContent>
               </Select>
 
@@ -239,11 +333,11 @@ const BulkEnrollmentPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Checkbox
                     id="select-all"
-                    checked={formData.student_ids.length === students.length && students.length > 0}
+                    checked={filteredStudents.length > 0 && filteredStudents.every(s => formData.student_ids.includes(s.id))}
                     onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                   />
                   <label htmlFor="select-all" className="text-sm text-gray-700">
-                    Select All ({students.length})
+                    Select All ({filteredStudents.length})
                   </label>
                 </div>
               </div>
@@ -251,11 +345,46 @@ const BulkEnrollmentPage: React.FC = () => {
               <div className={`border rounded-lg p-4 max-h-80 sm:max-h-96 overflow-y-auto bg-white
                 ${errors.student_ids ? 'border-red-500' : ''}`}>
 
+                <div className="mb-3">
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div className="mb-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <select
+                    value={studentClassFilter}
+                    onChange={(e) => setStudentClassFilter(e.target.value)}
+                    className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                  >
+                    <option value="all">All Classes</option>
+                    {studentClassOptions.map((className) => (
+                      <option key={className} value={className}>{className}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={studentBoardFilter}
+                    onChange={(e) => setStudentBoardFilter(e.target.value)}
+                    className="h-8 rounded-md border border-gray-300 px-2 text-xs bg-white"
+                  >
+                    <option value="all">All Boards</option>
+                    {studentBoardOptions.map((boardName) => (
+                      <option key={boardName} value={boardName}>{boardName}</option>
+                    ))}
+                  </select>
+                </div>
+
                 {students.length === 0 ? (
                   <p className="text-center text-gray-500">No students available</p>
+                ) : filteredStudents.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm">No students match your search</p>
                 ) : (
                   <div className="space-y-3">
-                    {students.map(student => (
+                    {filteredStudents.map(student => (
                       <div
                         key={student.id}
                         className="flex items-start sm:items-center gap-3 p-2 rounded hover:bg-gray-50"

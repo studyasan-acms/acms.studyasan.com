@@ -172,6 +172,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
             {/* Subject Cards Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full">
               {subjects.map((subject, index) => {
+                const isCourseEnded = subject.is_course && subject.end_date && new Date(subject.end_date) < new Date();
                 const colors = [
                   { bg: "from-blue-500 to-cyan-500", badge: "bg-blue-100 text-blue-700 border-blue-200" },
                   { bg: "from-cyan-500 to-teal-500", badge: "bg-cyan-100 text-cyan-700 border-cyan-200" },
@@ -195,6 +196,11 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                           <Badge className="bg-white/90 text-gray-800 border-0 shadow-sm text-[9px] px-2 py-0.5">
                             <Star className="h-2.5 w-2.5 mr-1" />
                             Course
+                          </Badge>
+                        )}
+                        {isCourseEnded && (
+                          <Badge className="bg-red-500 text-white border-0 shadow-sm text-[9px] px-2 py-0.5">
+                            Ended
                           </Badge>
                         )}
                       </div>

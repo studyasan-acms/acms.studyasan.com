@@ -151,7 +151,7 @@ export const createEnrollment = async (req: Request, res: Response) => {
     // If this is a paid enrollment, create payment schedule or one-time payment
     if (is_recurring && price && frequency) {
       await createPaymentSchedule(enrollment.id, price, frequency, end_date ? new Date(end_date) : null, student.user_id, subject);
-    } else if (!is_recurring && one_time_amount) {
+    } else if (!is_recurring && one_time_amount !== undefined && one_time_amount !== null) {
       await createOneTimePayment({
         enrollmentId: enrollment.id,
         amount: one_time_amount,
@@ -176,6 +176,59 @@ export const deleteEnrollment = async (req: Request, res: Response) => {
     });
 
     sendSuccess(res, null, 'Enrollment deleted successfully');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+
+export const bulkEnroll = async (req: Request, res: Response) => {
+  try {
+    const { student_ids, subject_id } = req.body;
+
+    if (!Array.isArray(student_ids) || student_ids.length === 0) {
+      return sendError(res, 'student_ids must be a non-empty array', 400);
+    }
+
+    if (!subject_id) {
+      return sendError(res, 'subject_id is required', 400);
+    }
+
+    const subject = await prisma.subject.findUnique({ where: { id: subject_id } });
+    if (!subject) {
+      return sendError(res, 'Subject not found', 404);
+    }
+
+    const created: number[] = [];
+    const skipped: number[] = [];
+
+    for (const student_id of student_ids) {
+      const existing = await prisma.enrollment.findFirst({
+        where: { student_id, subject_id },
+      });
+
+      if (existing) {
+        skipped.push(student_id);
+        continue;
+      }
+
+      await prisma.enrollment.create({
+        data: {
+          type: 'SUBJECT',
+          student_id,
+          subject_id,
+          is_recurring: false,
+        },
+      });
+
+      created.push(student_id);
+    }
+
+    sendSuccess(
+      res,
+      { created: created.length, skipped: skipped.length },
+      `Enrolled ${created.length} student(s). ${skipped.length} already enrolled.`,
+      201
+    );
   } catch (error: any) {
     sendError(res, error.message, 500);
   }

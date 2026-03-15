@@ -145,6 +145,7 @@ model Subject {
   board_id                  Int?
   syllabus                  Json?
   is_course                 Boolean                  @default(false)
+  end_date                  DateTime?
   price                     Float? // Optional pricing for paid subjects/courses
   currency_id               Int?
   currency                  Currency?                @relation(fields: [currency_id], references: [id])

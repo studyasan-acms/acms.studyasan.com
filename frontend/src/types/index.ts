@@ -327,6 +327,7 @@ export interface Subject {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  end_date: string | null;
   price: number | null;
   currency_id: number | null;
   created_at: string;
@@ -352,6 +353,7 @@ export interface CreateSubjectData {
   board_id: number | null;
   syllabus: any;
   is_course: boolean;
+  end_date: string | null;
   price: number | null;
   currency_id: number | null;
 }
@@ -363,6 +365,7 @@ export interface UpdateSubjectData {
   board_id?: number | null;
   syllabus?: any;
   is_course?: boolean;
+  end_date?: string | null;
   price?: number | null;
   currency_id?: number | null;
 }

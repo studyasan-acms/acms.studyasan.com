@@ -190,8 +190,21 @@ export default function SubjectDetailPage() {
     </Button>
   );
 
+  const isCourseEnded = subject.is_course && subject.end_date && new Date(subject.end_date) < new Date();
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-10">
+      {/* Course Ended Banner */}
+      {isCourseEnded && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 rounded-2xl px-5 py-4">
+          <CalendarDays className="w-5 h-5 shrink-0" />
+          <div>
+            <p className="font-bold text-sm">This course has ended</p>
+            <p className="text-xs text-red-500 mt-0.5">The course end date was {format(new Date(subject.end_date!), 'PPP')}. Content is still accessible but no new enrolments are expected.</p>
+          </div>
+        </div>
+      )}
+
       {/* 1. TOP HEADER SECTION */}
       <div className="relative overflow-hidden bg-slate-50 rounded-[32px] border border-slate-100 shadow-sm group">
         {/* Animated Background Elements */}
@@ -273,6 +286,9 @@ export default function SubjectDetailPage() {
               <InfoItem label="Subject Name" value={subject.name} icon={BookOpen} />
               <InfoItem label="Type" value={subject.is_course ? "Course" : "Regular Subject"} icon={GraduationCap} />
               <InfoItem label="Price" value={subject.price ? `${subject.currency?.symbol || '$'} ${subject.price.toLocaleString()}` : 'Free'} icon={Coins} />
+              {subject.is_course && subject.end_date && (
+                <InfoItem label="End Date" value={format(new Date(subject.end_date), 'PPP')} icon={CalendarDays} />
+              )}
             </div>
           </CardContent>
         </Card>

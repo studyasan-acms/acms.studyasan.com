@@ -5,6 +5,7 @@ import { enrollmentService, studentService, subjectService, testSeriesService, a
 import type { Student, Subject, TestSeries, ActivityGroup } from '@/types';
 import type { AxiosError } from 'axios';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
@@ -49,6 +50,9 @@ const CreateEnrollmentPage: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, any>>({});
   const isAdmin = user?.role === 'ADMIN';
+
+  const [studentSearch, setStudentSearch] = useState('');
+  const [subjectSearch, setSubjectSearch] = useState('');
 
   useEffect(() => {
     const typeParam = searchParams.get('type');
@@ -123,8 +127,8 @@ const CreateEnrollmentPage: React.FC = () => {
         newErrors.frequency = true;
       }
     } else {
-      // If not recurring, one-time amount is required
-      if (!formData.one_time_amount || formData.one_time_amount <= 0) {
+      // If not recurring, one-time amount is required (0 is allowed for free enrollments)
+      if (formData.one_time_amount === null || formData.one_time_amount === undefined || formData.one_time_amount < 0) {
         newErrors.one_time_amount = true;
       }
     }
@@ -179,6 +183,16 @@ const CreateEnrollmentPage: React.FC = () => {
     }
   };
 
+  const filteredStudents = students.filter(s =>
+    s.user.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    s.user.email.toLowerCase().includes(studentSearch.toLowerCase())
+  );
+
+  const filteredSubjects = subjects.filter(s => {
+    if (s.is_course && s.end_date && new Date(s.end_date) < new Date()) return false;
+    return s.name.toLowerCase().includes(subjectSearch.toLowerCase());
+  });
+
   const selectedStudent = students.find((s) => s.id === formData.student_id);
 
   let selectedItem: any = null;
@@ -195,8 +209,12 @@ const CreateEnrollmentPage: React.FC = () => {
         title="Enrollment Successful"
         description={
           selectedStudent && selectedItem
-            ? `${selectedStudent.user.name} has been enrolled in ${selectedItem.name || selectedItem.title} successfully. A payment notification has been sent to the student.`
-            : "Enrollment completed successfully. A payment notification has been sent to the student."
+            ? `${selectedStudent.user.name} has been enrolled in ${selectedItem.name || selectedItem.title} successfully.${
+                !formData.is_recurring && formData.one_time_amount && formData.one_time_amount > 0
+                  ? ' A payment notification has been sent to the student.'
+                  : ''
+              }`
+            : "Enrollment completed successfully."
         }
         showButtons={true}
         cancelText=""
@@ -272,17 +290,31 @@ const CreateEnrollmentPage: React.FC = () => {
                   <SelectValue placeholder="Select a student" />
                 </SelectTrigger>
 
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {students.map((student) => (
-                    <SelectItem key={student.id} value={student.id.toString()} className="py-3">
-                      <div className="flex flex-col">
-                        <span className="font-medium">{student.user.name}</span>
-                        <span className="text-xs text-gray-500">
-                          {student.user.email} • Class: {student.class?.name ?? 'N/A'}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
+                <SelectContent>
+                  <div className="px-2 py-1.5 sticky top-0 bg-popover border-b">
+                    <Input
+                      placeholder="Search student..."
+                      value={studentSearch}
+                      onChange={(e) => setStudentSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-7 text-xs"
+                    />
+                  </div>
+                  <div className="max-h-52 overflow-y-auto">
+                    {filteredStudents.map((student) => (
+                      <SelectItem key={student.id} value={student.id.toString()} className="py-3">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{student.user.name}</span>
+                          <span className="text-xs text-gray-500">
+                            {student.user.email} • Class: {student.class?.name ?? 'N/A'}
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                    {filteredStudents.length === 0 && (
+                      <p className="py-4 text-center text-xs text-gray-400">No students found</p>
+                    )}
+                  </div>
                 </SelectContent>
               </Select>
 
@@ -307,8 +339,20 @@ const CreateEnrollmentPage: React.FC = () => {
                   <SelectValue placeholder={`Select a ${enrollmentType === 'SUBJECT' ? 'subject' : enrollmentType === 'TEST_SERIES' ? 'test series' : 'activity group'}`} />
                 </SelectTrigger>
 
-                <SelectContent className="max-h-60 overflow-y-auto">
-                  {enrollmentType === 'SUBJECT' && subjects.map((subject) => (
+                <SelectContent>
+                  {enrollmentType === 'SUBJECT' && (
+                    <div className="px-2 py-1.5 sticky top-0 bg-popover border-b">
+                      <Input
+                        placeholder="Search subject..."
+                        value={subjectSearch}
+                        onChange={(e) => setSubjectSearch(e.target.value)}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="h-7 text-xs"
+                      />
+                    </div>
+                  )}
+                  <div className="max-h-52 overflow-y-auto">
+                  {enrollmentType === 'SUBJECT' && filteredSubjects.map((subject) => (
                     <SelectItem key={subject.id} value={subject.id.toString()} className="py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">{subject.name}</span>
@@ -318,6 +362,9 @@ const CreateEnrollmentPage: React.FC = () => {
                       </div>
                     </SelectItem>
                   ))}
+                  {enrollmentType === 'SUBJECT' && filteredSubjects.length === 0 && (
+                    <p className="py-4 text-center text-xs text-gray-400">No subjects found</p>
+                  )}
                   {enrollmentType === 'TEST_SERIES' && testSeries.map((series) => (
                     <SelectItem key={series.id} value={series.id.toString()}>
                       {series.title}
@@ -328,6 +375,7 @@ const CreateEnrollmentPage: React.FC = () => {
                       {group.name}
                     </SelectItem>
                   ))}
+                  </div>
                 </SelectContent>
               </Select>
 
@@ -361,8 +409,8 @@ const CreateEnrollmentPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-2">One-time Amount (₹) *</label>
                     <input
                       type="number"
-                      value={formData.one_time_amount || ''}
-                      onChange={(e) => setFormData({ ...formData, one_time_amount: parseFloat(e.target.value) || null })}
+                      value={formData.one_time_amount ?? ''}
+                      onChange={(e) => setFormData({ ...formData, one_time_amount: e.target.value === '' ? null : parseFloat(e.target.value) })}
                       className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue ${errors.one_time_amount ? 'border-red-500' : 'border-gray-300'}`}
                       placeholder="Enter one-time payment amount"
                       min="0"

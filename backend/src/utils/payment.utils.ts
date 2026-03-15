@@ -144,7 +144,11 @@ export const createOneTimePayment = async ({
             },
         });
 
-        // Send immediate notification
+        // Send immediate notification only for non-zero amounts
+        if (amount <= 0) {
+            return { paymentCreated: true, notificationSent: false };
+        }
+
         const notificationTitle = `Payment Due: ${itemName}`;
         const notificationDesc = `Payment of ₹${amount} for ${itemName} is due immediately.`;
 

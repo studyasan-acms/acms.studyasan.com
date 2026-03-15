@@ -130,6 +130,7 @@ router.delete('/subjects/:id', authenticate, authorize('ADMIN'), subjectControll
 router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);
 router.get('/enrollments/:id', authenticate, enrollmentController.getEnrollmentById);
 router.post('/enrollments', authenticate, enrollmentController.createEnrollment);
+router.post('/enrollments/bulk', authenticate, authorize('ADMIN'), enrollmentController.bulkEnroll);
 router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'STUDENT'), enrollmentController.deleteEnrollment);
 
 // Payment routes

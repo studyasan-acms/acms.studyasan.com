@@ -55,6 +55,7 @@ export default function EditSubjectPage() {
     board_id: null,
     syllabus: null,
     is_course: false,
+    end_date: null,
     price: null,
     currency_id: null,
   });
@@ -86,6 +87,7 @@ export default function EditSubjectPage() {
         board_id: data.board_id ?? null,
         syllabus: data.syllabus ?? null,
         is_course: data.is_course ?? false,
+        end_date: data.end_date ? data.end_date.split('T')[0] : null,
         price: data.price ?? null,
         currency_id: data.currency_id ?? null,
       });
@@ -356,6 +358,20 @@ export default function EditSubjectPage() {
                   />
                 </div>
               </div>
+
+              {formData.is_course && (
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
+                  <FormLabel>Course End Date</FormLabel>
+                  <Input
+                    id="end_date"
+                    type="date"
+                    value={formData.end_date ?? ''}
+                    onChange={(e) => handleChange('end_date', e.target.value || null)}
+                    disabled={isSaving}
+                    className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
+                  />
+                </div>
+              )}
 
               {formData.price !== null && (
                 <div className="space-y-2 animate-in fade-in slide-in-from-top-2">

@@ -448,6 +448,7 @@ export const subjectService = {
     if (data.board_id !== null) formData.append('board_id', data.board_id.toString());
     if (data.syllabus !== null) formData.append('syllabus', JSON.stringify(data.syllabus));
     formData.append('is_course', data.is_course.toString());
+    if (data.end_date !== null && data.end_date !== undefined) formData.append('end_date', data.end_date);
     if (data.cover_image) formData.append('cover_image', data.cover_image);
     if (data.price !== null && data.price !== undefined) formData.append('price', data.price.toString());
     if (data.currency_id !== null && data.currency_id !== undefined) formData.append('currency_id', data.currency_id.toString());
@@ -470,6 +471,7 @@ export const subjectService = {
     if (data.board_id !== undefined) formData.append('board_id', data.board_id !== null ? data.board_id.toString() : '');
     if (data.syllabus !== undefined) formData.append('syllabus', JSON.stringify(data.syllabus));
     if (data.is_course !== undefined) formData.append('is_course', data.is_course.toString());
+    if (data.end_date !== undefined) formData.append('end_date', data.end_date ?? '');
     if (data.cover_image !== undefined && data.cover_image) formData.append('cover_image', data.cover_image);
     if (data.price !== undefined) formData.append('price', data.price !== null ? data.price.toString() : '');
     if (data.currency_id !== undefined) formData.append('currency_id', data.currency_id !== null ? data.currency_id.toString() : '');
