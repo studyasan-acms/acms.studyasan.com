@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { NotificationProcessorService } from '../services/notificationProcessor.service.js';
+import { sendNotificationAllChannels } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -231,6 +232,14 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
       payment.enrollment.student.user_id,
       notificationTitle
     );
+
+    // Notify student that payment has been received
+    await sendNotificationAllChannels({
+      user_id: payment.enrollment.student.user_id,
+      type: 'SUCCESS',
+      title: `Payment Received: ${itemName}`,
+      description: `Your payment for ${itemName} (${payment.period}) was received successfully.`,
+    });
 
     sendSuccess(res, updatedPayment, 'Payment marked as paid successfully');
   } catch (error: any) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import {
   subjectService,
@@ -22,6 +23,7 @@ import {
   BookMarked,
   Target,
   Award,
+  Search,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
@@ -36,6 +38,8 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteSubject, setDeleteSubject] = useState<Subject | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,6 +56,10 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
         page: currentPage,
         limit,
       };
+
+      if (debouncedSearchTerm.trim()) {
+        params.search = debouncedSearchTerm.trim();
+      }
 
       // Teacher filter
       if (user?.role === "TEACHER" && user.id) {
@@ -75,7 +83,21 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, user]);
+  }, [currentPage, user, debouncedSearchTerm]);
+
+  // Debounce search input to avoid too many API calls while typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   /** Fetch subjects on filter/pagination change */
   useEffect(() => {
@@ -129,6 +151,20 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
         "space-y-6 w-full max-w-full",
         !embedded && "max-w-7xl mx-auto px-4 sm:px-6 py-8"
       )}>
+        <Card className="bg-white/80 backdrop-blur-sm border border-gray-200 shadow-sm">
+          <CardContent className="p-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search subjects by name..."
+                className="pl-9"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Embedded Title/Actions */}
         {embedded && (
           <div className="flex items-center justify-between mb-6">

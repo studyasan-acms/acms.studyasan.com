@@ -153,7 +153,12 @@ const EnrollmentsPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <TabsList className="bg-gray-100 p-1 rounded-lg">
             <TabsTrigger value="enrollments" className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm">Enrollments</TabsTrigger>
-            <TabsTrigger value="payments" className="rounded-md px-4 py-2 text-sm font-medium transition-all data-[state=active]:bg-white data-[state=active]:shadow-sm">Payments</TabsTrigger>
+            <TabsTrigger
+              value="payments"
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all bg-orange-50 text-orange-700 hover:bg-orange-100 data-[state=active]:bg-orange-500 data-[state=active]:text-white data-[state=active]:shadow-sm"
+            >
+              Payments
+            </TabsTrigger>
           </TabsList>
         </div>
 
