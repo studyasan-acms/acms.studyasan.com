@@ -1,4 +1,5 @@
 import { Button } from '../../../ui/button';
+import { Input } from '../../../ui/input';
 
 interface Props {
     items: any[];
@@ -108,7 +109,7 @@ export default function ChessBuilder({ items, onItemsChange }: Props) {
                             <p className="text-xs text-gray-500 mb-2">
                                 Pawn: 10, Knight/Bishop: 30, Rook: 50, Queen: 90, King: 1000
                             </p>
-                            <input
+                            <Input
                                 type="number"
                                 min="1"
                                 className="w-32 px-3 py-2 border rounded"

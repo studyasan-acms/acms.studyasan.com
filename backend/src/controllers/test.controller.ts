@@ -22,11 +22,14 @@ const generateQuestionsWithAI = async (
 
   const totalQuestions = numQuestions.mcq + numQuestions.trueFalse + numQuestions.shortAnswer + (numQuestions.longAnswer || 0);
 
+  const subjectLine = testDetails.subject ? `- Subject: ${testDetails.subject}` : '';
+  const classLine = testDetails.className ? `- Class: ${testDetails.className}` : '';
+
   const prompt = `You are an expert educational test creator. Create high-quality test questions based on the following context:
 
 **Test Context:**
-- Subject: ${testDetails.subject}
-- Class: ${testDetails.className}
+${subjectLine}
+${classLine}
 - Topic: ${testDetails.topic}
 ${testDetails.description ? `- Description: ${testDetails.description}` : ''}
 - Total Marks Available: ${testDetails.totalMarks}
@@ -130,6 +133,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       available_until,
       is_published,
       is_certification,
+      has_negative_marking,
     } = req.body;
 
     const userId = (req as any).user!.id;
@@ -170,6 +174,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         available_until: new Date(available_until),
         is_published: is_published || false,
         is_certification: is_certification || false,
+        has_negative_marking: !!has_negative_marking,
       },
       include: {
         subject: true,
@@ -209,7 +214,12 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
           include: {
             class: true
           }
-        }
+        },
+        test_series: {
+          select: {
+            title: true,
+          },
+        },
       },
     });
 
@@ -217,18 +227,13 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
       return sendError(res, 'Test not found', 404);
     }
 
-    if (!test.subject) {
-      return sendError(res, 'Subject not found for test. AI generation requires a subject.', 400);
-    }
-
-    if (!test.subject.class) {
-      return sendError(res, 'Class not found for subject', 404);
-    }
+    const subjectName = test.subject?.name || test.test_series?.title || 'General';
+    const className = test.subject?.class?.name || 'General';
 
     // Prepare test details for AI
     const testDetails = {
-      subject: test.subject.name,
-      className: test.subject.class.name,
+      subject: subjectName,
+      className: className,
       topic: topic,
       ...(test.description && { description: test.description }),
       totalMarks: test.total_marks,
@@ -282,7 +287,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test ID is required', 400);
     }
 
-    const { question_type, question_text, options, correct_answer, marks, media_url, media_type } = req.body;
+    const { question_type, question_text, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     const test = await prisma.test.findUnique({
@@ -345,6 +350,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
         options: parsedOptions,
         correct_answer,
         marks: parseInt(marks),
+        negative_marks: parseFloat(negative_marks) || 0,
         order,
       },
     });
@@ -365,7 +371,7 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Question ID is required', 400);
     }
 
-    const { question_text, options, correct_answer, marks, media_url, media_type } = req.body;
+    const { question_text, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
     const file = req.file;
 
     // Handle file upload if present
@@ -389,6 +395,7 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       options: parsedOptions,
       correct_answer,
       marks: marks ? parseInt(marks) : undefined,
+      negative_marks: negative_marks !== undefined ? parseFloat(negative_marks) : undefined,
     };
 
     if (questionMediaUrl !== undefined) {
@@ -443,19 +450,22 @@ export const getTests = async (req: AuthRequest, res: Response) => {
       where.is_published = is_published === 'true';
     }
 
-    // Students can only see published tests from subjects they're enrolled in
+    // Students can only see published tests from subjects/test series they're enrolled in
     // Note: We don't filter by available_until so expired tests show up as practice sets
     if (userRole === 'STUDENT') {
       where.is_published = true;
-      where.available_from = { lte: new Date() }; // Test must have started
-      // Removed: where.available_until filter - expired tests should show for practice
+      // For test series tests, availability window is not enforced here.
+      where.OR = [
+        { test_series_id: { not: null } },
+        { available_from: { lte: new Date() } },
+      ];
 
-      // Get student's enrolled subjects
+      // Get student's enrolled subjects and test series
       const student = await prisma.student.findUnique({
         where: { user_id: userId },
         include: {
           enrollments: {
-            select: { subject_id: true }
+            select: { subject_id: true, test_series_id: true }
           }
         }
       });
@@ -463,6 +473,9 @@ export const getTests = async (req: AuthRequest, res: Response) => {
       if (student) {
         const enrolledSubjectIds = student.enrollments
           .map(e => e.subject_id)
+          .filter(id => id !== null);
+        const enrolledTestSeriesIds = student.enrollments
+          .map(e => e.test_series_id)
           .filter(id => id !== null);
 
         // If subject_id filter is provided, ensure it's in enrolled subjects
@@ -475,26 +488,42 @@ export const getTests = async (req: AuthRequest, res: Response) => {
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
         } else {
-          // No subject_id filter, show all tests from enrolled subjects
-          where.subject_id = { in: enrolledSubjectIds };
+          // No subject filter: show tests from enrolled subjects OR enrolled test series
+          const accessFilters: any[] = [];
+          if (enrolledSubjectIds.length > 0) {
+            accessFilters.push({ subject_id: { in: enrolledSubjectIds } });
+          }
+          if (enrolledTestSeriesIds.length > 0) {
+            accessFilters.push({ test_series_id: { in: enrolledTestSeriesIds } });
+          }
+
+          if (accessFilters.length === 0) {
+            return sendSuccess(res, [], 'Tests fetched successfully');
+          }
+
+          where.AND = [...(where.AND || []), { OR: accessFilters }];
         }
       } else {
         // If no student record found, return empty array
         return sendSuccess(res, [], 'Tests fetched successfully');
       }
     } else if (userRole === 'TEACHER') {
-      // Teachers can only see tests from subjects they're assigned to
+      // Teachers can only see tests from subjects or test series they're assigned to
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: userId },
         include: {
           teacher_subject_junctions: {
             select: { subject_id: true }
+          },
+          test_series_junctions: {
+            select: { test_series_id: true },
           }
         }
       });
 
       if (teacher) {
         const assignedSubjectIds = teacher.teacher_subject_junctions.map(j => j.subject_id);
+        const assignedTestSeriesIds = teacher.test_series_junctions.map(j => j.test_series_id);
 
         // If subject_id filter is provided, ensure it's in assigned subjects
         if (subject_id) {
@@ -506,8 +535,20 @@ export const getTests = async (req: AuthRequest, res: Response) => {
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
         } else {
-          // No subject_id filter, show all tests from assigned subjects
-          where.subject_id = { in: assignedSubjectIds };
+          // No subject filter: show tests from assigned subjects OR assigned test series
+          const accessFilters: any[] = [];
+          if (assignedSubjectIds.length > 0) {
+            accessFilters.push({ subject_id: { in: assignedSubjectIds } });
+          }
+          if (assignedTestSeriesIds.length > 0) {
+            accessFilters.push({ test_series_id: { in: assignedTestSeriesIds } });
+          }
+
+          if (accessFilters.length === 0) {
+            return sendSuccess(res, [], 'Tests fetched successfully');
+          }
+
+          where.OR = accessFilters;
         }
       } else {
         // If no teacher record found, return empty array
@@ -524,6 +565,12 @@ export const getTests = async (req: AuthRequest, res: Response) => {
       where,
       include: {
         subject: true,
+        test_series: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
         creator: {
           select: {
             id: true,
@@ -566,6 +613,12 @@ export const getTestById = async (req: AuthRequest, res: Response) => {
       where: { id: parseInt(testId) },
       include: {
         subject: true,
+        test_series: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
         creator: {
           select: {
             id: true,
@@ -688,6 +741,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       available_until,
       is_published,
       is_certification,
+      has_negative_marking,
     } = req.body;
 
     const data: any = {
@@ -699,6 +753,10 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
     };
+
+    if (has_negative_marking !== undefined) {
+      data.has_negative_marking = !!has_negative_marking;
+    }
 
     // Handle subject_id update (can be set to null)
     if (subject_id !== undefined) {

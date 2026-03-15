@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../ui/button';
+import { Input } from '../../../ui/input';
 
 interface Props {
   items: any[];
@@ -63,7 +64,7 @@ export default function WordSearchBuilder({ items, onItemsChange }: Props) {
           <div className="space-y-3">
             <div>
               <label className="block text-sm font-medium mb-2">Grid Size</label>
-              <input
+              <Input
                 type="number"
                 min="8"
                 max="20"

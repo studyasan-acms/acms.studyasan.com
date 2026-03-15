@@ -392,6 +392,7 @@ model Test {
   created_by       Int
   total_marks      Int
   passing_marks    Int
+  has_negative_marking    Boolean       @default(false)
   duration_minutes Int
   available_from   DateTime
   available_until  DateTime
@@ -426,6 +427,7 @@ model Question {
   options        Json? // Can include media URLs for each option
   correct_answer String?
   marks          Int
+  negative_marks Float        @default(0)
   order          Int
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt

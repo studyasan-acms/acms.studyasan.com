@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../ui/button';
+import { Input } from '../../../ui/input';
 import type { MatchPairsContent } from '../../../../types/activity';
 
 interface Props {
@@ -72,7 +73,7 @@ export default function MatchPairsBuilder({ items, onItemsChange }: Props) {
           <div className="flex justify-between items-center mb-4">
             <h4 className="font-semibold">Set {itemIndex + 1}</h4>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="number"
                 placeholder="Points"
                 min="1"

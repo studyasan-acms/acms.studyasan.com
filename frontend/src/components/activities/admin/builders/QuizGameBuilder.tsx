@@ -1,5 +1,6 @@
 import { Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../../ui/button';
+import { Input } from '../../../ui/input';
 import type { QuizGameContent } from '../../../../types/activity';
 
 interface Props {
@@ -55,7 +56,7 @@ export default function QuizGameBuilder({ items, onItemsChange }: Props) {
           <div className="flex justify-between items-center mb-4">
             <h4 className="font-semibold">Question {itemIndex + 1}</h4>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="number"
                 placeholder="Points"
                 min="1"
@@ -127,7 +128,7 @@ export default function QuizGameBuilder({ items, onItemsChange }: Props) {
               <label className="block text-sm font-medium mb-2">
                 Time Limit (seconds)
               </label>
-              <input
+              <Input
                 type="number"
                 min="5"
                 max="300"

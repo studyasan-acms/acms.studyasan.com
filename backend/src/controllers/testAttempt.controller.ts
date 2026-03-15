@@ -288,6 +288,9 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         id: parseInt(attemptId),
         student_id: user.student.id,
       },
+      include: {
+        test: true,
+      },
     });
 
     if (!attempt) {
@@ -306,6 +309,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
 
     let autoGradedScore = 0;
     let hasShortAnswers = false;
+    const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
 
     for (const answer of answers) {
       if (
@@ -316,16 +320,24 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
           answer.answer_text?.trim().toLowerCase() ===
           answer.question.correct_answer?.trim().toLowerCase();
 
+        const questionNegativeMarks = testHasNegativeMarking
+          ? Number((answer.question as any).negative_marks || 0)
+          : 0;
+
         await prisma.answer.update({
           where: { id: answer.id },
           data: {
             is_correct: isCorrect,
-            marks_obtained: isCorrect ? answer.question.marks : 0,
+            marks_obtained: isCorrect
+              ? answer.question.marks
+              : (testHasNegativeMarking ? -questionNegativeMarks : 0),
           },
         });
 
         if (isCorrect) {
           autoGradedScore += answer.question.marks;
+        } else if (testHasNegativeMarking) {
+          autoGradedScore -= questionNegativeMarks;
         }
       } else {
         hasShortAnswers = true;
@@ -748,6 +760,8 @@ export const submitPublicTest = async (req: Request, res: Response) => {
       where: { test_id: attempt.test_id }
     });
 
+    const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
+
     for (const ans of answers) {
       const question = questions.find(q => q.id === parseInt(ans.question_id));
       if (!question) continue;
@@ -759,6 +773,8 @@ export const submitPublicTest = async (req: Request, res: Response) => {
         if (ans.answer_text?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase()) {
           isCorrect = true;
           marksObtained = question.marks;
+        } else if (testHasNegativeMarking) {
+          marksObtained = -Number((question as any).negative_marks || 0);
         }
       }
       // Auto-pass descriptive for now or mark as 0? 

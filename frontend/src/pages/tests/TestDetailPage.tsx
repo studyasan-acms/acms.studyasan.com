@@ -70,6 +70,7 @@ export default function TestDetailPage() {
     options: ["", "", "", ""],
     correct_answer: "",
     marks: 2,
+    negative_marks: 0,
   });
   const [editQuestionMediaFile, setEditQuestionMediaFile] = useState<File | null>(null);
   const [editQuestionMediaUrl, setEditQuestionMediaUrl] = useState<string | null>(null);
@@ -164,6 +165,7 @@ export default function TestDetailPage() {
       options: question.options || ["", "", "", ""],
       correct_answer: question.correct_answer || "",
       marks: question.marks,
+      negative_marks: question.negative_marks || 0,
     });
     setEditQuestionMediaFile(null);
     setEditQuestionMediaUrl(question.media_url || null);
@@ -182,6 +184,7 @@ export default function TestDetailPage() {
         formData.append("question_text", editFormData.question_text || "");
         formData.append("correct_answer", editFormData.correct_answer || "");
         formData.append("marks", (editFormData.marks || 2).toString());
+        formData.append("negative_marks", (editFormData.negative_marks || 0).toString());
         if (editFormData.options) formData.append("options", JSON.stringify(editFormData.options));
         if (removeQuestionMedia) {
           formData.append("media_url", "");
@@ -425,6 +428,9 @@ export default function TestDetailPage() {
                               {question.question_type.replace("_", " ")}
                             </Badge>
                             <span className="text-xs text-gray-400">{question.marks} marks</span>
+                            {test.has_negative_marking && (
+                              <span className="text-xs text-red-500">-{question.negative_marks || 0} on wrong</span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -615,9 +621,24 @@ export default function TestDetailPage() {
               </div>
 
               {/* Marks */}
-              <div>
-                <Label className="text-gray-700">Marks *</Label>
-                <Input type="number" min="1" value={editFormData.marks} onChange={(e) => setEditFormData({ ...editFormData, marks: Number(e.target.value) })} className="mt-1" />
+              <div className={`grid gap-4 ${test.has_negative_marking ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                <div>
+                  <Label className="text-gray-700">Marks *</Label>
+                  <Input type="number" min="1" value={editFormData.marks} onChange={(e) => setEditFormData({ ...editFormData, marks: Number(e.target.value) })} className="mt-1" />
+                </div>
+                {test.has_negative_marking && (
+                  <div>
+                    <Label className="text-red-600">Negative Marks (wrong answer)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.25"
+                      value={editFormData.negative_marks || 0}
+                      onChange={(e) => setEditFormData({ ...editFormData, negative_marks: Number(e.target.value) })}
+                      className="mt-1"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 

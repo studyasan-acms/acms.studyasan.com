@@ -663,6 +663,7 @@ export interface Question {
   options: string[] | null;
   correct_answer: string | null;
   marks: number;
+  negative_marks: number;
   order: number;
   created_at: string;
   updated_at: string;
@@ -677,6 +678,7 @@ export interface Test {
   created_by: number;
   total_marks: number;
   passing_marks: number;
+  has_negative_marking: boolean;
   duration_minutes: number;
   available_from: string;
   available_until: string;
@@ -760,6 +762,7 @@ export interface CreateTestData {
   test_series_id?: number | null;
   total_marks: number;
   passing_marks: number;
+  has_negative_marking?: boolean;
   duration_minutes: number;
   available_from: string;
   available_until: string;
@@ -770,8 +773,11 @@ export interface CreateTestData {
 export interface UpdateTestData {
   title?: string;
   description?: string;
+  subject_id?: number | null;
+  test_series_id?: number | null;
   total_marks?: number;
   passing_marks?: number;
+  has_negative_marking?: boolean;
   duration_minutes?: number;
   available_from?: string;
   available_until?: string;
@@ -795,6 +801,7 @@ export interface CreateQuestionData {
   options?: string[];
   correct_answer: string;
   marks: number;
+  negative_marks?: number;
 }
 
 export interface UpdateQuestionData {
@@ -804,6 +811,7 @@ export interface UpdateQuestionData {
   options?: string[];
   correct_answer?: string;
   marks?: number;
+  negative_marks?: number;
 }
 
 export interface SubmitAnswerData {

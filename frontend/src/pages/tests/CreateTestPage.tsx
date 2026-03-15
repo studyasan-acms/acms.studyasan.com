@@ -22,6 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
@@ -35,6 +43,7 @@ interface LocalQuestion {
   options: string[];
   correct_answer: string;
   marks: number;
+  negative_marks: number;
   mediaFile: File | null;
   mediaUrl: string | null;
   mediaType: string | null;
@@ -53,6 +62,7 @@ export default function CreateTestPage() {
   const { testId: paramTestId } = useParams();
   const isEditing = !!paramTestId;
   const { user } = useAuthStore();
+  const isTeacherOrAdmin = user?.role === "TEACHER" || user?.role === "ADMIN";
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [testSeriesList, setTestSeriesList] = useState<TestSeries[]>([]);
@@ -70,6 +80,7 @@ export default function CreateTestPage() {
     test_series_id: null,
     total_marks: 0,
     passing_marks: 0,
+    has_negative_marking: false,
     duration_minutes: 60,
     available_from: "",
     available_until: "",
@@ -96,8 +107,9 @@ export default function CreateTestPage() {
   const [errorOpen, setErrorOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  // ---- Load Subjects + Test Series ----
+  const [marksMismatchOpen, setMarksMismatchOpen] = useState(false);
+  const [isSavingMarkAdjustments, setIsSavingMarkAdjustments] = useState(false);
+  const [marksEditorQuestions, setMarksEditorQuestions] = useState<Array<{ id: string; title: string; marks: number; negative_marks: number; backendId?: number }>>([]);
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
@@ -141,6 +153,7 @@ export default function CreateTestPage() {
           test_series_id: test.test_series_id ?? null,
           total_marks: test.total_marks,
           passing_marks: test.passing_marks,
+          has_negative_marking: test.has_negative_marking ?? false,
           duration_minutes: test.duration_minutes,
           available_from: test.available_from.replace("Z", ""),
           available_until: test.available_until.replace("Z", ""),
@@ -158,6 +171,7 @@ export default function CreateTestPage() {
             options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === 'string' ? o : o?.text || '') : ["", "", "", ""],
             correct_answer: q.correct_answer || "",
             marks: q.marks,
+            negative_marks: (q as any).negative_marks ?? 0,
             mediaFile: null,
             mediaUrl: q.media_url || null,
             mediaType: q.media_type || null,
@@ -189,13 +203,19 @@ export default function CreateTestPage() {
     try {
       setSavingTest(true);
       if (isEditing && paramTestId) {
-        await testService.update(Number(paramTestId), formData);
+        await testService.update(Number(paramTestId), {
+          ...formData,
+        });
         setSuccessMessage("Test details updated!");
       } else if (testId) {
-        await testService.update(testId, formData);
+        await testService.update(testId, {
+          ...formData,
+        });
         setSuccessMessage("Test details updated!");
       } else {
-        const response = await testService.create(formData);
+        const response = await testService.create({
+          ...formData,
+        });
         setTestId(response.data.id);
         setSuccessMessage("Test created! Now add your questions below.");
       }
@@ -218,6 +238,7 @@ export default function CreateTestPage() {
       options: type === "MCQ" ? ["", "", "", ""] : [],
       correct_answer: "",
       marks: 2,
+      negative_marks: 0,
       mediaFile: null,
       mediaUrl: null,
       mediaType: null,
@@ -258,6 +279,7 @@ export default function CreateTestPage() {
       fd.append("question_text", localQ.question_text);
       fd.append("correct_answer", localQ.correct_answer);
       fd.append("marks", localQ.marks.toString());
+      fd.append("negative_marks", localQ.negative_marks.toString());
 
       if (localQ.options && localQ.question_type === "MCQ") {
         const optionsWithMedia = localQ.options.map((text, index) => {
@@ -283,10 +305,15 @@ export default function CreateTestPage() {
         if (localQ.mediaType) fd.append("media_type", localQ.mediaType);
       }
 
-      const response = await testService.addQuestionWithMedia(testId, fd);
+      let response: any;
+      if (localQ.backendId) {
+        response = await testService.updateQuestionWithMedia(localQ.backendId, fd);
+      } else {
+        response = await testService.addQuestionWithMedia(testId, fd);
+      }
 
       // Mark as saved
-      setQuestions(prev => prev.map(q => q.id === localQ.id ? { ...q, isSaved: true, isCollapsed: true, backendId: response.data?.id } : q));
+      setQuestions(prev => prev.map(q => q.id === localQ.id ? { ...q, isSaved: true, isCollapsed: true, backendId: localQ.backendId ?? response.data?.id } : q));
       setSuccessMessage("Question saved!");
       setSuccessOpen(true);
     } catch (error) {
@@ -331,6 +358,7 @@ export default function CreateTestPage() {
           options: Array.isArray(q.options) ? q.options.map((o: any) => typeof o === 'string' ? o : o?.text || '') : ["", "", "", ""],
           correct_answer: q.correct_answer || "",
           marks: q.marks,
+          negative_marks: (q as any).negative_marks ?? 0,
           mediaFile: null,
           mediaUrl: q.media_url || null,
           mediaType: q.media_type || null,
@@ -343,7 +371,8 @@ export default function CreateTestPage() {
       }
     } catch (error) {
       console.error("Error generating questions:", error);
-      setErrorMessage("Failed to generate questions.");
+      const message = (error as any)?.response?.data?.message || "Failed to generate questions.";
+      setErrorMessage(message);
       setErrorOpen(true);
     } finally {
       setLoading(false);
@@ -351,6 +380,81 @@ export default function CreateTestPage() {
   };
 
   // ---- Finish & Navigate ----
+  const openMarksMismatchDialog = () => {
+    setMarksEditorQuestions(
+      questions.map((q, index) => ({
+        id: q.id,
+        title: q.question_text.trim() || `Question ${index + 1}`,
+        marks: q.marks,
+        negative_marks: q.negative_marks,
+        backendId: q.backendId,
+      }))
+    );
+    setMarksMismatchOpen(true);
+  };
+
+  const handleSaveAdjustedMarks = async () => {
+    const invalidMark = marksEditorQuestions.find((q) => Number.isNaN(Number(q.marks)) || Number(q.marks) < 0);
+    if (invalidMark) {
+      setErrorMessage("Question marks cannot be negative.");
+      setErrorOpen(true);
+      return;
+    }
+
+    const originalQuestionMap = new Map(questions.map((q) => [q.id, q]));
+    const changedSavedQuestions = marksEditorQuestions.filter((q) => {
+      const original = originalQuestionMap.get(q.id);
+      return !!q.backendId && original && (
+        Number(original.marks) !== Number(q.marks) ||
+        Number(original.negative_marks) !== Number(q.negative_marks)
+      );
+    });
+
+    try {
+      setIsSavingMarkAdjustments(true);
+
+      if (changedSavedQuestions.length > 0) {
+        await Promise.all(
+          changedSavedQuestions.map((q) =>
+            testService.updateQuestion(q.backendId!, {
+              marks: Number(q.marks),
+              negative_marks: Number(q.negative_marks),
+            })
+          )
+        );
+      }
+
+      const updatedQuestions = questions.map((q) => {
+        const edited = marksEditorQuestions.find((mq) => mq.id === q.id);
+        if (!edited) return q;
+        return {
+          ...q,
+          marks: Number(edited.marks),
+          negative_marks: Number(edited.negative_marks),
+          isSaved: q.backendId ? true : q.isSaved,
+        };
+      });
+
+      setQuestions(updatedQuestions);
+      setMarksMismatchOpen(false);
+
+      const updatedTotal = updatedQuestions.reduce((sum, q) => sum + q.marks, 0);
+      if (updatedTotal !== formData.total_marks) {
+        setErrorMessage(`Marks are still unbalanced. Total question marks: ${updatedTotal}, expected: ${formData.total_marks}.`);
+        setErrorOpen(true);
+        return;
+      }
+
+      navigate(`/tests/${testId ?? paramTestId}`);
+    } catch (error) {
+      console.error("Error updating question marks:", error);
+      setErrorMessage("Failed to update question marks.");
+      setErrorOpen(true);
+    } finally {
+      setIsSavingMarkAdjustments(false);
+    }
+  };
+
   const handleFinish = () => {
     const unsaved = questions.filter(q => !q.isSaved);
     if (unsaved.length > 0) {
@@ -358,6 +462,15 @@ export default function CreateTestPage() {
       setErrorOpen(true);
       return;
     }
+
+    if (isTeacherOrAdmin) {
+      const totalQuestionMarks = questions.reduce((sum, q) => sum + q.marks, 0);
+      if (totalQuestionMarks !== formData.total_marks) {
+        openMarksMismatchDialog();
+        return;
+      }
+    }
+
     navigate(`/tests/${testId ?? paramTestId}`);
   };
 
@@ -384,6 +497,76 @@ export default function CreateTestPage() {
         onConfirm={() => setErrorOpen(false)}
         onClose={() => setErrorOpen(false)}
       />
+
+      <Dialog open={marksMismatchOpen} onOpenChange={setMarksMismatchOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Question Marks Do Not Match Total Marks</DialogTitle>
+            <DialogDescription>
+              Total question marks are {marksEditorQuestions.reduce((sum, q) => sum + Number(q.marks || 0), 0)}, but test total marks are {formData.total_marks}. Update marks below to continue.
+              {formData.has_negative_marking && " You can also set per-question negative marks here."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[420px] overflow-y-auto space-y-2">
+            <div className="flex items-center gap-3 px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <span className="flex-1">Question</span>
+              <span className="w-28 text-right">Marks</span>
+              {formData.has_negative_marking && <span className="w-28 text-right">−ve Marks</span>}
+            </div>
+            {marksEditorQuestions.map((q) => (
+              <div key={q.id} className="flex items-center gap-3 rounded-md border p-3">
+                <p className="flex-1 text-sm text-gray-700 line-clamp-1">{q.title}</p>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="w-28 text-right"
+                  value={q.marks}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value, 10);
+                    setMarksEditorQuestions((prev) =>
+                      prev.map((item) =>
+                        item.id === q.id
+                          ? { ...item, marks: Number.isNaN(value) ? 0 : value }
+                          : item
+                      )
+                    );
+                  }}
+                />
+                {formData.has_negative_marking && (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    className="w-28 text-right"
+                    value={q.negative_marks}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
+                      setMarksEditorQuestions((prev) =>
+                        prev.map((item) =>
+                          item.id === q.id
+                            ? { ...item, negative_marks: Number.isNaN(value) ? 0 : value }
+                            : item
+                        )
+                      );
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMarksMismatchOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveAdjustedMarks} disabled={isSavingMarkAdjustments} className="bg-saBlue hover:bg-saBlueDarkHover text-white">
+              {isSavingMarkAdjustments ? "Saving..." : "Save Marks & Continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -526,6 +709,27 @@ export default function CreateTestPage() {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.has_negative_marking ? 'bg-red-500' : 'bg-gray-300'}`}>
+                <input
+                  type="checkbox"
+                  checked={!!formData.has_negative_marking}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    has_negative_marking: e.target.checked,
+                  })}
+                  className="sr-only"
+                />
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.has_negative_marking ? 'translate-x-[18px]' : 'translate-x-[0.5px]'}`} />
+              </div>
+              <span className="text-sm text-gray-700">Enable Negative Marking</span>
+            </label>
+            {formData.has_negative_marking && (
+              <p className="text-sm text-red-600 self-center">Negative marks can be set per-question below.</p>
+            )}
+          </div>
+
           {/* Availability */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -656,6 +860,7 @@ export default function CreateTestPage() {
                     onRemove={() => removeQuestion(q.id)}
                     onSave={() => saveQuestion(q)}
                     loading={loading}
+                    hasNegativeMarking={!!formData.has_negative_marking}
                   />
                 ))}
               </div>
@@ -692,7 +897,7 @@ export default function CreateTestPage() {
 // Question Editor Component
 // ============================================================
 function QuestionEditor({
-  question, index, onUpdate, onRemove, onSave, loading,
+  question, index, onUpdate, onRemove, onSave, loading, hasNegativeMarking,
 }: {
   question: LocalQuestion;
   index: number;
@@ -700,7 +905,14 @@ function QuestionEditor({
   onRemove: () => void;
   onSave: () => void;
   loading: boolean;
+  hasNegativeMarking: boolean;
 }) {
+  const [marksStr, setMarksStr] = useState(String(question.marks));
+  const [negMarksStr, setNegMarksStr] = useState(String(question.negative_marks));
+
+  // Sync local string when the value changes externally (e.g. from marks modal)
+  useEffect(() => { setMarksStr(String(question.marks)); }, [question.marks]);
+  useEffect(() => { setNegMarksStr(String(question.negative_marks)); }, [question.negative_marks]);
   const typeLabels: Record<QuestionType, string> = {
     MCQ: "Multiple Choice",
     TRUE_FALSE: "True / False",
@@ -740,7 +952,7 @@ function QuestionEditor({
               <Check className="w-3 h-3 mr-1" /> Saved
             </Badge>
           )}
-          <span className="text-xs text-gray-500">{question.marks} marks</span>
+          <span className="text-xs text-gray-500">{question.marks} marks{hasNegativeMarking && question.negative_marks > 0 ? ` / -${question.negative_marks}` : ""}</span>
           <Button
             variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50"
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -754,8 +966,8 @@ function QuestionEditor({
       {/* Body */}
       {!question.isCollapsed && (
         <div className="p-4 space-y-4 border-t border-gray-100">
-          {/* Question Type */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Question Type + Marks */}
+          <div className={`grid grid-cols-1 gap-4 ${hasNegativeMarking ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             <div>
               <Label className="text-xs text-gray-600">Question Type</Label>
               <Select value={question.question_type} onValueChange={(v) => onUpdate({ question_type: v as QuestionType, options: v === "MCQ" ? ["", "", "", ""] : [] })}>
@@ -770,8 +982,43 @@ function QuestionEditor({
             </div>
             <div>
               <Label className="text-xs text-gray-600">Marks</Label>
-              <Input type="number" min="1" value={question.marks} onChange={(e) => onUpdate({ marks: Number(e.target.value) })} className="mt-1" />
+              <Input
+                type="number"
+                min="1"
+                value={marksStr}
+                onChange={(e) => {
+                  setMarksStr(e.target.value);
+                  const n = Number(e.target.value);
+                  if (e.target.value !== "" && !isNaN(n)) onUpdate({ marks: n });
+                }}
+                onBlur={() => {
+                  const n = Number(marksStr);
+                  if (marksStr === "" || isNaN(n)) setMarksStr(String(question.marks));
+                }}
+                className="mt-1"
+              />
             </div>
+            {hasNegativeMarking && (
+              <div>
+                <Label className="text-xs text-red-600">Negative Marks (wrong answer)</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.25"
+                  value={negMarksStr}
+                  onChange={(e) => {
+                    setNegMarksStr(e.target.value);
+                    const n = Number(e.target.value);
+                    if (e.target.value !== "" && !isNaN(n)) onUpdate({ negative_marks: n });
+                  }}
+                  onBlur={() => {
+                    const n = Number(negMarksStr);
+                    if (negMarksStr === "" || isNaN(n)) setNegMarksStr(String(question.negative_marks));
+                  }}
+                  className="mt-1 border-red-200 focus:border-red-400"
+                />
+              </div>
+            )}
           </div>
 
           {/* Question Text */}

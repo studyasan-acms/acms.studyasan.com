@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Sparkles } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
+import { Input } from '../../ui/input';
 import { activityAPI } from '../../../services/activity.service';
 import type {
   Activity,
@@ -316,7 +317,7 @@ export default function ActivityForm({
               <label className="block text-sm font-medium mb-2">
                 Estimated Time (minutes)
               </label>
-              <input
+              <Input
                 type="number"
                 min="1"
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
@@ -332,7 +333,7 @@ export default function ActivityForm({
 
             <div>
               <label className="block text-sm font-medium mb-2">Points</label>
-              <input
+              <Input
                 type="number"
                 min="0"
                 className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"

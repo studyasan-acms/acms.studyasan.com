@@ -260,7 +260,7 @@ export default function TestsPage() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="secondary" className="font-normal bg-gray-100 text-gray-700 hover:bg-gray-200">
-                          {test.subject?.name || 'General'}
+                          {test.subject?.name || test.test_series?.title || 'General'}
                         </Badge>
                       </TableCell>
                       <TableCell>

@@ -1,4 +1,5 @@
 import { Button } from '../../../ui/button';
+import { Input } from '../../../ui/input';
 
 interface Props {
     items: any[];
@@ -71,7 +72,7 @@ export default function SudokuBuilder({ items, onItemsChange }: Props) {
 
                         <div>
                             <label className="block text-sm font-medium mb-2">Points per Correct Number</label>
-                            <input
+                            <Input
                                 type="number"
                                 min="1"
                                 className="w-32 px-3 py-2 border rounded"
