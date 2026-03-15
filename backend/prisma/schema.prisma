@@ -693,6 +693,7 @@ enum ActivityType {
   CHESS // Chess game
   HANGMAN // Hangman game
   SUDOKU // Sudoku game
+  ABACUS // Abacus-based arithmetic practice
 }
 
 // Activity Group - Collection of activities for organizing

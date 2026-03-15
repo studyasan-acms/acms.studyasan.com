@@ -25,6 +25,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [isMuted, setIsMuted] = useState(false);
   const [timerTickPlayed, setTimerTickPlayed] = useState(false);
+  const [isTimeout, setIsTimeout] = useState(false);
 
   const { playSound, stopSound, stopAll } = useSound();
 
@@ -44,6 +45,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       setTimeLeft(questions[currentQuestion].content.timeLimit || 30);
       setQuestionStartTime(Date.now());
       setTimerTickPlayed(false); // Reset timer tick sound for new question
+      setIsTimeout(false);
     }
   }, [currentQuestion, questions]);
 
@@ -70,6 +72,10 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
 
   const handleSubmitAnswer = async () => {
     if (selectedAnswer === null && timeLeft > 0) return;
+
+    // Ensure countdown tick audio does not continue after submission.
+    stopSound('timer-tick');
+    setTimerTickPlayed(false);
 
     const question = questions[currentQuestion];
     const correct = selectedAnswer === question.content.correctAnswer;
@@ -107,14 +113,23 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       }
     }
 
-    // Auto advance after 2 seconds
-    setTimeout(() => {
-      handleNextQuestion();
-    }, 2000);
+    // On timeout (no answer selected), require manual advancement
+    const timedOut = selectedAnswer === null;
+    if (timedOut) {
+      setIsTimeout(true);
+    } else {
+      // Auto advance after 2 seconds
+      setTimeout(() => {
+        handleNextQuestion();
+      }, 2000);
+    }
   };
 
   const handleNextQuestion = () => {
+    stopSound('timer-tick');
     if (currentQuestion < totalQuestions - 1) {
+      const nextQuestion = questions[currentQuestion + 1];
+      setTimeLeft(nextQuestion?.content.timeLimit || 30); // reset before showResult=false to prevent stale timeLeft===0 re-triggering handleSubmitAnswer
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
       setShowResult(false);
@@ -125,6 +140,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
   };
 
   const handleComplete = () => {
+    stopSound('timer-tick');
     stopAll();
     playSound('game-over');
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
@@ -140,19 +156,19 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
 
   if (currentQuestion >= totalQuestions) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] overflow-hidden">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] overflow-hidden">
         {/* Animated Background Shapes */}
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-600/20 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/20 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-saVividOrange/15 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-saBlue/20 blur-[120px] rounded-full animate-pulse" />
 
         <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating">
           <div className="relative inline-block mb-8">
-            <Trophy className="w-32 h-32 mx-auto text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-            <div className="absolute inset-0 bg-yellow-400/20 blur-2xl rounded-full -z-10" />
+            <Trophy className="w-32 h-32 mx-auto text-saVividOrange drop-shadow-[0_0_15px_rgba(236,162,9,0.5)]" />
+            <div className="absolute inset-0 bg-saVividOrange/20 blur-2xl rounded-full -z-10" />
           </div>
           <h2 className="text-5xl font-extrabold mb-4 text-white tracking-tight">Quiz Complete!</h2>
           <div className="space-y-4 mb-8">
-            <p className="text-3xl font-bold text-blue-300">Final Score: {score}</p>
+            <p className="text-3xl font-bold text-saBlueLight">Final Score: {score}</p>
             <p className="text-blue-100/60 text-lg italic">
               "Great effort! You've conquered the challenge."
             </p>
@@ -165,17 +181,17 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
   const question = questions[currentQuestion];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col overflow-auto font-sans">
+    <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col overflow-auto font-sans">
       {/* Dynamic Background */}
       <div className="fixed top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
       </div>
 
       {/* Header */}
       <div className="p-3 md:p-4 flex justify-between items-center bg-black/20 backdrop-blur-sm border-b border-white/5 flex-wrap gap-2">
         <div className="flex items-center gap-2 md:gap-4">
-          <div className="bg-white/10 px-2 md:px-4 py-1 md:py-2 rounded-full font-bold text-sm md:text-base text-blue-300 border border-white/10">
+          <div className="bg-white/10 px-2 md:px-4 py-1 md:py-2 rounded-full font-bold text-sm md:text-base text-saBlueLight border border-white/10">
             {currentQuestion + 1} / {totalQuestions}
           </div>
           <button
@@ -187,11 +203,11 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
         </div>
 
         <div className="flex items-center gap-2 md:gap-6">
-          <div className="flex items-center bg-yellow-400/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-yellow-400 border border-yellow-400/20">
+          <div className="flex items-center bg-saVividOrange/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
             <Star className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 fill-current" />
             <span className="font-bold text-sm md:text-lg">{score}</span>
           </div>
-          <div className="flex items-center bg-blue-400/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-blue-400 border border-blue-400/20">
+          <div className="flex items-center bg-saBlueLight/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
             <Clock className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
             <span className={`font-bold text-sm md:text-lg ${timeLeft <= 5 ? 'animate-pulse text-red-400' : ''}`}>
               {timeLeft}s
@@ -206,7 +222,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       {/* Progress Bar (at the top) */}
       <div className="h-1.5 w-full bg-white/5">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+          className="h-full bg-gradient-to-r from-saBlue via-saBlueLight to-saVividOrange transition-all duration-500 shadow-[0_0_10px_rgba(91,174,240,0.5)]"
           style={{ width: `${((currentQuestion + 1) / totalQuestions) * 100}%` }}
         />
       </div>
@@ -235,7 +251,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
                 else if (isSelected) statusClass = "btn-3d-danger grayscale-[0.5]";
                 else statusClass = "opacity-40 grayscale pointer-events-none";
               } else if (isSelected) {
-                statusClass = "btn-3d-primary scale-105 z-10 ring-4 ring-blue-400/30";
+                statusClass = "btn-3d-primary scale-105 z-10 ring-4 ring-saBlueLight/30";
               }
 
               return (
@@ -268,6 +284,18 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
               }`}
           >
             Submit Answer
+          </button>
+        </div>
+      )}
+
+      {/* Next button shown after timeout */}
+      {showResult && isTimeout && (
+        <div className="p-3 md:p-6 bg-black/40 backdrop-blur-md border-t border-white/5 flex justify-center">
+          <button
+            onClick={handleNextQuestion}
+            className="btn-3d btn-3d-primary max-w-md w-full py-3 md:py-4 text-lg md:text-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2"
+          >
+            Next Question <ChevronRight className="w-5 h-5 md:w-6 md:h-6" />
           </button>
         </div>
       )}

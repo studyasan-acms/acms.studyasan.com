@@ -436,7 +436,24 @@ export const getActivitiesForStudent = async (req: Request, res: Response) => {
       },
     });
 
-    const groupIds = [...new Set(enrolledGroups.map(eg => eg.activity.group_id))];
+    // Find activity groups the student is directly enrolled in
+    const groupEnrollments = await prisma.enrollment.findMany({
+      where: {
+        student_id: student.id,
+        type: 'ACTIVITY_GROUP',
+        activity_group_id: {
+          not: null,
+        },
+      },
+      select: {
+        activity_group_id: true,
+      },
+    });
+
+    const groupIdsFromActivities = enrolledGroups.map(eg => eg.activity.group_id);
+    const groupIdsFromGroups = groupEnrollments.map(ge => ge.activity_group_id).filter((id): id is number => id !== null);
+    
+    const groupIds = [...new Set([...groupIdsFromActivities, ...groupIdsFromGroups])];
 
     const where: any = {
       is_published: true,

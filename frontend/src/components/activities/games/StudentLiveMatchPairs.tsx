@@ -237,11 +237,11 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     if (status === 'LOBBY') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <div className="text-center animate-in fade-in zoom-in duration-500">
                     <div className="mb-8 relative inline-block">
-                        <div className="absolute inset-0 bg-blue-500/30 blur-3xl rounded-full animate-pulse"></div>
-                        <Gamepad2 className="w-24 h-24 text-purple-400 fill-current relative z-10 animate-bounce" />
+                        <div className="absolute inset-0 bg-saBlueLight/30 blur-3xl rounded-full animate-pulse"></div>
+                        <Gamepad2 className="w-24 h-24 text-saVividOrange fill-current relative z-10 animate-bounce" />
                     </div>
                     <h2 className="text-4xl font-bold mb-4">Match Pairs Live!</h2>
                     <p className="text-xl text-blue-200">Waiting for host to start...</p>
@@ -256,11 +256,11 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <Card className="gamified-card p-8 md:p-12 text-center max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <Trophy className="w-24 h-24 mx-auto text-yellow-400 mb-6" />
+                    <Trophy className="w-24 h-24 mx-auto text-saVividOrange mb-6" />
                     <h2 className="text-4xl font-bold mb-2">Session Ended</h2>
-                    <p className="text-xl text-blue-300 mb-8">Your Final Score: {Math.round(score)}</p>
+                    <p className="text-xl text-saBlueLight mb-8">Your Final Score: {Math.round(score)}</p>
 
                     <div className="bg-slate-800/50 rounded-2xl p-6 mb-8 text-left">
                         <h3 className="text-lg font-bold mb-4 text-center uppercase tracking-widest text-slate-400">Leaderboard</h3>
@@ -269,12 +269,12 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                 <p className="text-center text-slate-500">Wait for final scores...</p>
                             ) : (
                                 leaderboard.map((s, i) => (
-                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-slate-700/50'}`}>
+                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-saVividOrange/20 border border-saVividOrange/50' : 'bg-slate-700/50'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-slate-600'}`}>#{i + 1}</div>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-saVividOrange text-slate-950' : 'bg-slate-600'}`}>#{i + 1}</div>
                                             <span className="font-semibold">{s.name}</span>
                                         </div>
-                                        <span className="font-bold text-blue-400">{s.score}</span>
+                                        <span className="font-bold text-saBlueLight">{s.score}</span>
                                     </div>
                                 ))
                             )}
@@ -287,25 +287,25 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[url('/grid.svg')] opacity-20" />
-            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-purple-900/40 blur-[100px] rounded-full" />
-            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-blue-900/40 blur-[100px] rounded-full" />
+            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-saBlue/40 blur-[100px] rounded-full" />
 
             {/* Header */}
             <div className="p-4 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
                 <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Live Match</span>
+                    <span className="font-bold text-lg text-saVividOrange">Live Match</span>
                     <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full">
                         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
                 </div>
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-yellow-400/10 px-4 py-2 rounded-full text-yellow-400 border border-yellow-400/20">
+                    <div className="flex items-center bg-saVividOrange/10 px-4 py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
                         <Star className="w-5 h-5 mr-2 fill-current" />
                         <span className="font-bold">{Math.round(score)}</span>
                     </div>
-                    <div className="flex items-center bg-blue-400/10 px-4 py-2 rounded-full text-blue-400 border border-blue-400/20">
+                    <div className="flex items-center bg-saBlueLight/10 px-4 py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
                         <Clock className="w-5 h-5 mr-2" />
                         <span className="font-mono">{timeElapsed}s</span>
                     </div>
@@ -318,7 +318,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                 <div className="flex-1 grid grid-cols-2 gap-6 md:gap-12 h-full">
                     {/* Left */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-center text-blue-300 uppercase tracking-widest border-b border-blue-500/30 pb-2">Terms</h3>
+                        <h3 className="text-lg font-bold text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">Terms</h3>
                         <div className="grid gap-4">
                             {leftItems.map((pair, index) => {
                                 const isSelected = selectedLeft === index;
@@ -332,7 +332,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         ${isMatched
                                                 ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-105 ring-4 ring-blue-500/30 z-10'
+                                                    ? 'btn-3d-primary scale-105 ring-4 ring-saBlueLight/30 z-10'
                                                     : 'btn-3d-neutral hover:scale-102'}`}
                                     >
                                         {pair.imageLeft && <img src={pair.imageLeft} alt="" className="w-12 h-12 object-cover rounded bg-black/30" />}
@@ -344,7 +344,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                     </div>
                     {/* Right */}
                     <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-center text-purple-300 uppercase tracking-widest border-b border-purple-500/30 pb-2">Definitions</h3>
+                        <h3 className="text-lg font-bold text-center text-saVividOrange uppercase tracking-widest border-b border-saVividOrange/30 pb-2">Definitions</h3>
                         <div className="grid gap-4">
                             {rightItems.map((pair, index) => {
                                 const isSelected = selectedRight === index;
@@ -359,7 +359,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         ${isMatched
                                                 ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-105 ring-4 ring-purple-500/30 z-10'
+                                                    ? 'btn-3d-primary scale-105 ring-4 ring-saVividOrange/30 z-10'
                                                     : !isVisible
                                                         ? 'bg-slate-800/50 border-slate-700 text-slate-500 cursor-not-allowed'
                                                         : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-102 shadow-lg'}`}

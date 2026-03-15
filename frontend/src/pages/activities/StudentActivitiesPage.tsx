@@ -15,16 +15,16 @@ import { resolveImageUrl } from '@/lib/utils';
 
 const getRandomGradient = () => {
   const gradients = [
-    'from-purple-500 to-pink-500',
-    'from-blue-500 to-cyan-500',
-    'from-green-500 to-teal-500',
-    'from-orange-500 to-red-500',
-    'from-indigo-500 to-purple-500',
-    'from-pink-500 to-rose-500',
-    'from-cyan-500 to-blue-500',
-    'from-teal-500 to-green-500',
-    'from-yellow-500 to-orange-500',
-    'from-fuchsia-500 to-pink-500',
+    'from-saBlue to-saBlueLight',
+    'from-saVividOrange to-orange-400',
+    'from-saBlueLight to-blue-400',
+    'from-orange-500 to-saVividOrange',
+    'from-saBlue to-blue-600',
+    'from-orange-400 to-saVividOrange',
+    'from-blue-500 to-saBlueLight',
+    'from-saVividOrange to-orange-500',
+    'from-saBlueLight to-saBlue',
+    'from-yellow-500 to-saVividOrange',
   ];
   return gradients[Math.floor(Math.random() * gradients.length)];
 };
@@ -37,6 +37,7 @@ import TrueFalseGame from '../../components/activities/games/TrueFalseGame.tsx';
 import ChessGame from '../../components/activities/games/ChessGame.tsx';
 import HangmanGame from '../../components/activities/games/HangmanGame.tsx';
 import SudokuGame from '../../components/activities/games/SudokuGame.tsx';
+import AbacusGame from '../../components/activities/games/AbacusGame';
 import StudentLiveQuiz from '../../components/activities/games/StudentLiveQuiz.tsx';
 import StudentLiveMatchPairs from '../../components/activities/games/StudentLiveMatchPairs.tsx';
 import StudentLiveWordSearch from '../../components/activities/games/StudentLiveWordSearch.tsx';
@@ -184,6 +185,8 @@ export default function StudentActivitiesPage() {
         return <HangmanGame {...gameProps} />;
       case 'SUDOKU':
         return <SudokuGame {...gameProps} />;
+      case 'ABACUS':
+        return <AbacusGame {...gameProps} />;
       default:
         return (
           <div className="text-center py-12">
@@ -206,38 +209,44 @@ export default function StudentActivitiesPage() {
   }
 
   if (selectedActivity) {
-    return <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">{renderGame()}</div>;
+    return <div className="min-h-screen bg-[#061a3a]">{renderGame()}</div>;
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-saBlue"></div>
+        <p className="mt-4 text-saBlue font-bold tracking-widest uppercase text-sm animate-pulse">Loading Games...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-8 relative">
-        <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600 mb-2">
-          Learning Games
-        </h1>
-        <p className="text-gray-600 mb-6">Choose an activity to play and learn!</p>
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="text-center mb-12 relative">
+        <div className="inline-block relative">
+          <h1 className="text-4xl md:text-5xl font-black text-saBlue mb-4 drop-shadow-sm">
+            Learning Games
+          </h1>
+          <div className="absolute -top-6 -right-8 text-saVividOrange animate-bounce hidden md:block">
+            <Gamepad2 className="w-10 h-10 -rotate-12" />
+          </div>
+        </div>
+        <p className="text-gray-600 mb-8 text-lg md:text-xl font-medium max-w-2xl mx-auto">Immerse yourself in fun, interactive activities designed to supercharge your learning.</p>
 
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-4">
           <div className="relative w-full sm:w-96">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
             <Input
               placeholder="Search games by name or type..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 text-base"
+              className="pl-12 h-14 text-base rounded-2xl border-2 border-gray-200 focus:border-saBlue focus:ring-saBlue/20 shadow-sm"
             />
           </div>
           <Button
             onClick={() => setShowJoinModal(true)}
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-lg px-8 py-3 rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 w-full sm:w-auto"
+            className="h-14 bg-gradient-to-r from-saVividOrange to-orange-500 hover:from-saVividOrange/90 hover:to-orange-600 text-lg px-8 py-3 rounded-2xl shadow-lg shadow-saVividOrange/20 transition-all hover:-translate-y-1 w-full sm:w-auto font-bold tracking-wide"
           >
             <Gamepad2 className="w-6 h-6 mr-2" />
             Join Live Game
@@ -247,56 +256,65 @@ export default function StudentActivitiesPage() {
 
       {/* Join Game Modal */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="p-6 w-full max-w-md bg-white">
-            <h3 className="text-2xl font-bold mb-4 text-center">Join with Code</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <Card className="p-8 w-full max-w-md bg-white rounded-3xl shadow-2xl border-0">
+            <div className="flex justify-center mb-6">
+              <div className="w-16 h-16 bg-saBlue/10 rounded-2xl flex items-center justify-center">
+                <Gamepad2 className="w-8 h-8 text-saBlue" />
+              </div>
+            </div>
+            <h3 className="text-2xl font-black mb-2 text-center text-gray-900">Join Live Game</h3>
+            <p className="text-gray-500 text-center mb-8">Enter your 6-character code below to join the fun.</p>
             <Input
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
               placeholder="ENTER CODE"
-              className="text-center text-3xl font-mono tracking-widest uppercase mb-6 h-16"
+              className="text-center text-3xl font-black tracking-[0.3em] uppercase mb-8 h-16 rounded-xl border-gray-300 focus:border-saBlue focus:ring-saBlue/20"
               maxLength={6}
             />
             <div className="flex gap-4">
-              <Button variant="outline" className="flex-1" onClick={() => setShowJoinModal(false)}>Cancel</Button>
-              <Button className="flex-1" onClick={handleJoinGame}>Join!</Button>
+              <Button variant="outline" className="flex-1 h-12 rounded-xl border-2 hover:bg-gray-50 font-bold" onClick={() => setShowJoinModal(false)}>Cancel</Button>
+              <Button className="flex-1 h-12 rounded-xl bg-saVividOrange hover:bg-saVividOrange/90 font-bold shadow-lg shadow-saVividOrange/20" onClick={handleJoinGame}>Join Now</Button>
             </div>
           </Card>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredActivities.map((activity) => (
           <Card
             key={activity.id}
-            className="overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2"
+            className="overflow-hidden bg-white hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 rounded-3xl border border-gray-100 flex flex-col group"
           >
             {activity.cover_image || activity.group?.cover_image ? (
-              <div className="w-full h-32 relative">
+              <div className="w-full h-40 relative overflow-hidden">
                 <img
                   src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
                   alt={activity.title}
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <h3 className="text-2xl font-bold text-white text-center px-4 drop-shadow-md">
+                  <h3 className="text-xl font-bold text-white text-center px-4 drop-shadow-md">
                     {activity.title}
                   </h3>
                 </div>
               </div>
             ) : (
               <div
-                className={`w-full h-32 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}
+                className={`w-full h-40 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center p-6 relative overflow-hidden`}
               >
-                <h3 className="text-2xl font-bold text-white text-center px-4">
+                <div className="absolute inset-0 bg-black/10"></div>
+                <h3 className="text-2xl font-black text-white text-center drop-shadow-lg relative z-10 leading-tight">
                   {activity.title}
                 </h3>
               </div>
             )}
-            <div className="px-6 pb-6 pt-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Star className="w-5 h-5 text-yellow-500 fill-yellow-500" />
-                <span className="text-sm font-semibold text-gray-700">{activity.activity_type}</span>
+            <div className="px-6 pb-6 pt-5 flex-1 flex flex-col">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 bg-saVividOrange/10 rounded-lg">
+                  <Star className="w-4 h-4 text-saVividOrange fill-saVividOrange" />
+                </div>
+                <span className="text-sm font-bold text-gray-700 tracking-wide">{activity.activity_type.replace(/_/g, ' ')}</span>
               </div>
 
               {activity.description && (
@@ -305,42 +323,45 @@ export default function StudentActivitiesPage() {
                 </p>
               )}
 
-              <div className="flex flex-wrap gap-2 mb-4">
-                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${activity.difficulty === 'EASY'
-                  ? 'bg-green-100 text-green-800'
+              <div className="flex flex-wrap gap-2 mb-5">
+                <span className={`px-3 py-1 rounded-xl text-xs font-bold tracking-wide ${activity.difficulty === 'EASY'
+                  ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
                   : activity.difficulty === 'MEDIUM'
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-red-100 text-red-800'
+                    ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                    : 'bg-rose-50 text-rose-700 ring-1 ring-rose-200'
                   }`}>
                   {activity.difficulty}
                 </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 flex items-center">
-                  <Trophy className="w-3 h-3 mr-1" />
-                  {activity.points} points
+                <span className="px-3 py-1 rounded-xl text-xs font-bold tracking-wide bg-saVividOrange/10 text-saVividOrange ring-1 ring-saVividOrange/20 flex items-center">
+                  <Trophy className="w-3.5 h-3.5 mr-1" />
+                  {activity.points} pts
                 </span>
                 {activity.estimated_time && (
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 flex items-center">
-                    <Clock className="w-3 h-3 mr-1" />
-                    {activity.estimated_time} min
+                  <span className="px-3 py-1 rounded-xl text-xs font-bold tracking-wide bg-saBlue/10 text-saBlue ring-1 ring-saBlue/20 flex items-center">
+                    <Clock className="w-3.5 h-3.5 mr-1" />
+                    {activity.estimated_time}m
                   </span>
                 )}
               </div>
 
               {activity.attempts && activity.attempts.length > 0 && (
-                <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-green-800 font-semibold">
-                    Best Score: {activity.attempts[0].score}/{activity.attempts[0].max_score}
-                  </p>
+                <div className="mb-5 p-3.5 bg-green-50 rounded-2xl border border-green-100 flex items-center justify-between">
+                  <span className="text-xs font-bold text-green-700 uppercase tracking-widest">Best Score</span>
+                  <span className="text-base font-black text-green-600 bg-white px-2.5 py-1 rounded-lg border border-green-100 shadow-sm">
+                    {activity.attempts[0].score}/{activity.attempts[0].max_score}
+                  </span>
                 </div>
               )}
 
-              <Button
-                onClick={() => handlePlayActivity(activity)}
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-              >
-                <Play className="w-4 h-4 mr-2" />
-                Play Now
-              </Button>
+              <div className="mt-auto pt-2">
+                <Button
+                  onClick={() => handlePlayActivity(activity)}
+                  className="w-full h-12 bg-saBlue hover:bg-saBlue/90 text-white rounded-xl font-bold tracking-wide shadow-md shadow-saBlue/20 group-hover:-translate-y-0.5 transition-all"
+                >
+                  <Play className="w-4 h-4 mr-2" fill="currentColor" />
+                  Play Game
+                </Button>
+              </div>
             </div>
           </Card>
         ))}

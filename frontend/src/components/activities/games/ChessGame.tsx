@@ -359,15 +359,15 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     if (showCelebration) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <Card className="gamified-card p-12 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10" />
-                    <Trophy className="w-32 h-32 mx-auto text-yellow-500 mb-8 animate-bounce relative z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+                    <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
                     <h2 className="text-5xl font-black mb-4 relative z-10">Checkmate!</h2>
-                    <p className="text-3xl text-blue-300 mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
+                    <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
                     <div className="flex justify-center gap-4">
                         {[...Array(3)].map((_, i) => (
-                            <Star key={i} className="w-12 h-12 text-yellow-400 fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
+                            <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
                         ))}
                     </div>
                 </Card>
@@ -376,17 +376,17 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
             </div>
 
             {/* Header */}
             <div className="p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-center gap-4 bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
                 <div className="flex items-center gap-4 sm:gap-6">
-                    <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                    <h2 className="text-xl sm:text-2xl font-black uppercase tracking-wider text-saVividOrange">
                         Chess Battle
                     </h2>
                     <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -395,15 +395,15 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                 </div>
 
                 <div className="flex items-center gap-4 sm:gap-8">
-                    <div className="flex items-center bg-yellow-400/10 px-4 sm:px-6 py-2 rounded-full text-yellow-400 border border-yellow-400/20">
+                    <div className="flex items-center bg-saVividOrange/10 px-4 sm:px-6 py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
                         <Star className="w-5 h-5 sm:w-6 sm:h-6 mr-2 fill-current" />
                         <span className="font-bold text-lg sm:text-xl">{Math.round(score)}</span>
                     </div>
-                    <div className="flex items-center bg-blue-400/10 px-4 sm:px-6 py-2 rounded-full text-blue-400 border border-blue-400/20">
+                    <div className="flex items-center bg-saBlueLight/10 px-4 sm:px-6 py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
                         <Clock className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
                         <span className="font-bold text-lg sm:text-xl font-mono">{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={resetGame} className="hover:bg-blue-500/20 hover:text-blue-400 transition-colors">
+                    <Button variant="ghost" onClick={resetGame} className="hover:bg-saBlueLight/20 hover:text-saBlueLight transition-colors">
                         <RotateCcw className="w-6 h-6 sm:w-8 sm:h-8" />
                     </Button>
                     <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors">
@@ -436,7 +436,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                 Current Turn: <span className={currentPlayer === 'white' ? 'text-white' : 'text-gray-400'}>
                                     {currentPlayer === 'white' ? 'WHITE (YOU)' : 'BLACK (CPU)'}
                                 </span>
-                                {isComputerThinking && <span className="ml-2 text-sm text-yellow-500 animate-pulse">Thinking...</span>}
+                                {isComputerThinking && <span className="ml-2 text-sm text-saVividOrange animate-pulse">Thinking...</span>}
                             </p>
                             <p className="text-xs sm:text-sm text-gray-400">Moves: {moveCount}</p>
                         </div>
@@ -456,7 +456,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                                             w-10 h-10 xs:w-12 xs:h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 flex items-center justify-center
                                                             cursor-pointer transition-all duration-200 text-2xl xs:text-3xl sm:text-4xl md:text-5xl
                                                             ${isLight ? 'bg-amber-100' : 'bg-amber-800'}
-                                                            ${isSelected ? 'ring-4 ring-blue-500 ring-inset' : ''}
+                                                            ${isSelected ? 'ring-4 ring-saBlueLight ring-inset' : ''}
                                                             hover:brightness-110
                                                         `}
                                                         onClick={() => currentPlayer === 'white' && handleSquareClick(rowIndex, colIndex)}

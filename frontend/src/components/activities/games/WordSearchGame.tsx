@@ -326,15 +326,15 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
 
   if (showCelebration) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
         <Card className="gamified-card p-12 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10" />
-          <Trophy className="w-32 h-32 mx-auto text-yellow-500 mb-8 animate-bounce relative z-10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+          <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
           <h2 className="text-5xl font-black mb-4 relative z-10">Word Search Complete!</h2>
-          <p className="text-3xl text-blue-300 mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
+          <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
           <div className="flex justify-center gap-4">
             {[...Array(3)].map((_, i) => (
-              <Star key={i} className="w-12 h-12 text-yellow-400 fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
+              <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
           </div>
         </Card>
@@ -343,17 +343,17 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-auto">
+    <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-auto">
       {/* Background Effects */}
       <div className="fixed top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
       </div>
 
       {/* Header */}
       <div className="p-3 md:p-6 flex flex-wrap justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
         <div className="flex items-center gap-2 md:gap-6 flex-wrap">
-          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
             {activity.title}
           </h2>
           {activity.items && activity.items.length > 1 && (
@@ -367,11 +367,11 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
         </div>
 
         <div className="flex items-center gap-2 md:gap-8">
-          <div className="flex items-center bg-yellow-400/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-yellow-400 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+          <div className="flex items-center bg-saVividOrange/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 shadow-[0_0_15px_rgba(236,162,9,0.28)]">
             <Star className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3 fill-current animate-pulse" />
             <span className="font-bold text-sm md:text-xl">{Math.round(score)}</span>
           </div>
-          <div className="flex items-center bg-blue-400/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-blue-400 border border-blue-400/20">
+          <div className="flex items-center bg-saBlueLight/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
             <Clock className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3" />
             <span className="font-bold text-sm md:text-xl font-mono">{timeElapsed}s</span>
           </div>
@@ -384,7 +384,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
       {/* Progress Bar */}
       <div className="h-1.5 w-full bg-white/5">
         <div
-          className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+          className="h-full bg-gradient-to-r from-saBlue via-saBlueLight to-saVividOrange transition-all duration-500 shadow-[0_0_10px_rgba(91,174,240,0.5)]"
           style={{ width: `${words.length > 0 ? (foundWords.size / words.length) * 100 : 0}%` }}
         />
       </div>
@@ -420,7 +420,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
                               isCellInFoundWord(rowIndex, colIndex)
                                 ? 'bg-green-500/20 border-green-400 text-green-300 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
                                 : isCellSelected(rowIndex, colIndex)
-                                  ? 'bg-blue-500/20 border-blue-400 text-blue-300 shadow-[0_0_10px_rgba(59,130,246,0.3)]'
+                                  ? 'bg-saBlueLight/20 border-saBlueLight text-saBlueLight shadow-[0_0_10px_rgba(91,174,240,0.3)]'
                                   : 'bg-slate-800/50 border-slate-600 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500'
                             }
                           `}
@@ -443,7 +443,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
           {/* Words List */}
           <div className="flex flex-col">
             <Card className="gamified-card p-3 md:p-6 flex-1">
-              <h3 className="text-base md:text-xl font-black mb-3 md:mb-6 text-center text-blue-300 uppercase tracking-widest border-b border-blue-500/30 pb-2">
+              <h3 className="text-base md:text-xl font-black mb-3 md:mb-6 text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">
                 Find These Words
               </h3>
               <div className="space-y-2 md:space-y-3 flex-1 overflow-y-auto">

@@ -230,16 +230,16 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
     if (showCelebration) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <Card className="gamified-card p-12 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10" />
-                    <Trophy className="w-32 h-32 mx-auto text-yellow-500 mb-8 animate-bounce relative z-10" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+                    <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
                     <h2 className="text-5xl font-black mb-4 relative z-10">Sudoku Solved!</h2>
                     <p className="text-xl text-blue-200 mb-2 relative z-10">Time: {timeElapsed}s</p>
-                    <p className="text-3xl text-blue-300 mb-8 font-bold relative z-10">Score: {Math.max(100, 1000 - timeElapsed)}</p>
+                    <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.max(100, 1000 - timeElapsed)}</p>
                     <div className="flex justify-center gap-4">
                         {[...Array(3)].map((_, i) => (
-                            <Star key={i} className="w-12 h-12 text-yellow-400 fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
+                            <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
                         ))}
                     </div>
                 </Card>
@@ -248,18 +248,18 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
             </div>
 
             {/* Header */}
             <div className="p-3 md:p-6 bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 md:gap-6">
-                        <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+                        <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
                             Sudoku
                         </h2>
                         <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -268,11 +268,11 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                     </div>
 
                     <div className="flex items-center flex-wrap gap-2 md:gap-4">
-                        <div className="flex items-center bg-blue-400/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-blue-400 border border-blue-400/20">
+                        <div className="flex items-center bg-saBlueLight/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
                             <Clock className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
                             <span className="font-bold text-sm md:text-lg font-mono">{timeElapsed}s</span>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={resetPuzzle} className="hover:bg-blue-500/20 hover:text-blue-400 transition-colors p-1.5 md:p-2">
+                        <Button variant="ghost" size="sm" onClick={resetPuzzle} className="hover:bg-saBlueLight/20 hover:text-saBlueLight transition-colors p-1.5 md:p-2">
                             <RotateCcw className="w-4 h-4 md:w-6 md:h-6" />
                         </Button>
                         <Button variant="ghost" size="sm" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors p-1.5 md:p-2">
@@ -283,12 +283,12 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center justify-start md:justify-center">
-                <div className="w-full max-w-2xl my-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-8 relative z-10 w-full mx-auto flex flex-col items-center justify-start">
+                <div className="w-full max-w-5xl my-auto py-4 flex flex-col md:flex-row md:items-center md:justify-center gap-6">
                     {/* Sudoku Grid */}
-                    <Card className="gamified-card p-4 sm:p-6 mb-6 bg-slate-800/50 backdrop-blur-md border-slate-700">
+                    <Card className="gamified-card p-4 sm:p-6 bg-slate-800/50 backdrop-blur-md border-slate-700 shrink-0">
                         <div className="inline-block mx-auto">
-                            <div className="grid grid-cols-9 gap-0 border-4 border-blue-500 rounded-lg overflow-hidden">
+                            <div className="grid grid-cols-9 gap-0 border-4 border-saBlueLight rounded-lg overflow-hidden">
                                 {grid.map((row, rowIndex) => (
                                     row.map((cell, colIndex) => {
                                         const isInitial = initialGrid[rowIndex][colIndex] !== null;
@@ -308,12 +308,12 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                                                 className={`
                           w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center
                           text-base xs:text-lg sm:text-xl font-bold cursor-pointer transition-all duration-200
-                          ${isInitial ? 'bg-slate-900 text-blue-400' : 'bg-slate-800 text-white'}
-                          ${isSelected ? 'bg-blue-600/50 ring-2 ring-blue-400 ring-inset' : ''}
+                          ${isInitial ? 'bg-slate-900 text-saBlueLight' : 'bg-slate-800 text-white'}
+                          ${isSelected ? 'bg-saBlue/50 ring-2 ring-saBlueLight ring-inset' : ''}
                           ${!isSelected && (isInSameRow || isInSameCol || isInSameBox) ? 'bg-slate-700' : ''}
-                          ${thickBorderRight ? 'border-r-2 border-blue-500' : 'border-r border-slate-600'}
-                          ${thickBorderBottom ? 'border-b-2 border-blue-500' : 'border-b border-slate-600'}
-                          hover:bg-blue-500/30
+                          ${thickBorderRight ? 'border-r-2 border-saBlueLight' : 'border-r border-slate-600'}
+                          ${thickBorderBottom ? 'border-b-2 border-saBlueLight' : 'border-b border-slate-600'}
+                          hover:bg-saBlueLight/30
                         `}
                                                 onClick={() => handleCellClick(rowIndex, colIndex)}
                                             >
@@ -327,8 +327,8 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                     </Card>
 
                     {/* Number Pad */}
-                    <Card className="gamified-card p-4 sm:p-6 bg-slate-800/50 backdrop-blur-md border-slate-700">
-                        <div className="grid grid-cols-5 gap-2 sm:gap-3 mb-4">
+                    <Card className="gamified-card p-4 sm:p-6 bg-slate-800/50 backdrop-blur-md border-slate-700 md:w-56 shrink-0">
+                        <div className="grid grid-cols-5 md:grid-cols-3 gap-2 sm:gap-3 mb-4">
                             {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                                 <button
                                     key={num}
@@ -338,7 +338,7 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                     aspect-square flex items-center justify-center rounded-lg font-bold text-xl sm:text-2xl
                     transition-all duration-200 border-2
                     ${selectedCell
-                                            ? 'bg-blue-500/20 border-blue-400 text-blue-300 hover:bg-blue-500/30 cursor-pointer'
+                                            ? 'bg-saBlueLight/20 border-saBlueLight text-saBlueLight hover:bg-saBlueLight/30 cursor-pointer'
                                             : 'bg-slate-800/50 border-slate-600 text-slate-500 cursor-not-allowed'
                                         }
                   `}

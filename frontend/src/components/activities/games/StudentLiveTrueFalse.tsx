@@ -245,11 +245,11 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
 
     if (status === 'CONNECTING' || status === 'WAITING') {
         return (
-            <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+            <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
                 {/* Background Effects */}
                 <div className="absolute top-0 left-0 w-full h-full -z-10">
-                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
                 </div>
 
                 {/* Header */}
@@ -263,10 +263,10 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
                 <div className="flex-1 flex items-center justify-center p-8">
                     <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating">
                         <div className="relative inline-block mb-8">
-                            <div className="w-24 h-24 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center animate-pulse">
-                                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-400"></div>
+                            <div className="w-24 h-24 mx-auto bg-saBlueLight/20 rounded-full flex items-center justify-center animate-pulse">
+                                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-saBlueLight"></div>
                             </div>
-                            <div className="absolute inset-0 bg-blue-400/20 blur-2xl rounded-full -z-10" />
+                            <div className="absolute inset-0 bg-saBlueLight/20 blur-2xl rounded-full -z-10" />
                         </div>
                         <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight">
                             {status === 'CONNECTING' ? 'Connecting to Session...' : 'Waiting for Next Question...'}
@@ -274,13 +274,13 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
                         {status === 'WAITING' && (
                             <div className="space-y-4">
                                 <p className="text-blue-100/60 text-lg italic">
-                                    Welcome, <span className="text-blue-400 font-bold">{studentName}</span>!
+                                    Welcome, <span className="text-saBlueLight font-bold">{studentName}</span>!
                                 </p>
                                 <p className="text-slate-400 text-sm">
                                     The teacher controls when questions are revealed.
                                 </p>
                                 <div className="mt-6 p-4 bg-slate-800/50 rounded-lg">
-                                    <p className="text-yellow-400 font-semibold">Current Score: {score}</p>
+                                    <p className="text-saVividOrange font-semibold">Current Score: {score}</p>
                                 </div>
                             </div>
                         )}
@@ -292,29 +292,29 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white overflow-hidden">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white overflow-hidden">
                 {/* Background Effects */}
                 <div className="absolute top-0 left-0 w-full h-full -z-10">
-                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
                 </div>
 
                 <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-purple-500/10" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
                     <div className="absolute top-4 right-4 z-20">
                         <Button variant="ghost" onClick={onExit} className="hover:bg-red-500/20 hover:text-red-400 transition-colors">
                             <X className="w-6 h-6" />
                         </Button>
                     </div>
                     <div className="relative inline-block mb-8">
-                        <div className="w-24 h-24 mx-auto bg-yellow-500/20 rounded-full flex items-center justify-center">
+                        <div className="w-24 h-24 mx-auto bg-saVividOrange/20 rounded-full flex items-center justify-center">
                             <div className="text-4xl">🏆</div>
                         </div>
-                        <div className="absolute inset-0 bg-yellow-400/20 blur-2xl rounded-full -z-10" />
+                        <div className="absolute inset-0 bg-saVividOrange/20 blur-2xl rounded-full -z-10" />
                     </div>
                     <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight relative z-10">Session Ended</h2>
                     <div className="space-y-4 mb-8 relative z-10">
-                        <p className="text-3xl font-bold text-blue-300">Final Score: {score}</p>
+                        <p className="text-3xl font-bold text-saBlueLight">Final Score: {score}</p>
                         <p className="text-blue-100/60 text-lg italic">
                             "Great work! You've completed the live True/False session."
                         </p>
@@ -371,11 +371,11 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
             {/* Background Effects */}
             <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
             </div>
 
             {/* Header */}
@@ -389,10 +389,10 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
             <div className="flex-1 flex items-center justify-center p-8">
                 <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating">
                     <div className="relative inline-block mb-8">
-                        <div className="w-24 h-24 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center animate-pulse">
-                            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-400"></div>
+                        <div className="w-24 h-24 mx-auto bg-saBlueLight/20 rounded-full flex items-center justify-center animate-pulse">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-saBlueLight"></div>
                         </div>
-                        <div className="absolute inset-0 bg-blue-400/20 blur-2xl rounded-full -z-10" />
+                        <div className="absolute inset-0 bg-saBlueLight/20 blur-2xl rounded-full -z-10" />
                     </div>
                     <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight">
                         Loading Game Data...

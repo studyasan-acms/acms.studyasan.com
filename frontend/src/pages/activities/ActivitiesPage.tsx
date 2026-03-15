@@ -14,6 +14,7 @@ import TrueFalseGame from '../../components/activities/games/TrueFalseGame.tsx';
 import ChessGame from '../../components/activities/games/ChessGame.tsx';
 import HangmanGame from '../../components/activities/games/HangmanGame.tsx';
 import SudokuGame from '../../components/activities/games/SudokuGame.tsx';
+import AbacusGame from '../../components/activities/games/AbacusGame';
 import { toast } from 'sonner';
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { resolveImageUrl } from '@/lib/utils';
@@ -142,6 +143,7 @@ export default function ActivitiesPage() {
       CHESS: 'Chess',
       HANGMAN: 'Hangman',
       SUDOKU: 'Sudoku',
+      ABACUS: 'Abacus',
     };
     return labels[type];
   };
@@ -175,6 +177,8 @@ export default function ActivitiesPage() {
         return <HangmanGame {...gameProps} />;
       case 'SUDOKU':
         return <SudokuGame {...gameProps} />;
+      case 'ABACUS':
+        return <AbacusGame {...gameProps} />;
       default:
         return (
           <div className="text-center py-12">
@@ -241,6 +245,7 @@ export default function ActivitiesPage() {
               <option value="CHESS">Chess</option>
               <option value="HANGMAN">Hangman</option>
               <option value="SUDOKU">Sudoku</option>
+              <option value="ABACUS">Abacus</option>
             </select>
           </div>
 

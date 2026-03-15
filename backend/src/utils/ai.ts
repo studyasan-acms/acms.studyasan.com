@@ -48,6 +48,11 @@ Return ONLY valid JSON array: [{"text": "Sentence with _____.", "blanks": [{"ans
 
 Return ONLY valid JSON: {"words": ["word1", "word2"]}`;
 
+    case 'ABACUS':
+      return `${basePrompt}Create ${count} abacus arithmetic practice questions suitable for mental math.
+
+Return ONLY valid JSON array: [{"prompt": "47 + 28", "answer": 75, "hint": "Use place values"}]`;
+
     case 'SEQUENCE_ORDER':
       return `${basePrompt}Create ${count} sequencing activities with 3-4 steps each.
 
@@ -246,6 +251,15 @@ export const generateActivityContent = async (
         },
         points: 20,
       }];
+    } else if (activityType === 'ABACUS') {
+      items = parsedContent.map((item: any) => ({
+        content: {
+          prompt: item.prompt,
+          answer: Number(item.answer),
+          hint: item.hint || '',
+        },
+        points: 10,
+      }));
     } else if (activityType === 'SEQUENCE_ORDER') {
       items = parsedContent.map((item: any) => ({
         content: {

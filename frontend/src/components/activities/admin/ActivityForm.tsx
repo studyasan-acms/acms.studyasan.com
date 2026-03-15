@@ -23,6 +23,7 @@ import TrueFalseBuilder from './builders/TrueFalseBuilder.tsx';
 import ChessBuilder from './builders/ChessBuilder.tsx';
 import HangmanBuilder from './builders/HangmanBuilder.tsx';
 import SudokuBuilder from './builders/SudokuBuilder.tsx';
+import AbacusBuilder from './builders/AbacusBuilder';
 
 interface Props {
   activity: Activity | null;
@@ -68,6 +69,7 @@ export default function ActivityForm({
       CHESS: 'Play chess against the computer. Use strategy to checkmate your opponent\'s king while protecting your own pieces.',
       HANGMAN: 'Guess the hidden word letter by letter. Select letters to reveal the word before the hangman is complete!',
       SUDOKU: 'Fill the 9x9 grid with numbers 1-9 so that each row, column, and 3x3 box contains all digits without repetition.',
+      ABACUS: 'Solve arithmetic using an interactive abacus. Move beads by place value and submit the represented number.',
       CROSSWORD: 'Fill in the crossword puzzle by solving the clues. Click on a clue to highlight the corresponding word in the grid, then type your answer.',
       PICTURE_REVEAL: 'Answer questions correctly to reveal parts of the hidden picture. Complete all questions to see the full image!'
     };
@@ -181,6 +183,8 @@ export default function ActivityForm({
         return <HangmanBuilder {...props} />;
       case 'SUDOKU':
         return <SudokuBuilder {...props} />;
+      case 'ABACUS':
+        return <AbacusBuilder {...props} />;
       default:
         return <div className="text-center py-8 text-gray-500">Builder for {formData.activity_type} is under construction</div>;
     }
@@ -247,6 +251,7 @@ export default function ActivityForm({
                 <option value="CHESS">Chess</option>
                 <option value="HANGMAN">Hangman</option>
                 <option value="SUDOKU">Sudoku</option>
+                <option value="ABACUS">Abacus</option>
               </select>
             </div>
           </div>

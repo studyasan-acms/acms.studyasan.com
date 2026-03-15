@@ -226,11 +226,11 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
 
     if (status === 'LOBBY') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <div className="text-center animate-in fade-in zoom-in duration-500">
                     <div className="mb-8 relative inline-block">
-                        <div className="absolute inset-0 bg-blue-500/30 blur-3xl rounded-full animate-pulse"></div>
-                        <Star className="w-24 h-24 text-yellow-400 fill-current relative z-10 animate-spin-slow" />
+                        <div className="absolute inset-0 bg-saBlueLight/30 blur-3xl rounded-full animate-pulse"></div>
+                        <Star className="w-24 h-24 text-saVividOrange fill-current relative z-10 animate-spin-slow" />
                     </div>
                     <h2 className="text-4xl font-bold mb-4">You're in!</h2>
                     <p className="text-xl text-blue-200">Waiting for {session?.host?.name || 'teacher'} to start...</p>
@@ -247,11 +247,11 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a] text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
                 <Card className="gamified-card p-8 md:p-12 text-center max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <Trophy className="w-24 h-24 mx-auto text-yellow-400 mb-6" />
+                    <Trophy className="w-24 h-24 mx-auto text-saVividOrange mb-6" />
                     <h2 className="text-4xl font-bold mb-2">Quiz Ended</h2>
-                    <p className="text-xl text-blue-300 mb-8">Your Final Score: {score}</p>
+                    <p className="text-xl text-saBlueLight mb-8">Your Final Score: {score}</p>
 
                     <div className="bg-slate-800/50 rounded-2xl p-6 mb-8 text-left">
                         <h3 className="text-lg font-bold mb-4 text-center uppercase tracking-widest text-slate-400">Leaderboard</h3>
@@ -260,14 +260,14 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                                 <p className="text-center text-slate-500">Wait for final scores...</p>
                             ) : (
                                 leaderboard.map((s, i) => (
-                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-yellow-500/20 border border-yellow-500/50' : 'bg-slate-700/50'}`}>
+                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-saVividOrange/20 border border-saVividOrange/50' : 'bg-slate-700/50'}`}>
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-slate-600'}`}>
+                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-saVividOrange text-slate-950' : 'bg-slate-600'}`}>
                                                 #{i + 1}
                                             </div>
                                             <span className="font-semibold">{s.name}</span>
                                         </div>
-                                        <span className="font-bold text-blue-400">{s.score}</span>
+                                        <span className="font-bold text-saBlueLight">{s.score}</span>
                                     </div>
                                 ))
                             )}
@@ -285,11 +285,11 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
     if (!question) return <div className="text-white">Loading question...</div>;
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col overflow-hidden font-sans">
+        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col overflow-hidden font-sans">
             {/* Reuse the UI from QuizGameComponent roughly */}
             <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
             </div>
 
             {/* Header */}
@@ -301,11 +301,11 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                     </button>
                 </div>
                 <div className="flex items-center gap-6">
-                    <div className="flex items-center bg-yellow-400/10 px-4 py-2 rounded-full text-yellow-400 border border-yellow-400/20">
+                    <div className="flex items-center bg-saVividOrange/10 px-4 py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
                         <Star className="w-5 h-5 mr-2 fill-current" />
                         <span className="font-bold text-lg">{score}</span>
                     </div>
-                    <div className="flex items-center bg-blue-400/10 px-4 py-2 rounded-full text-blue-400 border border-blue-400/20">
+                    <div className="flex items-center bg-saBlueLight/10 px-4 py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
                         <Clock className="w-5 h-5 mr-2" />
                         <span className={`font-bold text-lg ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : ''}`}>{timeLeft}s</span>
                     </div>
@@ -328,7 +328,7 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                     ) : null}
 
                     <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center max-w-sm w-full">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saBlueLight mx-auto mb-4"></div>
                         <h3 className="text-xl font-bold mb-2">Waiting for teacher...</h3>
                         <p className="text-slate-400">Get ready for the next question!</p>
                     </div>
@@ -348,7 +348,7 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                         {question.content.options.map((option: string, index: number) => {
                             const isSelected = selectedAnswer === index;
                             let statusClass = "btn-3d-neutral";
-                            if (isSelected) statusClass = "btn-3d-primary ring-4 ring-blue-400/30";
+                            if (isSelected) statusClass = "btn-3d-primary ring-4 ring-saBlueLight/30";
 
                             return (
                                 <button

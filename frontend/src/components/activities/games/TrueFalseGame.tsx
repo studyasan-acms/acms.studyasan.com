@@ -102,11 +102,11 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
 
   if (activeQuestionIndex < 0 || activeQuestionIndex >= questions.length) {
     return (
-      <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-hidden">
+      <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
         {/* Background Effects */}
         <div className="absolute top-0 left-0 w-full h-full -z-10">
-          <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-          <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+          <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+          <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
         </div>
 
         {/* Header */}
@@ -125,10 +125,10 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
         <div className="flex-1 flex items-center justify-center p-8">
           <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating">
             <div className="relative inline-block mb-8">
-              <div className="w-24 h-24 mx-auto bg-blue-500/20 rounded-full flex items-center justify-center animate-pulse">
-                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-400"></div>
+              <div className="w-24 h-24 mx-auto bg-saBlueLight/20 rounded-full flex items-center justify-center animate-pulse">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-saBlueLight"></div>
               </div>
-              <div className="absolute inset-0 bg-blue-400/20 blur-2xl rounded-full -z-10" />
+              <div className="absolute inset-0 bg-saBlueLight/20 blur-2xl rounded-full -z-10" />
             </div>
             <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight">
               Question content loading...
@@ -145,24 +145,24 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
   const question = questions[activeQuestionIndex];
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0f172a] text-white flex flex-col font-sans overflow-auto">
+    <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-auto">
       {/* Background Effects */}
       <div className="fixed top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-purple-900/40 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-blue-900/40 blur-[100px] rounded-full" />
+        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
       </div>
 
       {/* Header */}
       <div className="p-3 md:p-6 flex flex-wrap justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
         <div className="flex items-center gap-2 md:gap-6">
-          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
             {activity.title}
           </h2>
           <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
             {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
           </button>
           {!isLive && (
-            <div className="bg-white/10 px-2 md:px-4 py-1 md:py-2 rounded-full font-bold text-xs md:text-base text-blue-300 border border-white/10">
+            <div className="bg-white/10 px-2 md:px-4 py-1 md:py-2 rounded-full font-bold text-xs md:text-base text-saBlueLight border border-white/10">
               {currentQuestion + 1} / {questions.length}
             </div>
           )}
@@ -174,7 +174,7 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
         </div>
 
         <div className="flex items-center gap-2 md:gap-8">
-          <div className="flex items-center bg-yellow-400/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-yellow-400 border border-yellow-400/20 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+          <div className="flex items-center bg-saVividOrange/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 shadow-[0_0_15px_rgba(236,162,9,0.28)]">
             <Star className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3 fill-current animate-pulse" />
             <span className="font-bold text-sm md:text-xl">{score}</span>
           </div>
@@ -188,7 +188,7 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
       {!isLive && (
         <div className="h-1.5 w-full bg-white/5">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 transition-all duration-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"
+            className="h-full bg-gradient-to-r from-saBlue via-saBlueLight to-saVividOrange transition-all duration-500 shadow-[0_0_10px_rgba(91,174,240,0.5)]"
             style={{ width: `${questions.length > 0 ? ((currentQuestion + 1) / questions.length) * 100 : 0}%` }}
           />
         </div>
@@ -199,8 +199,8 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
         <div className="max-w-4xl w-full space-y-4 md:space-y-8 py-4">
           {/* Question Section */}
           <div className="text-center space-y-4 md:space-y-6">
-            <Card className="gamified-card p-4 md:p-12 mb-4 md:mb-8">
-              <h3 className="text-lg md:text-4xl font-extrabold leading-tight tracking-tight">
+            <Card className="gamified-card p-6 md:p-12 mb-4 md:mb-8">
+              <h3 className="text-3xl md:text-4xl font-extrabold leading-tight tracking-tight">
                 {question.content.statement}
               </h3>
             </Card>
@@ -216,10 +216,10 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
                   ? question.content.correctAnswer === true
                     ? 'btn-3d-success scale-105 z-10'
                     : 'btn-3d-danger grayscale-[0.5]'
-                  : 'btn-3d-success hover:scale-102'
+                  : 'btn-3d-primary hover:scale-102'
               }`}
             >
-              <span className="text-2xl md:text-4xl font-black uppercase tracking-widest">TRUE</span>
+              <span className="text-xl md:text-4xl font-black uppercase tracking-widest">TRUE</span>
             </button>
             <button
               onClick={() => handleAnswer(false)}
@@ -229,10 +229,10 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
                   ? question.content.correctAnswer === false
                     ? 'btn-3d-success scale-105 z-10'
                     : 'btn-3d-danger grayscale-[0.5]'
-                  : 'btn-3d-danger hover:scale-102'
+                  : 'btn-3d-success hover:scale-102'
               }`}
             >
-              <span className="text-2xl md:text-4xl font-black uppercase tracking-widest">FALSE</span>
+              <span className="text-xl md:text-4xl font-black uppercase tracking-widest">FALSE</span>
             </button>
           </div>
 

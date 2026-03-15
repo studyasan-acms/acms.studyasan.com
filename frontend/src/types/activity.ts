@@ -12,7 +12,8 @@ export type ActivityType =
   | 'PICTURE_REVEAL'
   | 'CHESS'
   | 'HANGMAN'
-  | 'SUDOKU';
+  | 'SUDOKU'
+  | 'ABACUS';
 
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 
@@ -256,6 +257,13 @@ export interface SequenceOrderContent {
 export interface TrueFalseContent {
   statement: string;
   correctAnswer: boolean;
+}
+
+// Abacus
+export interface AbacusContent {
+  prompt: string;
+  answer: number;
+  hint?: string;
 }
 
 // Picture Reveal
