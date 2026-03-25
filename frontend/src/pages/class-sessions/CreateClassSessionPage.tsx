@@ -30,6 +30,8 @@ export default function CreateClassSessionPage() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectSearch, setSubjectSearch] = useState('');
   const [subjectPage, setSubjectPage] = useState(1);
+  const [subjectTotalPages, setSubjectTotalPages] = useState(1);
+  const [subjectLoading, setSubjectLoading] = useState(false);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -76,16 +78,35 @@ export default function CreateClassSessionPage() {
 
   const isAdmin = user?.role === 'ADMIN';
 
+  const fetchSubjects = useCallback(async (page: number, search: string, classId: number | null) => {
+    try {
+      setSubjectLoading(true);
+      const subjectsRes = await subjectService.getAll({
+        page,
+        limit: 10,
+        ...(search.trim() ? { search: search.trim() } : {}),
+        ...(classId ? { class_id: classId } : {}),
+      });
+
+      setSubjects(subjectsRes.data.data);
+      setSubjectTotalPages(Math.max(1, subjectsRes.data.pagination.totalPages));
+    } catch (error) {
+      console.error('Failed to fetch subjects', error);
+      setSubjects([]);
+      setSubjectTotalPages(1);
+    } finally {
+      setSubjectLoading(false);
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
-      const [subjectsRes, classesRes, boardsRes] = await Promise.all([
-        subjectService.getAll(),
+      const [classesRes, boardsRes] = await Promise.all([
         classService.getAll(),
         boardService.getAll(),
       ]);
-      setSubjects(subjectsRes.data.data);
       setClasses(classesRes.data.data);
       setBoards(boardsRes.data.data);
 
@@ -143,6 +164,10 @@ export default function CreateClassSessionPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    fetchSubjects(subjectPage, subjectSearch, formData.class_id);
+  }, [fetchSubjects, subjectPage, subjectSearch, formData.class_id]);
 
   // Auto-set teacher for non-admin
   useEffect(() => {
@@ -205,28 +230,16 @@ export default function CreateClassSessionPage() {
   };
 
   const filteredSubjects = subjects.filter((subject) => {
-    const matchesClass = formData.class_id ? subject.class_id === formData.class_id : true;
-    const matchesSearch = subject.name.toLowerCase().includes(subjectSearch.toLowerCase());
     const isEndedCourse = Boolean(
       subject.is_course && subject.end_date && new Date(subject.end_date) < new Date()
     );
 
-    return matchesClass && matchesSearch && !isEndedCourse;
+    return !isEndedCourse;
   });
-
-  const subjectPageSize = 10;
-  const totalSubjectPages = Math.max(1, Math.ceil(filteredSubjects.length / subjectPageSize));
-  const pagedSubjects = filteredSubjects.slice((subjectPage - 1) * subjectPageSize, subjectPage * subjectPageSize);
 
   useEffect(() => {
     setSubjectPage(1);
   }, [subjectSearch, formData.class_id]);
-
-  useEffect(() => {
-    if (subjectPage > totalSubjectPages) {
-      setSubjectPage(totalSubjectPages);
-    }
-  }, [subjectPage, totalSubjectPages]);
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -522,16 +535,19 @@ export default function CreateClassSessionPage() {
                                 />
                               </div>
                               <div className="max-h-52 overflow-y-auto">
-                                {pagedSubjects.map((subject) => (
+                                {subjectLoading && (
+                                  <div className="py-3 text-center text-xs text-gray-400">Loading subjects...</div>
+                                )}
+                                {!subjectLoading && filteredSubjects.map((subject) => (
                                   <SelectItem key={subject.id} value={String(subject.id)}>
                                     {subject.name} {subject.class?.name ? `(${subject.class.name})` : ''}
                                   </SelectItem>
                                 ))}
-                                {filteredSubjects.length === 0 && (
+                                {!subjectLoading && filteredSubjects.length === 0 && (
                                   <div className="py-3 text-center text-xs text-gray-400">No subjects found</div>
                                 )}
                               </div>
-                              {filteredSubjects.length > subjectPageSize && (
+                              {subjectTotalPages > 1 && (
                                 <div className="sticky bottom-0 bg-popover border-t px-2 py-1.5 flex items-center justify-between">
                                   <Button
                                     type="button"
@@ -547,7 +563,7 @@ export default function CreateClassSessionPage() {
                                   >
                                     Prev
                                   </Button>
-                                  <span className="text-[10px] text-gray-500">Page {subjectPage} / {totalSubjectPages}</span>
+                                  <span className="text-[10px] text-gray-500">Page {subjectPage} / {subjectTotalPages}</span>
                                   <Button
                                     type="button"
                                     size="sm"
@@ -556,9 +572,9 @@ export default function CreateClassSessionPage() {
                                     onClick={(e) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      setSubjectPage((prev) => Math.min(totalSubjectPages, prev + 1));
+                                      setSubjectPage((prev) => Math.min(subjectTotalPages, prev + 1));
                                     }}
-                                    disabled={subjectPage === totalSubjectPages}
+                                    disabled={subjectPage === subjectTotalPages}
                                   >
                                     Next
                                   </Button>
