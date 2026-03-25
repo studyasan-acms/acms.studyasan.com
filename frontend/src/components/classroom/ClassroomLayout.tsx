@@ -35,6 +35,7 @@ interface ClassroomLayoutProps {
     isTeacher: boolean;
     onMuteParticipant?: (participantId: string | number) => void;
     onKickParticipant?: (participantId: string | number) => void;
+    onToggleWhiteboardAccess?: (participantId: string | number) => void;
 
     // Actions
     onToggleMic: () => void;
@@ -65,6 +66,7 @@ export function ClassroomLayout({
     isTeacher,
     onMuteParticipant,
     onKickParticipant,
+    onToggleWhiteboardAccess,
     onToggleMic,
     onToggleCamera,
     onToggleScreenShare,
@@ -88,6 +90,7 @@ export function ClassroomLayout({
         isVideoOff: localUser.isVideoOff,
         isScreenSharing: localUser.isScreenSharing,
         isSpeaking: false,
+        hasWhiteboardAccess: localUser.hasWhiteboardAccess,
     };
 
     const allParticipants = [localParticipant, ...Array.from(participants.values())];
@@ -157,6 +160,7 @@ export function ClassroomLayout({
                                     isTeacher={isTeacher}
                                     onMuteParticipant={onMuteParticipant}
                                     onKickParticipant={onKickParticipant}
+                                    onToggleWhiteboardAccess={onToggleWhiteboardAccess}
                                     className="w-full h-full"
                                 />
                             </div>
@@ -175,6 +179,7 @@ export function ClassroomLayout({
                             isTeacher={isTeacher}
                             onMuteParticipant={onMuteParticipant}
                             onKickParticipant={onKickParticipant}
+                            onToggleWhiteboardAccess={onToggleWhiteboardAccess}
                         />
                     </div>
 
@@ -184,6 +189,7 @@ export function ClassroomLayout({
                         onClose={() => setIsWhiteboardActive(false)}
                         sendMessage={sendWhiteboardMessage}
                         onRemoteMessage={setWhiteboardMessageHandler}
+                        canEdit={localUser.hasWhiteboardAccess ?? false}
                     />
                 </div>
             </div>

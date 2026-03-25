@@ -35,6 +35,7 @@ interface WhiteboardProps {
     onClose: () => void;
     sendMessage: (message: WhiteboardMessage) => void;
     onRemoteMessage?: (handler: (message: WhiteboardMessage) => void) => void;
+    canEdit?: boolean;
 }
 
 const COLORS = [
@@ -63,9 +64,14 @@ export function Whiteboard({
     onClose,
     sendMessage,
     onRemoteMessage,
+    canEdit = true,
 }: WhiteboardProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        console.log(`[Whiteboard] Rendered. isActive=${isActive}, canEdit=${canEdit}`);
+    }, [isActive, canEdit]);
 
     const {
         currentTool,
@@ -105,6 +111,7 @@ export function Whiteboard({
     // Delete handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (!canEdit) return;
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (!showTextInput && !showImageDialog) {
                     deleteSelected();
@@ -214,7 +221,8 @@ export function Whiteboard({
         >
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
-                <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
+                {canEdit && (
+                    <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
                     {/* Drawing Tools */}
                     <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                         <Button
@@ -496,6 +504,7 @@ export function Whiteboard({
                         <Trash2 className="w-3.5 h-3.5" />
                     </Button>
                 </div>
+                )}
 
                 {/* Close button */}
                 <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-2 top-2 md:static md:ml-2">
@@ -521,7 +530,7 @@ export function Whiteboard({
                     onPointerUp={handlePointerUp}
                     onPointerLeave={handlePointerUp}
                     className="absolute inset-0 touch-none"
-                    style={{ touchAction: 'none', pointerEvents: showTextInput ? 'none' : 'auto' }}
+                    style={{ touchAction: 'none', pointerEvents: !canEdit ? 'none' : (showTextInput ? 'none' : 'auto') }}
                 />
 
                 {/* Text Input */}

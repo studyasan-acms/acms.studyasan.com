@@ -45,6 +45,7 @@ export interface Participant {
     isVideoOff: boolean;
     isScreenSharing: boolean;
     isSpeaking: boolean;
+    hasWhiteboardAccess?: boolean;
 }
 
 /**
@@ -56,6 +57,7 @@ export interface LocalUserState {
     isVideoOff: boolean;
     isScreenSharing: boolean;
     isWhiteboardActive: boolean;
+    hasWhiteboardAccess?: boolean;
 }
 
 /**
@@ -156,7 +158,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access';
 
 /**
  * Generic DataChannel message
@@ -168,6 +170,8 @@ export interface DataChannelMessage {
     // Teacher control properties
     participantId?: string | number;
     muted?: boolean;
+    videoOff?: boolean;
+    whiteboardAccess?: boolean;
 }
 
 // ============ Room Types ============

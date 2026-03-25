@@ -461,6 +461,7 @@ export class JanusClient {
                     ptype: 'subscriber',
                     room: this.getRoomId(),
                     feed: publisher.id,
+                    offer_data: true,
                 },
             });
         }
@@ -468,6 +469,12 @@ export class JanusClient {
 
     private createPeerConnection(feedId?: string | number): RTCPeerConnection {
         const pc = new RTCPeerConnection({ iceServers: this.iceServers });
+
+        // Force the browser backend to initialize SCTP transport explicitly
+        // This is crucial for subscribers answering an offer that contains data channels
+        try {
+            pc.createDataChannel('init-sctp');
+        } catch(e) {}
 
         pc.onicecandidate = (event) => {
             if (event.candidate) {
@@ -494,10 +501,7 @@ export class JanusClient {
         pc.ondatachannel = (event) => {
             const channel = event.channel;
             console.log(`[Janus] Received data channel: ${channel.label}`);
-
-            if (channel.label === 'whiteboard') {
-                this.setupDataChannelHandlers(channel);
-            }
+            this.setupDataChannelHandlers(channel);
         };
 
         pc.onconnectionstatechange = () => {
@@ -602,36 +606,10 @@ export class JanusClient {
     async toggleCamera(enabled: boolean): Promise<void> {
         if (!this.localStream || !this.publisherPc) return;
 
-        if (enabled) {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: 1280, height: 720, frameRate: 30 }
-                });
-                const newVideoTrack = stream.getVideoTracks()[0];
-
-                const oldTracks = this.localStream.getVideoTracks();
-                oldTracks.forEach(t => {
-                    t.stop();
-                    this.localStream?.removeTrack(t);
-                });
-                this.localStream.addTrack(newVideoTrack);
-
-                const sender = this.publisherPc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) {
-                    await sender.replaceTrack(newVideoTrack);
-                }
-                console.log('[Janus] Camera restarted');
-            } catch (err) {
-                console.error('[Janus] Failed to restart camera:', err);
-                throw err;
-            }
-        } else {
-            this.localStream.getVideoTracks().forEach(track => {
-                track.stop();
-                track.enabled = false;
-            });
-            console.log('[Janus] Camera stopped');
-        }
+        this.localStream.getVideoTracks().forEach(track => {
+            track.enabled = enabled;
+        });
+        console.log(`[Janus] Camera ${enabled ? 'enabled' : 'disabled'}`);
     }
 
     async shareScreen(): Promise<MediaStream> {
@@ -688,6 +666,7 @@ export class JanusClient {
             const messageWithSender = {
                 ...message,
                 senderId: this.localUniqueId,
+                janusId: this.myId,
             };
             this.dataChannel.send(JSON.stringify(messageWithSender));
         }

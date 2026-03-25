@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-const GRAY_BACKGROUND_COLOR = [128, 128, 128]; // RGB for gray
+const BACKGROUND_COLOR = [255, 255, 255]; // RGB for white
 
 interface UseBackgroundProcessorReturn {
     isBackgroundActive: boolean;
@@ -86,7 +86,7 @@ export function useBackgroundProcessor(): UseBackgroundProcessorReturn {
 
                 // Fill background with gray where mask is not present
                 ctx.globalCompositeOperation = 'source-out';
-                ctx.fillStyle = `rgb(${GRAY_BACKGROUND_COLOR.join(',')})`;
+                ctx.fillStyle = `rgb(${BACKGROUND_COLOR.join(',')})`;
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                 // Draw foreground (person)

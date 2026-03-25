@@ -177,6 +177,7 @@ export function ClassroomPage() {
                 isTeacher={roomInfo?.isTeacher || false}
                 onMuteParticipant={janus.muteParticipant}
                 onKickParticipant={janus.kickParticipant}
+                onToggleWhiteboardAccess={janus.toggleWhiteboardAccess}
                 onToggleMic={janus.toggleMic}
                 onToggleCamera={janus.toggleCamera}
                 onToggleScreenShare={janus.toggleScreenShare}

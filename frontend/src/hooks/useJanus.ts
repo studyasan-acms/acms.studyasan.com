@@ -71,6 +71,7 @@ interface UseJanusReturn {
     // Teacher controls
     muteParticipant: (participantId: string | number) => void;
     kickParticipant: (participantId: string | number) => void;
+    toggleWhiteboardAccess: (participantId: string | number) => void;
 }
 
 export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeacher: _isTeacher }: UseJanusOptions): UseJanusReturn {
@@ -82,11 +83,27 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
     const [localStream, setLocalStream] = useState<MediaStream | null>(null);
     const [localUser, setLocalUser] = useState<LocalUserState>({
         displayName,
-        isMuted: false,
-        isVideoOff: false,
+        isMuted: true,
+        isVideoOff: true,
         isScreenSharing: false,
         isWhiteboardActive: false,
+        hasWhiteboardAccess: _isTeacher,
     });
+
+    // Update whiteboard access if teacher role updates after mount
+    useEffect(() => {
+        setLocalUser(prev => ({
+            ...prev,
+            hasWhiteboardAccess: _isTeacher,
+        }));
+    }, [_isTeacher]);
+
+    // Join sound ref
+    const joinSoundRef = useRef<HTMLAudioElement | null>(null);
+    useEffect(() => {
+        joinSoundRef.current = new Audio('/sounds/join.wav');
+        joinSoundRef.current.volume = 0.5;
+    }, []);
 
     // Remote participants
     const [participants, setParticipants] = useState<Map<string | number, Participant>>(new Map());
@@ -128,6 +145,14 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
     }, [apiSync]);
 
     const sendWhiteboardMessage = useCallback((message: WhiteboardMessage) => {
+        // Send instantly via WebRTC data channel
+        console.log('[useJanus] sendWhiteboardMessage triggered:', message);
+        janusClientRef.current?.sendData({
+            type: 'whiteboard',
+            whiteboard: message,
+        });
+
+        // Persist via API for late-joiners
         apiSync.sendWhiteboardMessage(message);
     }, [apiSync]);
 
@@ -185,6 +210,9 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
 
             rawStreamRef.current = stream;
 
+            // Mute audio by default (video tracks must stay alive for background processor)
+            stream.getAudioTracks().forEach(track => { track.enabled = false; });
+
             // Get processed stream with background replacement
             const processedStream = backgroundProcessor.getProcessedStream(stream);
             const displayStream = processedStream || stream;
@@ -224,6 +252,12 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                     });
                 },
                 onParticipantJoined: (participant) => {
+                    // Play join notification sound
+                    if (joinSoundRef.current) {
+                        joinSoundRef.current.currentTime = 0;
+                        joinSoundRef.current.play().catch(() => {});
+                    }
+
                     setParticipants(prev => {
                         const next = new Map(prev);
                         next.set(participant.id, participant);
@@ -247,6 +281,7 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                 onDataMessage: (message: DataChannelMessage) => {
                     // Handle whiteboard messages
                     if (message.type === 'whiteboard' && message.whiteboard) {
+                        console.log('[useJanus] ✏️ Received remote whiteboard stroke via data channel:', message.whiteboard);
                         whiteboardHandlerRef.current?.(message.whiteboard);
                     }
 
@@ -274,6 +309,56 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
                             setLocalUser(prev => ({ ...prev, isMuted: true }));
                         }
                     }
+
+                    // Handle video-off message - update remote participant's video state
+                    if (message.type === 'video-off' && (message as any).videoOff !== undefined) {
+                        const janusId = (message as any).janusId;
+                        if (janusId) {
+                            setParticipants(prev => {
+                                const next = new Map(prev);
+                                const participant = next.get(janusId);
+                                if (participant) {
+                                    next.set(janusId, { ...participant, isVideoOff: (message as any).videoOff });
+                                }
+                                return next;
+                            });
+                        }
+                    }
+
+                    // Handle whiteboard-access message
+                    if (message.type === 'whiteboard-access' && message.participantId) {
+                        const myId = janusClientRef.current?.getMyId();
+                        console.log(`[useJanus] Received 'whiteboard-access' targeting: ${message.participantId}, My local ID is: ${myId}, Granted: ${message.whiteboardAccess}`);
+                        // If we are the target, update our local permission
+                        if (myId && String(message.participantId) === String(myId)) {
+                            console.log(`[useJanus] 📝 Whiteboard access ${message.whiteboardAccess ? 'GRANTED' : 'REVOKED'} for ME`);
+                            setLocalUser(prev => ({ ...prev, hasWhiteboardAccess: message.whiteboardAccess }));
+                        } else {
+                            // Update remote participant's permission state
+                            setParticipants(prev => {
+                                const next = new Map(prev);
+                                // Find participant defensively (string vs number)
+                                let foundId: string | number | undefined;
+                                let participant: Participant | undefined;
+                                
+                                for (const [id, p] of next.entries()) {
+                                    if (String(id) === String(message.participantId)) {
+                                        foundId = id;
+                                        participant = p;
+                                        break;
+                                    }
+                                }
+
+                                if (foundId && participant) {
+                                    console.log(`[useJanus] 📝 Remote Participant ${foundId} whiteboard access updated: ${message.whiteboardAccess}`);
+                                    next.set(foundId, { ...participant, hasWhiteboardAccess: message.whiteboardAccess });
+                                } else {
+                                    console.warn(`[useJanus] 📝 Remote Participant ${message.participantId} not found in participants map to update access!`);
+                                }
+                                return next;
+                            });
+                        }
+                    }
                 },
                 onError: (err) => {
                     console.error('[useJanus] Error:', err);
@@ -287,9 +372,20 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
             await client.connect();
 
             console.log('[useJanus] Publishing stream...');
-            await client.publish(stream);
+            await client.publish(displayStream);
 
-            console.log('[useJanus] Successfully connected and publishing!');
+            // Default camera OFF: stop the displayStream video tracks
+            // (canvas capture tracks, NOT the raw camera tracks — background processor stays alive)
+            displayStream.getVideoTracks().forEach(track => {
+                track.enabled = false;
+            });
+
+            // Broadcast camera-off state to remote participants once data channel is ready
+            setTimeout(() => {
+                client.sendData({ type: 'video-off', videoOff: true });
+            }, 1000);
+
+            console.log('[useJanus] Successfully connected and publishing (cam/mic off by default)!');
 
         } catch (err) {
             console.error('[useJanus] Connection error:', err);
@@ -326,6 +422,12 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
             }).catch(e => {
                 console.error('Toggle camera failed:', e);
                 setLocalUser(p => ({ ...p, isVideoOff: !newHidden }));
+            });
+
+            // Broadcast camera state to remote participants
+            janusClientRef.current?.sendData({
+                type: 'video-off',
+                videoOff: newHidden,
             });
 
             return { ...prev, isVideoOff: newHidden };
@@ -390,6 +492,29 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
         });
     }, []);
 
+    // Toggle a participant's whiteboard access (teacher only)
+    const toggleWhiteboardAccess = useCallback((participantId: string | number) => {
+        setParticipants(prev => {
+            const next = new Map(prev);
+            const participant = next.get(participantId);
+            if (participant) {
+                const newAccess = !participant.hasWhiteboardAccess;
+                console.log(`[useJanus] Sending 'whiteboard-access' command data channel to group. Target: ${participantId}. Access: ${newAccess}`);
+                
+                janusClientRef.current?.sendData({
+                    type: 'whiteboard-access',
+                    participantId,
+                    whiteboardAccess: newAccess,
+                });
+
+                next.set(participantId, { ...participant, hasWhiteboardAccess: newAccess });
+            } else {
+                console.warn(`[useJanus] Cannot toggle whiteboard access. Participant ${participantId} not found.`);
+            }
+            return next;
+        });
+    }, []);
+
     // Set up the kicked callback to disconnect
     useEffect(() => {
         onKickedCallbackRef.current = () => {
@@ -430,5 +555,6 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
         toggleBackground: backgroundProcessor.toggleBackground,
         muteParticipant,
         kickParticipant,
+        toggleWhiteboardAccess,
     };
 }

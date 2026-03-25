@@ -586,6 +586,7 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
     }, [sendMessage, selectedStrokeId]);
 
     const handleRemoteMessage = useCallback((message: WhiteboardMessage) => {
+        console.log('[useWhiteboard] 🎨 handleRemoteMessage received:', message.type);
         if (message.type === 'stroke' && message.data) {
             const stroke = message.data as Stroke;
             strokes.current.set(stroke.id, stroke);
