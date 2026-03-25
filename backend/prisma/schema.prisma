@@ -106,6 +106,7 @@ model Student {
   user_id                 Int                     @unique
   class_id                Int?
   board_id                Int?
+  id_valid_through        DateTime?
   date_of_birth           DateTime?
   gender                  Gender?
   school                  String?
@@ -234,11 +235,13 @@ model Teacher {
   id                        Int                            @id @default(autoincrement())
   user_id                   Int                            @unique
   role_id                   Int?                           // Link to custom teacher role
+  id_valid_through          DateTime?
   salary                    Int?
   salary_currency_id        Int?
   salary_currency           Currency?                      @relation(fields: [salary_currency_id], references: [id])
   qualification             String?
   gender                    Gender?
+  blood_group               BloodGroup?
   experience                String?
   address                   TeacherAddress?
   created_at                DateTime                       @default(now())
@@ -273,6 +276,7 @@ model ClassSession {
   mode            SessionMode
   location        String?
   meeting_link    String?
+  emergency_meeting_link String?
   google_event_id String?
   start_time      DateTime
   end_time        DateTime
@@ -393,6 +397,7 @@ model Test {
   total_marks      Int
   passing_marks    Int
   has_negative_marking    Boolean       @default(false)
+  max_warning_attempts Int      @default(3)
   duration_minutes Int
   available_from   DateTime
   available_until  DateTime

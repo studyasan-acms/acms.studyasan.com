@@ -6,6 +6,13 @@ import { uploadToS3, getFileType } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
+const parseMaxWarningAttempts = (value: any): number | null => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseInt(String(value), 10);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 20) return null;
+  return parsed;
+};
+
 // AI Question Generation using Google Gemini
 const generateQuestionsWithAI = async (
   testDetails: {
@@ -129,6 +136,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       total_marks,
       passing_marks,
       duration_minutes,
+      max_warning_attempts,
       available_from,
       available_until,
       is_published,
@@ -160,6 +168,11 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const parsedMaxWarningAttempts = parseMaxWarningAttempts(max_warning_attempts);
+    if (max_warning_attempts !== undefined && parsedMaxWarningAttempts === null) {
+      return sendError(res, 'max_warning_attempts must be an integer between 1 and 20', 400);
+    }
+
     const test = await prisma.test.create({
       data: {
         title,
@@ -170,6 +183,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         total_marks,
         passing_marks,
         duration_minutes,
+        max_warning_attempts: parsedMaxWarningAttempts ?? 3,
         available_from: new Date(available_from),
         available_until: new Date(available_until),
         is_published: is_published || false,
@@ -737,6 +751,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       total_marks,
       passing_marks,
       duration_minutes,
+      max_warning_attempts,
       available_from,
       available_until,
       is_published,
@@ -756,6 +771,14 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
 
     if (has_negative_marking !== undefined) {
       data.has_negative_marking = !!has_negative_marking;
+    }
+
+    if (max_warning_attempts !== undefined) {
+      const parsedMaxWarningAttempts = parseMaxWarningAttempts(max_warning_attempts);
+      if (parsedMaxWarningAttempts === null) {
+        return sendError(res, 'max_warning_attempts must be an integer between 1 and 20', 400);
+      }
+      data.max_warning_attempts = parsedMaxWarningAttempts;
     }
 
     // Handle subject_id update (can be set to null)

@@ -21,6 +21,7 @@ const EnrollmentDetailPage: React.FC = () => {
 
   const isAdmin = user?.role === 'ADMIN';
   const isStudent = user?.role === 'STUDENT';
+  const isTeacher = user?.role === 'TEACHER';
 
   useEffect(() => {
     if (id) {
@@ -172,14 +173,18 @@ const EnrollmentDetailPage: React.FC = () => {
                   <label className="text-sm font-medium text-gray-600">Name</label>
                   <p className="text-lg font-semibold text-gray-500">{enrollment.student.user.name}</p>
                 </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Email</label>
-                  <p className="text-gray-500">{enrollment.student.user.email}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-gray-600">Phone</label>
-                  <p className="text-gray-500">{enrollment.student.user.phone}</p>
-                </div>
+                {!isTeacher && (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Email</label>
+                      <p className="text-gray-500">{enrollment.student.user.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-600">Phone</label>
+                      <p className="text-gray-500">{enrollment.student.user.phone}</p>
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="text-sm font-medium text-gray-600">Class</label>
                   <p className="text-gray-500">{enrollment.student.class?.name || 'N/A'}</p>

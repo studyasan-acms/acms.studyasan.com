@@ -34,6 +34,7 @@ import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import MediaUpload from "@/components/ui/MediaUpload";
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface LocalQuestion {
@@ -81,6 +82,7 @@ export default function CreateTestPage() {
     total_marks: 0,
     passing_marks: 0,
     has_negative_marking: false,
+    max_warning_attempts: 3,
     duration_minutes: 60,
     available_from: "",
     available_until: "",
@@ -110,6 +112,13 @@ export default function CreateTestPage() {
   const [marksMismatchOpen, setMarksMismatchOpen] = useState(false);
   const [isSavingMarkAdjustments, setIsSavingMarkAdjustments] = useState(false);
   const [marksEditorQuestions, setMarksEditorQuestions] = useState<Array<{ id: string; title: string; marks: number; negative_marks: number; backendId?: number }>>([]);
+
+  const formatSubjectFilterLabel = (subject: Subject) => {
+    const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+    const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+    return `${subject.name}${classPart}${boardPart}`;
+  };
+
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
@@ -154,6 +163,7 @@ export default function CreateTestPage() {
           total_marks: test.total_marks,
           passing_marks: test.passing_marks,
           has_negative_marking: test.has_negative_marking ?? false,
+          max_warning_attempts: test.max_warning_attempts ?? 3,
           duration_minutes: test.duration_minutes,
           available_from: test.available_from.replace("Z", ""),
           available_until: test.available_until.replace("Z", ""),
@@ -661,8 +671,17 @@ export default function CreateTestPage() {
               >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select a subject" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                  <SearchablePaginatedSelect
+                    searchPlaceholder="Search subject..."
+                    options={[
+                      { value: 'none', label: 'None' },
+                      ...subjects.map((s) => ({
+                        value: s.id.toString(),
+                        label: formatSubjectFilterLabel(s),
+                        searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
+                      })),
+                    ]}
+                  />
                 </SelectContent>
               </Select>
             </div>
@@ -706,6 +725,21 @@ export default function CreateTestPage() {
             <div>
               <Label className="text-gray-700">Duration (minutes)</Label>
               <Input type="number" value={formData.duration_minutes} onChange={(e) => setFormData({ ...formData, duration_minutes: Number(e.target.value) })} className="mt-1" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <Label className="text-gray-700">Max Warning Attempts</Label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={formData.max_warning_attempts ?? 3}
+                onChange={(e) => setFormData({ ...formData, max_warning_attempts: Math.max(1, Number(e.target.value || 1)) })}
+                className="mt-1"
+              />
+              <p className="text-xs text-gray-500 mt-1">Auto-submit happens after this many violations.</p>
             </div>
           </div>
 

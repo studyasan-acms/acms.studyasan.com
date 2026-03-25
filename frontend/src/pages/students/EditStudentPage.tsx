@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import { cn } from "@/lib/utils";
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import {
   Popover,
   PopoverContent,
@@ -84,6 +85,7 @@ export default function EditStudentPage() {
   const [formData, setFormData] = useState<UpdateStudentData & { name?: string; email?: string; phone?: string }>({
     class_id: null,
     board_id: null,
+    id_valid_through: null,
     date_of_birth: null,
     gender: null,
     school: null,
@@ -130,6 +132,7 @@ export default function EditStudentPage() {
       const initialData: UpdateStudentData & { name?: string; email?: string; phone?: string } = {
         class_id: response.data.class_id,
         board_id: response.data.board_id,
+        id_valid_through: response.data.id_valid_through ? response.data.id_valid_through.split('T')[0] : null,
         date_of_birth: formattedDateOfBirth, // Use the formatted date
         gender: response.data.gender,
         school: response.data.school,
@@ -350,7 +353,7 @@ export default function EditStudentPage() {
       const cleanData: UpdateStudentData = {};
 
       Object.entries(transformedData).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && (value !== null || key === 'id_valid_through')) {
           (cleanData as any)[key] = value ?? null;
         }
       });
@@ -582,10 +585,13 @@ export default function EditStudentPage() {
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
-                    ))}
+                    <SearchablePaginatedSelect
+                      searchPlaceholder="Search class..."
+                      options={[
+                        { value: 'none', label: 'None' },
+                        ...classes.map((cls) => ({ value: cls.id.toString(), label: cls.name })),
+                      ]}
+                    />
                   </SelectContent>
                 </Select>
               </div>
@@ -641,6 +647,17 @@ export default function EditStudentPage() {
                     <SelectItem value="OTHER">Other</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>ID Valid Through</FormLabel>
+                <Input
+                  type="date"
+                  value={formData.id_valid_through || ""}
+                  onChange={(e) => handleChange("id_valid_through", e.target.value)}
+                  disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                />
               </div>
 
               <div className="space-y-2">

@@ -7,6 +7,7 @@ import type { AuthRequest } from '../types/index.js';
 import { googleMeetService } from '../utils/googleMeet.js';
 
 const prisma = new PrismaClient();
+const MAX_SESSION_DURATION_HOURS = 8;
 
 // Helper function to create notifications for enrolled students
 async function notifyEnrolledStudents(
@@ -401,6 +402,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       title,
       description,
       create_google_meet,
+      emergency_meeting_link,
     } = req.body;
 
     // Validate required fields
@@ -498,6 +500,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         mode,
         location,
         meeting_link: meetingLink || req.body.meeting_link,
+        emergency_meeting_link: emergency_meeting_link || null,
         google_event_id: googleEventId,
         start_time: inst.startTime,
         end_time: inst.endTime,
@@ -560,6 +563,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         mode,
         location,
         meeting_link: meetingLink || req.body.meeting_link,
+        emergency_meeting_link: emergency_meeting_link || null,
         google_event_id: googleEventId,
         start_time: startTime,
         end_time: endTime,
@@ -613,6 +617,7 @@ export const updateClassSession = async (req: Request, res: Response) => {
       mode,
       location,
       meeting_link,
+      emergency_meeting_link,
       start_time,
       end_time,
       is_recurring,
@@ -637,6 +642,7 @@ export const updateClassSession = async (req: Request, res: Response) => {
     if (mode !== undefined) updateData.mode = mode;
     if (location !== undefined) updateData.location = location;
     if (meeting_link !== undefined) updateData.meeting_link = meeting_link;
+    if (emergency_meeting_link !== undefined) updateData.emergency_meeting_link = emergency_meeting_link;
     if (start_time !== undefined) updateData.start_time = new Date(start_time);
     if (end_time !== undefined) updateData.end_time = new Date(end_time);
     if (is_recurring !== undefined) updateData.is_recurring = is_recurring;
@@ -1070,8 +1076,11 @@ export const canJoinSession = async (req: AuthRequest, res: Response) => {
     }
 
     const now = new Date();
+    const sessionStart = new Date(session.start_time);
     const sessionEnd = new Date(session.end_time);
-    const isTimeValid = now <= sessionEnd;
+    const maxEnd = new Date(sessionStart.getTime() + MAX_SESSION_DURATION_HOURS * 60 * 60 * 1000);
+    const effectiveSessionEnd = sessionEnd > maxEnd ? maxEnd : sessionEnd;
+    const isTimeValid = now <= effectiveSessionEnd;
 
     let canJoin = false;
     let reason = '';
@@ -1116,6 +1125,7 @@ export const canJoinSession = async (req: AuthRequest, res: Response) => {
         end_time: session.end_time,
         mode: session.mode,
         meeting_link: canJoin ? session.meeting_link : null,
+        emergency_meeting_link: canJoin ? session.emergency_meeting_link : null,
         location: session.location,
       },
     });

@@ -13,10 +13,10 @@ import { toast } from 'sonner';
 import {
     Select,
     SelectContent,
-    SelectItem,
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -36,6 +36,14 @@ interface StudentAnalytics {
 interface Subject {
     id: number;
     name: string;
+    class?: {
+        id: number;
+        name: string;
+    };
+    board?: {
+        id: number;
+        name: string;
+    };
 }
 
 export default function TeacherAnalyticsPage() {
@@ -45,6 +53,12 @@ export default function TeacherAnalyticsPage() {
     const [selectedSubject, setSelectedSubject] = useState<string>('all');
     const [loading, setLoading] = useState(true);
     const token = useAuthStore((state) => state.token);
+
+    const formatSubjectFilterLabel = (subject: Subject) => {
+        const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+        const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+        return `${subject.name}${classPart}${boardPart}`;
+    };
 
     useEffect(() => {
         fetchSubjects();
@@ -137,12 +151,17 @@ export default function TeacherAnalyticsPage() {
                         <SelectValue placeholder="Filter by subject" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Subjects</SelectItem>
-                        {subjects.map((subject) => (
-                            <SelectItem key={subject.id} value={subject.id.toString()}>
-                                {subject.name}
-                            </SelectItem>
-                        ))}
+                        <SearchablePaginatedSelect
+                            searchPlaceholder="Search subject..."
+                            options={[
+                                { value: 'all', label: 'All Subjects' },
+                                ...subjects.map((subject) => ({
+                                    value: subject.id.toString(),
+                                    label: formatSubjectFilterLabel(subject),
+                                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
+                                })),
+                            ]}
+                        />
                     </SelectContent>
                 </Select>
             </div>

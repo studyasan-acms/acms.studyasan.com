@@ -20,6 +20,7 @@ import {
   Calendar,
   Briefcase,
   GraduationCap,
+  Droplet,
   MapPin,
   Globe,
   Map,
@@ -48,6 +49,7 @@ import {
 } from "@/components/ui/select";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Label } from "@/components/ui/label";
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 
 // Safely format dates — returns '-' for missing/invalid dates
 const safeFormat = (dateValue: string | number | Date | undefined | null, fmt: string) => {
@@ -313,6 +315,11 @@ export default function TeacherDetailPage() {
     })} ${currencyCode}`;
   };
 
+  const getBloodGroupDisplay = (bloodGroup: string | null | undefined) => {
+    if (!bloodGroup) return "-";
+    return bloodGroup.replace('_POS', '+').replace('_NEG', '-').replaceAll('_', ' ');
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -377,8 +384,8 @@ export default function TeacherDetailPage() {
         </div>
 
         <div className="px-6 sm:px-10 pb-4">
-          <div className="flex flex-col sm:flex-row items-end -mt-16 gap-6">
-            <div className="relative group">
+          <div className="flex flex-col sm:flex-row items-end gap-6">
+            <div className="relative group -mt-16 sm:shrink-0">
               <div className="w-32 h-32 rounded-full border-[6px] border-white bg-white shadow-xl overflow-hidden relative z-10">
                 <img
                   src={resolveImageUrl(teacher.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teacher.user.name)}`}
@@ -389,8 +396,10 @@ export default function TeacherDetailPage() {
               <div className="absolute bottom-2 right-2 z-20 bg-green-500 w-5 h-5 rounded-full border-4 border-white shadow-sm"></div>
             </div>
 
-            <div className="flex-1 pb-2 text-center sm:text-left">
-              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{teacher.user.name}</h1>
+            <div className="w-full min-w-0 flex-1 pb-2 text-center sm:text-left sm:pr-4">
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight leading-tight break-words [overflow-wrap:anywhere]">
+                {teacher.user.name}
+              </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
                   Teacher
@@ -401,7 +410,7 @@ export default function TeacherDetailPage() {
               </div>
             </div>
 
-            <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center">
+            <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center sm:shrink-0">
               <Button onClick={() => setShowIDCardModal(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
                 <CreditCard className="mr-2 h-4 w-4" /> ID Card
               </Button>
@@ -446,6 +455,7 @@ export default function TeacherDetailPage() {
             <SectionTitle icon={User} title="Personal" description="Identity Stats" />
             <div className="space-y-3">
               <InfoItem label="Gender" value={getGenderDisplay(teacher.gender)} icon={User} />
+              <InfoItem label="Blood Group" value={getBloodGroupDisplay(teacher.blood_group)} icon={Droplet} />
               <InfoItem label="Joined" value={format(new Date(teacher.created_at), "PPP")} icon={Calendar} />
               <InfoItem label="Updated" value={format(new Date(teacher.updated_at), "PPP")} icon={LayoutGrid} />
             </div>
@@ -616,11 +626,13 @@ export default function TeacherDetailPage() {
                     <SelectValue placeholder={subjectListLoading ? "Loading..." : "Select a subject"} />
                   </SelectTrigger>
                   <SelectContent className="max-h-60">
-                    {subjects.map((s) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        {s.name} {s.class ? `(${s.class.name})` : ''}
-                      </SelectItem>
-                    ))}
+                    <SearchablePaginatedSelect
+                      searchPlaceholder="Search subject..."
+                      options={subjects.map((s) => ({
+                        value: s.id.toString(),
+                        label: `${s.name}${s.class ? ` (${s.class.name})` : ''}`,
+                      }))}
+                    />
                   </SelectContent>
                 </Select>
               </div>

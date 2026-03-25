@@ -6,6 +6,8 @@ import type { ClassSession, Subject, Teacher } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -16,6 +18,8 @@ interface SessionParams {
   teacher_id?: number;
   mode?: 'ONLINE' | 'OFFLINE';
 }
+
+const MAX_SESSION_DURATION_HOURS = 8;
 
 export default function ClassSessionsPage() {
   usePageTitle("Class Sessions");
@@ -30,6 +34,7 @@ export default function ClassSessionsPage() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [weeklyData, setWeeklyData] = useState<{ [key: string]: ClassSession[] } | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('');
+  const [now, setNow] = useState<Date>(new Date());
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -40,6 +45,27 @@ export default function ClassSessionsPage() {
   const canManage = isAdmin || isTeacher;
   const canAddSession = isAdmin || canCreate('classSessions');
   const canEditSession = isAdmin || canUpdate('classSessions');
+
+  const findBoardNameForSubject = (subjectId: number) => {
+    const fromSessions = sessions.find((session) => session.subject_id === subjectId && session.board?.name)?.board?.name;
+    if (fromSessions) return fromSessions;
+
+    if (weeklyData) {
+      for (const daySessions of Object.values(weeklyData)) {
+        const fromWeekly = daySessions.find((session) => session.subject_id === subjectId && session.board?.name)?.board?.name;
+        if (fromWeekly) return fromWeekly;
+      }
+    }
+
+    return null;
+  };
+
+  const formatSubjectFilterLabel = (subject: Subject) => {
+    const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+    const boardName = subject.board?.name || findBoardNameForSubject(subject.id);
+    const boardPart = boardName ? ` [${boardName}]` : '';
+    return `${subject.name}${classPart}${boardPart}`;
+  };
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -75,7 +101,15 @@ export default function ClassSessionsPage() {
 
       if (viewMode === 'week') {
         const weekRes = await classSessionService.getWeeklySchedule({ week_offset: weekOffset });
-        const flatSessions: ClassSession[] = weekRes.data.sessions;
+        let flatSessions: ClassSession[] = weekRes.data.sessions;
+
+        // Weekly endpoint does not accept filter params, so apply them locally.
+        if (selectedSubject) {
+          flatSessions = flatSessions.filter((session) => session.subject_id === selectedSubject);
+        }
+        if (selectedMode) {
+          flatSessions = flatSessions.filter((session) => session.mode === selectedMode);
+        }
 
         // Group sessions by day in the user's local timezone
         const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -101,13 +135,29 @@ export default function ClassSessionsPage() {
 
       switch (viewMode) {
         case 'upcoming': {
-          const upcomingRes = await classSessionService.getUpcoming(params);
-          data = upcomingRes.data;
+          if (isStudent) {
+            const myUpcomingRes = await classSessionService.getMySchedule({
+              subject_id: selectedSubject || undefined,
+              upcoming_only: true,
+            });
+            data = myUpcomingRes.data.data;
+          } else {
+            const upcomingRes = await classSessionService.getUpcoming(params);
+            data = upcomingRes.data;
+          }
           break;
         }
         case 'past': {
-          const pastRes = await classSessionService.getPast(params);
-          data = pastRes.data;
+          if (isStudent) {
+            const myAllRes = await classSessionService.getMySchedule({
+              subject_id: selectedSubject || undefined,
+            });
+            const now = new Date();
+            data = myAllRes.data.data.filter((session) => new Date(session.end_time) < now);
+          } else {
+            const pastRes = await classSessionService.getPast(params);
+            data = pastRes.data;
+          }
           break;
         }
         case 'today': {
@@ -117,13 +167,19 @@ export default function ClassSessionsPage() {
         }
         default: {
           if (isStudent) {
-            const myRes = await classSessionService.getMySchedule(params);
+            const myRes = await classSessionService.getMySchedule({
+              subject_id: selectedSubject || undefined,
+            });
             data = myRes.data.data;
           } else {
             const allRes = await classSessionService.getAll(params);
             data = allRes.data.data;
           }
         }
+      }
+
+      if (isStudent && selectedMode) {
+        data = data.filter((session) => session.mode === selectedMode);
       }
 
       setSessions(data);
@@ -144,18 +200,33 @@ export default function ClassSessionsPage() {
     fetchSessions();
   }, [fetchSessions]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const getSessionStatus = (session: ClassSession) => {
-    const now = new Date();
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    if (now <= end) {
-      const isLive = now >= start;
+    const maxEnd = new Date(start.getTime() + MAX_SESSION_DURATION_HOURS * 60 * 60 * 1000);
+    const effectiveEnd = end > maxEnd ? maxEnd : end;
+
+    if (now > effectiveEnd) {
+      return { label: 'Ended', color: 'bg-gray-500', canJoin: false };
+    }
+
+    const isLive = now >= start;
+    if (now <= effectiveEnd) {
       return {
         label: isLive ? 'Live Now' : 'Upcoming',
         color: isLive ? 'bg-green-500' : 'bg-blue-500',
-        canJoin: true
+        canJoin: isLive
       };
     }
+
     return { label: 'Ended', color: 'bg-gray-500', canJoin: false };
   };
 
@@ -188,6 +259,11 @@ export default function ClassSessionsPage() {
   };
 
   const handleJoinSession = async (session: ClassSession) => {
+    const status = getSessionStatus(session);
+    if (!status.canJoin) {
+      return;
+    }
+
     if (session.mode === 'ONLINE' && session.meeting_link) {
       window.open(session.meeting_link, '_blank');
     } else {
@@ -264,6 +340,15 @@ export default function ClassSessionsPage() {
               onClick={() => handleJoinSession(session)}
             >
               {status.canJoin ? 'Join Now' : 'View Session'}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl font-bold text-[10px] uppercase tracking-wider border-gray-200"
+              onClick={() => navigate(`/class-sessions/${session.id}/attendance`)}
+            >
+              Attendance
             </Button>
 
             {canEditSession && (
@@ -396,20 +481,29 @@ export default function ClassSessionsPage() {
       </div>
 
       {/* ULTRA-COMPACT FILTERS - One Line */}
-      {canManage && (
-        <div className="flex flex-wrap items-center gap-2 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100">
+      <div className="flex flex-wrap items-center gap-2 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100">
           <div className="flex-1 min-w-[120px] relative">
-            <select
-              value={selectedSubject || ''}
-              onChange={(e) => setSelectedSubject(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full appearance-none h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 outline-none focus:ring-2 focus:ring-saBlue/5 transition-all"
+            <Select
+              value={selectedSubject ? String(selectedSubject) : 'all'}
+              onValueChange={(value) => setSelectedSubject(value === 'all' ? null : parseInt(value))}
             >
-              <option value="">Subject: All</option>
-              {subjects.map((subject) => (
-                <option key={subject.id} value={subject.id}>{subject.name}</option>
-              ))}
-            </select>
-            <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 rotate-90" />
+              <SelectTrigger className="w-full h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 focus:ring-2 focus:ring-saBlue/5">
+                <SelectValue placeholder="Subject: All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SearchablePaginatedSelect
+                  searchPlaceholder="Search subject..."
+                  options={[
+                    { value: 'all', label: 'Subject: All' },
+                    ...subjects.map((subject) => ({
+                      value: String(subject.id),
+                      label: formatSubjectFilterLabel(subject),
+                      searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
+                    })),
+                  ]}
+                />
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex-1 min-w-[120px] relative">
@@ -425,25 +519,22 @@ export default function ClassSessionsPage() {
             <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 rotate-90" />
           </div>
 
-          {!isStudent && (
-            <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-lg">
-              {['week', 'all'].map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => {
-                    setViewMode(mode as typeof viewMode);
-                    setWeekOffset(0);
-                  }}
-                  className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-saBlue/10 text-saBlue' : 'text-gray-400 hover:text-gray-600'
-                    }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-lg">
+            {(isStudent ? ['week', 'all', 'upcoming', 'past'] : ['week', 'all']).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => {
+                  setViewMode(mode as typeof viewMode);
+                  setWeekOffset(0);
+                }}
+                className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-saBlue/10 text-saBlue' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
 
       {loading ? (
         <div className="py-32 flex flex-col items-center justify-center space-y-4">

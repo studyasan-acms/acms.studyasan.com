@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import {
   Table,
   TableBody,
@@ -33,6 +33,12 @@ export default function MyResultsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
+  const formatSubjectFilterLabel = (subject: Subject) => {
+    const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+    const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+    return `${subject.name}${classPart}${boardPart}`;
+  };
 
   useEffect(() => {
     fetchSubjects();
@@ -143,12 +149,17 @@ export default function MyResultsPage() {
               <SelectValue placeholder="Filter by Subject" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Subjects</SelectItem>
-              {subjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id.toString()}>
-                  {subject.name}
-                </SelectItem>
-              ))}
+              <SearchablePaginatedSelect
+                searchPlaceholder="Search subject..."
+                options={[
+                  { value: 'ALL', label: 'All Subjects' },
+                  ...subjects.map((subject) => ({
+                    value: subject.id.toString(),
+                    label: formatSubjectFilterLabel(subject),
+                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
+                  })),
+                ]}
+              />
             </SelectContent>
           </Select>
         </div>

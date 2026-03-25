@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { teacherService, locationService, currencyService } from '@/services/api';
-import type { Country, State, City, Currency } from '@/types';
+import type { Country, State, City, Currency, BloodGroup } from '@/types';
 import { ArrowLeft, Loader2, Save, Check, ChevronsUpDown, Camera, UploadCloud, User, Mail, Phone, Lock, Briefcase, GraduationCap, DollarSign, MapPin } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import SuccessModal from '@/components/ui/successModal';
@@ -27,6 +27,17 @@ import {
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 type Gender = "M" | "F" | "OTHER" | null;
+
+const BLOOD_GROUP_OPTIONS: Array<{ value: BloodGroup; label: string }> = [
+  { value: 'A_POS', label: 'A+' },
+  { value: 'A_NEG', label: 'A-' },
+  { value: 'B_POS', label: 'B+' },
+  { value: 'B_NEG', label: 'B-' },
+  { value: 'AB_POS', label: 'AB+' },
+  { value: 'AB_NEG', label: 'AB-' },
+  { value: 'O_POS', label: 'O+' },
+  { value: 'O_NEG', label: 'O-' },
+];
 
 export default function CreateTeacherPage() {
   usePageTitle("Add New Teacher");
@@ -65,10 +76,12 @@ export default function CreateTeacherPage() {
     email: '',
     phone: '',
     password: '',
+    id_valid_through: null as string | null,
     salary: null as number | null,
     salary_currency_id: null as number | null,
     qualification: null as string | null,
     gender: null as Gender,
+    blood_group: null as BloodGroup | null,
     experience: null as string | null,
     addressLine: null as string | null,
     countryId: null as number | null,
@@ -194,10 +207,12 @@ export default function CreateTeacherPage() {
         email: formData.email.toLowerCase(),
         phone: formData.phone,
         password: formData.password,
+        id_valid_through: formData.id_valid_through,
         salary: formData.salary,
         salary_currency_id: formData.salary_currency_id,
         qualification: formData.qualification,
         gender: formData.gender,
+        blood_group: formData.blood_group,
         experience: formData.experience,
         address: {
           addressLine: formData.addressLine || '',
@@ -216,11 +231,15 @@ export default function CreateTeacherPage() {
       submitFormData.append('email', transformedData.email);
       submitFormData.append('phone', transformedData.phone);
       submitFormData.append('password', transformedData.password);
+      if (transformedData.id_valid_through) {
+        submitFormData.append('id_valid_through', transformedData.id_valid_through);
+      }
 
       if (transformedData.salary) submitFormData.append('salary', transformedData.salary.toString());
       if (transformedData.salary_currency_id) submitFormData.append('salary_currency_id', transformedData.salary_currency_id.toString());
       if (transformedData.qualification) submitFormData.append('qualification', transformedData.qualification);
       if (transformedData.gender) submitFormData.append('gender', transformedData.gender);
+      if (transformedData.blood_group) submitFormData.append('blood_group', transformedData.blood_group);
       if (transformedData.experience) submitFormData.append('experience', transformedData.experience);
 
       // Add address
@@ -433,6 +452,36 @@ export default function CreateTeacherPage() {
                     <SelectItem value="M">Male</SelectItem>
                     <SelectItem value="F">Female</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>ID Valid Through</FormLabel>
+                <Input
+                  type="date"
+                  value={formData.id_valid_through || ''}
+                  onChange={(e) => handleChange('id_valid_through', e.target.value)}
+                  disabled={isLoading}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Blood Group</FormLabel>
+                <Select
+                  value={formData.blood_group || 'none'}
+                  onValueChange={(value) => handleChange('blood_group', value === 'none' ? null : (value as BloodGroup))}
+                  disabled={isLoading}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectValue placeholder="Select blood group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {BLOOD_GROUP_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { studentService, boardService, classService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import type { Student, Board, Class } from "@/types";
@@ -179,17 +181,26 @@ export default function StudentsPage() {
 
         {/* Dropdowns Container */}
         <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
-          <select
-            value={selectedClass}
-            onChange={(e) => {
-              setSelectedClass(e.target.value);
+          <Select
+            value={selectedClass || 'all'}
+            onValueChange={(value) => {
+              setSelectedClass(value === 'all' ? '' : value);
               handleFilterChange();
             }}
-            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
           >
-            <option value="">All Classes</option>
-            {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+            <SelectTrigger className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
+              <SelectValue placeholder="All Classes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SearchablePaginatedSelect
+                searchPlaceholder="Search class..."
+                options={[
+                  { value: 'all', label: 'All Classes' },
+                  ...classes.map((c) => ({ value: String(c.id), label: c.name })),
+                ]}
+              />
+            </SelectContent>
+          </Select>
 
           <select
             value={selectedBoard}
@@ -240,7 +251,7 @@ export default function StudentsPage() {
                 <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 min-w-[200px]">Student</TableHead>
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[150px] hidden md:table-cell">Class Info</TableHead>
-                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden lg:table-cell">Phone</TableHead>
+                  {!isTeacher && <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden lg:table-cell">Phone</TableHead>}
                   <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -255,7 +266,7 @@ export default function StudentsPage() {
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="font-bold text-gray-800 text-sm leading-tight">{student.user.name}</span>
-                          <span className="text-[10px] text-gray-400">{student.user.email}</span>
+                          {!isTeacher && <span className="text-[10px] text-gray-400">{student.user.email}</span>}
                         </div>
                       </div>
                     </TableCell>
@@ -265,9 +276,11 @@ export default function StudentsPage() {
                         <span className="text-[10px] text-gray-400 ml-1">{student.board?.name}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      <div className="text-xs text-gray-600 font-mono">{student.user.phone || '-'}</div>
-                    </TableCell>
+                    {!isTeacher && (
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-xs text-gray-600 font-mono">{student.user.phone || '-'}</div>
+                      </TableCell>
+                    )}
                     <TableCell className="text-right pr-6">
                       <div className="flex gap-1 justify-end">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-saBlue" onClick={() => navigate(`/dashboard/students/${student.id}`)}>

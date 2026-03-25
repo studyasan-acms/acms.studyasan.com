@@ -7,6 +7,13 @@ import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
+const parseDateField = (value: unknown): Date | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = new Date(String(value));
+  return isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
 export const getAllTeachers = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = getPaginationParams(
@@ -184,10 +191,12 @@ export const createTeacher = async (req: Request, res: Response) => {
       phone,
       password,
       user_id,
+      id_valid_through,
       salary,
       salary_currency_id,
       qualification,
       gender,
+      blood_group,
       experience,
       address
     } = req.body;
@@ -195,6 +204,7 @@ export const createTeacher = async (req: Request, res: Response) => {
     if (email) req.body.email = email.toLowerCase();
 
     const profileImage = req.file;
+    const parsedIdValidThrough = parseDateField(id_valid_through);
 
     // Check if we're creating a new user or using existing user_id
     if (user_id) {
@@ -254,6 +264,10 @@ export const createTeacher = async (req: Request, res: Response) => {
       // Prepare teacher data
       const createData: any = { user: { connect: { id: user.id } } };
 
+      if (typeof parsedIdValidThrough !== 'undefined') {
+        createData.id_valid_through = parsedIdValidThrough;
+      }
+
       if (typeof salary !== 'undefined' && salary !== null && salary !== '') {
         const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
         if (!isNaN(salaryNum)) {
@@ -266,6 +280,7 @@ export const createTeacher = async (req: Request, res: Response) => {
       }
       if (typeof qualification !== 'undefined') createData.qualification = qualification;
       if (typeof gender !== 'undefined') createData.gender = gender;
+      if (typeof blood_group !== 'undefined' && blood_group !== '') createData.blood_group = blood_group;
       if (typeof experience !== 'undefined') createData.experience = experience;
       if (parsedAddress) {
         createData.address = {
@@ -341,6 +356,10 @@ export const createTeacher = async (req: Request, res: Response) => {
 
       const createData: any = { user: { connect: { id: Number(userIdNum) } } };
 
+      if (typeof parsedIdValidThrough !== 'undefined') {
+        createData.id_valid_through = parsedIdValidThrough;
+      }
+
       if (typeof salary !== 'undefined' && salary !== null && salary !== '') {
         const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
         if (!isNaN(salaryNum)) {
@@ -352,6 +371,7 @@ export const createTeacher = async (req: Request, res: Response) => {
       }
       if (typeof qualification !== 'undefined') createData.qualification = qualification;
       if (typeof gender !== 'undefined') createData.gender = gender;
+      if (typeof blood_group !== 'undefined' && blood_group !== '') createData.blood_group = blood_group;
       if (typeof experience !== 'undefined') createData.experience = experience;
       if (parsedAddress) {
         createData.address = {
@@ -419,8 +439,10 @@ export const updateTeacher = async (req: Request, res: Response) => {
     // Extract fields from req.body (may be FormData or JSON)
     const salary = req.body.salary;
     const salary_currency_id = req.body.salary_currency_id;
+    const id_valid_through = req.body.id_valid_through;
     const qualification = req.body.qualification;
     const gender = req.body.gender;
+    const blood_group = req.body.blood_group;
     const experience = req.body.experience;
     const address = req.body.address;
     const name = req.body.name;
@@ -428,6 +450,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
     if (email) email = email.toLowerCase();
     const phone = req.body.phone;
     const role_id = req.body.role_id;
+    const parsedIdValidThrough = parseDateField(id_valid_through);
 
     const existingTeacher = await prisma.teacher.findUnique({
       where: { id: parseInt(id!) },
@@ -472,6 +495,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
     const salaryCurrencyIdNumUp = typeof salary_currency_id === 'string' ? parseInt(salary_currency_id, 10) : salary_currency_id;
 
     const updateData: any = {};
+    if (typeof parsedIdValidThrough !== 'undefined') updateData.id_valid_through = parsedIdValidThrough;
     if (typeof salary !== 'undefined') {
       const salaryNum = typeof salary === 'string' ? parseInt(salary, 10) : salary;
       if (!isNaN(salaryNum)) {
@@ -480,6 +504,7 @@ export const updateTeacher = async (req: Request, res: Response) => {
     }
     if (typeof qualification !== 'undefined') updateData.qualification = qualification;
     if (typeof gender !== 'undefined') updateData.gender = gender;
+    if (typeof blood_group !== 'undefined') updateData.blood_group = blood_group === '' ? null : blood_group;
     if (typeof experience !== 'undefined') updateData.experience = experience;
 
     // Handle role assignment using Prisma relation

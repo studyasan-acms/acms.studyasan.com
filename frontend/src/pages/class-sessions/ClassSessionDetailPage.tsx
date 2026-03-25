@@ -10,6 +10,8 @@ import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
+const MAX_SESSION_DURATION_HOURS = 8;
+
 export default function ClassSessionDetailPage() {
   usePageTitle("Session Details");
   const { id } = useParams<{ id: string }>();
@@ -18,11 +20,13 @@ export default function ClassSessionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [canJoin, setCanJoin] = useState(false);
   const [joinReason, setJoinReason] = useState('');
+  const [now, setNow] = useState<Date>(new Date());
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const { user } = useAuthStore();
 
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
+  const isStudent = user?.role === 'STUDENT';
   const canManage = isAdmin || isTeacher;
 
   const fetchSession = useCallback(async () => {
@@ -47,13 +51,22 @@ export default function ClassSessionDetailPage() {
     fetchSession();
   }, [fetchSession]);
 
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(new Date());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   const getSessionStatus = () => {
     if (!session) return { label: 'Unknown', color: 'bg-gray-500' };
 
-    const now = new Date();
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    if (now <= end) {
+    const maxEnd = new Date(start.getTime() + MAX_SESSION_DURATION_HOURS * 60 * 60 * 1000);
+    const effectiveEnd = end > maxEnd ? maxEnd : end;
+    if (now <= effectiveEnd) {
       return now >= start
         ? { label: 'Live Now', color: 'bg-green-500' }
         : { label: 'Upcoming', color: 'bg-blue-500' };
@@ -76,7 +89,9 @@ export default function ClassSessionDetailPage() {
     if (!session) return '';
     const start = new Date(session.start_time);
     const end = new Date(session.end_time);
-    const diffMs = end.getTime() - start.getTime();
+    const maxEnd = new Date(start.getTime() + MAX_SESSION_DURATION_HOURS * 60 * 60 * 1000);
+    const effectiveEnd = end > maxEnd ? maxEnd : end;
+    const diffMs = effectiveEnd.getTime() - start.getTime();
     const diffMins = Math.round(diffMs / 60000);
     if (diffMins < 60) return `${diffMins} minutes`;
     const hours = Math.floor(diffMins / 60);
@@ -144,10 +159,11 @@ export default function ClassSessionDetailPage() {
   }
 
   const status = getSessionStatus();
-  const now = new Date();
   const sessionStart = new Date(session.start_time);
   const sessionEnd = new Date(session.end_time);
-  const isWithinSessionTime = now >= sessionStart && now <= sessionEnd;
+  const maxEnd = new Date(sessionStart.getTime() + MAX_SESSION_DURATION_HOURS * 60 * 60 * 1000);
+  const effectiveSessionEnd = sessionEnd > maxEnd ? maxEnd : sessionEnd;
+  const isWithinSessionTime = now >= sessionStart && now <= effectiveSessionEnd;
   const canJoinNow = canJoin && isWithinSessionTime;
 
   return (
@@ -205,16 +221,27 @@ export default function ClassSessionDetailPage() {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <p className="font-semibold text-green-800">Class is now accessible!</p>
-                    <p className="text-sm text-green-600">You can join the meeting now.</p>
+                    <p className="text-sm text-green-600">You can join the classroom now. If it fails, use the emergency Google Meet link.</p>
                   </div>
-                  <Button
-                    className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
-                    onClick={handleJoin}
-                  >
-                    <Video className="w-4 h-4 mr-2" />
-                    Join Meeting
-                    <ExternalLink className="w-4 h-4 ml-2" />
-                  </Button>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button
+                      className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto"
+                      onClick={handleJoin}
+                    >
+                      <Video className="w-4 h-4 mr-2" />
+                      Join Classroom
+                    </Button>
+                    {session.emergency_meeting_link && (
+                      <Button
+                        variant="outline"
+                        className="w-full sm:w-auto"
+                        onClick={() => window.open(session.emergency_meeting_link!, '_blank', 'noopener,noreferrer')}
+                      >
+                        Join Google Meet
+                        <ExternalLink className="w-4 h-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center text-gray-600">
@@ -343,31 +370,34 @@ export default function ClassSessionDetailPage() {
           )}
 
           {/* Actions */}
-          {canManage && (
-            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
-              >
-                View Detailed Attendance
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/edit`)}
-              >
-                Edit Session
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
-                onClick={() => setDeleteModalOpen(true)}
-              >
-                Delete Session
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => navigate(`/class-sessions/${session.id}/attendance`)}
+            >
+              {isStudent ? 'View My Attendance' : 'View Detailed Attendance'}
+            </Button>
+
+            {canManage && (
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => navigate(`/dashboard/class-sessions/${session.id}/edit`)}
+                >
+                  Edit Session
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => setDeleteModalOpen(true)}
+                >
+                  Delete Session
+                </Button>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 

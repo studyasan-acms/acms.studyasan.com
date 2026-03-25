@@ -412,6 +412,7 @@ export const enrollStudentInActivityGroup = async (req: AuthRequest, res: Respon
       let monthsToAdd = 0;
       if (frequency === 'monthly') monthsToAdd = 1;
       else if (frequency === 'quarterly') monthsToAdd = 3;
+      else if (frequency === 'semi_yearly') monthsToAdd = 6;
       else if (frequency === 'yearly') monthsToAdd = 12;
 
       const totalMonths = monthsToAdd * (parseInt(payment_count) || 12);

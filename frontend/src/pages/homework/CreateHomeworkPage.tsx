@@ -26,6 +26,7 @@ import { useAuthStore } from "@/store/authStore";
 
 import type { Subject } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 
 import { ArrowLeft, Upload, Loader2, Users, BookOpen, Calendar, FileText, Check, X, Send, Clock, Plus } from "lucide-react";
 
@@ -304,9 +305,10 @@ export default function CreateHomeworkPage() {
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-gray-100">
-                      {subjects.map((subject) => (
-                        <SelectItem key={subject.id} value={subject.id.toString()}>{subject.name}</SelectItem>
-                      ))}
+                      <SearchablePaginatedSelect
+                        searchPlaceholder="Search subject..."
+                        options={subjects.map((subject) => ({ value: subject.id.toString(), label: subject.name }))}
+                      />
                     </SelectContent>
                   </Select>
                 </div>

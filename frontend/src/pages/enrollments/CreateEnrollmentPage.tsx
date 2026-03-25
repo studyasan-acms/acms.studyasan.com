@@ -16,6 +16,13 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type EnrollmentType = 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
 
+const FREQUENCY_OPTIONS = [
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'semi_yearly', label: 'Semi-Yearly' },
+  { value: 'yearly', label: 'Yearly' },
+];
+
 const CreateEnrollmentPage: React.FC = () => {
   usePageTitle("New Enrollment");
   const navigate = useNavigate();
@@ -53,6 +60,7 @@ const CreateEnrollmentPage: React.FC = () => {
 
   const [studentSearch, setStudentSearch] = useState('');
   const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectPage, setSubjectPage] = useState(1);
 
   useEffect(() => {
     const typeParam = searchParams.get('type');
@@ -192,6 +200,20 @@ const CreateEnrollmentPage: React.FC = () => {
     if (s.is_course && s.end_date && new Date(s.end_date) < new Date()) return false;
     return s.name.toLowerCase().includes(subjectSearch.toLowerCase());
   });
+
+  const subjectPageSize = 10;
+  const totalSubjectPages = Math.max(1, Math.ceil(filteredSubjects.length / subjectPageSize));
+  const pagedSubjects = filteredSubjects.slice((subjectPage - 1) * subjectPageSize, subjectPage * subjectPageSize);
+
+  useEffect(() => {
+    setSubjectPage(1);
+  }, [subjectSearch, enrollmentType]);
+
+  useEffect(() => {
+    if (subjectPage > totalSubjectPages) {
+      setSubjectPage(totalSubjectPages);
+    }
+  }, [subjectPage, totalSubjectPages]);
 
   const selectedStudent = students.find((s) => s.id === formData.student_id);
 
@@ -352,7 +374,7 @@ const CreateEnrollmentPage: React.FC = () => {
                     </div>
                   )}
                   <div className="max-h-52 overflow-y-auto">
-                  {enrollmentType === 'SUBJECT' && filteredSubjects.map((subject) => (
+                  {enrollmentType === 'SUBJECT' && pagedSubjects.map((subject) => (
                     <SelectItem key={subject.id} value={subject.id.toString()} className="py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">{subject.name}</span>
@@ -376,6 +398,39 @@ const CreateEnrollmentPage: React.FC = () => {
                     </SelectItem>
                   ))}
                   </div>
+                  {enrollmentType === 'SUBJECT' && filteredSubjects.length > subjectPageSize && (
+                    <div className="sticky bottom-0 bg-popover border-t px-2 py-1.5 flex items-center justify-between">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSubjectPage((prev) => Math.max(1, prev - 1));
+                        }}
+                        disabled={subjectPage === 1}
+                      >
+                        Prev
+                      </Button>
+                      <span className="text-[10px] text-gray-500">Page {subjectPage} / {totalSubjectPages}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSubjectPage((prev) => Math.min(totalSubjectPages, prev + 1));
+                        }}
+                        disabled={subjectPage === totalSubjectPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
 
@@ -449,13 +504,15 @@ const CreateEnrollmentPage: React.FC = () => {
                       value={formData.frequency || ''}
                       onValueChange={(value) => setFormData({ ...formData, frequency: value })}
                     >
-                      <SelectTrigger className={`${errors.frequency ? 'border-red-500' : ''} h-11`}>
+                      <SelectTrigger className={`${errors.frequency ? 'border-red-500' : 'border-gray-300'} h-11 bg-white focus:ring-saBlue focus:border-saBlue`}>
                         <SelectValue placeholder="Select payment frequency" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="quarterly">Quarterly</SelectItem>
-                        <SelectItem value="yearly">Yearly</SelectItem>
+                      <SelectContent className="border border-gray-200 bg-white shadow-lg">
+                        {FREQUENCY_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value} className="py-2.5">
+                            {option.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     {errors.frequency && (

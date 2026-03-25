@@ -9,10 +9,10 @@ import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import {
   Table,
   TableBody,
@@ -55,6 +55,12 @@ export default function TestsPage() {
 
   const isTeacherOrAdmin = user?.role === "TEACHER" || user?.role === "ADMIN";
   const isStudent = user?.role === "STUDENT";
+
+  const formatSubjectFilterLabel = (subject: Subject) => {
+    const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+    const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+    return `${subject.name}${classPart}${boardPart}`;
+  };
 
   const fetchSubjects = useCallback(async () => {
     try {
@@ -187,12 +193,17 @@ export default function TestsPage() {
               <SelectValue placeholder="Filter by Subject" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="ALL">All Subjects</SelectItem>
-              {subjects.map((subject) => (
-                <SelectItem key={subject.id} value={subject.id.toString()}>
-                  {subject.name}
-                </SelectItem>
-              ))}
+              <SearchablePaginatedSelect
+                searchPlaceholder="Search subject..."
+                options={[
+                  { value: 'ALL', label: 'All Subjects' },
+                  ...subjects.map((subject) => ({
+                    value: subject.id.toString(),
+                    label: formatSubjectFilterLabel(subject),
+                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
+                  })),
+                ]}
+              />
             </SelectContent>
           </Select>
         </div>

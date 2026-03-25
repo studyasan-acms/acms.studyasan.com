@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   Eye,
   EyeOff,
+  Flag,
   Menu,
   X,
   AlertCircle,
@@ -26,7 +27,7 @@ import MediaUpload from '@/components/ui/MediaUpload';
 import ConfirmModal from '@/components/ui/confirmationModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
-const MAX_VIOLATIONS = 3;
+const DEFAULT_MAX_VIOLATIONS = 3;
 
 // ============================================================
 // Types
@@ -174,6 +175,8 @@ export default function TestAttemptPage() {
   const [loading, setLoading] = useState(true);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<{ [questionId: number]: string }>({});
+  const [reviewQuestionIds, setReviewQuestionIds] = useState<Set<number>>(new Set());
+  const [visitedQuestionIds, setVisitedQuestionIds] = useState<Set<number>>(new Set());
   const [answerMediaFiles, setAnswerMediaFiles] = useState<{ [questionId: number]: File | null }>({});
   const [answerMediaUrls, setAnswerMediaUrls] = useState<{ [questionId: number]: string | null }>({});
   const [timeRemaining, setTimeRemaining] = useState(0);
@@ -185,6 +188,7 @@ export default function TestAttemptPage() {
   const [showViolationLog, setShowViolationLog] = useState(false);
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
+  const [maxViolations, setMaxViolations] = useState(DEFAULT_MAX_VIOLATIONS);
   const violationCountRef = useRef(0);
   const hasAutoSubmittedRef = useRef(false);
 
@@ -198,17 +202,17 @@ export default function TestAttemptPage() {
       return updated;
     });
     setViolationMessage(
-      violationCountRef.current + 1 >= MAX_VIOLATIONS
+      violationCountRef.current + 1 >= maxViolations
         ? `⛔ Final warning! Test will be auto-submitted. (${violation.message})`
-        : `⚠️ Warning ${violationCountRef.current + 1}/${MAX_VIOLATIONS}: ${violation.message}`
+        : `⚠️ Warning ${violationCountRef.current + 1}/${maxViolations}: ${violation.message}`
     );
     setShowViolationBanner(true);
     setTimeout(() => setShowViolationBanner(false), 4000);
-  }, []);
+  }, [maxViolations]);
 
-  // Auto-submit after MAX_VIOLATIONS
+  // Auto-submit after configured max violations
   useEffect(() => {
-    if (violations.length >= MAX_VIOLATIONS && !hasAutoSubmittedRef.current && !autoSubmitting) {
+    if (violations.length >= maxViolations && !hasAutoSubmittedRef.current && !autoSubmitting) {
       hasAutoSubmittedRef.current = true;
       setAutoSubmitting(true);
       // Small delay so the user sees the final warning
@@ -216,7 +220,7 @@ export default function TestAttemptPage() {
         handleSubmitTest(true);
       }, 1500);
     }
-  }, [violations]);
+  }, [violations, autoSubmitting, maxViolations]);
 
   // Wire up face detection violations
   useEffect(() => {
@@ -244,6 +248,18 @@ export default function TestAttemptPage() {
     }, 1000);
     return () => clearInterval(timer);
   }, [attempt]);
+
+  useEffect(() => {
+    const currentQuestionId = attempt?.test?.questions?.[currentQuestionIndex]?.id;
+    if (!currentQuestionId) return;
+
+    setVisitedQuestionIds((prev) => {
+      if (prev.has(currentQuestionId)) return prev;
+      const next = new Set(prev);
+      next.add(currentQuestionId);
+      return next;
+    });
+  }, [attempt, currentQuestionIndex]);
 
   // ---- Screen Lock: Fullscreen Change ----
   useEffect(() => {
@@ -348,6 +364,10 @@ export default function TestAttemptPage() {
       });
       setAnswers(existingAnswers);
       setAnswerMediaUrls(existingMediaUrls);
+      const configuredMax = response.data.test?.max_warning_attempts;
+      if (typeof configuredMax === 'number' && Number.isInteger(configuredMax) && configuredMax > 0) {
+        setMaxViolations(configuredMax);
+      }
     } catch (error) {
       console.error('Error fetching test attempt:', error);
       navigate('/tests');
@@ -407,6 +427,46 @@ export default function TestAttemptPage() {
   const isTimeWarning = timeRemaining < 300 && timeRemaining > 0;
   const isTimeCritical = timeRemaining < 60 && timeRemaining > 0;
 
+  const hasAnswerForQuestion = (questionId: number) => {
+    const answerText = answers[questionId];
+    const hasText = typeof answerText === 'string' && answerText.trim().length > 0;
+    const hasMedia = Boolean(answerMediaUrls[questionId] || answerMediaFiles[questionId]);
+    return hasText || hasMedia;
+  };
+
+  const getQuestionStatusClass = (questionId: number, idx: number) => {
+    const isActive = idx === currentQuestionIndex;
+    const isAnswered = hasAnswerForQuestion(questionId);
+    const isMarkedForReview = reviewQuestionIds.has(questionId);
+    const isVisited = visitedQuestionIds.has(questionId);
+
+    if (isActive) {
+      return 'bg-saBlue text-white ring-2 ring-blue-300 ring-offset-2 scale-105';
+    }
+    if (isMarkedForReview) {
+      return 'bg-amber-500 text-white hover:bg-amber-600';
+    }
+    if (isAnswered) {
+      return 'bg-green-500 text-white hover:bg-green-600';
+    }
+    if (isVisited) {
+      return 'bg-red-500 text-white hover:bg-red-600';
+    }
+    return 'bg-gray-100 text-gray-500 hover:bg-gray-200';
+  };
+
+  const toggleMarkForReview = (questionId: number) => {
+    setReviewQuestionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(questionId)) {
+        next.delete(questionId);
+      } else {
+        next.add(questionId);
+      }
+      return next;
+    });
+  };
+
   // ---- Loading State ----
   if (loading) {
     return (
@@ -451,7 +511,7 @@ export default function TestAttemptPage() {
         </div>
         <h2 className="text-2xl font-bold text-gray-800">Test Auto-Submitted</h2>
         <p className="text-gray-500 text-center max-w-md">
-          Your test has been automatically submitted due to <strong>{MAX_VIOLATIONS} violations</strong>.
+          Your test has been automatically submitted due to <strong>{maxViolations} violations</strong>.
         </p>
         <div className="w-10 h-10 border-4 border-red-400 border-t-transparent rounded-full animate-spin" />
       </div>
@@ -460,7 +520,8 @@ export default function TestAttemptPage() {
 
   const questions = attempt.test.questions;
   const currentQuestion = questions[currentQuestionIndex];
-  const answeredCount = questions.filter(q => answers[q.id]).length;
+  const answeredCount = questions.filter((q) => hasAnswerForQuestion(q.id)).length;
+  const reviewCount = questions.filter((q) => reviewQuestionIds.has(q.id)).length;
   const progress = (answeredCount / questions.length) * 100;
 
   return (
@@ -526,7 +587,7 @@ export default function TestAttemptPage() {
               >
                 <ShieldAlert className="w-5 h-5 text-red-500" />
                 <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 rounded-full text-[10px] font-bold flex items-center justify-center text-white">
-                  {violations.length}/{MAX_VIOLATIONS}
+                  {violations.length}/{maxViolations}
                 </span>
               </button>
             )}
@@ -562,12 +623,12 @@ export default function TestAttemptPage() {
         <div className="fixed inset-0 z-[90] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setShowViolationLog(false)}>
           <div className="bg-white rounded-2xl border border-gray-200 shadow-2xl w-full max-w-lg max-h-[70vh] overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-red-500" /> Violations ({violations.length}/{MAX_VIOLATIONS})</h3>
+              <h3 className="font-bold text-gray-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-red-500" /> Violations ({violations.length}/{maxViolations})</h3>
               <button onClick={() => setShowViolationLog(false)} className="p-1 rounded hover:bg-gray-100"><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="p-3 bg-red-50 border-b border-red-100">
               <p className="text-xs text-red-600 text-center font-medium">
-                ⚠️ After {MAX_VIOLATIONS} violations, your test will be automatically submitted.
+                ⚠️ After {maxViolations} violations, your test will be automatically submitted.
               </p>
             </div>
             <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
@@ -627,31 +688,31 @@ export default function TestAttemptPage() {
 
           {/* Violation Warning Bar in Sidebar */}
           {violations.length > 0 && (
-            <div className={`mx-3 mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${violations.length >= MAX_VIOLATIONS - 1 ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}>
+            <div className={`mx-3 mt-3 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-2 ${violations.length >= maxViolations - 1 ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}>
               <ShieldAlert className="w-3.5 h-3.5" />
-              <span>{violations.length}/{MAX_VIOLATIONS} violations</span>
+              <span>{violations.length}/{maxViolations} violations</span>
             </div>
           )}
 
           {/* Question Grid */}
           <div className="flex-1 overflow-y-auto p-3">
             <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-3">Questions</p>
+            <div className="grid grid-cols-2 gap-2 mb-3 text-[10px] text-gray-500">
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-saBlue" /> Current</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Answered</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Review</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> Not answered</div>
+              <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-300" /> Not visited</div>
+            </div>
             <div className="grid grid-cols-5 gap-2">
               {questions.map((q, idx) => {
-                const isActive = idx === currentQuestionIndex;
-                const isAnswered = !!answers[q.id];
                 return (
                   <button
                     key={q.id}
                     onClick={() => { setCurrentQuestionIndex(idx); setShowDrawer(false); }}
                     className={`
                       w-full aspect-square rounded-lg text-sm font-bold transition-all
-                      ${isActive
-                        ? 'bg-saBlue text-white ring-2 ring-blue-300 ring-offset-2 scale-105'
-                        : isAnswered
-                          ? 'bg-green-500 text-white hover:bg-green-600'
-                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }
+                      ${getQuestionStatusClass(q.id, idx)}
                     `}
                   >
                     {idx + 1}
@@ -666,6 +727,10 @@ export default function TestAttemptPage() {
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-400">Answered</span>
               <span className="text-gray-800 font-bold">{answeredCount}/{questions.length}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-400">Review</span>
+              <span className="text-amber-600 font-bold">{reviewCount}</span>
             </div>
             <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
               <div className="h-2 bg-green-500 rounded-full transition-all" style={{ width: `${progress}%` }} />
@@ -844,18 +909,30 @@ export default function TestAttemptPage() {
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
 
+                <Button
+                  variant="outline"
+                  onClick={() => toggleMarkForReview(currentQuestion.id)}
+                  className={`${reviewQuestionIds.has(currentQuestion.id)
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                    : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+                    }`}
+                >
+                  <Flag className="w-4 h-4 mr-1 sm:mr-2" />
+                  <span className="hidden sm:inline">
+                    {reviewQuestionIds.has(currentQuestion.id) ? 'Review Marked' : 'Mark Review'}
+                  </span>
+                </Button>
+
                 {/* Mobile: Question number jumping */}
                 <div className="flex gap-1.5 overflow-x-auto px-2 lg:hidden max-w-[50vw] scrollbar-hide">
                   {questions.map((q, idx) => {
-                    const isActive = idx === currentQuestionIndex;
-                    const isAnswered = !!answers[q.id];
                     return (
                       <button
                         key={q.id}
                         onClick={() => setCurrentQuestionIndex(idx)}
                         className={`
                           w-8 h-8 rounded-lg text-xs font-bold flex-shrink-0 transition-all
-                          ${isActive ? 'bg-saBlue text-white' : isAnswered ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}
+                          ${getQuestionStatusClass(q.id, idx)}
                         `}
                       >
                         {idx + 1}

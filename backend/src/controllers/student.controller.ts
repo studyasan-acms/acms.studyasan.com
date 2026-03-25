@@ -7,6 +7,13 @@ import { uploadToS3, deleteFromS3 } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
+const parseDateField = (value: unknown): Date | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = new Date(String(value));
+  return isNaN(parsed.getTime()) ? undefined : parsed;
+};
+
 export const getAllStudents = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = getPaginationParams(
@@ -113,6 +120,7 @@ export const getStudentById = async (req: Request, res: Response) => {
         user_id: true,
         class_id: true,
         board_id: true,
+        id_valid_through: true,
         date_of_birth: true,
         gender: true,
         school: true,
@@ -168,6 +176,7 @@ export const createStudent = async (req: Request, res: Response) => {
       user_id,
       class_id,
       board_id,
+      id_valid_through,
       date_of_birth,
       gender,
       school,
@@ -182,6 +191,7 @@ export const createStudent = async (req: Request, res: Response) => {
     if (email) req.body.email = email.toLowerCase();
 
     const profileImage = req.file;
+    const parsedIdValidThrough = parseDateField(id_valid_through);
 
     // Check if we're creating a new user or using existing user_id
     if (user_id) {
@@ -256,6 +266,7 @@ export const createStudent = async (req: Request, res: Response) => {
           user: { connect: { id: user.id } },
           ...(class_id && { class: { connect: { id: parseInt(class_id.toString()) } } }),
           ...(board_id && { board: { connect: { id: parseInt(board_id.toString()) } } }),
+          ...(parsedIdValidThrough !== undefined && { id_valid_through: parsedIdValidThrough }),
           ...(date_of_birth && { date_of_birth: new Date(date_of_birth) }),
           ...(gender && { gender }),
           ...(school && { school }),
@@ -318,6 +329,7 @@ export const createStudent = async (req: Request, res: Response) => {
           user: { connect: { id: user_id } },
           ...(class_id && { class: { connect: { id: parseInt(class_id.toString()) } } }),
           ...(board_id && { board: { connect: { id: parseInt(board_id.toString()) } } }),
+          ...(parsedIdValidThrough !== undefined && { id_valid_through: parsedIdValidThrough }),
           ...(date_of_birth && { date_of_birth: new Date(date_of_birth) }),
           ...(gender && { gender }),
           ...(school && { school }),
@@ -363,6 +375,7 @@ export const updateStudent = async (req: Request, res: Response) => {
     const {
       class_id,
       board_id,
+      id_valid_through,
       date_of_birth,
       gender,
       school,
@@ -376,6 +389,8 @@ export const updateStudent = async (req: Request, res: Response) => {
       email,
       phone,
     } = req.body;
+
+    const parsedIdValidThrough = parseDateField(id_valid_through);
 
     if (email) req.body.email = email.toLowerCase();
 
@@ -459,6 +474,7 @@ export const updateStudent = async (req: Request, res: Response) => {
         ...(board_id !== undefined && {
           board: board_id ? { connect: { id: board_id } } : { disconnect: true },
         }),
+        ...(parsedIdValidThrough !== undefined && { id_valid_through: parsedIdValidThrough }),
         ...(date_of_birth !== undefined && {
           date_of_birth: date_of_birth ? new Date(date_of_birth) : null,
         }),

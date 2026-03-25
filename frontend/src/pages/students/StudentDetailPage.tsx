@@ -46,6 +46,7 @@ import InvoiceModal from "@/components/InvoiceModal";
 import IDCardModal from "@/components/students/IDCardModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 
 export default function StudentDetailPage() {
   usePageTitle("Student Details");
@@ -78,6 +79,7 @@ export default function StudentDetailPage() {
 
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";
+  const isTeacher = user?.role === "TEACHER";
 
   useEffect(() => {
     if (id) {
@@ -312,9 +314,9 @@ export default function StudentDetailPage() {
 
         {/* Profile Content overlapping banner */}
         <div className="px-6 sm:px-10 pb-4">
-          <div className="flex flex-col sm:flex-row items-end -mt-16 gap-6">
+          <div className="flex flex-col sm:flex-row items-end gap-6">
             {/* Avatar */}
-            <div className="relative group">
+            <div className="relative group -mt-16 sm:shrink-0">
               <div className="w-32 h-32 rounded-full border-[6px] border-white bg-white shadow-xl overflow-hidden relative z-10">
                 <img
                   src={resolveImageUrl(student.user.profile_url) || `https://ui-avatars.com/api/?name=${encodeURIComponent(student.user.name)}`}
@@ -326,8 +328,10 @@ export default function StudentDetailPage() {
             </div>
 
             {/* Name & Basic Info */}
-            <div className="flex-1 pb-2 text-center sm:text-left">
-              <h1 className="text-3xl font-bold text-gray-800 tracking-tight">{student.user.name}</h1>
+            <div className="w-full min-w-0 flex-1 pb-2 text-center sm:text-left sm:pr-4">
+              <h1 className="text-3xl font-bold text-gray-800 tracking-tight leading-tight break-words [overflow-wrap:anywhere]">
+                {student.user.name}
+              </h1>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                 <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
                   <School className="w-3 h-3 mr-1" />
@@ -341,7 +345,7 @@ export default function StudentDetailPage() {
 
             {/* Actions */}
             {isAdmin && (
-              <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center">
+              <div className="flex gap-2 w-full sm:w-auto mt-4 sm:mt-0 justify-center sm:shrink-0">
                 <Button onClick={() => setShowIDCardModal(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
                   <CreditCard className="mr-2 h-4 w-4" /> ID Card
                 </Button>
@@ -361,17 +365,19 @@ export default function StudentDetailPage() {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 px-2">
 
         {/* CONTACT INFO */}
-        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <SectionTitle icon={Phone} title="Contact Info" description="Reach out" />
-            <div className="space-y-3">
-              <InfoItem label="Email" value={student.user.email} icon={Mail} />
-              <InfoItem label="Phone" value={student.user.phone} icon={Phone} />
-              {/* Address in summary */}
-              <InfoItem label="Location" value={student.address?.city?.name || 'Unknown'} icon={MapPin} />
-            </div>
-          </CardContent>
-        </Card>
+        {!isTeacher && (
+          <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <CardContent className="p-6">
+              <SectionTitle icon={Phone} title="Contact Info" description="Reach out" />
+              <div className="space-y-3">
+                <InfoItem label="Email" value={student.user.email} icon={Mail} />
+                <InfoItem label="Phone" value={student.user.phone} icon={Phone} />
+                {/* Address in summary */}
+                <InfoItem label="Location" value={student.address?.city?.name || 'Unknown'} icon={MapPin} />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ACADEMIC INFO */}
         <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
@@ -552,7 +558,10 @@ export default function StudentDetailPage() {
                 <Select value={selectedSubjectId?.toString() || ""} onValueChange={(value) => setSelectedSubjectId(parseInt(value))}>
                   <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50"><SelectValue placeholder="Choose Subject" /></SelectTrigger>
                   <SelectContent>
-                    {subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                    <SearchablePaginatedSelect
+                      searchPlaceholder="Search subject..."
+                      options={subjects.map((s) => ({ value: s.id.toString(), label: s.name }))}
+                    />
                   </SelectContent>
                 </Select>
               </div>

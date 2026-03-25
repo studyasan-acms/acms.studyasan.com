@@ -253,6 +253,8 @@ async function createPaymentSchedule(
     let periodIncrement = 1; // months
     if (frequency === 'yearly') {
       periodIncrement = 12;
+    } else if (frequency === 'semi_yearly') {
+      periodIncrement = 6;
     } else if (frequency === 'quarterly') {
       periodIncrement = 3;
     }
@@ -269,6 +271,8 @@ async function createPaymentSchedule(
 
       const period = frequency === 'monthly'
         ? `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, '0')}`
+        : frequency === 'semi_yearly'
+          ? `H${dueDate.getMonth() < 6 ? 1 : 2}-${dueDate.getFullYear()}`
         : frequency === 'yearly'
           ? `${dueDate.getFullYear()}`
           : `Q${Math.ceil((dueDate.getMonth() + 1) / 3)}-${dueDate.getFullYear()}`;

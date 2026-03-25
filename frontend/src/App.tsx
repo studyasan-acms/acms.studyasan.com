@@ -116,6 +116,7 @@ import AdminApplicationsPage from '@/pages/jobs/AdminApplicationsPage';
 import StudentAnalyticsPage from '@/pages/analytics/StudentAnalyticsPage';
 import TeacherAnalyticsPage from '@/pages/analytics/TeacherAnalyticsPage';
 import AdminAnalyticsPage from '@/pages/analytics/AdminAnalyticsPage';
+import WhiteboardPage from '@/pages/whiteboard/WhiteboardPage';
 
 // Admin imports
 import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
@@ -288,6 +289,9 @@ function App() {
           <Route path="class-sessions/create" element={<CreateClassSessionPage />} />
           <Route path="class-sessions/:id" element={<ClassSessionDetailPage />} />
           <Route path="class-sessions/:id/edit" element={<CreateClassSessionPage />} />
+
+          {/* Standalone Whiteboard Route */}
+          <Route path="whiteboard" element={<WhiteboardPage />} />
 
           {/* Test Series Routes */}
           <Route path="test-series" element={<TestSeriesPage />} />

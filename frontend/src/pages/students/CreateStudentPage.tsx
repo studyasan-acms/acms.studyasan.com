@@ -19,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
 import { cn } from '@/lib/utils';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import {
   Popover,
   PopoverContent,
@@ -67,6 +68,7 @@ export default function CreateStudentPage() {
     password: '',
     class_id: null as number | null,
     board_id: null as number | null,
+    id_valid_through: null as string | null,
     date_of_birth: null as string | null,
     gender: null as Gender,
     school: null as string | null,
@@ -419,9 +421,10 @@ export default function CreateStudentPage() {
                     <SelectValue placeholder="Select Class" />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id.toString()}>{cls.name}</SelectItem>
-                    ))}
+                    <SearchablePaginatedSelect
+                      searchPlaceholder="Search class..."
+                      options={classes.map((cls) => ({ value: cls.id.toString(), label: cls.name }))}
+                    />
                   </SelectContent>
                 </Select>
               </div>
@@ -459,6 +462,16 @@ export default function CreateStudentPage() {
                   type="date"
                   value={formData.date_of_birth || ''}
                   onChange={(e) => handleChange('date_of_birth', e.target.value)}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>ID Valid Through</FormLabel>
+                <Input
+                  type="date"
+                  value={formData.id_valid_through || ''}
+                  onChange={(e) => handleChange('id_valid_through', e.target.value)}
                   className="h-11 rounded-xl bg-gray-50 border-gray-200"
                 />
               </div>

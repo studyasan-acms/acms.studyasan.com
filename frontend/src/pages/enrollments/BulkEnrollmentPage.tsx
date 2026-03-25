@@ -34,6 +34,7 @@ const BulkEnrollmentPage: React.FC = () => {
   const [subjectBoardFilter, setSubjectBoardFilter] = useState('all');
   const [subjectCourseFilter, setSubjectCourseFilter] = useState<'all' | 'course' | 'non-course'>('all');
   const [subjectStatusFilter, setSubjectStatusFilter] = useState<'active' | 'all'>('active');
+  const [subjectPage, setSubjectPage] = useState(1);
 
   const [formData, setFormData] = useState<BulkEnrollmentData>({
     student_ids: [],
@@ -181,6 +182,20 @@ const BulkEnrollmentPage: React.FC = () => {
     return matchesSearch && matchesClass && matchesBoard && matchesStatus && matchesCourseType;
   });
 
+  const subjectPageSize = 10;
+  const totalSubjectPages = Math.max(1, Math.ceil(filteredSubjects.length / subjectPageSize));
+  const pagedSubjects = filteredSubjects.slice((subjectPage - 1) * subjectPageSize, subjectPage * subjectPageSize);
+
+  useEffect(() => {
+    setSubjectPage(1);
+  }, [subjectSearch, subjectClassFilter, subjectBoardFilter, subjectCourseFilter, subjectStatusFilter]);
+
+  useEffect(() => {
+    if (subjectPage > totalSubjectPages) {
+      setSubjectPage(totalSubjectPages);
+    }
+  }, [subjectPage, totalSubjectPages]);
+
   const selectedSubject = subjects.find(s => s.id === formData.subject_id);
   const selectedStudents = students.filter(s => formData.student_ids.includes(s.id));
 
@@ -302,7 +317,7 @@ const BulkEnrollmentPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="max-h-52 overflow-y-auto">
-                  {filteredSubjects.map(subject => (
+                  {pagedSubjects.map(subject => (
                     <SelectItem key={subject.id} value={subject.id.toString()} className="py-3">
                       <div className="flex flex-col">
                         <span className="font-medium">{subject.name}</span>
@@ -317,6 +332,39 @@ const BulkEnrollmentPage: React.FC = () => {
                     <p className="py-4 text-center text-xs text-gray-400">No subjects found</p>
                   )}
                   </div>
+                  {filteredSubjects.length > subjectPageSize && (
+                    <div className="sticky bottom-0 bg-popover border-t px-2 py-1.5 flex items-center justify-between">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSubjectPage((prev) => Math.max(1, prev - 1));
+                        }}
+                        disabled={subjectPage === 1}
+                      >
+                        Prev
+                      </Button>
+                      <span className="text-[10px] text-gray-500">Page {subjectPage} / {totalSubjectPages}</span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-[10px]"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setSubjectPage((prev) => Math.min(totalSubjectPages, prev + 1));
+                        }}
+                        disabled={subjectPage === totalSubjectPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  )}
                 </SelectContent>
               </Select>
 

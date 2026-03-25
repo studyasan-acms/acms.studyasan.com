@@ -28,6 +28,7 @@ import {
   Settings,
   Shield,
   Briefcase,
+  PenTool,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -83,6 +84,12 @@ const navItems: NavItem[] = [
     href: "/dashboard/class-sessions",
     icon: Video,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
+  },
+  {
+    title: "Whiteboard",
+    href: "/dashboard/whiteboard",
+    icon: PenTool,
+    roles: ["ADMIN", "TEACHER"],
   },
   {
     title: "Tests",

@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { ArrowLeft, Loader2, Save, Plus, Trash2, Camera, UploadCloud, BookOpen, Globe, Users, Coins } from 'lucide-react';
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateSubjectPage() {
@@ -356,12 +357,13 @@ export default function CreateSubjectPage() {
                     <SelectValue placeholder="Select class" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {classes.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id.toString()}>
-                        {cls.name}
-                      </SelectItem>
-                    ))}
+                    <SearchablePaginatedSelect
+                      searchPlaceholder="Search class..."
+                      options={[
+                        { value: 'none', label: 'None' },
+                        ...classes.map((cls) => ({ value: cls.id.toString(), label: cls.name })),
+                      ]}
+                    />
                   </SelectContent>
                 </Select>
                 {formData.is_course && (

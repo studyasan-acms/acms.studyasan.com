@@ -26,6 +26,7 @@ export function ClassroomPage() {
     const [roomInfo, setRoomInfo] = useState<VideoRoomInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [accessError, setAccessError] = useState<string | null>(null);
+    const [emergencyMeetLink, setEmergencyMeetLink] = useState<string | null>(null);
     const hasLeftIntentionally = useRef(false); // Prevent auto-reconnect after leave
 
     // Janus hook - only initialize after we have room info
@@ -60,6 +61,13 @@ export function ClassroomPage() {
 
                 const info: VideoRoomInfo = response.data.data;
                 setRoomInfo(info);
+
+                // Load session fallback meeting link for emergency access.
+                const sessionResponse = await api.get(`/class-sessions/${sessionId}`);
+                if (sessionResponse.data?.success) {
+                    setEmergencyMeetLink(sessionResponse.data.data?.emergency_meeting_link || null);
+                }
+
                 setLoading(false);
 
             } catch (error: any) {
@@ -135,6 +143,14 @@ export function ClassroomPage() {
                         <Button onClick={() => navigate(-1)} variant="outline">
                             Go Back
                         </Button>
+                        {emergencyMeetLink && (
+                            <Button
+                                variant="outline"
+                                onClick={() => window.open(emergencyMeetLink, '_blank', 'noopener,noreferrer')}
+                            >
+                                Join via Google Meet
+                            </Button>
+                        )}
                         <Button onClick={() => janus.connect()} className="bg-sky-500 hover:bg-sky-600">
                             Retry
                         </Button>

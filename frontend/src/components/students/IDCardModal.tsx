@@ -24,6 +24,16 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
     // Extract data based on type
     const name = data?.user?.name || data?.name || 'N/A';
     const role = type === 'STUDENT' ? 'Student' : 'Teacher';
+    const bloodGroup = data?.blood_group
+        ? String(data.blood_group).replace('_POS', '+').replace('_NEG', '-').replaceAll('_', ' ')
+        : '-';
+    const validThrough = data?.id_valid_through
+        ? new Date(data.id_valid_through).toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+        })
+        : '-';
 
     // Add cache buster to force fresh request with CORS headers if it's a remote URL
     const rawPhotoUrl = data ? (resolveImageUrl(data.user?.profile_url || data.profile_url)) : '';
@@ -254,6 +264,14 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
                                     <div className="flex justify-between items-start text-xs group">
                                         <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px] mt-0.5">Email</span>
                                         <span className="text-gray-800 font-bold break-all whitespace-normal text-right max-w-[180px] leading-tight" title={data.user?.email}>{data.user?.email || 'N/A'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs group">
+                                        <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Blood</span>
+                                        <span className="text-gray-800 font-bold">{bloodGroup}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-xs group">
+                                        <span className="text-gray-500 font-semibold uppercase tracking-wider text-[10px]">Valid Through</span>
+                                        <span className="text-gray-800 font-bold">{validThrough}</span>
                                     </div>
                                     <div className="flex justify-between items-center text-xs bg-blue-50/50 p-1.5 rounded-lg border border-blue-100/50 -mx-1 mt-1">
                                         <span className="text-blue-600 font-bold uppercase tracking-wider text-[10px] pl-1">ID No.</span>

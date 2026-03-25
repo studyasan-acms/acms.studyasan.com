@@ -15,6 +15,7 @@ import { useAuthStore } from '@/store/authStore';
 // Import your modals
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
+import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateClassSessionPage() {
@@ -28,6 +29,7 @@ export default function CreateClassSessionPage() {
   const [submitting, setSubmitting] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectSearch, setSubjectSearch] = useState('');
+  const [subjectPage, setSubjectPage] = useState(1);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -54,6 +56,7 @@ export default function CreateClassSessionPage() {
     mode: 'ONLINE',
     location: null,
     meeting_link: null,
+    emergency_meeting_link: null,
     start_time: '',
     end_time: '',
     is_recurring: false,
@@ -116,6 +119,7 @@ export default function CreateClassSessionPage() {
           mode: session.mode,
           location: session.location,
           meeting_link: session.meeting_link,
+          emergency_meeting_link: session.emergency_meeting_link,
           start_time: formatForInput(session.start_time),
           end_time: formatForInput(session.end_time),
           is_recurring: session.is_recurring,
@@ -209,6 +213,20 @@ export default function CreateClassSessionPage() {
 
     return matchesClass && matchesSearch && !isEndedCourse;
   });
+
+  const subjectPageSize = 10;
+  const totalSubjectPages = Math.max(1, Math.ceil(filteredSubjects.length / subjectPageSize));
+  const pagedSubjects = filteredSubjects.slice((subjectPage - 1) * subjectPageSize, subjectPage * subjectPageSize);
+
+  useEffect(() => {
+    setSubjectPage(1);
+  }, [subjectSearch, formData.class_id]);
+
+  useEffect(() => {
+    if (subjectPage > totalSubjectPages) {
+      setSubjectPage(totalSubjectPages);
+    }
+  }, [subjectPage, totalSubjectPages]);
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -447,16 +465,23 @@ export default function CreateClassSessionPage() {
                       <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
                         <div>
                           <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest'>Optional Class Filter</Label>
-                          <select
-                            className="w-full p-3 border border-gray-100 bg-white rounded-xl mt-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/10 outline-none"
-                            value={formData.class_id || ''}
-                            onChange={(e) => handleClassChange(e.target.value ? parseInt(e.target.value) : null)}
+                          <Select
+                            value={formData.class_id ? String(formData.class_id) : 'all'}
+                            onValueChange={(value) => handleClassChange(value === 'all' ? null : parseInt(value))}
                           >
-                            <option value="">All Classes</option>
-                            {classes.map((cls) => (
-                              <option key={cls.id} value={cls.id}>{cls.name}</option>
-                            ))}
-                          </select>
+                            <SelectTrigger className="w-full h-11 border border-gray-100 bg-white rounded-xl mt-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/10">
+                              <SelectValue placeholder="All Classes" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SearchablePaginatedSelect
+                                searchPlaceholder="Search class..."
+                                options={[
+                                  { value: 'all', label: 'All Classes' },
+                                  ...classes.map((cls) => ({ value: String(cls.id), label: cls.name })),
+                                ]}
+                              />
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div>
@@ -497,12 +522,48 @@ export default function CreateClassSessionPage() {
                                 />
                               </div>
                               <div className="max-h-52 overflow-y-auto">
-                                {filteredSubjects.map((subject) => (
+                                {pagedSubjects.map((subject) => (
                                   <SelectItem key={subject.id} value={String(subject.id)}>
                                     {subject.name} {subject.class?.name ? `(${subject.class.name})` : ''}
                                   </SelectItem>
                                 ))}
+                                {filteredSubjects.length === 0 && (
+                                  <div className="py-3 text-center text-xs text-gray-400">No subjects found</div>
+                                )}
                               </div>
+                              {filteredSubjects.length > subjectPageSize && (
+                                <div className="sticky bottom-0 bg-popover border-t px-2 py-1.5 flex items-center justify-between">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px]"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSubjectPage((prev) => Math.max(1, prev - 1));
+                                    }}
+                                    disabled={subjectPage === 1}
+                                  >
+                                    Prev
+                                  </Button>
+                                  <span className="text-[10px] text-gray-500">Page {subjectPage} / {totalSubjectPages}</span>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-[10px]"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      setSubjectPage((prev) => Math.min(totalSubjectPages, prev + 1));
+                                    }}
+                                    disabled={subjectPage === totalSubjectPages}
+                                  >
+                                    Next
+                                  </Button>
+                                </div>
+                              )}
                             </SelectContent>
                           </Select>
                           {filteredSubjects.length === 0 && (
@@ -591,13 +652,27 @@ export default function CreateClassSessionPage() {
                   </div>
 
                   {formData.mode === 'ONLINE' && (
-                    <div className="p-4 bg-blue-50/30 rounded-2xl border border-saBlue/5 flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white border border-saBlue/10 flex items-center justify-center shrink-0">
-                        <Video className="w-5 h-5 text-saBlue" />
+                    <div className="space-y-4">
+                      <div className="p-4 bg-blue-50/30 rounded-2xl border border-saBlue/5 flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white border border-saBlue/10 flex items-center justify-center shrink-0">
+                          <Video className="w-5 h-5 text-saBlue" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-sm text-saBlue">Virtual Classroom Enabled</p>
+                          <p className="text-[11px] text-saBlue/60 mt-0.5 font-medium">You can add a backup Google Meet link for emergencies.</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold text-sm text-saBlue">Virtual Classroom Enabled</p>
-                        <p className="text-[11px] text-saBlue/60 mt-0.5 font-medium">Link will be automatically shared with all students.</p>
+
+                      <div className="space-y-2">
+                        <Label className='text-[10px] font-semibold text-saBlue uppercase tracking-widest ml-1'>Emergency Google Meet Link (Optional)</Label>
+                        <Input
+                          type="url"
+                          className="h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-saBlue/5"
+                          placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                          value={formData.emergency_meeting_link || ''}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, emergency_meeting_link: e.target.value || null }))}
+                        />
+                        <p className="text-[10px] text-gray-400 ml-1">Students will see this as a fallback when classroom connection fails.</p>
                       </div>
                     </div>
                   )}

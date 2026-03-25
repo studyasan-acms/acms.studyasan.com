@@ -84,12 +84,23 @@ export interface City {
   stateId?: number;
 }
 
+export type BloodGroup =
+  | 'A_POS'
+  | 'A_NEG'
+  | 'B_POS'
+  | 'B_NEG'
+  | 'AB_POS'
+  | 'AB_NEG'
+  | 'O_POS'
+  | 'O_NEG';
+
 // ================== STUDENT TYPES ==================
 export interface Student {
   id: number;
   user_id: number;
   class_id: number | null;
   board_id: number | null;
+  id_valid_through?: string | null;
   date_of_birth: string | null;
   gender: 'M' | 'F' | 'OTHER' | null;
   school: string | null;
@@ -124,7 +135,7 @@ export interface Student {
     enrollments: number;
     activity_enrollments: number;
   };
-  blood_group?: 'A_POS' | 'A_NEG' | 'B_POS' | 'B_NEG' | 'AB_POS' | 'AB_NEG' | 'O_POS' | 'O_NEG' | null;
+  blood_group?: BloodGroup | null;
 }
 
 
@@ -137,20 +148,12 @@ export interface CreateStudentData {
 
   class_id: number | null;
   board_id: number | null;
+  id_valid_through?: string | null;
 
   date_of_birth: string | null;
   gender: 'M' | 'F' | 'OTHER' | null;
   school: string | null;
-  blood_group?:
-  | 'A_POS'
-  | 'A_NEG'
-  | 'B_POS'
-  | 'B_NEG'
-  | 'AB_POS'
-  | 'AB_NEG'
-  | 'O_POS'
-  | 'O_NEG'
-  | null;
+  blood_group?: BloodGroup | null;
 
   addressLine: string;
   countryId: number;
@@ -163,20 +166,12 @@ export interface CreateStudentData {
 export interface UpdateStudentData {
   class_id?: number | null;
   board_id?: number | null;
+  id_valid_through?: string | null;
 
   date_of_birth?: string | null;
   gender?: 'M' | 'F' | 'OTHER' | null;
   school?: string | null;
-  blood_group?:
-  | 'A_POS'
-  | 'A_NEG'
-  | 'B_POS'
-  | 'B_NEG'
-  | 'AB_POS'
-  | 'AB_NEG'
-  | 'O_POS'
-  | 'O_NEG'
-  | null;
+  blood_group?: BloodGroup | null;
 
   addressLine?: string | null;
   postalCode?: string | null;
@@ -220,10 +215,12 @@ export interface Currency {
 export interface Teacher {
   id: number;
   user_id: number;
+  id_valid_through?: string | null;
   salary: number | null;
   salary_currency?: Currency | null;
   qualification: string | null;
   gender: 'M' | 'F' | 'OTHER' | null;
+  blood_group?: BloodGroup | null;
   experience: string | null;
   address?: {
     id: number;
@@ -283,10 +280,12 @@ export interface CreateTeacherData {
   email: string;
   phone: string;
   password: string;
+  id_valid_through?: string | null;
   salary: number | null;
   salary_currency_id?: number | null;
   qualification: string | null;
   gender: 'M' | 'F' | 'OTHER' | null;
+  blood_group?: BloodGroup | null;
   experience: string | null;
   // optional address object for teacher
   address?: {
@@ -299,10 +298,12 @@ export interface CreateTeacherData {
 }
 
 export interface UpdateTeacherData {
+  id_valid_through?: string | null;
   salary?: number | null;
   salary_currency_id?: number | null;
   qualification?: string | null;
   gender?: 'M' | 'F' | 'OTHER' | null;
+  blood_group?: BloodGroup | null;
   experience?: string | null;
   address?: {
     addressLine?: string | null;
@@ -447,6 +448,7 @@ export interface ClassSession {
   mode: 'ONLINE' | 'OFFLINE';
   location: string | null;
   meeting_link: string | null;
+  emergency_meeting_link: string | null;
   google_event_id: string | null;
   start_time: string;
   end_time: string;
@@ -521,6 +523,7 @@ export interface CreateClassSessionData {
   mode: 'ONLINE' | 'OFFLINE';
   location?: string | null;
   meeting_link?: string | null;
+  emergency_meeting_link?: string | null;
   start_time: string;
   end_time: string;
   is_recurring?: boolean;
@@ -538,6 +541,7 @@ export interface UpdateClassSessionData {
   mode?: 'ONLINE' | 'OFFLINE';
   location?: string | null;
   meeting_link?: string | null;
+  emergency_meeting_link?: string | null;
   start_time?: string;
   end_time?: string;
   is_recurring?: boolean;
@@ -560,6 +564,7 @@ export interface CanJoinSessionResponse {
     end_time: string;
     mode: 'ONLINE' | 'OFFLINE';
     meeting_link: string | null;
+    emergency_meeting_link: string | null;
     location: string | null;
   };
 }
@@ -679,6 +684,7 @@ export interface Test {
   total_marks: number;
   passing_marks: number;
   has_negative_marking: boolean;
+  max_warning_attempts: number;
   duration_minutes: number;
   available_from: string;
   available_until: string;
@@ -763,6 +769,7 @@ export interface CreateTestData {
   total_marks: number;
   passing_marks: number;
   has_negative_marking?: boolean;
+  max_warning_attempts?: number;
   duration_minutes: number;
   available_from: string;
   available_until: string;
@@ -778,6 +785,7 @@ export interface UpdateTestData {
   total_marks?: number;
   passing_marks?: number;
   has_negative_marking?: boolean;
+  max_warning_attempts?: number;
   duration_minutes?: number;
   available_from?: string;
   available_until?: string;

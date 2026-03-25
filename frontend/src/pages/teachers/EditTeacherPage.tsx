@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { teacherService, locationService, currencyService } from '@/services/api';
 import axios from 'axios';
-import type { Teacher, Country, State, City, Currency } from '@/types';
+import type { Teacher, Country, State, City, Currency, BloodGroup } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -36,6 +36,17 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Gender = "M" | "F" | "OTHER" | null;
+
+const BLOOD_GROUP_OPTIONS: Array<{ value: BloodGroup; label: string }> = [
+  { value: 'A_POS', label: 'A+' },
+  { value: 'A_NEG', label: 'A-' },
+  { value: 'B_POS', label: 'B+' },
+  { value: 'B_NEG', label: 'B-' },
+  { value: 'AB_POS', label: 'AB+' },
+  { value: 'AB_NEG', label: 'AB-' },
+  { value: 'O_POS', label: 'O+' },
+  { value: 'O_NEG', label: 'O-' },
+];
 
 export default function EditTeacherPage() {
   usePageTitle("Edit Teacher");
@@ -74,10 +85,12 @@ export default function EditTeacherPage() {
   const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
+    id_valid_through: null as string | null,
     salary: null as number | null,
     salary_currency_id: null as number | null,
     qualification: null as string | null,
     gender: null as Gender,
+    blood_group: null as BloodGroup | null,
     experience: null as string | null,
     addressLine: null as string | null,
     countryId: null as number | null,
@@ -109,10 +122,12 @@ export default function EditTeacherPage() {
 
       // Set initial form data from teacher
       const initialData = {
+        id_valid_through: teacherData.id_valid_through ? teacherData.id_valid_through.split('T')[0] : null,
         salary: teacherData.salary,
         salary_currency_id: teacherData.salary_currency?.id ?? null,
         qualification: teacherData.qualification,
         gender: teacherData.gender,
+        blood_group: teacherData.blood_group ?? null,
         experience: teacherData.experience,
         addressLine: null as string | null,
         countryId: null as number | null,
@@ -303,10 +318,12 @@ export default function EditTeacherPage() {
       }
 
       const transformedData = {
+        id_valid_through: formData.id_valid_through,
         salary: formData.salary,
         salary_currency_id: formData.salary_currency_id,
         qualification: formData.qualification,
         gender: formData.gender,
+        blood_group: formData.blood_group,
         experience: formData.experience,
         name: formData.name,
         email: formData.email?.toLowerCase() ?? null,
@@ -324,8 +341,8 @@ export default function EditTeacherPage() {
       // Remove undefined values
       const cleanData: any = {};
       Object.entries(transformedData).forEach(([key, value]) => {
-        // Keep `role_id: null` so backend can disconnect an existing role.
-        if (value !== undefined && (value !== null || key === 'role_id')) {
+        // Keep nulls for fields that support explicit clearing.
+        if (value !== undefined && (value !== null || key === 'role_id' || key === 'blood_group' || key === 'id_valid_through')) {
           cleanData[key] = value;
         }
       });
@@ -345,6 +362,8 @@ export default function EditTeacherPage() {
         Object.entries(cleanData).forEach(([key, value]) => {
           if (key === 'address' && value) {
             formDataPayload.append(key, JSON.stringify(value));
+          } else if (key === 'blood_group' && value === null) {
+            formDataPayload.append(key, '');
           } else if (key === 'role_id' && value === null) {
             formDataPayload.append(key, 'null');
           } else if (value !== null && value !== undefined) {
@@ -576,6 +595,36 @@ export default function EditTeacherPage() {
                     <SelectItem value="M">Male</SelectItem>
                     <SelectItem value="F">Female</SelectItem>
                     <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>ID Valid Through</FormLabel>
+                <Input
+                  type="date"
+                  value={formData.id_valid_through || ''}
+                  onChange={(e) => handleChange('id_valid_through', e.target.value)}
+                  disabled={isSaving}
+                  className="h-11 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FormLabel>Blood Group</FormLabel>
+                <Select
+                  value={formData.blood_group || 'none'}
+                  onValueChange={(value) => handleChange('blood_group', value === 'none' ? null : (value as BloodGroup))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
+                    <SelectValue placeholder="Select blood group" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">-</SelectItem>
+                    {BLOOD_GROUP_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
