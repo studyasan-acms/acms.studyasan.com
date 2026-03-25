@@ -166,7 +166,7 @@ export default function CreateClassSessionPage() {
   }, [fetchData]);
 
   useEffect(() => {
-    fetchSubjects(subjectPage, subjectSearch, formData.class_id);
+    fetchSubjects(subjectPage, subjectSearch, formData.class_id ?? null);
   }, [fetchSubjects, subjectPage, subjectSearch, formData.class_id]);
 
   // Auto-set teacher for non-admin
