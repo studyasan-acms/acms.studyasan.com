@@ -179,8 +179,13 @@ export default function TestDetailPage() {
     if (!editingQuestion) return;
     try {
       setLoading(true);
+      const updateData = {
+        question_type: editingQuestion.question_type,
+        ...editFormData,
+      };
       if (editQuestionMediaFile || removeQuestionMedia) {
         const formData = new FormData();
+        formData.append("question_type", editingQuestion.question_type);
         formData.append("question_text", editFormData.question_text || "");
         formData.append("correct_answer", editFormData.correct_answer || "");
         formData.append("marks", (editFormData.marks || 2).toString());
@@ -197,7 +202,7 @@ export default function TestDetailPage() {
         }
         await testService.updateQuestionWithMedia(editingQuestion.id, formData);
       } else {
-        await testService.updateQuestion(editingQuestion.id, editFormData);
+        await testService.updateQuestion(editingQuestion.id, updateData);
       }
       setSuccessMessage("Question updated!");
       setSuccessOpen(true);
@@ -515,7 +520,25 @@ export default function TestDetailPage() {
               {/* Type */}
               <div>
                 <Label className="text-gray-700">Question Type</Label>
-                <Input type="text" value={editingQuestion.question_type.replace("_", " ")} disabled className="mt-1 bg-gray-50" />
+                <Select value={editingQuestion.question_type} onValueChange={(value) => {
+                  setEditingQuestion({ ...editingQuestion, question_type: value as QuestionType });
+                  // Reset options if switching away from MCQ
+                  if (value !== "MCQ") {
+                    setEditFormData({ ...editFormData, options: [] });
+                  } else if (!editFormData.options || editFormData.options.length === 0) {
+                    setEditFormData({ ...editFormData, options: ["", "", "", ""] });
+                  }
+                }}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="MCQ">Multiple Choice</SelectItem>
+                    <SelectItem value="TRUE_FALSE">True/False</SelectItem>
+                    <SelectItem value="SHORT_ANSWER">Short Answer</SelectItem>
+                    <SelectItem value="LONG_ANSWER">Long Answer</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               {/* Text */}

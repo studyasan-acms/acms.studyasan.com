@@ -39,6 +39,14 @@ interface Student {
   };
 }
 
+// Convert datetime-local string to UTC ISO string
+function convertLocalToUTC(localDateTimeString: string): string {
+  if (!localDateTimeString) return "";
+  // datetime-local input value is interpreted as local time by JavaScript
+  // Simply creating a Date and converting to ISO gives us the UTC equivalent
+  return new Date(localDateTimeString).toISOString();
+}
+
 export default function CreateHomeworkPage() {
   usePageTitle("Create Assignment");
   const navigate = useNavigate();
@@ -58,6 +66,10 @@ export default function CreateHomeworkPage() {
   const fetchSubjects = async () => {
     try {
       const params: any = {};
+      if (user?.id && user?.role) {
+        params.user_id = user.id;
+        params.role = user.role;
+      }
       const response = await subjectService.getAll(params);
       setSubjects(response.data.data || []);
     } catch (error) {
@@ -87,7 +99,7 @@ export default function CreateHomeworkPage() {
 
   useEffect(() => {
     fetchSubjects();
-  }, []);
+  }, [user]);
 
   const handleSubjectChange = (subjectId: string) => {
     setFormData(prev => ({ ...prev, subject_id: subjectId }));
@@ -142,7 +154,7 @@ export default function CreateHomeworkPage() {
       submitData.append('subject_id', formData.subject_id);
       submitData.append('title', formData.title);
       submitData.append('description', formData.description);
-      submitData.append('due_date', formData.due_date);
+      submitData.append('due_date', formData.due_date ? convertLocalToUTC(formData.due_date) : "");
       submitData.append('assigned_student_ids', JSON.stringify(selectedStudents));
 
       if (documentFile) {
@@ -307,7 +319,15 @@ export default function CreateHomeworkPage() {
                     <SelectContent className="rounded-xl border-gray-100">
                       <SearchablePaginatedSelect
                         searchPlaceholder="Search subject..."
-                        options={subjects.map((subject) => ({ value: subject.id.toString(), label: subject.name }))}
+                        options={subjects.map((subject) => {
+                          const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+                          const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+                          return {
+                            value: subject.id.toString(),
+                            label: `${subject.name}${classPart}${boardPart}`,
+                            searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`
+                          };
+                        })}
                       />
                     </SelectContent>
                   </Select>

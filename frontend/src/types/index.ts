@@ -770,6 +770,7 @@ export interface CreateTestData {
   passing_marks: number;
   has_negative_marking?: boolean;
   max_warning_attempts?: number;
+  enforce_warning_attempts?: boolean;
   duration_minutes: number;
   available_from: string;
   available_until: string;

@@ -338,6 +338,9 @@ router.put('/tests/:testId', authenticate, authorize('ADMIN', 'TEACHER'), testCo
 // Delete test
 router.delete('/tests/:testId', authenticate, authorize('ADMIN', 'TEACHER'), testController.deleteTest);
 
+// Duplicate test
+router.post('/tests/:testId/duplicate', authenticate, authorize('ADMIN', 'TEACHER'), testController.duplicateTest);
+
 // Generate questions using AI
 router.post('/tests/:testId/generate-questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.generateTestQuestions);
 

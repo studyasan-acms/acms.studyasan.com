@@ -189,6 +189,7 @@ export default function TestAttemptPage() {
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
   const [maxViolations, setMaxViolations] = useState(DEFAULT_MAX_VIOLATIONS);
+  const [enforceWarningAttempts, setEnforceWarningAttempts] = useState(true);
   const violationCountRef = useRef(0);
   const hasAutoSubmittedRef = useRef(false);
 
@@ -196,6 +197,9 @@ export default function TestAttemptPage() {
   const faceDetection = useFaceDetection(true);
 
   const addViolation = useCallback((violation: Violation) => {
+    if (!enforceWarningAttempts) {
+      return; // Don't track violations if enforcement is disabled
+    }
     setViolations(prev => {
       const updated = [...prev, violation];
       violationCountRef.current = updated.length;
@@ -208,7 +212,7 @@ export default function TestAttemptPage() {
     );
     setShowViolationBanner(true);
     setTimeout(() => setShowViolationBanner(false), 4000);
-  }, [maxViolations]);
+  }, [maxViolations, enforceWarningAttempts]);
 
   // Auto-submit after configured max violations
   useEffect(() => {
@@ -368,6 +372,8 @@ export default function TestAttemptPage() {
       if (typeof configuredMax === 'number' && Number.isInteger(configuredMax) && configuredMax > 0) {
         setMaxViolations(configuredMax);
       }
+      const enforceWarnings = (response.data.test as any)?.enforce_warning_attempts ?? true;
+      setEnforceWarningAttempts(enforceWarnings);
     } catch (error) {
       console.error('Error fetching test attempt:', error);
       navigate('/tests');

@@ -117,6 +117,18 @@ export default function TestsPage() {
     }
   };
 
+  const handleDuplicateTest = async (test: Test) => {
+    try {
+      const response = await testService.duplicate(test.id);
+      setTests([...tests, response.data]);
+      toast.success(`Test "${response.data.title}" created successfully!`);
+      navigate(`/tests/${response.data.id}/edit`);
+    } catch (error) {
+      console.error("Error duplicating test:", error);
+      toast.error("Failed to duplicate test.");
+    }
+  };
+
   const handleCopyLink = (test: Test) => {
     const link = `${window.location.origin}/certification/${test.id}`;
     navigator.clipboard.writeText(link);
@@ -332,6 +344,9 @@ export default function TestsPage() {
                               <>
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/tests/${test.id}/edit`); }}>
                                   <Edit className="mr-2 h-4 w-4 text-gray-600" /> Edit Test
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDuplicateTest(test); }}>
+                                  <Copy className="mr-2 h-4 w-4 text-blue-600" /> Duplicate Test
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem

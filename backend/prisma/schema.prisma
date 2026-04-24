@@ -398,6 +398,7 @@ model Test {
   passing_marks    Int
   has_negative_marking    Boolean       @default(false)
   max_warning_attempts Int      @default(3)
+  enforce_warning_attempts Boolean       @default(true) // Set to false to disable auto-ending test on warnings
   duration_minutes Int
   available_from   DateTime
   available_until  DateTime

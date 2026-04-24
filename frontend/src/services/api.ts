@@ -700,6 +700,12 @@ export const testService = {
     return response.data;
   },
 
+  // Duplicate test
+  duplicate: async (testId: number): Promise<{ success: boolean; data: Test }> => {
+    const response = await api.post(`/tests/${testId}/duplicate`);
+    return response.data;
+  },
+
   // Generate questions using AI
   generateQuestions: async (testId: number, data: GenerateQuestionsData): Promise<{ success: boolean; data: Question[] }> => {
     const response = await api.post(`/tests/${testId}/generate-questions`, data);

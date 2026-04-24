@@ -308,8 +308,9 @@ export default function CreateClassSessionPage() {
 
       // Convert local datetime to UTC ISO string for backend
       const convertToUTC = (localDateTimeString: string) => {
-        const localDate = new Date(localDateTimeString);
-        return localDate.toISOString();
+        // datetime-local input value is interpreted as local time by JavaScript
+        // Simply creating a Date and converting to ISO gives us the UTC equivalent
+        return new Date(localDateTimeString).toISOString();
       };
 
       const dataToSubmit = {

@@ -137,6 +137,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       passing_marks,
       duration_minutes,
       max_warning_attempts,
+      enforce_warning_attempts,
       available_from,
       available_until,
       is_published,
@@ -184,6 +185,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         passing_marks,
         duration_minutes,
         max_warning_attempts: parsedMaxWarningAttempts ?? 3,
+        enforce_warning_attempts: enforce_warning_attempts !== false,
         available_from: new Date(available_from),
         available_until: new Date(available_until),
         is_published: is_published || false,
@@ -385,7 +387,7 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Question ID is required', 400);
     }
 
-    const { question_text, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
+    const { question_text, question_type, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
     const file = req.file;
 
     // Handle file upload if present
@@ -411,6 +413,10 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       marks: marks ? parseInt(marks) : undefined,
       negative_marks: negative_marks !== undefined ? parseFloat(negative_marks) : undefined,
     };
+
+    if (question_type !== undefined) {
+      updateData.question_type = question_type;
+    }
 
     if (questionMediaUrl !== undefined) {
       updateData.media_url = questionMediaUrl;
@@ -752,6 +758,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       passing_marks,
       duration_minutes,
       max_warning_attempts,
+      enforce_warning_attempts,
       available_from,
       available_until,
       is_published,
@@ -779,6 +786,10 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
         return sendError(res, 'max_warning_attempts must be an integer between 1 and 20', 400);
       }
       data.max_warning_attempts = parsedMaxWarningAttempts;
+    }
+
+    if (enforce_warning_attempts !== undefined) {
+      data.enforce_warning_attempts = !!enforce_warning_attempts;
     }
 
     // Handle subject_id update (can be set to null)
@@ -839,5 +850,84 @@ export const deleteTest = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error deleting test:', error);
     return sendError(res, 'Failed to delete test');
+  }
+};
+
+// Duplicate test
+export const duplicateTest = async (req: AuthRequest, res: Response) => {
+  try {
+    const { testId } = req.params;
+    const userId = req.user?.id;
+
+    if (!testId || !userId) {
+      return sendError(res, 'Test ID and user are required', 400);
+    }
+
+    // Fetch the original test with all questions
+    const originalTest = await prisma.test.findUnique({
+      where: { id: parseInt(testId) },
+      include: { questions: true },
+    });
+
+    if (!originalTest) {
+      return sendError(res, 'Test not found', 404);
+    }
+
+    // Create new test with copied data
+    const duplicatedTest = await prisma.test.create({
+      data: {
+        title: `${originalTest.title} (Copy)`,
+        description: originalTest.description,
+        subject_id: originalTest.subject_id,
+        test_series_id: originalTest.test_series_id,
+        created_by: userId,
+        total_marks: originalTest.total_marks,
+        passing_marks: originalTest.passing_marks,
+        duration_minutes: originalTest.duration_minutes,
+        max_warning_attempts: originalTest.max_warning_attempts,
+        available_from: originalTest.available_from,
+        available_until: originalTest.available_until,
+        is_published: false, // Always create as draft
+        is_certification: originalTest.is_certification,
+        has_negative_marking: originalTest.has_negative_marking,
+        // Create questions
+        questions: {
+          create: originalTest.questions.map((q) => ({
+            question_type: q.question_type,
+            question_text: q.question_text,
+            media_url: q.media_url,
+            media_type: q.media_type,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            marks: q.marks,
+            negative_marks: q.negative_marks,
+            order: q.order,
+          })),
+        },
+      },
+      include: {
+        subject: true,
+        test_series: true,
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        questions: true,
+        _count: {
+          select: {
+            questions: true,
+            test_attempts: true,
+          },
+        },
+      },
+    });
+
+    return sendSuccess(res, duplicatedTest, 'Test duplicated successfully', 201);
+  } catch (error) {
+    console.error('Error duplicating test:', error);
+    return sendError(res, 'Failed to duplicate test');
   }
 };

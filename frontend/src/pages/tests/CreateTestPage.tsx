@@ -58,6 +58,26 @@ function generateId() {
   return Math.random().toString(36).substring(2, 15);
 }
 
+// Convert datetime-local string to UTC ISO string
+function convertLocalToUTC(localDateTimeString: string): string {
+  if (!localDateTimeString) return "";
+  // datetime-local input value is interpreted as local time by JavaScript
+  // Simply creating a Date and converting to ISO gives us the UTC equivalent
+  return new Date(localDateTimeString).toISOString();
+}
+
+// Convert UTC ISO string to datetime-local format (local time)
+function convertUTCToLocal(utcDateTimeString: string): string {
+  if (!utcDateTimeString) return "";
+  const date = new Date(utcDateTimeString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 export default function CreateTestPage() {
   const navigate = useNavigate();
   const { testId: paramTestId } = useParams();
@@ -83,6 +103,7 @@ export default function CreateTestPage() {
     passing_marks: 0,
     has_negative_marking: false,
     max_warning_attempts: 3,
+    enforce_warning_attempts: true,
     duration_minutes: 60,
     available_from: "",
     available_until: "",
@@ -164,9 +185,10 @@ export default function CreateTestPage() {
           passing_marks: test.passing_marks,
           has_negative_marking: test.has_negative_marking ?? false,
           max_warning_attempts: test.max_warning_attempts ?? 3,
+          enforce_warning_attempts: (test as any).enforce_warning_attempts ?? true,
           duration_minutes: test.duration_minutes,
-          available_from: test.available_from.replace("Z", ""),
-          available_until: test.available_until.replace("Z", ""),
+          available_from: convertUTCToLocal(test.available_from),
+          available_until: convertUTCToLocal(test.available_until),
           is_published: test.is_published,
           is_certification: test.is_certification ?? false,
         });
@@ -212,20 +234,19 @@ export default function CreateTestPage() {
     }
     try {
       setSavingTest(true);
+      const testDataToSend = {
+        ...formData,
+        available_from: formData.available_from ? convertLocalToUTC(formData.available_from) : "",
+        available_until: formData.available_until ? convertLocalToUTC(formData.available_until) : "",
+      };
       if (isEditing && paramTestId) {
-        await testService.update(Number(paramTestId), {
-          ...formData,
-        });
+        await testService.update(Number(paramTestId), testDataToSend);
         setSuccessMessage("Test details updated!");
       } else if (testId) {
-        await testService.update(testId, {
-          ...formData,
-        });
+        await testService.update(testId, testDataToSend);
         setSuccessMessage("Test details updated!");
       } else {
-        const response = await testService.create({
-          ...formData,
-        });
+        const response = await testService.create(testDataToSend);
         setTestId(response.data.id);
         setSuccessMessage("Test created! Now add your questions below.");
       }
@@ -741,6 +762,27 @@ export default function CreateTestPage() {
               />
               <p className="text-xs text-gray-500 mt-1">Auto-submit happens after this many violations.</p>
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.enforce_warning_attempts ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                <input
+                  type="checkbox"
+                  checked={!!formData.enforce_warning_attempts}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    enforce_warning_attempts: e.target.checked,
+                  })}
+                  className="sr-only"
+                />
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.enforce_warning_attempts ? 'translate-x-[18px]' : 'translate-x-[0.5px]'}`} />
+              </div>
+              <span className="text-sm text-gray-700">Enforce Warning Attempts (Auto-end test)</span>
+            </label>
+            {!formData.enforce_warning_attempts && (
+              <p className="text-sm text-blue-600 self-center">Students can continue even after warning limit.</p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

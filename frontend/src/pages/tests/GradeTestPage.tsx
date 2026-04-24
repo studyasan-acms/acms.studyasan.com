@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Save, CheckCircle, XCircle, User, Award, BookOpen } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle, XCircle, User, Award, BookOpen, FileText } from 'lucide-react';
 import { testAttemptService } from '@/services/api';
 import type { TestAttempt, GradeAnswerData } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -193,118 +193,138 @@ export default function GradeTestPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y divide-gray-100">
-            {attempt.answers?.map((answer, index) => {
-              const question = answer.question;
-              if (!question) return null;
-              const isAutoGraded = question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE';
+            {attempt.test?.questions
+              ?.sort((a, b) => (a.order || 0) - (b.order || 0))
+              .map((question, index) => {
+                // Find corresponding answer for this question
+                const answer = attempt.answers?.find(a => a.question_id === question.id);
+                const isAutoGraded = question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE';
 
-              return (
-                <div key={answer.id} className="p-5">
-                  {/* Question */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">
-                        {index + 1}
-                      </span>
-                      <div>
-                        <p className="font-medium text-gray-800">{question.question_text}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-xs">{question.question_type.replace('_', ' ')}</Badge>
-                          <span className="text-xs text-gray-400">{question.marks} marks</span>
+                return (
+                  <div key={question.id} className="p-5">
+                    {/* Question */}
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <div>
+                          <p className="font-medium text-gray-800">{question.question_text}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="outline" className="text-xs">{question.question_type.replace('_', ' ')}</Badge>
+                            <span className="text-xs text-gray-400">{question.marks} marks</span>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* MCQ Options */}
-                  {question.question_type === 'MCQ' && question.options && (
-                    <div className="ml-10 mb-3 space-y-1.5">
-                      {(question.options as any[]).map((option, optIndex) => {
-                        const optionText = typeof option === 'string' ? option : option?.text || '';
-                        const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
-                        const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
-                        const optionLetter = String.fromCharCode(65 + optIndex);
-                        const isCorrect = optionText === question.correct_answer ||
-                          optionLetter === question.correct_answer ||
-                          (optionText === '' && question.correct_answer === optionLetter);
+                    {/* MCQ Options */}
+                    {question.question_type === 'MCQ' && question.options && (
+                      <div className="ml-10 mb-3 space-y-1.5">
+                        {(question.options as any[]).map((option, optIndex) => {
+                          const optionText = typeof option === 'string' ? option : option?.text || '';
+                          const optionMediaUrl = typeof option === 'object' && option !== null ? option.media_url : null;
+                          const optionMediaType = typeof option === 'object' && option !== null ? option.media_type : null;
+                          const optionLetter = String.fromCharCode(65 + optIndex);
+                          const isCorrect = optionText === question.correct_answer ||
+                            optionLetter === question.correct_answer ||
+                            (optionText === '' && question.correct_answer === optionLetter);
 
-                        return (
-                          <div key={optIndex} className={`p-2 rounded-lg text-sm ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100'}`}>
-                            <span className={`${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
-                              {optionLetter}. {optionText}
-                              {isCorrect && <CheckCircle className="inline w-3.5 h-3.5 ml-1 text-green-500" />}
-                            </span>
-                            {optionMediaUrl && optionMediaType === 'image' && (
-                              <img src={optionMediaUrl} alt={`Option ${optionLetter}`} className="mt-1 max-w-xs max-h-24 rounded border" />
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          return (
+                            <div key={optIndex} className={`p-2 rounded-lg text-sm ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100'}`}>
+                              <span className={`${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
+                                {optionLetter}. {optionText}
+                                {isCorrect && <CheckCircle className="inline w-3.5 h-3.5 ml-1 text-green-500" />}
+                              </span>
+                              {optionMediaUrl && optionMediaType === 'image' && (
+                                <img src={optionMediaUrl} alt={`Option ${optionLetter}`} className="mt-1 max-w-xs max-h-24 rounded border" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
 
-                  {/* Student Answer */}
-                  <div className="ml-10 space-y-2">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Student's Answer</p>
-                      {!answer.answer_text && !answer.answer_media_url ? (
-                        <p className="text-sm text-gray-400 italic">Not answered</p>
-                      ) : (
-                        <>
-                          {answer.answer_text && <p className="text-sm text-gray-700">{answer.answer_text}</p>}
-                          {answer.answer_media_url && answer.answer_media_type === 'image' && (
-                            <img src={answer.answer_media_url} alt="Student answer" className="mt-2 max-w-md max-h-48 rounded border" />
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                      <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
-                      <p className="text-sm text-green-700 font-medium">{question.correct_answer}</p>
-                    </div>
-                  </div>
-
-                  {/* Grading */}
-                  <div className={`ml-10 mt-3 p-4 rounded-xl border ${isAutoGraded ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {isAutoGraded ? (
-                          <>
-                            {grades[answer.id]?.is_correct ? (
-                              <CheckCircle className="w-5 h-5 text-green-500" />
-                            ) : (
-                              <XCircle className="w-5 h-5 text-red-500" />
-                            )}
-                            <span className="text-sm font-medium text-gray-700">
-                              Auto-graded: {grades[answer.id]?.is_correct ? 'Correct' : 'Incorrect'}
-                            </span>
-                          </>
+                    {/* Student Answer */}
+                    <div className="ml-10 space-y-2">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Student's Answer</p>
+                        {!answer || (!answer.answer_text && !answer.answer_media_url) ? (
+                          <p className="text-sm text-red-500 italic font-medium">❌ Not Attempted</p>
                         ) : (
-                          <div className="flex items-center gap-3">
-                            <Award className="w-5 h-5 text-saBlue" />
-                            <label className="text-sm font-medium text-gray-700">Marks:</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max={question.marks}
-                              value={grades[answer.id]?.marks_obtained || 0}
-                              onChange={(e) => handleGradeChange(answer.id, parseFloat(e.target.value) || 0, question.marks)}
-                              className="w-20 h-8 text-center"
-                              disabled={attempt.is_graded}
-                            />
-                            <span className="text-sm text-gray-500">/ {question.marks}</span>
-                          </div>
+                          <>
+                            {answer.answer_text && <p className="text-sm text-gray-700 whitespace-pre-wrap">{answer.answer_text}</p>}
+                            {answer.answer_media_url && answer.answer_media_type === 'image' && (
+                              <img src={answer.answer_media_url} alt="Student answer" className="mt-2 max-w-md max-h-48 rounded border" />
+                            )}
+                            {answer.answer_media_url && answer.answer_media_type === 'pdf' && (
+                              <div className="mt-2 flex items-center gap-2 p-2 bg-white border rounded">
+                                <FileText className="w-5 h-5 text-red-500" />
+                                <a href={answer.answer_media_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                                  View PDF Document
+                                </a>
+                              </div>
+                            )}
+                            {answer.answer_media_url && answer.answer_media_type === 'video' && (
+                              <video src={answer.answer_media_url} controls className="mt-2 max-w-md max-h-48 rounded border" />
+                            )}
+                          </>
                         )}
                       </div>
-                      <Badge variant={grades[answer.id]?.is_correct ? 'default' : 'destructive'} className="text-xs">
-                        {grades[answer.id]?.marks_obtained || 0} / {question.marks}
-                      </Badge>
+
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
+                        <p className="text-sm text-green-700 font-medium">{question.correct_answer}</p>
+                      </div>
+                    </div>
+
+                    {/* Grading */}
+                    <div className={`ml-10 mt-3 p-4 rounded-xl border ${isAutoGraded ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {answer ? (
+                            isAutoGraded ? (
+                              <>
+                                {grades[answer.id]?.is_correct ? (
+                                  <CheckCircle className="w-5 h-5 text-green-500" />
+                                ) : (
+                                  <XCircle className="w-5 h-5 text-red-500" />
+                                )}
+                                <span className="text-sm font-medium text-gray-700">
+                                  Auto-graded: {grades[answer.id]?.is_correct ? 'Correct' : 'Incorrect'}
+                                </span>
+                              </>
+                            ) : (
+                              <div className="flex items-center gap-3">
+                                <Award className="w-5 h-5 text-saBlue" />
+                                <label className="text-sm font-medium text-gray-700">Marks:</label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max={question.marks}
+                                  value={grades[answer.id]?.marks_obtained || 0}
+                                  onChange={(e) => handleGradeChange(answer.id, parseFloat(e.target.value) || 0, question.marks)}
+                                  className="w-20 h-8 text-center"
+                                  disabled={attempt.is_graded}
+                                />
+                                <span className="text-sm text-gray-500">/ {question.marks}</span>
+                              </div>
+                            )
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <XCircle className="w-5 h-5 text-red-500" />
+                              <span className="text-sm font-medium text-gray-700">Not answered - 0 marks</span>
+                            </div>
+                          )}
+                        </div>
+                        <Badge variant={answer && grades[answer.id]?.is_correct ? 'default' : 'destructive'} className="text-xs">
+                          {answer ? (grades[answer.id]?.marks_obtained || 0) : 0} / {question.marks}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </CardContent>
       </Card>
