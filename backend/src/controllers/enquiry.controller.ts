@@ -7,7 +7,17 @@ const prisma = new PrismaClient();
 // Create enquiry
 export const createEnquiry = async (req: Request, res: Response) => {
     try {
-        const { item_type, item_id, student_name, student_email, student_phone, message } = req.body;
+        const {
+            item_type,
+            item_id,
+            student_name,
+            student_email,
+            student_phone,
+            message,
+            coupon_code,
+            discount_type,
+            discount_value,
+        } = req.body;
         const userId = (req as any).user?.id;
 
         if (!userId) {
@@ -45,61 +55,121 @@ export const createEnquiry = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Item not found' });
         }
 
-        const enquiry = await prisma.enquiry.create({
-            data: {
-                student_id: student.id,
-                item_type,
-                item_id,
-                student_name,
-                student_email,
-                student_phone,
-                message,
-            },
-            include: {
-                student: {
-                    include: {
-                        user: {
-                            select: {
-                                name: true,
-                                email: true,
-                                phone: true,
+        const normalizedCouponCode = typeof coupon_code === 'string' ? coupon_code.trim() : '';
+        const hasCoupon = normalizedCouponCode.length > 0;
+        const normalizedCode = hasCoupon ? normalizedCouponCode.toUpperCase() : null;
+
+        let couponRecord: {
+            id: number;
+            code: string;
+            discount_type: 'PERCENTAGE' | 'FLAT';
+            discount_value: number;
+            is_active: boolean;
+            max_uses: number | null;
+            used_count: number;
+            valid_from: Date | null;
+            valid_until: Date | null;
+        } | null = null;
+
+        if (normalizedCode) {
+            couponRecord = await prisma.coupon.findUnique({
+                where: { code: normalizedCode },
+                select: {
+                    id: true,
+                    code: true,
+                    discount_type: true,
+                    discount_value: true,
+                    max_uses: true,
+                    used_count: true,
+                    valid_from: true,
+                    valid_until: true,
+                    is_active: true,
+                },
+            });
+
+            const now = new Date();
+            if (
+                !couponRecord ||
+                !couponRecord.is_active ||
+                (couponRecord.valid_from && couponRecord.valid_from > now) ||
+                (couponRecord.valid_until && couponRecord.valid_until < now) ||
+                (couponRecord.max_uses !== null && couponRecord.used_count >= couponRecord.max_uses)
+            ) {
+                return res.status(400).json({ error: 'Invalid or expired coupon code' });
+            }
+        }
+
+        const enquiry = await prisma.$transaction(async (tx) => {
+            const createdEnquiry = await tx.enquiry.create({
+                data: {
+                    student_id: student.id,
+                    item_type,
+                    item_id,
+                    student_name,
+                    student_email,
+                    student_phone,
+                    coupon_code: couponRecord?.code || null,
+                    discount_type: couponRecord?.discount_type || null,
+                    discount_value: couponRecord?.discount_value || null,
+                    message,
+                },
+                include: {
+                    student: {
+                        include: {
+                            user: {
+                                select: {
+                                    name: true,
+                                    email: true,
+                                    phone: true,
+                                },
                             },
                         },
                     },
                 },
-            },
-        });
-
-        // Send notification to all admins
-        try {
-            const admins = await prisma.user.findMany({
-                where: { role: 'ADMIN' },
-                select: { id: true, name: true, email: true },
             });
 
-            console.log('Found admins:', admins.length, admins);
-
-            if (admins.length > 0) {
-                const adminIds = admins.map(admin => admin.id);
-                console.log('Sending notifications to admin IDs:', adminIds);
-                await sendNotificationToMultipleUsers(adminIds, {
-                    type: 'INFO',
-                    title: 'New Enquiry Received',
-                    description: `${student_name} has submitted an enquiry for ${item_type.toLowerCase().replace('_', ' ')}.`,
+            if (couponRecord) {
+                await tx.coupon.update({
+                    where: { id: couponRecord.id },
+                    data: { used_count: { increment: 1 } },
                 });
-                console.log('✓ Notifications sent to all admins');
-            } else {
-                console.log('⚠ No admin users found in database');
             }
-        } catch (notificationError) {
-            console.error('Error sending notification to admins:', notificationError);
-            // Don't fail the enquiry creation if notification fails
-        }
+
+            return createdEnquiry;
+        });
 
         res.status(201).json({
             message: 'Enquiry submitted successfully',
             data: enquiry,
         });
+
+        // Send admin notifications asynchronously so the API response is not blocked
+        // by push/email providers (which can be slow and trigger gateway timeouts).
+        void (async () => {
+            try {
+                const admins = await prisma.user.findMany({
+                    where: { role: 'ADMIN' },
+                    select: { id: true, name: true, email: true },
+                });
+
+                console.log('Found admins:', admins.length, admins);
+
+                if (admins.length > 0) {
+                    const adminIds = admins.map(admin => admin.id);
+                    console.log('Sending notifications to admin IDs:', adminIds);
+                    await sendNotificationToMultipleUsers(adminIds, {
+                        type: 'INFO',
+                        title: 'New Enquiry Received',
+                        description: `${student_name} has submitted an enquiry for ${item_type.toLowerCase().replace('_', ' ')}.`,
+                    });
+                    console.log('✓ Notifications sent to all admins');
+                } else {
+                    console.log('⚠ No admin users found in database');
+                }
+            } catch (notificationError) {
+                console.error('Error sending notification to admins:', notificationError);
+            }
+        })();
     } catch (error) {
         console.error('Error creating enquiry:', error);
         res.status(500).json({ error: 'Failed to create enquiry' });

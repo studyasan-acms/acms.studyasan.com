@@ -42,10 +42,10 @@ const ClassesPage: React.FC = () => {
   usePageTitle("Classes");
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
-  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { canCreate } = usePermissions();
   const canAddClass = isAdmin || canCreate('classes');
-  const canEditClass = isAdmin || canUpdate('classes');
-  const canDeleteClass = isAdmin || canDelete('classes');
+  const canEditClass = isAdmin;
+  const canDeleteClass = isAdmin;
   const canManageClass = canEditClass || canDeleteClass;
 
   // Data State

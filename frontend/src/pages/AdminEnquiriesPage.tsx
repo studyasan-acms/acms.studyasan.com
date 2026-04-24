@@ -160,6 +160,7 @@ export default function AdminEnquiriesPage() {
                             <TableHead>Contact</TableHead>
                             <TableHead>Item</TableHead>
                             <TableHead>Type</TableHead>
+                            <TableHead>Coupon</TableHead>
                             <TableHead>Message</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Date</TableHead>
@@ -169,7 +170,7 @@ export default function AdminEnquiriesPage() {
                     <TableBody>
                         {enquiries.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={8} className="text-center py-8 text-gray-400">
+                                <TableCell colSpan={9} className="text-center py-8 text-gray-400">
                                     No enquiries found
                                 </TableCell>
                             </TableRow>
@@ -186,6 +187,20 @@ export default function AdminEnquiriesPage() {
                                     <TableCell>{enquiry.item_name}</TableCell>
                                     <TableCell>
                                         <Badge variant="outline">{typeLabels[enquiry.item_type as keyof typeof typeLabels]}</Badge>
+                                    </TableCell>
+                                    <TableCell className="text-sm">
+                                        {enquiry.coupon_code ? (
+                                            <div>
+                                                <div className="font-medium">{enquiry.coupon_code}</div>
+                                                <div className="text-gray-500">
+                                                    {enquiry.discount_type === 'PERCENTAGE'
+                                                        ? `${enquiry.discount_value}%`
+                                                        : `Flat ${enquiry.discount_value}`}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            '-'
+                                        )}
                                     </TableCell>
                                     <TableCell className="max-w-xs truncate">
                                         {enquiry.message || '-'}

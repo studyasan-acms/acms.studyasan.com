@@ -154,6 +154,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
     permission: { resource: "roles", action: "view" },
   },
+  {
+    title: "Coupons",
+    href: "/dashboard/admin/coupons",
+    icon: DollarSign,
+    roles: ["ADMIN"],
+  },
 ];
 
 export default function Sidebar({

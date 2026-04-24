@@ -13,6 +13,8 @@ interface EnquiryFormProps {
         id: number;
         type: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
         name: string;
+        price?: number | null;
+        currency?: { symbol: string; code: string } | null;
     };
     onSuccess: () => void;
     onCancel: () => void;
@@ -25,6 +27,7 @@ export default function EnquiryForm({ item, onSuccess, onCancel }: EnquiryFormPr
         student_name: user?.name || '',
         student_email: user?.email || '',
         student_phone: user?.phone || '',
+        coupon_code: '',
         message: '',
     });
 
@@ -36,6 +39,9 @@ export default function EnquiryForm({ item, onSuccess, onCancel }: EnquiryFormPr
             return;
         }
 
+        const normalizedCouponCode = formData.coupon_code.trim();
+        const hasCoupon = normalizedCouponCode.length > 0;
+
         try {
             setLoading(true);
             await enquiryService.create({
@@ -45,13 +51,19 @@ export default function EnquiryForm({ item, onSuccess, onCancel }: EnquiryFormPr
                 student_email: formData.student_email,
                 student_phone: formData.student_phone,
                 message: formData.message || undefined,
+                coupon_code: hasCoupon ? normalizedCouponCode : undefined,
             });
 
             toast.success('Enquiry submitted successfully! We will contact you soon.');
             onSuccess();
         } catch (error: any) {
             console.error('Error submitting enquiry:', error);
-            toast.error(error.response?.data?.error || 'Failed to submit enquiry');
+            const status = error?.response?.status;
+            if (status === 504) {
+                toast.error('Server took too long to respond. Please try again in a moment.');
+            } else {
+                toast.error(error.response?.data?.error || 'Failed to submit enquiry');
+            }
         } finally {
             setLoading(false);
         }
@@ -99,6 +111,19 @@ export default function EnquiryForm({ item, onSuccess, onCancel }: EnquiryFormPr
                     required
                 />
             </div>
+
+            <>
+                <div>
+                    <Label htmlFor="coupon_code">Coupon Code (Optional)</Label>
+                    <Input
+                        id="coupon_code"
+                        value={formData.coupon_code}
+                        onChange={(e) => setFormData({ ...formData, coupon_code: e.target.value.toUpperCase() })}
+                        placeholder="Enter coupon code"
+                    />
+                </div>
+
+            </>
 
             <div>
                 <Label htmlFor="message">Message (Optional)</Label>

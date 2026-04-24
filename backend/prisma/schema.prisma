@@ -883,6 +883,11 @@ enum EnquiryStatus {
   RESOLVED
 }
 
+enum CouponDiscountType {
+  PERCENTAGE
+  FLAT
+}
+
 // Enquiry - Student enquiries for courses, subjects, activity groups, test series
 model Enquiry {
   id            Int              @id @default(autoincrement())
@@ -892,6 +897,9 @@ model Enquiry {
   student_name  String
   student_email String
   student_phone String
+  coupon_code   String?
+  discount_type CouponDiscountType?
+  discount_value Float?
   message       String?
   status        EnquiryStatus    @default(PENDING)
   created_at    DateTime         @default(now())
@@ -903,6 +911,23 @@ model Enquiry {
   @@index([status])
   @@index([item_type, item_id])
   @@map("enquiries")
+}
+
+model Coupon {
+  id             Int                @id @default(autoincrement())
+  code           String             @unique
+  discount_type  CouponDiscountType
+  discount_value Float
+  is_active      Boolean            @default(true)
+  valid_from     DateTime?
+  valid_until    DateTime?
+  max_uses       Int?
+  used_count     Int                @default(0)
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+
+  @@index([is_active])
+  @@map("coupons")
 }
 
 // Homework - Teacher assigned homework for subjects

@@ -48,3 +48,18 @@ export const authorize = (...roles: string[]) => {
     return sendError(res, 'Forbidden', 403);
   };
 };
+
+// Strict role-only check without teacher permission escalation.
+export const authorizeStrict = (...roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return sendError(res, 'Unauthorized', 401);
+    }
+
+    if (roles.includes(req.user.role)) {
+      return next();
+    }
+
+    return sendError(res, 'Forbidden', 403);
+  };
+};
