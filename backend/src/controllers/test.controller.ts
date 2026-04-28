@@ -229,8 +229,8 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
       include: {
         subject: {
           include: {
-            class: true
-          }
+            class: true,
+          },
         },
         test_series: {
           select: {
@@ -257,10 +257,12 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
     };
 
     // Generate questions using AI
-    const aiQuestions = await generateQuestionsWithAI(
-      testDetails,
-      { mcq: numMCQ, trueFalse: numTrueFalse, shortAnswer: numShortAnswer, longAnswer: numLongAnswer }
-    );
+    const aiQuestions = await generateQuestionsWithAI(testDetails, {
+      mcq: numMCQ,
+      trueFalse: numTrueFalse,
+      shortAnswer: numShortAnswer,
+      longAnswer: numLongAnswer,
+    });
 
     // Get the current max order
     const maxOrderQuestion = await prisma.question.findFirst({
@@ -334,18 +336,20 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
 
       // If options have media, upload the files
       if (Array.isArray(parsedOptions) && files) {
-        parsedOptions = await Promise.all(parsedOptions.map(async (option: any, index: number) => {
-          const optionFile = files[`option_media_${index}`]?.[0];
-          if (optionFile) {
-            const uploadResult = await uploadToS3(optionFile, 'test-questions');
-            return {
-              ...option,
-              media_url: uploadResult.url,
-              media_type: getFileType(uploadResult.filename),
-            };
-          }
-          return option;
-        }));
+        parsedOptions = await Promise.all(
+          parsedOptions.map(async (option: any, index: number) => {
+            const optionFile = files[`option_media_${index}`]?.[0];
+            if (optionFile) {
+              const uploadResult = await uploadToS3(optionFile, 'test-questions');
+              return {
+                ...option,
+                media_url: uploadResult.url,
+                media_type: getFileType(uploadResult.filename),
+              };
+            }
+            return option;
+          })
+        );
       }
     }
 
@@ -471,45 +475,38 @@ export const getTests = async (req: AuthRequest, res: Response) => {
       where.is_published = is_published === 'true';
     }
 
-    // Students can only see published tests from subjects/test series they're enrolled in
-    // Note: We don't filter by available_until so expired tests show up as practice sets
     if (userRole === 'STUDENT') {
       where.is_published = true;
-      // For test series tests, availability window is not enforced here.
       where.OR = [
         { test_series_id: { not: null } },
         { available_from: { lte: new Date() } },
       ];
 
-      // Get student's enrolled subjects and test series
       const student = await prisma.student.findUnique({
         where: { user_id: userId },
         include: {
           enrollments: {
-            select: { subject_id: true, test_series_id: true }
-          }
-        }
+            select: { subject_id: true, test_series_id: true },
+          },
+        },
       });
 
       if (student) {
         const enrolledSubjectIds = student.enrollments
-          .map(e => e.subject_id)
-          .filter(id => id !== null);
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
         const enrolledTestSeriesIds = student.enrollments
-          .map(e => e.test_series_id)
-          .filter(id => id !== null);
+          .map((e) => e.test_series_id)
+          .filter((id) => id !== null);
 
-        // If subject_id filter is provided, ensure it's in enrolled subjects
         if (subject_id) {
           const requestedSubjectId = parseInt(subject_id as string);
           if (enrolledSubjectIds.includes(requestedSubjectId)) {
             where.subject_id = requestedSubjectId;
           } else {
-            // Student is not enrolled in requested subject, return empty
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
         } else {
-          // No subject filter: show tests from enrolled subjects OR enrolled test series
           const accessFilters: any[] = [];
           if (enrolledSubjectIds.length > 0) {
             accessFilters.push({ subject_id: { in: enrolledSubjectIds } });
@@ -525,38 +522,33 @@ export const getTests = async (req: AuthRequest, res: Response) => {
           where.AND = [...(where.AND || []), { OR: accessFilters }];
         }
       } else {
-        // If no student record found, return empty array
         return sendSuccess(res, [], 'Tests fetched successfully');
       }
     } else if (userRole === 'TEACHER') {
-      // Teachers can only see tests from subjects or test series they're assigned to
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: userId },
         include: {
           teacher_subject_junctions: {
-            select: { subject_id: true }
+            select: { subject_id: true },
           },
           test_series_junctions: {
             select: { test_series_id: true },
-          }
-        }
+          },
+        },
       });
 
       if (teacher) {
-        const assignedSubjectIds = teacher.teacher_subject_junctions.map(j => j.subject_id);
-        const assignedTestSeriesIds = teacher.test_series_junctions.map(j => j.test_series_id);
+        const assignedSubjectIds = teacher.teacher_subject_junctions.map((j) => j.subject_id);
+        const assignedTestSeriesIds = teacher.test_series_junctions.map((j) => j.test_series_id);
 
-        // If subject_id filter is provided, ensure it's in assigned subjects
         if (subject_id) {
           const requestedSubjectId = parseInt(subject_id as string);
           if (assignedSubjectIds.includes(requestedSubjectId)) {
             where.subject_id = requestedSubjectId;
           } else {
-            // Teacher is not assigned to requested subject, return empty
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
         } else {
-          // No subject filter: show tests from assigned subjects OR assigned test series
           const accessFilters: any[] = [];
           if (assignedSubjectIds.length > 0) {
             accessFilters.push({ subject_id: { in: assignedSubjectIds } });
@@ -572,11 +564,9 @@ export const getTests = async (req: AuthRequest, res: Response) => {
           where.OR = accessFilters;
         }
       } else {
-        // If no teacher record found, return empty array
         return sendSuccess(res, [], 'Tests fetched successfully');
       }
     } else {
-      // For admins, apply subject_id filter if provided
       if (subject_id) {
         where.subject_id = parseInt(subject_id as string);
       }
@@ -703,10 +693,10 @@ export const getPublicTestById = async (req: Request, res: Response) => {
             question_text: true,
             options: true,
             marks: true,
-            order: true, // No correct_answer
+            order: true,
             media_url: true,
             media_type: true,
-          }
+          },
         },
       },
     });
@@ -715,8 +705,8 @@ export const getPublicTestById = async (req: Request, res: Response) => {
       return sendError(res, 'Test not found', 404);
     }
 
-    // Check if it is a certification test
-    const isCertification = test.is_certification ||
+    const isCertification =
+      test.is_certification ||
       (test.description && test.description.includes('[CERTIFICATION]')) ||
       test.title.includes('[CERTIFICATION]');
 
@@ -728,7 +718,6 @@ export const getPublicTestById = async (req: Request, res: Response) => {
       return sendError(res, 'This test is not currently active', 403);
     }
 
-    // Check availability
     const now = new Date();
     if (now < new Date(test.available_from) || now > new Date(test.available_until)) {
       return sendError(res, 'This test is not currently available', 403);
@@ -793,12 +782,10 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       data.enforce_warning_attempts = !!enforce_warning_attempts;
     }
 
-    // Handle subject_id update (can be set to null)
     if (subject_id !== undefined) {
       data.subject_id = subject_id;
     }
 
-    // Handle test_series_id update (can be set to null)
     if (test_series_id !== undefined) {
       data.test_series_id = test_series_id;
     }
@@ -888,26 +875,26 @@ export const duplicateTest = async (req: AuthRequest, res: Response) => {
         max_warning_attempts: originalTest.max_warning_attempts,
         available_from: originalTest.available_from,
         available_until: originalTest.available_until,
-        is_published: false, // Always create as draft
+        is_published: false,
         is_certification: originalTest.is_certification,
         has_negative_marking: originalTest.has_negative_marking,
-        // Create questions
-       questions: {
-  create: originalTest.questions.map((q) => ({
-    question_type: q.question_type,
-    question_text: q.question_text,
-    media_url: q.media_url,
-    media_type: q.media_type,
-    options:
-      q.options === null
-        ? Prisma.JsonNull
-        : (q.options as Prisma.InputJsonValue),
-    correct_answer: q.correct_answer,
-    marks: q.marks,
-    negative_marks: q.negative_marks,
-    order: q.order,
-  })),
-},
+        questions: {
+          create: originalTest.questions.map((q) => ({
+            question_type: q.question_type,
+            question_text: q.question_text,
+            media_url: q.media_url,
+            media_type: q.media_type,
+            options:
+              q.options === null
+                ? Prisma.JsonNull
+                : (q.options as Prisma.InputJsonValue),
+            correct_answer: q.correct_answer,
+            marks: q.marks,
+            negative_marks: q.negative_marks,
+            order: q.order,
+          })),
+        },
+      },
       include: {
         subject: true,
         test_series: true,
