@@ -1193,6 +1193,9 @@ export const enquiryService = {
     student_email: string;
     student_phone: string;
     message?: string;
+    coupon_code?: string;
+    discount_type?: 'PERCENTAGE' | 'FLAT';
+    discount_value?: number;
   }): Promise<{ message: string; data: any }> => {
     const response = await api.post('/enquiries', data);
     return response.data;
@@ -1215,6 +1218,52 @@ export const enquiryService = {
 
   delete: async (id: number): Promise<{ message: string }> => {
     const response = await api.delete(`/enquiries/${id}`);
+    return response.data;
+  },
+};
+
+export const couponService = {
+  getAll: async (params?: { is_active?: boolean }): Promise<{ data: any[] }> => {
+    const response = await api.get('/coupons', { params });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<{ data: any }> => {
+    const response = await api.get(`/coupons/${id}`);
+    return response.data;
+  },
+
+  create: async (data: {
+    code: string;
+    discount_type: 'PERCENTAGE' | 'FLAT';
+    discount_value: number;
+    is_active?: boolean;
+    valid_from?: string | null;
+    valid_until?: string | null;
+    max_uses?: number | null;
+  }): Promise<{ message: string; data: any }> => {
+    const response = await api.post('/coupons', data);
+    return response.data;
+  },
+
+  update: async (
+    id: number,
+    data: {
+      code?: string;
+      discount_type?: 'PERCENTAGE' | 'FLAT';
+      discount_value?: number;
+      is_active?: boolean;
+      valid_from?: string | null;
+      valid_until?: string | null;
+      max_uses?: number | null;
+    }
+  ): Promise<{ message: string; data: any }> => {
+    const response = await api.put(`/coupons/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ message: string }> => {
+    const response = await api.delete(`/coupons/${id}`);
     return response.data;
   },
 };

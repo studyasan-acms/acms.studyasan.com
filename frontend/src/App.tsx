@@ -122,6 +122,7 @@ import WhiteboardPage from '@/pages/whiteboard/WhiteboardPage';
 import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
 import CurriculumPage from '@/pages/admin/CurriculumPage';
 import RoleManagementPage from '@/pages/admin/RoleManagementPage';
+import CouponManagementPage from '@/pages/admin/CouponManagementPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -329,6 +330,9 @@ function App() {
 
           {/* Admin Role Management Route */}
           <Route path="admin/roles" element={<RoleManagementPage />} />
+
+          {/* Admin Coupon Management Route */}
+          <Route path="admin/coupons" element={<CouponManagementPage />} />
 
           {/* Analytics Routes */}
           <Route path="analytics" element={<StudentAnalyticsPage />} />

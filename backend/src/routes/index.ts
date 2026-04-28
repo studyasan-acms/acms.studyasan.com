@@ -25,6 +25,7 @@ import * as activityEnrollmentController from '../controllers/activityEnrollment
 import * as activityAttemptController from '../controllers/activityAttempt.controller.js';
 import * as homeController from '../controllers/home.controller.js';
 import * as enquiryController from '../controllers/enquiry.controller.js';
+import * as couponController from '../controllers/coupon.controller.js';
 import * as homeworkController from '../controllers/homework.controller.js';
 import * as videoRoomController from '../controllers/videoRoom.controller.js';
 import * as paymentController from '../controllers/payment.controller.js';
@@ -35,7 +36,7 @@ import * as pushNotificationController from '../controllers/pushNotification.con
 import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as jobController from '../controllers/job.controller.js';
-import { authenticate, authorize } from '../middleware/auth.middleware.js';
+import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
 
 // Configure multer for memory storage (files will be uploaded to S3)
@@ -109,8 +110,8 @@ router.delete('/boards/:id', authenticate, authorize('ADMIN'), boardController.d
 router.get('/classes', classController.getAllClasses);
 router.get('/classes/:id', classController.getClassById);
 router.post('/classes', authenticate, authorize('ADMIN'), classController.createClass);
-router.put('/classes/:id', authenticate, authorize('ADMIN'), classController.updateClass);
-router.delete('/classes/:id', authenticate, authorize('ADMIN'), classController.deleteClass);
+router.put('/classes/:id', authenticate, authorizeStrict('ADMIN'), classController.updateClass);
+router.delete('/classes/:id', authenticate, authorizeStrict('ADMIN'), classController.deleteClass);
 
 // Student routes
 router.get('/students', authenticate, studentController.getAllStudents);
@@ -617,6 +618,13 @@ router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN'), enquiryC
 
 // Delete enquiry (Admin)
 router.delete('/enquiries/:id', authenticate, authorize('ADMIN'), enquiryController.deleteEnquiry);
+
+// ================== COUPON ROUTES (ADMIN) ==================
+router.get('/coupons', authenticate, authorize('ADMIN'), couponController.getAllCoupons);
+router.get('/coupons/:id', authenticate, authorize('ADMIN'), couponController.getCouponById);
+router.post('/coupons', authenticate, authorize('ADMIN'), couponController.createCoupon);
+router.put('/coupons/:id', authenticate, authorize('ADMIN'), couponController.updateCoupon);
+router.delete('/coupons/:id', authenticate, authorize('ADMIN'), couponController.deleteCoupon);
 
 // ================== HOMEWORK ROUTES ==================
 
