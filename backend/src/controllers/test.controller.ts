@@ -3,6 +3,7 @@ import type { AuthRequest } from '../types/index.js';
 import { PrismaClient, QuestionType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { uploadToS3, getFileType } from '../utils/s3.js';
+import { Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -891,20 +892,22 @@ export const duplicateTest = async (req: AuthRequest, res: Response) => {
         is_certification: originalTest.is_certification,
         has_negative_marking: originalTest.has_negative_marking,
         // Create questions
-        questions: {
-          create: originalTest.questions.map((q) => ({
-            question_type: q.question_type,
-            question_text: q.question_text,
-            media_url: q.media_url,
-            media_type: q.media_type,
-            options: q.options,
-            correct_answer: q.correct_answer,
-            marks: q.marks,
-            negative_marks: q.negative_marks,
-            order: q.order,
-          })),
-        },
-      },
+       questions: {
+  create: originalTest.questions.map((q) => ({
+    question_type: q.question_type,
+    question_text: q.question_text,
+    media_url: q.media_url,
+    media_type: q.media_type,
+    options:
+      q.options === null
+        ? Prisma.JsonNull
+        : (q.options as Prisma.InputJsonValue),
+    correct_answer: q.correct_answer,
+    marks: q.marks,
+    negative_marks: q.negative_marks,
+    order: q.order,
+  })),
+},
       include: {
         subject: true,
         test_series: true,
