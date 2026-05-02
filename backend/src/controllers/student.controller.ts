@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import type { AuthRequest } from '../types/index.js';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import { sendSuccess, sendError } from '../utils/response.js';
@@ -14,7 +15,7 @@ const parseDateField = (value: unknown): Date | null | undefined => {
   return isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
-export const getAllStudents = async (req: Request, res: Response) => {
+export const getAllStudents = async (req: AuthRequest, res: Response) => {
   try {
     const { page, limit, skip } = getPaginationParams(
       req.query.page as string,
@@ -77,6 +78,29 @@ export const getAllStudents = async (req: Request, res: Response) => {
         }
       }
       // If hasStudentsViewPermission is true, don't add any filtering - show all students
+      }
+
+      // Determine whether the requester (from JWT) is a teacher and whether they should see emails
+      const requesterId = req.user?.id as number | undefined;
+      const requesterRole = req.user?.role as string | undefined;
+      let requesterIsTeacher = requesterRole === 'TEACHER';
+      let requesterHasStudentsViewPermission = false;
+      if (requesterIsTeacher && requesterId) {
+        try {
+          const teacherReq = await prisma.teacher.findUnique({ where: { user_id: requesterId }, include: { role: true } });
+          if (teacherReq?.role && teacherReq.role.is_active) {
+            const permissions = teacherReq.role.permissions as any;
+            requesterHasStudentsViewPermission = permissions?.students?.view === true;
+          }
+        } catch (e) {
+          console.error('Error fetching teacher permissions for requester:', e);
+        }
+      }
+
+    // Build user select based on requester permissions — hide email for teachers without explicit view permission
+    let userSelect: any = { id: true, name: true, profile_url: true, phone: true };
+    if (!requesterIsTeacher || requesterHasStudentsViewPermission) {
+      userSelect.email = true;
     }
 
     const [students, total] = await Promise.all([
@@ -85,7 +109,7 @@ export const getAllStudents = async (req: Request, res: Response) => {
         skip,
         take: limit,
         include: {
-          user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
+          user: { select: userSelect },
           class: true,
           board: true,
           address: {

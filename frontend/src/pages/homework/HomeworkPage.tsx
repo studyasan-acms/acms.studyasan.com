@@ -86,6 +86,11 @@ export default function HomeworkPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [limit] = useState(9);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -102,28 +107,36 @@ export default function HomeworkPage() {
       setLoading(true);
       let response;
 
+      // Build URL and query params for pagination
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('limit', String(limit));
+
       if (isStudent) {
-        response = await fetch('/api/homework/student', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+        response = await fetch(`/api/homework/student?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
       } else {
-        const url = selectedSubject && selectedSubject !== 'all'
+        const baseUrl = selectedSubject && selectedSubject !== 'all'
           ? `/api/subjects/${selectedSubject}/homework`
           : '/api/homework/teacher';
-        response = await fetch(url, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+        response = await fetch(`${baseUrl}?${params.toString()}`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
         });
       }
 
       if (response.ok) {
-        const data = await response.json();
-        let homeworkData = data.data.data || [];
+        const body = await response.json();
+        const payload = body.data ?? body; // payload should be { data: [...], pagination }
+        let homeworkData: any[] = [];
+        if (Array.isArray(payload?.data)) {
+          homeworkData = payload.data;
+        } else if (Array.isArray(payload)) {
+          homeworkData = payload;
+        }
 
         if (isStudent) {
+          // student endpoint returns assignments with homework + response
           homeworkData = homeworkData.map((item: any) => ({
             ...item.homework,
             response: item.response,
@@ -132,19 +145,25 @@ export default function HomeworkPage() {
         }
 
         setHomework(homeworkData);
+        // pagination
+        const pagination = payload?.pagination || {};
+        setTotal(pagination.total || 0);
+        setTotalPages(pagination.totalPages || 1);
       }
     } catch (error) {
       console.error('Error fetching homework:', error);
     } finally {
       setLoading(false);
     }
-  }, [isStudent, selectedSubject]);
+  }, [isStudent, selectedSubject, page, limit]);
 
   const fetchSubjects = useCallback(async () => {
     try {
       const params: any = {};
       if (isTeacher) {
-        params.teacher_id = user?.id;
+        // backend expects either teacher_id (junction id) OR user_id+role; pass user_id+role so controller resolves teacher
+        params.user_id = user?.id;
+        params.role = 'TEACHER';
       }
       const response = await subjectService.getAll(params);
       setSubjects(response.data.data || response.data);
@@ -268,7 +287,7 @@ export default function HomeworkPage() {
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto">
           {(isAdmin || isTeacher) && (
-            <Select value={selectedSubject} onValueChange={setSelectedSubject}>
+            <Select value={selectedSubject} onValueChange={(v) => { setSelectedSubject(v); setPage(1); }}>
               <SelectTrigger className="h-10 min-w-[160px] bg-gray-50 border-none rounded-xl font-medium text-gray-700 text-sm">
                 <Filter className="h-3.5 w-3.5 mr-2" />
                 <SelectValue placeholder="All Subjects" />
@@ -301,6 +320,7 @@ export default function HomeworkPage() {
           <p className="text-gray-500 text-sm">You're all caught up!</p>
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredHomework.map((item) => {
             const isFinished = isStudent ? !!item.response?.is_checked : (item._count.responses === item._count.assignments && item._count.assignments > 0);
@@ -369,6 +389,18 @@ export default function HomeworkPage() {
             );
           })}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-6">
+            <div className="text-sm text-gray-500">Showing {Math.min(page * limit, total)} of {total} assignments</div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</Button>
+              <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

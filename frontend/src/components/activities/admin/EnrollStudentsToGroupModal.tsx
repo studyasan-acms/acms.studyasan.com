@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAuthStore } from '../../../store/authStore';
 import { X, Users, CheckCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -12,7 +13,7 @@ interface Student {
   user: {
     id: number;
     name: string;
-    email: string;
+    email?: string;
   };
 }
 
@@ -24,24 +25,36 @@ interface Props {
 
 export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }: Props) {
   const [students, setStudents] = useState<Student[]>([]);
+  const { user } = useAuthStore();
+  const isTeacher = user?.role === 'TEACHER';
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [enrolledStudents, setEnrolledStudents] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [page, searchTerm]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch students
+      // Fetch students (paginated)
       const studentsResponse = await api.get('/students', {
-        params: { limit: 1000 },
+        params: { page, limit, search: searchTerm },
       });
-      setStudents(Array.isArray(studentsResponse.data.data.data) ? studentsResponse.data.data.data : studentsResponse.data.data || []);
+
+      const payload = studentsResponse.data?.data ?? studentsResponse.data;
+      const studentsArray = Array.isArray(payload?.data) ? payload.data : payload?.data || [];
+      const pagination = payload?.pagination || {};
+      setStudents(studentsArray);
+      setTotal(pagination.total || 0);
+      setTotalPages(pagination.totalPages || 1);
       
       // Fetch enrolled students for this group
       const enrollmentsResponse = await activityEnrollmentAPI.getGroupEnrollments(group.id);
@@ -109,10 +122,7 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
     }
   };
 
-  const filteredStudents = students.filter((student) =>
-    student.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.user.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students; // server-side search/pagination
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -143,7 +153,7 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
               placeholder="Search students by name or email..."
               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
             />
           </div>
 
@@ -167,6 +177,7 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
               {searchTerm ? 'No students found matching your search' : 'No students available'}
             </div>
           ) : (
+            <>
             <div className="space-y-2">
               {filteredStudents.map((student) => {
                 const isEnrolled = enrolledStudents.includes(student.id);
@@ -204,7 +215,9 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
                               </span>
                             )}
                           </p>
-                          <p className="text-sm text-gray-600">{student.user.email}</p>
+                          {!isTeacher && student.user.email && (
+                            <p className="text-sm text-gray-600">{student.user.email}</p>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -212,6 +225,18 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
                 );
               })}
             </div>
+
+            {/* Pagination controls for large student sets */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-sm text-gray-600">Page {page} of {totalPages} — {total} students</div>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage(p => Math.max(1, p - 1))}>Prev</Button>
+                  <Button variant="outline" size="sm" disabled={page === totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>Next</Button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
 

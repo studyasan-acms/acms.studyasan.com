@@ -35,7 +35,7 @@ interface Student {
   user: {
     id: number;
     name: string;
-    email: string;
+    email?: string;
   };
 }
 
@@ -51,6 +51,7 @@ export default function CreateHomeworkPage() {
   usePageTitle("Create Assignment");
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const isTeacher = user?.role === 'TEACHER';
   const [loading, setLoading] = useState(false);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
@@ -285,7 +286,9 @@ export default function CreateHomeworkPage() {
                         </div>
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-gray-900 truncate">{student.user.name}</p>
-                          <p className="text-[9px] text-gray-400 truncate">{student.user.email}</p>
+                          {!isTeacher && student.user.email && (
+                            <p className="text-[9px] text-gray-400 truncate">{student.user.email}</p>
+                          )}
                         </div>
                       </div>
                     ))}
