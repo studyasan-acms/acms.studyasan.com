@@ -52,9 +52,45 @@ export default function SearchablePaginatedSelect({
 
   return (
     <>
-      <div className="px-2 py-1.5 sticky top-0 bg-popover border-b z-10">
+      <div className="sticky top-0 z-10 bg-popover border-b px-2 pt-2 pb-2 space-y-2">
+        {filteredOptions.length > pageSize && (
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[10px] shrink-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPage((prev) => Math.max(1, prev - 1));
+              }}
+              disabled={page === 1}
+            >
+              Prev
+            </Button>
+            <span className="text-[10px] text-gray-500 whitespace-nowrap">
+              Page {page} / {totalPages}
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 text-[10px] shrink-0"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setPage((prev) => Math.min(totalPages, prev + 1));
+              }}
+              disabled={page === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
+
         <Input
-          className="h-8 text-xs"
+          className="h-9 text-sm rounded-lg"
           placeholder={searchPlaceholder}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -62,49 +98,17 @@ export default function SearchablePaginatedSelect({
         />
       </div>
 
-      {visibleOptions.length > 0 ? (
-        visibleOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))
-      ) : (
-        <div className="py-4 text-center text-xs text-gray-400">{emptyLabel}</div>
-      )}
-
-      {filteredOptions.length > pageSize && (
-        <div className="sticky bottom-0 bg-popover border-t px-2 py-1.5 flex items-center justify-between gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-[10px]"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setPage((prev) => Math.max(1, prev - 1));
-            }}
-            disabled={page === 1}
-          >
-            Prev
-          </Button>
-          <span className="text-[10px] text-gray-500">Page {page} / {totalPages}</span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-[10px]"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setPage((prev) => Math.min(totalPages, prev + 1));
-            }}
-            disabled={page === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
+      <div className="pb-1">
+        {visibleOptions.length > 0 ? (
+          visibleOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value} className="whitespace-normal leading-snug py-2">
+              {option.label}
+            </SelectItem>
+          ))
+        ) : (
+          <div className="py-4 text-center text-xs text-gray-400">{emptyLabel}</div>
+        )}
+      </div>
     </>
   );
 }

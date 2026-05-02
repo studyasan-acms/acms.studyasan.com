@@ -305,11 +305,11 @@ export default function HomeworkPage() {
         <div className="flex items-center gap-2 w-full md:w-auto">
           {(isAdmin || isTeacher) && (
             <Select value={selectedSubject} onValueChange={(v) => { setSelectedSubject(v); setPage(1); }}>
-              <SelectTrigger className="h-10 min-w-[160px] bg-gray-50 border-none rounded-xl font-medium text-gray-700 text-sm">
+              <SelectTrigger className="h-10 w-full md:min-w-[220px] bg-gray-50 border-none rounded-xl font-medium text-gray-700 text-sm">
                 <Filter className="h-3.5 w-3.5 mr-2" />
                 <SelectValue placeholder="All Subjects" />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-gray-100">
+              <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-hidden rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
                 <SearchablePaginatedSelect
                   searchPlaceholder="Search subject..."
                   options={[

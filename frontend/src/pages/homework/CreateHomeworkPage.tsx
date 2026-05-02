@@ -316,10 +316,10 @@ export default function CreateHomeworkPage() {
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Academic Subject *</Label>
                   <Select value={formData.subject_id} onValueChange={handleSubjectChange}>
-                    <SelectTrigger className="border-gray-100 bg-gray-50 rounded-xl h-10 text-xs font-medium">
+                    <SelectTrigger className="w-full border-gray-100 bg-gray-50 rounded-xl h-10 text-xs font-medium">
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100">
+                    <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-hidden rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
                       <SearchablePaginatedSelect
                         searchPlaceholder="Search subject..."
                         options={subjects.map((subject) => {
