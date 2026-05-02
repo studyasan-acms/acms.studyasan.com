@@ -16,6 +16,119 @@ const countriesData = JSON.parse(
   fs.readFileSync(path.join(__dirname, '../data/countries+states+cities.json'), 'utf-8')
 );
 
+const SUBJECT_LIBRARY = [
+  'English',
+  'Mathematics',
+  'Science',
+  'Social Studies',
+  'EVS',
+  'Hindi',
+  'Computer',
+  'GK',
+  'Art',
+  'Music',
+  'Physics',
+  'Chemistry',
+  'Biology',
+  'History',
+  'Geography',
+  'Civics',
+  'Economics',
+  'French',
+  'Sanskrit',
+  'Coding',
+  'Robotics',
+  'Environmental Science',
+  'Business Studies',
+  'Accountancy',
+  'Information Technology',
+  'Literature',
+  'Spoken English',
+  'Advanced Mathematics',
+  'Applied Science',
+  'Value Education',
+];
+
+const CLASS_NAMES = [
+  'LKG',
+  'UKG',
+  'Class 1',
+  'Class 2',
+  'Class 3',
+  'Class 4',
+  'Class 5',
+  'Class 6',
+  'Class 7',
+  'Class 8',
+  'Class 9',
+  'Class 10',
+  'Class 11',
+  'Class 12',
+  'Grade 1',
+  'Grade 2',
+  'Grade 3',
+  'Grade 4',
+  'Grade 5',
+  'Grade 6',
+];
+
+const TEACHER_NAMES = [
+  'John Smith',
+  'Priya Sharma',
+  'Aman Verma',
+  'Neha Gupta',
+  'Rahul Mehta',
+  'Ananya Iyer',
+  'Vikram Rao',
+  'Sneha Kapoor',
+  'Arjun Patel',
+  'Fatima Khan',
+  'Karan Singh',
+  'Meera Joshi',
+  'Rohit Kulkarni',
+  'Nisha Das',
+  'Kabir Sethi',
+  'Pooja Nair',
+  'Sanjay Bansal',
+  'Isha Malhotra',
+  'Dev Prakash',
+  'Shreya Menon',
+];
+
+const STUDENT_NAMES = [
+  'Jane Doe',
+  'Harmeet Kaur',
+  'Aleeza Khan',
+  'Bhoomika Arya',
+  'Rohan Das',
+  'Anika Sharma',
+  'Arnav Jain',
+  'Sara Ali',
+  'Kabir Rao',
+  'Ira Gupta',
+  'Vihaan Mehta',
+  'Mahi Verma',
+  'Ayaan Khan',
+  'Tanya Singh',
+  'Devika Nair',
+  'Reyansh Patel',
+  'Naina Kapoor',
+  'Yash Joshi',
+  'Siya Malhotra',
+  'Rudra Iyer',
+];
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '.')
+    .replace(/^\.|\.$/g, '');
+}
+
+function pick<T>(items: T[], index: number): T {
+  return items[index % items.length];
+}
+
 async function clearDatabase() {
   console.log('🗑️  Clearing database...');
   
@@ -220,23 +333,8 @@ async function seedBoards() {
 
 async function seedClasses() {
   console.log('🎓 Seeding classes...');
-  
-  const classes = [
-    { name: 'LKG' },
-    { name: 'UKG' },
-    { name: 'Class 1' },
-    { name: 'Class 2' },
-    { name: 'Class 3' },
-    { name: 'Class 4' },
-    { name: 'Class 5' },
-    { name: 'Class 6' },
-    { name: 'Class 7' },
-    { name: 'Class 8' },
-    { name: 'Class 9' },
-    { name: 'Class 10' },
-    { name: 'Class 11' },
-    { name: 'Class 12' },
-  ];
+
+  const classes = CLASS_NAMES.map((name) => ({ name }));
   
   await prisma.class.createMany({
     data: classes,
@@ -250,31 +348,35 @@ async function seedClasses() {
 
 async function seedSubjects(classes: any[], boards: any[]) {
   console.log('📚 Seeding subjects...');
-  
-  // Create only 3 subjects for Class 1 and CBSE board
-  const class1 = classes.find(c => c.name === 'Class 1');
+
   const cbseBoard = boards.find(b => b.name === 'CBSE');
-  
-  const subjects = [
-    {
-      name: 'English',
-      class_id: class1.id,
-      board_id: cbseBoard.id,
-      is_course: false,
-    },
-    {
-      name: 'Mathematics',
-      class_id: class1.id,
-      board_id: cbseBoard.id,
-      is_course: false,
-    },
-    {
-      name: 'Science',
-      class_id: class1.id,
-      board_id: cbseBoard.id,
-      is_course: false,
-    },
-  ];
+  const icseBoard = boards.find(b => b.name === 'ICSE');
+  const stateBoard = boards.find(b => b.name === 'State Board');
+  const ibBoard = boards.find(b => b.name === 'IB');
+  const cambridgeBoard = boards.find(b => b.name === 'Cambridge');
+
+  const boardCycle = [cbseBoard, icseBoard, stateBoard, ibBoard, cambridgeBoard].filter(Boolean);
+  const subjects = classes.flatMap((classItem, classIndex) => {
+    const subjectCount = classIndex < 2 ? 4 : 3;
+    return SUBJECT_LIBRARY.slice(classIndex, classIndex + subjectCount).map((subjectName, subjectOffset) => {
+      const board = pick(boardCycle, classIndex + subjectOffset);
+      return {
+        name: subjectName,
+        class_id: classItem.id,
+        board_id: board?.id,
+        is_course: classIndex >= 12 && subjectOffset === 0,
+      };
+    });
+  });
+
+  // Add a few cross-class subjects/courses so teachers have broader options
+  subjects.push(
+    { name: 'Spoken English', class_id: classes.find(c => c.name === 'Class 6')?.id, board_id: cbseBoard?.id, is_course: true },
+    { name: 'Coding Foundations', class_id: classes.find(c => c.name === 'Class 5')?.id, board_id: icseBoard?.id, is_course: true },
+    { name: 'Robotics Lab', class_id: classes.find(c => c.name === 'Class 8')?.id, board_id: stateBoard?.id, is_course: true },
+    { name: 'Advanced Math', class_id: classes.find(c => c.name === 'Class 11')?.id, board_id: cbseBoard?.id, is_course: true },
+    { name: 'Applied Science', class_id: classes.find(c => c.name === 'Class 12')?.id, board_id: icseBoard?.id, is_course: true },
+  );
   
   await prisma.subject.createMany({
     data: subjects,
@@ -304,31 +406,39 @@ async function seedUsers() {
   
   console.log(`   ✅ Created admin: ${admin.email}`);
   
-  // Create 1 teacher
-  const teacher = await prisma.user.create({
-    data: {
-      name: 'John Smith',
-      email: 'teacher@studyasan.com',
-      phone: '+919876543211',
-      password: hashedPassword,
-      role: 'TEACHER',
-    },
-  });
-  console.log(`   ✅ Created teacher: ${teacher.email}`);
+  const teacherUsers = [];
+  for (let i = 0; i < 20; i += 1) {
+    const name = TEACHER_NAMES[i];
+    const teacher = await prisma.user.create({
+      data: {
+        name,
+        email: `${slugify(name)}@studyasan.com`,
+        phone: `+91987654${String(300 + i).padStart(3, '0')}`,
+        password: hashedPassword,
+        role: 'TEACHER',
+      },
+    });
+    teacherUsers.push(teacher);
+    console.log(`   ✅ Created teacher: ${teacher.email}`);
+  }
+
+  const studentUsers = [];
+  for (let i = 0; i < 20; i += 1) {
+    const name = STUDENT_NAMES[i];
+    const student = await prisma.user.create({
+      data: {
+        name,
+        email: `${slugify(name)}@studyasan.com`,
+        phone: `+91987655${String(400 + i).padStart(3, '0')}`,
+        password: hashedPassword,
+        role: 'STUDENT',
+      },
+    });
+    studentUsers.push(student);
+    console.log(`   ✅ Created student: ${student.email}`);
+  }
   
-  // Create 1 student
-  const student = await prisma.user.create({
-    data: {
-      name: 'Jane Doe',
-      email: 'student@studyasan.com',
-      phone: '+919876543212',
-      password: hashedPassword,
-      role: 'STUDENT',
-    },
-  });
-  console.log(`   ✅ Created student: ${student.email}`);
-  
-  return { admin, teachers: [teacher], students: [student] };
+  return { admin, teachers: teacherUsers, students: studentUsers };
 }
 
 async function seedTeachers(teacherUsers: any[], subjects: any[]) {
@@ -337,51 +447,74 @@ async function seedTeachers(teacherUsers: any[], subjects: any[]) {
   // Get INR currency
   const inrCurrency = await prisma.currency.findFirst({ where: { code: 'INR' } });
   
-  const teacherUser = teacherUsers[0];
-  const teacher = await prisma.teacher.create({
-    data: {
-      user_id: teacherUser.id,
-      salary: 50000,
-      salary_currency_id: inrCurrency?.id,
-      qualification: 'B.Ed',
-      gender: 'M',
-      experience: '5 years',
-    },
-  });
-  
-  // Assign all 3 subjects to the teacher
-  for (const subject of subjects) {
-    await prisma.teacherSubjectJunction.create({
+  const teacherProfiles = [];
+
+  for (let i = 0; i < teacherUsers.length; i += 1) {
+    const teacherUser = teacherUsers[i];
+    const teacher = await prisma.teacher.create({
       data: {
-        teacher_id: teacher.id,
-        subject_id: subject.id,
+        user_id: teacherUser.id,
+        salary: 45000 + i * 2500,
+        salary_currency_id: inrCurrency?.id,
+        qualification: i % 3 === 0 ? 'B.Ed' : i % 3 === 1 ? 'M.Ed' : 'M.Sc',
+        gender: i % 2 === 0 ? 'M' : 'F',
+        experience: `${2 + (i % 8)} years`,
       },
     });
+    teacherProfiles.push(teacher);
+
+    const firstSubjectIndex = (i * 2) % subjects.length;
+    const subjectBatch = [
+      subjects[firstSubjectIndex],
+      subjects[(firstSubjectIndex + 1) % subjects.length],
+    ];
+
+    for (const subject of subjectBatch) {
+      await prisma.teacherSubjectJunction.create({
+        data: {
+          teacher_id: teacher.id,
+          subject_id: subject.id,
+        },
+      });
+    }
+
+    console.log(`   ✅ Created teacher profile for: ${teacherUser.name}`);
   }
-  
-  console.log(`   ✅ Created teacher profile for: ${teacherUser.name}`);
+
+  return teacherProfiles;
 }
 
 async function seedStudents(studentUsers: any[], classes: any[], boards: any[]) {
   console.log('👨‍🎓 Seeding student profiles...');
-  
-  const class1 = classes.find(c => c.name === 'Class 1');
+
   const cbseBoard = boards.find(b => b.name === 'CBSE');
-  const studentUser = studentUsers[0];
-  
-  await prisma.student.create({
-    data: {
-      user_id: studentUser.id,
-      class_id: class1.id,
-      board_id: cbseBoard.id,
-      date_of_birth: new Date(2015, 5, 15),
-      gender: 'F',
-      school: 'Delhi Public School',
-      blood_group: 'A_POS',
-    },
-  });
-  
-  console.log(`   ✅ Created student profile for: ${studentUser.name}`);
+  const schoolNames = [
+    'Delhi Public School',
+    'Study ASAN Academy',
+    'Green Valley School',
+    'St. Xavier School',
+    'Sunrise Public School',
+  ];
+
+  for (let i = 0; i < studentUsers.length; i += 1) {
+    const studentUser = studentUsers[i];
+    const classItem = classes[i % classes.length];
+    const board = boards[i % boards.length] || cbseBoard;
+
+    await prisma.student.create({
+      data: {
+        user_id: studentUser.id,
+        class_id: classItem.id,
+        board_id: board?.id,
+        date_of_birth: new Date(2012 + (i % 8), i % 12, 10 + (i % 15)),
+        gender: i % 3 === 0 ? 'M' : i % 3 === 1 ? 'F' : 'OTHER',
+        school: schoolNames[i % schoolNames.length],
+        blood_group: pick(['A_POS', 'B_POS', 'O_POS', 'AB_POS', 'A_NEG', 'B_NEG', 'O_NEG', 'AB_NEG'] as any[], i),
+      },
+    });
+
+    console.log(`   ✅ Created student profile for: ${studentUser.name}`);
+  }
 }
 
 async function seedEnrollments(students: any[], subjects: any[]) {
@@ -395,7 +528,7 @@ async function seedEnrollments(students: any[], subjects: any[]) {
       (s) => s.class_id === student.class_id && s.board_id === student.board_id
     );
     
-    const enrollmentCount = Math.min(studentSubjects.length, 3 + (student.id % 3));
+    const enrollmentCount = Math.min(studentSubjects.length, 3 + (student.id % 4));
     
     for (let i = 0; i < enrollmentCount; i++) {
       await prisma.enrollment.create({
@@ -436,7 +569,7 @@ async function main() {
     const { admin, teachers, students } = await seedUsers();
     
     // Step 8: Seed teacher profiles
-    await seedTeachers(teachers, subjects);
+    const teacherProfiles = await seedTeachers(teachers, subjects);
     
     // Step 9: Seed student profiles
     await seedStudents(students, classes, boards);
@@ -449,7 +582,10 @@ async function main() {
     console.log(`   - Boards: ${boards.length}`);
     console.log(`   - Classes: ${classes.length}`);
     console.log(`   - Subjects: ${subjects.length}`);
-    console.log(`   - Users: ${1 + teachers.length + students.length} (1 admin, ${teachers.length} teacher, ${students.length} student)`);
+    console.log(`   - Classes: ${classes.length}`);
+    console.log(`   - Teachers: ${teacherProfiles.length}`);
+    console.log(`   - Students: ${students.length}`);
+    console.log(`   - Users: ${1 + teachers.length + students.length} (1 admin, ${teachers.length} teachers, ${students.length} students)`);
     console.log('\n🔐 Default credentials:');
     console.log('   - Admin: admin@studyasan.com / password123');
     console.log('   - Teacher: teacher@studyasan.com / password123');

@@ -321,6 +321,7 @@ export default function CreateHomeworkPage() {
                     </SelectTrigger>
                     <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-hidden rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
                       <SearchablePaginatedSelect
+                        pageSize={5}
                         searchPlaceholder="Search subject..."
                         options={subjects.map((subject) => {
                           const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
