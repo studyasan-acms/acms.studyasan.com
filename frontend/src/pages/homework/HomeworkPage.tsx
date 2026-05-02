@@ -159,14 +159,31 @@ export default function HomeworkPage() {
 
   const fetchSubjects = useCallback(async () => {
     try {
-      const params: any = {};
+      const baseParams: any = {};
       if (isTeacher) {
         // backend expects either teacher_id (junction id) OR user_id+role; pass user_id+role so controller resolves teacher
-        params.user_id = user?.id;
-        params.role = 'TEACHER';
+        baseParams.user_id = user?.id;
+        baseParams.role = 'TEACHER';
       }
-      const response = await subjectService.getAll(params);
-      setSubjects(response.data.data || response.data);
+
+      const accumulatedSubjects: Subject[] = [];
+      let currentPage = 1;
+      let totalPages = 1;
+
+      do {
+        const response = await subjectService.getAll({
+          ...baseParams,
+          page: currentPage,
+          limit: 100,
+        });
+
+        const payload = response.data?.data || [];
+        accumulatedSubjects.push(...payload);
+        totalPages = response.data?.pagination?.totalPages || 1;
+        currentPage += 1;
+      } while (currentPage <= totalPages);
+
+      setSubjects(accumulatedSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
     }
