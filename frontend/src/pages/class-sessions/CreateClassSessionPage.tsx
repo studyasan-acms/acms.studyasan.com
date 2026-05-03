@@ -18,6 +18,16 @@ import SuccessModal from '@/components/ui/successModal';
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
+type SubjectPageResponse = {
+  data?: Subject[];
+  pagination?: {
+    page?: number;
+    limit?: number;
+    total?: number;
+    totalPages?: number;
+  };
+};
+
 export default function CreateClassSessionPage() {
   usePageTitle("Schedule Session");
   const { id } = useParams<{ id: string }>();
@@ -88,8 +98,19 @@ export default function CreateClassSessionPage() {
         ...(classId ? { class_id: classId } : {}),
       });
 
-      setSubjects(subjectsRes.data.data);
-      setSubjectTotalPages(Math.max(1, subjectsRes.data.pagination.totalPages));
+      const payload = subjectsRes.data?.data as Subject[] | SubjectPageResponse | undefined;
+      const pageSubjects = Array.isArray(payload)
+        ? payload
+        : Array.isArray((payload as SubjectPageResponse)?.data)
+          ? (payload as SubjectPageResponse).data || []
+          : [];
+
+      const totalPages = Array.isArray(payload)
+        ? 1
+        : Math.max(1, (payload as SubjectPageResponse)?.pagination?.totalPages || 1);
+
+      setSubjects(pageSubjects);
+      setSubjectTotalPages(totalPages);
     } catch (error) {
       console.error('Failed to fetch subjects', error);
       setSubjects([]);
@@ -104,11 +125,11 @@ export default function CreateClassSessionPage() {
       setLoading(true);
 
       const [classesRes, boardsRes] = await Promise.all([
-        classService.getAll(),
+        classService.getAll({ page: 1, limit: 100 }),
         boardService.getAll(),
       ]);
-      setClasses(classesRes.data.data);
-      setBoards(boardsRes.data.data);
+      setClasses(Array.isArray(classesRes.data?.data) ? classesRes.data.data : []);
+      setBoards(Array.isArray(boardsRes.data?.data) ? boardsRes.data.data : []);
 
       if (isAdmin) {
         const teachersRes = await teacherService.getAll();
