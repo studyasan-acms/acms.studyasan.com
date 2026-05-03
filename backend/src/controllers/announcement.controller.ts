@@ -175,7 +175,7 @@ export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
         }
 
         const announcement = await prisma.announcement.update({
-            where: { id: parseInt(id) },
+            where: { id: parseInt(id!) },
             data: {
                 ...(title && { title }),
                 ...(content && { content }),
@@ -214,7 +214,7 @@ export const deleteAnnouncement = async (req: AuthRequest, res: Response) => {
         }
 
         await prisma.announcement.delete({
-            where: { id: parseInt(id) }
+            where: { id: parseInt(id!) }
         });
 
         return sendSuccess(res, null, 'Announcement deleted successfully');
