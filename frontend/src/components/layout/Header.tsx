@@ -70,14 +70,13 @@ export default function Header({
     return 'en';
   });
 
-  // Debug log
-  console.log('Header user data:', user);
+
 
   const handleLanguageChange = (langCode: string) => {
     const language = languages.find(lang => lang.code === langCode);
     if (!language) return;
 
-    console.log('Changing language to:', langCode, language.name);
+
 
     // Save preference
     localStorage.setItem('preferredLanguage', langCode);
@@ -98,7 +97,7 @@ export default function Header({
     document.cookie = `googtrans=${cookieValue}; path=/; domain=${window.location.hostname}`;
     document.cookie = `googtrans=${cookieValue}; path=/;`; // Fallback for some browsers
 
-    console.log('Setting language cookie:', cookieValue);
+
     window.location.reload();
   };
 
@@ -230,11 +229,7 @@ export default function Header({
                       src={user?.profile_url}
                       alt={user?.name || 'User'}
                       onError={(e) => {
-                        console.log('Header avatar image failed to load:', user?.profile_url);
                         e.currentTarget.style.display = 'none';
-                      }}
-                      onLoad={() => {
-                        console.log('Header avatar image loaded:', user?.profile_url);
                       }}
                     />
                     <AvatarFallback className="bg-saVividOrange text-white">

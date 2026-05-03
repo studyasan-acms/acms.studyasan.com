@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/authStore';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePermissions } from '@/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +41,11 @@ const BoardsPage: React.FC = () => {
   usePageTitle("Boards");
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
+  const { canCreate, canUpdate, canDelete: canDeletePerm } = usePermissions();
+  const canAddBoard = isAdmin || canCreate('boards');
+  const canEditBoard = isAdmin || canUpdate('boards');
+  const canDeleteBoard = isAdmin || canDeletePerm('boards');
+  const canManageBoard = canEditBoard || canDeleteBoard;
 
   // Data State
   const [boards, setBoards] = useState<Board[]>([]);
@@ -186,7 +192,7 @@ const BoardsPage: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Boards</h1>
           <p className="text-gray-500 mt-1">Manage educational boards and syllabi</p>
         </div>
-        {isAdmin && (
+        {canAddBoard && (
           <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all hover:shadow-md">
             <Plus className="h-4 w-4 mr-2" />
             Create Board
@@ -227,7 +233,7 @@ const BoardsPage: React.FC = () => {
               <p className="text-gray-500 max-w-sm">
                 {searchTerm ? 'Try a different search term.' : 'Get started by creating a new board.'}
               </p>
-              {!searchTerm && isAdmin && (
+              {!searchTerm && canAddBoard && (
                 <Button variant="outline" onClick={handleCreate} className="mt-2">
                   <Plus className="h-4 w-4 mr-2" />
                   Create First Board
@@ -266,7 +272,7 @@ const BoardsPage: React.FC = () => {
                         {renderSortIcon('created_at')}
                       </div>
                     </TableHead>
-                    {isAdmin && <TableHead className="text-right font-semibold text-gray-600">Actions</TableHead>}
+                    {canManageBoard && <TableHead className="text-right font-semibold text-gray-600">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -275,9 +281,10 @@ const BoardsPage: React.FC = () => {
                       <TableCell className="font-medium text-gray-900">#{item.id}</TableCell>
                       <TableCell className="font-medium text-gray-800">{item.name}</TableCell>
                       <TableCell className="text-gray-500">{formatDate(item.created_at)}</TableCell>
-                      {isAdmin && (
+                      {canManageBoard && (
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {canEditBoard && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -286,6 +293,8 @@ const BoardsPage: React.FC = () => {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                            )}
+                            {canDeleteBoard && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -294,6 +303,7 @@ const BoardsPage: React.FC = () => {
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
+                            )}
                           </div>
                         </TableCell>
                       )}

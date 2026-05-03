@@ -102,16 +102,16 @@ router.post('/notifications/send-to-role', authenticate, authorize('ADMIN'), pus
 // Board routes
 router.get('/boards', boardController.getAllBoards);
 router.get('/boards/:id', boardController.getBoardById);
-router.post('/boards', authenticate, authorize('ADMIN'), boardController.createBoard);
-router.put('/boards/:id', authenticate, authorize('ADMIN'), boardController.updateBoard);
-router.delete('/boards/:id', authenticate, authorize('ADMIN'), boardController.deleteBoard);
+router.post('/boards', authenticate, authorize('ADMIN', 'TEACHER'), boardController.createBoard);
+router.put('/boards/:id', authenticate, authorize('ADMIN', 'TEACHER'), boardController.updateBoard);
+router.delete('/boards/:id', authenticate, authorize('ADMIN', 'TEACHER'), boardController.deleteBoard);
 
 // Class routes
 router.get('/classes', classController.getAllClasses);
 router.get('/classes/:id', classController.getClassById);
-router.post('/classes', authenticate, authorize('ADMIN'), classController.createClass);
-router.put('/classes/:id', authenticate, authorizeStrict('ADMIN'), classController.updateClass);
-router.delete('/classes/:id', authenticate, authorizeStrict('ADMIN'), classController.deleteClass);
+router.post('/classes', authenticate, authorize('ADMIN', 'TEACHER'), classController.createClass);
+router.put('/classes/:id', authenticate, authorize('ADMIN', 'TEACHER'), classController.updateClass);
+router.delete('/classes/:id', authenticate, authorize('ADMIN', 'TEACHER'), classController.deleteClass);
 
 // Student routes
 router.get('/students', authenticate, studentController.getAllStudents);
@@ -123,16 +123,16 @@ router.delete('/students/:id', authenticate, authorize('ADMIN'), studentControll
 // Subject routes
 router.get('/subjects', subjectController.getAllSubjects);
 router.get('/subjects/:id', subjectController.getSubjectById);
-router.post('/subjects', authenticate, authorize('ADMIN'), upload.single('cover_image'), subjectController.createSubject);
-router.put('/subjects/:id', authenticate, authorize('ADMIN'), upload.single('cover_image'), subjectController.updateSubject);
-router.delete('/subjects/:id', authenticate, authorize('ADMIN'), subjectController.deleteSubject);
+router.post('/subjects', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('cover_image'), subjectController.createSubject);
+router.put('/subjects/:id', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('cover_image'), subjectController.updateSubject);
+router.delete('/subjects/:id', authenticate, authorize('ADMIN', 'TEACHER'), subjectController.deleteSubject);
 
 // Enrollment routes
 router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);
 router.get('/enrollments/:id', authenticate, enrollmentController.getEnrollmentById);
 router.post('/enrollments', authenticate, enrollmentController.createEnrollment);
-router.post('/enrollments/bulk', authenticate, authorize('ADMIN'), enrollmentController.bulkEnroll);
-router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'STUDENT'), enrollmentController.deleteEnrollment);
+router.post('/enrollments/bulk', authenticate, authorize('ADMIN', 'TEACHER'), enrollmentController.bulkEnroll);
+router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'TEACHER', 'STUDENT'), enrollmentController.deleteEnrollment);
 
 // Payment routes
 router.get('/payments', authenticate, paymentController.getAllPayments);
@@ -610,14 +610,14 @@ router.get('/home/items', authenticate, authorize('STUDENT'), homeController.get
 // Create enquiry (Student)
 router.post('/enquiries', authenticate, authorize('STUDENT'), enquiryController.createEnquiry);
 
-// Get all enquiries (Admin)
-router.get('/enquiries', authenticate, authorize('ADMIN'), enquiryController.getAllEnquiries);
+// Get all enquiries (Admin/Teacher with permission)
+router.get('/enquiries', authenticate, authorize('ADMIN', 'TEACHER'), enquiryController.getAllEnquiries);
 
-// Update enquiry status (Admin)
-router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN'), enquiryController.updateEnquiryStatus);
+// Update enquiry status (Admin/Teacher with permission)
+router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN', 'TEACHER'), enquiryController.updateEnquiryStatus);
 
-// Delete enquiry (Admin)
-router.delete('/enquiries/:id', authenticate, authorize('ADMIN'), enquiryController.deleteEnquiry);
+// Delete enquiry (Admin/Teacher with permission)
+router.delete('/enquiries/:id', authenticate, authorize('ADMIN', 'TEACHER'), enquiryController.deleteEnquiry);
 
 // ================== COUPON ROUTES (ADMIN) ==================
 router.get('/coupons', authenticate, authorize('ADMIN'), couponController.getAllCoupons);

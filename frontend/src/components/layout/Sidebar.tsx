@@ -137,14 +137,14 @@ const navItems: NavItem[] = [
     title: "Enrollments",
     href: "/dashboard/enrollments",
     icon: GraduationCap,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "TEACHER"],
     permission: { resource: "enrollments", action: "view" },
   },
   {
     title: "Enquiries",
     href: "/dashboard/enquiries",
     icon: GraduationCap,
-    roles: ["ADMIN"],
+    roles: ["ADMIN", "TEACHER"],
     permission: { resource: "enquiries", action: "view" },
   },
   {
@@ -184,13 +184,18 @@ export default function Sidebar({
     // Check if user has the base role
     const hasRole = item.roles.includes(user?.role || "");
 
-    // If user is a teacher and item requires ADMIN, check permissions
-    if (user?.role === "TEACHER" && item.roles.includes("ADMIN") && !hasRole) {
-      // If item has permission requirement, check if teacher has that permission
-      if (item.permission) {
-        return hasPermission(item.permission.resource, item.permission.action);
+    if (user?.role === "TEACHER") {
+      // If the item has ADMIN in its roles, teachers need permission
+      if (item.roles.includes("ADMIN")) {
+        if (item.permission) {
+          return hasPermission(item.permission.resource, item.permission.action);
+        }
+        // No permission specified but requires ADMIN — show if TEACHER is also in roles
+        // (e.g. Curriculum, which is always visible to teachers)
+        return hasRole;
       }
-      return false;
+      // TEACHER-only item (no ADMIN), always show
+      return hasRole;
     }
 
     return hasRole;

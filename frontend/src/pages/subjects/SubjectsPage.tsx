@@ -28,12 +28,17 @@ import {
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function SubjectsPage({ embedded = false }: { embedded?: boolean }) {
   usePageTitle("Subjects");
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === "ADMIN";
+  const { canCreate, canUpdate, canDelete: canDeletePerm } = usePermissions();
+  const canAddSubject = isAdmin || canCreate('subjects');
+  const canEditSubject = isAdmin || canUpdate('subjects');
+  const canDeleteSubject = isAdmin || canDeletePerm('subjects');
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -133,7 +138,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                   <p className="text-sm text-gray-500">Let's learn something awesome today!</p>
                 </div>
               </div>
-              {isAdmin && (
+              {canAddSubject && (
                 <Button
                   className="bg-gradient-to-r from-saBlue to-cyan-500 hover:from-saBlue/90 hover:to-cyan-600 text-white shadow-lg"
                   onClick={() => navigate("/dashboard/subjects/new")}
@@ -171,7 +176,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
             <div className="hidden sm:block">
               {/* Empty placeholder or small title if needed */}
             </div>
-            {isAdmin && (
+            {canAddSubject && (
               <Button
                 size="sm"
                 className="bg-saBlue hover:bg-saBlue/90 text-white"
@@ -315,9 +320,10 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                           Start Learning
                         </Button>
 
-                        {/* Admin Actions */}
-                        {isAdmin && (
+                        {/* Admin/Teacher Actions */}
+                        {(canEditSubject || canDeleteSubject) && (
                           <div className="flex gap-2 pt-1">
+                            {canEditSubject && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -330,6 +336,8 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                               <Edit className="h-3 w-3 mr-1" />
                               Edit
                             </Button>
+                            )}
+                            {canDeleteSubject && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -342,6 +350,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                               <Trash2 className="h-3 w-3 mr-1" />
                               Delete
                             </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -386,7 +395,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
         )}
 
         {/* Delete Confirmation Modal */}
-        {isAdmin && (
+        {canDeleteSubject && (
           <DeleteConfirmationModal
             open={!!deleteSubject}
             title="Delete Subject"

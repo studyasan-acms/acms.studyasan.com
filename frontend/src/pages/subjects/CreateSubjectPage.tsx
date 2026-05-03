@@ -18,6 +18,7 @@ import { ArrowLeft, Loader2, Save, Plus, Trash2, Camera, UploadCloud, BookOpen, 
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
+import { usePermissions } from '@/hooks/usePermissions';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function CreateSubjectPage() {
@@ -25,6 +26,8 @@ export default function CreateSubjectPage() {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'ADMIN';
+  const { canCreate, loading: permsLoading } = usePermissions();
+  const canCreateSubject = isAdmin || canCreate('subjects');
 
   const [isLoading, setIsLoading] = useState(false);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -53,14 +56,24 @@ export default function CreateSubjectPage() {
   });
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (permsLoading) return;
+    
+    if (!canCreateSubject) {
       navigate('/dashboard/subjects');
       return;
     }
     fetchBoards();
     fetchClasses();
     fetchCurrencies();
-  }, [isAdmin, navigate]);
+  }, [canCreateSubject, permsLoading, navigate]);
+
+  if (permsLoading) {
+    return (
+      <div className="flex h-[calc(100vh-200px)] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
+      </div>
+    );
+  }
 
   const fetchBoards = async () => {
     try {

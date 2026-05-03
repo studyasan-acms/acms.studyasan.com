@@ -19,6 +19,9 @@ interface Permissions {
     analytics?: { viewAdmin?: boolean };
     accountDeletion?: { manage?: boolean };
     chat?: { viewAll?: boolean };
+    homework?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
+    tests?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
+    roles?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
 }
 
 export const usePermissions = () => {

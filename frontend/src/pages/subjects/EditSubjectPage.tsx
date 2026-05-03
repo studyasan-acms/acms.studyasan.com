@@ -23,12 +23,16 @@ import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { resolveImageUrl } from '@/lib/utils';
 
+import { usePermissions } from '@/hooks/usePermissions';
+
 export default function EditSubjectPage() {
   usePageTitle("Edit Subject");
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const user = useAuthStore((state) => state.user);
   const isAdmin = user?.role === 'ADMIN';
+  const { canUpdate, loading: permsLoading } = usePermissions();
+  const canEditSubject = isAdmin || canUpdate('subjects');
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -62,7 +66,9 @@ export default function EditSubjectPage() {
   });
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (permsLoading) return;
+    
+    if (!canEditSubject) {
       navigate('/dashboard/subjects');
       return;
     }
@@ -70,7 +76,7 @@ export default function EditSubjectPage() {
     fetchClasses();
     fetchCurrencies();
     if (id) fetchSubject(Number(id));
-  }, [id, isAdmin, navigate]);
+  }, [id, canEditSubject, permsLoading, navigate]);
 
   const fetchSubject = async (subjectId: number) => {
     setIsLoading(true);
@@ -210,7 +216,7 @@ export default function EditSubjectPage() {
     </Label>
   );
 
-  if (isLoading) {
+  if (isLoading || permsLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
