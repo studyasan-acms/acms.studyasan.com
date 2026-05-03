@@ -32,37 +32,38 @@ model Class {
 }
 
 model User {
-  id                   Int                      @id @default(autoincrement())
-  name                 String
-  email                String                   @unique
-  phone                String
-  password             String
-  profile_url          String?
-  role                 Role                     @default(STUDENT)
-  delete_requested     Boolean                  @default(false)
-  delete_verified      Boolean                  @default(false)
-  delete_requested_at  DateTime?
-  reset_otp_hash       String?                  // Hashed OTP for password reset
-  reset_otp_expires_at DateTime?                // OTP expiry timestamp
-  fcm_token            String?                  // Firebase Cloud Messaging token for push notifications
-  created_at           DateTime                 @default(now())
-  updated_at           DateTime                 @updatedAt
-  student             Student?
-  teacher             Teacher?
-  notifications       Notification[]
-  pendingNotifications PendingNotification[]
-  created_sessions    ClassSession[]           @relation("SessionCreator")
-  session_attendances ClassSessionAttendance[] @relation("SessionAttendances")
-  created_tests       Test[]
-  graded_attempts     TestAttempt[]
-  chat_participations ChatParticipant[]
-  sent_messages       Message[]
-  created_test_series TestSeries[]             @relation("TestSeriesCreator")
-  created_activity_groups ActivityGroup[]      @relation("ActivityGroupCreator")
-  created_activities  Activity[]               @relation("ActivityCreator")
-  quiz_sessions_hosted QuizSession[]
+  id                      Int                      @id @default(autoincrement())
+  name                    String
+  email                   String                   @unique
+  phone                   String
+  password                String
+  profile_url             String?
+  role                    Role                     @default(STUDENT)
+  delete_requested        Boolean                  @default(false)
+  delete_verified         Boolean                  @default(false)
+  delete_requested_at     DateTime?
+  reset_otp_hash          String? // Hashed OTP for password reset
+  reset_otp_expires_at    DateTime? // OTP expiry timestamp
+  fcm_token               String? // Firebase Cloud Messaging token for push notifications
+  created_at              DateTime                 @default(now())
+  updated_at              DateTime                 @updatedAt
+  student                 Student?
+  teacher                 Teacher?
+  notifications           Notification[]
+  pendingNotifications    PendingNotification[]
+  created_sessions        ClassSession[]           @relation("SessionCreator")
+  session_attendances     ClassSessionAttendance[] @relation("SessionAttendances")
+  created_tests           Test[]
+  graded_attempts         TestAttempt[]
+  chat_participations     ChatParticipant[]
+  sent_messages           Message[]
+  created_test_series     TestSeries[]             @relation("TestSeriesCreator")
+  created_activity_groups ActivityGroup[]          @relation("ActivityGroupCreator")
+  created_activities      Activity[]               @relation("ActivityCreator")
+  quiz_sessions_hosted    QuizSession[]
   checked_homework        HomeworkResponse[]       @relation("HomeworkChecker")
-  room_chat_messages  RoomChatMessage[]
+  room_chat_messages      RoomChatMessage[]
+  announcements           Announcement[]           @relation("AnnouncementCreator")
 
   @@map("user")
 }
@@ -86,48 +87,48 @@ enum BloodGroup {
 
 // OTP Verification - For email verification during signup
 model OtpVerification {
-  id          Int      @id @default(autoincrement())
-  email       String   
-  otp_hash    String   // Hashed OTP for security
-  name        String   // Store user's name temporarily
-  phone       String   // Store user's phone temporarily
-  password    String   // Store hashed password temporarily
-  expires_at  DateTime
-  verified    Boolean  @default(false)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  id         Int      @id @default(autoincrement())
+  email      String
+  otp_hash   String // Hashed OTP for security
+  name       String // Store user's name temporarily
+  phone      String // Store user's phone temporarily
+  password   String // Store hashed password temporarily
+  expires_at DateTime
+  verified   Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@index([email])
   @@map("otp_verification")
 }
 
 model Student {
-  id                      Int                     @id @default(autoincrement())
-  user_id                 Int                     @unique
-  class_id                Int?
-  board_id                Int?
-  id_valid_through        DateTime?
-  date_of_birth           DateTime?
-  gender                  Gender?
-  school                  String?
-  blood_group             BloodGroup?
-  address                 StudentAddress?
-  created_at              DateTime                @default(now())
-  updated_at              DateTime                @updatedAt
-  user                    User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  class                   Class?                  @relation(fields: [class_id], references: [id])
-  board                   Board?                  @relation(fields: [board_id], references: [id])
-  enrollments             Enrollment[]
-  module_progress         StudentModuleProgress[]
-  test_attempts           TestAttempt[]
+  id                   Int                     @id @default(autoincrement())
+  user_id              Int                     @unique
+  class_id             Int?
+  board_id             Int?
+  id_valid_through     DateTime?
+  date_of_birth        DateTime?
+  gender               Gender?
+  school               String?
+  blood_group          BloodGroup?
+  address              StudentAddress?
+  created_at           DateTime                @default(now())
+  updated_at           DateTime                @updatedAt
+  user                 User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  class                Class?                  @relation(fields: [class_id], references: [id])
+  board                Board?                  @relation(fields: [board_id], references: [id])
+  enrollments          Enrollment[]
+  module_progress      StudentModuleProgress[]
+  test_attempts        TestAttempt[]
   // test_series_enrollments TestSeriesEnrollment[] // Removed
-  activity_enrollments    ActivityEnrollment[]
+  activity_enrollments ActivityEnrollment[]
   // activity_group_enrollments ActivityGroupEnrollment[] // Removed
-  activity_attempts       ActivityAttempt[]
-  enquiries               Enquiry[]
-  homework_assignments    HomeworkAssignment[]
-  homework_responses      HomeworkResponse[]
-  job_applications        JobApplication[]
+  activity_attempts    ActivityAttempt[]
+  enquiries            Enquiry[]
+  homework_assignments HomeworkAssignment[]
+  homework_responses   HomeworkResponse[]
+  job_applications     JobApplication[]
 
   @@map("students")
 }
@@ -171,28 +172,28 @@ enum EnrollmentType {
 }
 
 model Enrollment {
-  id         Int      @id @default(autoincrement())
+  id         Int            @id @default(autoincrement())
   type       EnrollmentType @default(SUBJECT)
   student_id Int
-  
-  subject_id         Int?
-  test_series_id     Int?
-  activity_group_id  Int?
 
-  price      Float?   // Enrollment fee amount
-  is_recurring Boolean @default(false)
-  frequency  String?  // "monthly", "yearly", "quarterly", etc.
-  end_date   DateTime? // When recurring payments should stop
-  created_on DateTime @default(now())
-  updated_on DateTime @updatedAt
-  
-  student    Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  
-  subject         Subject?       @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  test_series     TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
-  activity_group  ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
-  
-  payments   Payment[]
+  subject_id        Int?
+  test_series_id    Int?
+  activity_group_id Int?
+
+  price        Float? // Enrollment fee amount
+  is_recurring Boolean   @default(false)
+  frequency    String? // "monthly", "yearly", "quarterly", etc.
+  end_date     DateTime? // When recurring payments should stop
+  created_on   DateTime  @default(now())
+  updated_on   DateTime  @updatedAt
+
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  subject        Subject?       @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  test_series    TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  activity_group ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
+
+  payments Payment[]
 
   @@unique([student_id, subject_id])
   @@unique([student_id, test_series_id])
@@ -201,40 +202,40 @@ model Enrollment {
 }
 
 model Payment {
-  id             Int         @id @default(autoincrement())
-  enrollment_id  Int
-  type           EnrollmentType @default(SUBJECT)
-  period         String      // Format: "YYYY-MM" for monthly, "YYYY" for yearly
-  due_date       DateTime
-  amount         Float
-  is_paid        Boolean     @default(false)
-  paid_date      DateTime?
-  created_at     DateTime    @default(now())
-  updated_at     DateTime    @updatedAt
-  enrollment     Enrollment  @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
+  id            Int            @id @default(autoincrement())
+  enrollment_id Int
+  type          EnrollmentType @default(SUBJECT)
+  period        String // Format: "YYYY-MM" for monthly, "YYYY" for yearly
+  due_date      DateTime
+  amount        Float
+  is_paid       Boolean        @default(false)
+  paid_date     DateTime?
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  enrollment    Enrollment     @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
 
   @@map("enrollment_payments")
 }
 
 // Teacher Role - Custom roles with permissions for teachers
 model TeacherRole {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
   description String?
-  permissions Json      // JSON structure defining what this role can do
-  is_active   Boolean   @default(true)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-  
-  teachers    Teacher[]
-  
+  permissions Json // JSON structure defining what this role can do
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  teachers Teacher[]
+
   @@map("teacher_roles")
 }
 
 model Teacher {
   id                        Int                            @id @default(autoincrement())
   user_id                   Int                            @unique
-  role_id                   Int?                           // Link to custom teacher role
+  role_id                   Int? // Link to custom teacher role
   id_valid_through          DateTime?
   salary                    Int?
   salary_currency_id        Int?
@@ -268,46 +269,46 @@ enum AttendanceRole {
 }
 
 model ClassSession {
-  id              Int                      @id @default(autoincrement())
-  teacher_id      Int
-  subject_id      Int
-  class_id        Int?
-  board_id        Int?
-  mode            SessionMode
-  location        String?
-  meeting_link    String?
+  id                     Int                      @id @default(autoincrement())
+  teacher_id             Int
+  subject_id             Int
+  class_id               Int?
+  board_id               Int?
+  mode                   SessionMode
+  location               String?
+  meeting_link           String?
   emergency_meeting_link String?
-  google_event_id String?
-  start_time      DateTime
-  end_time        DateTime
-  is_recurring    Boolean                  @default(false)
-  recurrence_rule Json?
-  created_by      Int
-  created_at      DateTime                 @default(now())
-  updated_at      DateTime                 @updatedAt
-  teacher         Teacher                  @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
-  subject         Subject                  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  class           Class?                   @relation(fields: [class_id], references: [id])
-  board           Board?                   @relation(fields: [board_id], references: [id])
-  creator         User                     @relation("SessionCreator", fields: [created_by], references: [id])
-  attendances     ClassSessionAttendance[]
-  video_room      VideoRoom?
+  google_event_id        String?
+  start_time             DateTime
+  end_time               DateTime
+  is_recurring           Boolean                  @default(false)
+  recurrence_rule        Json?
+  created_by             Int
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+  teacher                Teacher                  @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  subject                Subject                  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  class                  Class?                   @relation(fields: [class_id], references: [id])
+  board                  Board?                   @relation(fields: [board_id], references: [id])
+  creator                User                     @relation("SessionCreator", fields: [created_by], references: [id])
+  attendances            ClassSessionAttendance[]
+  video_room             VideoRoom?
 
   @@map("class_sessions")
 }
 
 model ClassSessionAttendance {
-  id               Int            @id @default(autoincrement())
+  id               Int                      @id @default(autoincrement())
   class_session_id Int
   user_id          Int
   role             AttendanceRole
   joined_at        DateTime?
   left_at          DateTime?
   duration_minutes Int?
-  created_at       DateTime       @default(now())
-  updated_at       DateTime       @updatedAt
-  class_session    ClassSession   @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
-  user             User           @relation("SessionAttendances", fields: [user_id], references: [id], onDelete: Cascade)
+  created_at       DateTime                 @default(now())
+  updated_at       DateTime                 @updatedAt
+  class_session    ClassSession             @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
+  user             User                     @relation("SessionAttendances", fields: [user_id], references: [id], onDelete: Cascade)
   attendance_logs  VideoRoomAttendanceLog[]
 
   @@unique([class_session_id, user_id])
@@ -342,16 +343,16 @@ model Notification {
 }
 
 model PendingNotification {
-  id             Int              @id @default(autoincrement())
-  user_id        Int
-  type           NotificationType
-  title          String
-  description    String?
-  delivery_time  DateTime
-  status         PendingNotificationStatus @default(PENDING)
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
-  user           User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id            Int                       @id @default(autoincrement())
+  user_id       Int
+  type          NotificationType
+  title         String
+  description   String?
+  delivery_time DateTime
+  status        PendingNotificationStatus @default(PENDING)
+  created_at    DateTime                  @default(now())
+  updated_at    DateTime                  @updatedAt
+  user          User                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("pending_notifications")
 }
@@ -388,31 +389,31 @@ model StudentModuleProgress {
 }
 
 model Test {
-  id               Int           @id @default(autoincrement())
-  title            String
-  description      String?
-  instructions     String?       // Default student instructions, editable by teachers/admins
-  subject_id       Int? // Optional - for subject-based tests
-  test_series_id   Int? // Optional - for test series tests
-  created_by       Int
-  total_marks      Int
-  passing_marks    Int
-  has_negative_marking    Boolean       @default(false)
-  max_warning_attempts Int      @default(3)
+  id                       Int           @id @default(autoincrement())
+  title                    String
+  description              String?
+  instructions             String? // Default student instructions, editable by teachers/admins
+  subject_id               Int? // Optional - for subject-based tests
+  test_series_id           Int? // Optional - for test series tests
+  created_by               Int
+  total_marks              Int
+  passing_marks            Int
+  has_negative_marking     Boolean       @default(false)
+  max_warning_attempts     Int           @default(3)
   enforce_warning_attempts Boolean       @default(true) // Set to false to disable auto-ending test on warnings
-  duration_minutes Int
-  available_from   DateTime
-  available_until  DateTime
-  is_published     Boolean       @default(false)
-  created_at       DateTime      @default(now())
-  updated_at       DateTime      @updatedAt
-  subject          Subject?      @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  test_series      TestSeries?   @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
-  creator          User          @relation(fields: [created_by], references: [id])
-  questions        Question[]
-  test_attempts    TestAttempt[]
-  is_certification Boolean       @default(false)
-  certificates     Certificate[]
+  duration_minutes         Int
+  available_from           DateTime
+  available_until          DateTime
+  is_published             Boolean       @default(false)
+  created_at               DateTime      @default(now())
+  updated_at               DateTime      @updatedAt
+  subject                  Subject?      @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  test_series              TestSeries?   @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
+  creator                  User          @relation(fields: [created_by], references: [id])
+  questions                Question[]
+  test_attempts            TestAttempt[]
+  is_certification         Boolean       @default(false)
+  certificates             Certificate[]
 
   @@map("tests")
 }
@@ -448,7 +449,7 @@ model TestAttempt {
   id           Int       @id @default(autoincrement())
   test_id      Int
   student_id   Int?
-  guest_info   Json?     // Stores guest user details { name, email, phone }
+  guest_info   Json? // Stores guest user details { name, email, phone }
   started_at   DateTime  @default(now())
   submitted_at DateTime?
   score        Int?
@@ -460,28 +461,28 @@ model TestAttempt {
   graded_at    DateTime?
   created_at   DateTime  @default(now())
   updated_at   DateTime  @updatedAt
-  
-  test         Test      @relation(fields: [test_id], references: [id], onDelete: Cascade)
-  student      Student?  @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  grader       User?     @relation(fields: [graded_by], references: [id])
-  answers      Answer[]
-  certificate  Certificate?
+
+  test        Test         @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  student     Student?     @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  grader      User?        @relation(fields: [graded_by], references: [id])
+  answers     Answer[]
+  certificate Certificate?
 
   @@index([test_id, student_id, is_practice])
   @@map("test_attempts")
 }
 
 model Certificate {
-  id              String      @id @default(uuid())
+  id              String   @id @default(uuid())
   test_id         Int
-  test_attempt_id Int         @unique
+  test_attempt_id Int      @unique
   recipient_name  String
-  issued_at       DateTime    @default(now())
-  code            String      @unique // Short code for verification
-  
-  test            Test        @relation(fields: [test_id], references: [id], onDelete: Cascade)
-  attempt         TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
-  
+  issued_at       DateTime @default(now())
+  code            String   @unique // Short code for verification
+
+  test    Test        @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  attempt TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)
+
   @@map("certificates")
 }
 
@@ -892,20 +893,20 @@ enum CouponDiscountType {
 
 // Enquiry - Student enquiries for courses, subjects, activity groups, test series
 model Enquiry {
-  id            Int              @id @default(autoincrement())
-  student_id    Int
-  item_type     EnquiryItemType
-  item_id       Int
-  student_name  String
-  student_email String
-  student_phone String
-  coupon_code   String?
-  discount_type CouponDiscountType?
+  id             Int                 @id @default(autoincrement())
+  student_id     Int
+  item_type      EnquiryItemType
+  item_id        Int
+  student_name   String
+  student_email  String
+  student_phone  String
+  coupon_code    String?
+  discount_type  CouponDiscountType?
   discount_value Float?
-  message       String?
-  status        EnquiryStatus    @default(PENDING)
-  created_at    DateTime         @default(now())
-  updated_at    DateTime         @updatedAt
+  message        String?
+  status         EnquiryStatus       @default(PENDING)
+  created_at     DateTime            @default(now())
+  updated_at     DateTime            @updatedAt
 
   student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
 
@@ -934,21 +935,21 @@ model Coupon {
 
 // Homework - Teacher assigned homework for subjects
 model Homework {
-  id             Int               @id @default(autoincrement())
-  subject_id     Int
-  teacher_id     Int
-  title          String
-  description    String?
-  document_url   String? // URL for uploaded homework document
-  document_type  String? // Type: pdf, doc, docx, etc.
-  due_date       DateTime?
-  created_at     DateTime          @default(now())
-  updated_at     DateTime          @updatedAt
+  id            Int       @id @default(autoincrement())
+  subject_id    Int
+  teacher_id    Int
+  title         String
+  description   String?
+  document_url  String? // URL for uploaded homework document
+  document_type String? // Type: pdf, doc, docx, etc.
+  due_date      DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
 
-  subject       Subject            @relation(fields: [subject_id], references: [id], onDelete: Cascade)
-  teacher       Teacher            @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
-  assignments   HomeworkAssignment[]
-  responses     HomeworkResponse[]
+  subject     Subject              @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  teacher     Teacher              @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  assignments HomeworkAssignment[]
+  responses   HomeworkResponse[]
 
   @@map("homework")
 }
@@ -969,14 +970,14 @@ model HomeworkAssignment {
 
 // Homework Response - Student's response to homework
 model HomeworkResponse {
-  id                  Int      @id @default(autoincrement())
+  id                  Int       @id @default(autoincrement())
   homework_id         Int
   student_id          Int
   response_text       String?
   response_media_url  String? // URL for uploaded response media
   response_media_type String? // Type: image, pdf, doc, video, etc.
-  submitted_at        DateTime @default(now())
-  is_checked          Boolean  @default(false)
+  submitted_at        DateTime  @default(now())
+  is_checked          Boolean   @default(false)
   checked_by          Int?
   checked_at          DateTime?
   feedback            String?
@@ -993,14 +994,14 @@ model HomeworkResponse {
 
 // Video Room - Janus video conferencing room for class sessions
 model VideoRoom {
-  id               Int                  @id @default(autoincrement())
-  class_session_id Int                  @unique
-  janus_room_id    BigInt               @unique  // Numeric ID for Janus room
-  is_created       Boolean              @default(false)  // Whether room was created on Janus
-  created_at       DateTime             @default(now())
-  updated_at       DateTime             @updatedAt
-  class_session    ClassSession         @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
-  chat_messages    RoomChatMessage[]
+  id                 Int                @id @default(autoincrement())
+  class_session_id   Int                @unique
+  janus_room_id      BigInt             @unique // Numeric ID for Janus room
+  is_created         Boolean            @default(false) // Whether room was created on Janus
+  created_at         DateTime           @default(now())
+  updated_at         DateTime           @updatedAt
+  class_session      ClassSession       @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
+  chat_messages      RoomChatMessage[]
   whiteboard_strokes WhiteboardStroke[]
 
   @@map("video_rooms")
@@ -1021,7 +1022,7 @@ model RoomChatMessage {
 model WhiteboardStroke {
   id         Int       @id @default(autoincrement())
   room_id    Int
-  stroke_id  String    // Client-generated UUID
+  stroke_id  String // Client-generated UUID
   tool       String
   color      String
   size       Int
@@ -1036,12 +1037,12 @@ model WhiteboardStroke {
 }
 
 model VideoRoomAttendanceLog {
-  id                  Int                      @id @default(autoincrement())
-  attendance_id       Int
-  joined_at           DateTime                 @default(now())
-  left_at             DateTime?
-  duration_minutes    Int?
-  attendance          ClassSessionAttendance   @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
+  id               Int                    @id @default(autoincrement())
+  attendance_id    Int
+  joined_at        DateTime               @default(now())
+  left_at          DateTime?
+  duration_minutes Int?
+  attendance       ClassSessionAttendance @relation(fields: [attendance_id], references: [id], onDelete: Cascade)
 
   @@map("video_room_attendance_logs")
 }
@@ -1066,45 +1067,64 @@ enum ApplicationStatus {
 
 // Job / Internship Posting
 model Job {
-  id              Int        @id @default(autoincrement())
-  title           String
-  company         String
-  location        String?
-  type            JobType    @default(JOB)
-  description     String
-  requirements    String?    // HTML or markdown text
-  skills          Json?      // Array of required skills
-  salary_range    String?
-  duration        String?    // For internships
+  id                   Int       @id @default(autoincrement())
+  title                String
+  company              String
+  location             String?
+  type                 JobType   @default(JOB)
+  description          String
+  requirements         String? // HTML or markdown text
+  skills               Json? // Array of required skills
+  salary_range         String?
+  duration             String? // For internships
   application_deadline DateTime?
-  status          JobStatus  @default(OPEN)
-  created_by      Int        // Admin who posted
-  created_at      DateTime   @default(now())
-  updated_at      DateTime   @updatedAt
-  
-  applications    JobApplication[]
-  
+  status               JobStatus @default(OPEN)
+  created_by           Int // Admin who posted
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  applications JobApplication[]
+
   @@map("jobs")
 }
 
 // Job/Internship Applications
 model JobApplication {
-  id              Int               @id @default(autoincrement())
-  job_id          Int
-  student_id      Int
-  cv_url          String            // URL to uploaded CV
-  cover_letter    String            // Text cover letter
-  status          ApplicationStatus @default(PENDING)
-  reviewed_by     Int?              // Admin who reviewed
-  reviewed_at     DateTime?
-  feedback        String?           // Admin feedback
-  applied_at      DateTime          @default(now())
-  updated_at      DateTime          @updatedAt
-  
-  job             Job               @relation(fields: [job_id], references: [id], onDelete: Cascade)
-  student         Student           @relation(fields: [student_id], references: [id], onDelete: Cascade)
-  
+  id           Int               @id @default(autoincrement())
+  job_id       Int
+  student_id   Int
+  cv_url       String // URL to uploaded CV
+  cover_letter String // Text cover letter
+  status       ApplicationStatus @default(PENDING)
+  reviewed_by  Int? // Admin who reviewed
+  reviewed_at  DateTime?
+  feedback     String? // Admin feedback
+  applied_at   DateTime          @default(now())
+  updated_at   DateTime          @updatedAt
+
+  job     Job     @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
   @@unique([job_id, student_id])
   @@map("job_applications")
 }
 
+model Announcement {
+  id             Int      @id @default(autoincrement())
+  title          String
+  content        String
+  created_by     Int
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  target_roles   Json?    // Array of roles or null for all
+  target_boards  Json?    // Array of board IDs or null
+  target_classes Json?    // Array of class IDs or null
+  target_subjects Json?   // Array of subject IDs or null
+  target_courses Json?    // Array of course IDs or null
+  target_groups  Json?    // Array of activity group IDs or null
+
+  creator        User     @relation("AnnouncementCreator", fields: [created_by], references: [id], onDelete: Cascade)
+
+  @@map("announcements")
+}

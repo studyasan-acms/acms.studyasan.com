@@ -231,6 +231,11 @@ export interface Teacher {
     city: { id: number; name: string };
   } | null;
   role_id: number | null;
+  role?: {
+    id: number;
+    name: string;
+    description?: string;
+  } | null;
   created_at: string;
   updated_at: string;
   user: {

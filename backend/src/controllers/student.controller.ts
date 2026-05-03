@@ -474,16 +474,16 @@ export const updateStudent = async (req: Request, res: Response) => {
           create: {
             addressLine,
             postalCode,
-            country: { connect: { id: countryId } },
-            state: { connect: { id: stateId } },
-            city: { connect: { id: cityId } },
+            country: { connect: { id: parseInt(countryId.toString()) } },
+            state: { connect: { id: parseInt(stateId.toString()) } },
+            city: { connect: { id: parseInt(cityId.toString()) } },
           },
           update: {
             addressLine,
             postalCode,
-            country: { connect: { id: countryId } },
-            state: { connect: { id: stateId } },
-            city: { connect: { id: cityId } },
+            country: { connect: { id: parseInt(countryId.toString()) } },
+            state: { connect: { id: parseInt(stateId.toString()) } },
+            city: { connect: { id: parseInt(cityId.toString()) } },
           },
         },
       }
@@ -493,10 +493,10 @@ export const updateStudent = async (req: Request, res: Response) => {
       where: { id: parseInt(id!) },
       data: {
         ...(class_id !== undefined && {
-          class: class_id ? { connect: { id: class_id } } : { disconnect: true },
+          class: class_id ? { connect: { id: parseInt(class_id.toString()) } } : { disconnect: true },
         }),
         ...(board_id !== undefined && {
-          board: board_id ? { connect: { id: board_id } } : { disconnect: true },
+          board: board_id ? { connect: { id: parseInt(board_id.toString()) } } : { disconnect: true },
         }),
         ...(parsedIdValidThrough !== undefined && { id_valid_through: parsedIdValidThrough }),
         ...(date_of_birth !== undefined && {

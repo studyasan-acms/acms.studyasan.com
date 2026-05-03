@@ -12,8 +12,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
-import { Bell, LogOut, User, Settings, Menu, Languages, Globe } from "lucide-react";
+import { Bell, LogOut, User, Settings, Menu, Languages, Globe, Megaphone } from "lucide-react";
 import NotificationPanel from "@/components/dashboard/NotificationPanel";
+import AnnouncementPanel from "@/components/dashboard/AnnouncementPanel";
 
 // Add language options
 const languages = [
@@ -41,6 +42,7 @@ export default function Header({
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const { unreadCount } = useNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState(() => {
     if (typeof window !== 'undefined') {
       // Check for Google Translate cookie
@@ -119,9 +121,18 @@ export default function Header({
       {/* HEADER — Styled Like Sidebar Header */}
       <header className="bg-saBlue border-b border-saBlueLight h-16 flex items-center sticky top-0 z-40">
         <div className="flex items-center justify-between w-full px-4">
-          {/* LEFT — Menu + Logo */}
-          <div className="flex items-center gap-4">
-            {/* Mobile Menu Button */}
+          {/* LEFT SECTION — Logo (Desktop Only) */}
+          <div className="hidden lg:flex items-center gap-4">
+            <img
+              src="/studyasan-logo.png"
+              alt="StudyAsan Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
+
+          {/* MAIN SECTION — 5 Icons (Equal width on mobile, right-aligned on desktop) */}
+          <div className="grid grid-cols-5 w-full lg:flex lg:w-auto lg:items-center gap-0 lg:gap-3 items-center justify-items-center">
+            {/* 1. Menu Button (Mobile Only) */}
             <Button
               variant="ghost"
               size="icon"
@@ -131,19 +142,7 @@ export default function Header({
               <Menu className="h-6 w-6 text-white" />
             </Button>
 
-            {/* Mobile Logo (matches sidebar logo area) */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <img
-                src="/studyasan-logo.png"
-                alt="StudyAsan Logo"
-                className="h-10 w-auto object-contain"
-              />
-            </div>
-          </div>
-
-          {/* RIGHT — Language + Notifications + User Menu */}
-          <div className="flex items-center gap-3">
-            {/* Language Selector */}
+            {/* 2. Language Selector */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -153,7 +152,7 @@ export default function Header({
                   title={`Translate Page - Current: ${languages.find(lang => lang.code === currentLanguage)?.name || 'English'}`}
                 >
                   <Globe className="h-5 w-5 text-white" />
-                  <span className="absolute -bottom-1 -right-1 text-xs">
+                  <span className="absolute -bottom-1 -right-1 text-[10px]">
                     {languages.find(lang => lang.code === currentLanguage)?.flag}
                   </span>
                 </Button>
@@ -185,7 +184,6 @@ export default function Header({
                   </DropdownMenuItem>
                 ))}
 
-                {/* Reset to English option */}
                 <div className="border-t border-gray-100 mt-2 pt-2">
                   <DropdownMenuItem
                     onClick={() => handleLanguageChange('en')}
@@ -197,7 +195,8 @@ export default function Header({
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
-            {/* Notifications */}
+
+            {/* 3. Notifications */}
             <div className="relative">
               <Button
                 variant="ghost"
@@ -217,12 +216,26 @@ export default function Header({
               </Button>
             </div>
 
-            {/* User Dropdown */}
+            {/* 4. Announcements */}
+            <div className="relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="hover:bg-saBlueDarkHover/20"
+                onClick={() => setShowAnnouncements(!showAnnouncements)}
+                title="View Announcements"
+              >
+                <Megaphone className="h-5 w-5 text-white" />
+                <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-600 rounded-full border-2 border-saBlue animate-pulse"></span>
+              </Button>
+            </div>
+
+            {/* 5. User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 hover:bg-saBlueDarkHover/20"
+                  className="flex items-center gap-2 hover:bg-saBlueDarkHover/20 p-1 md:px-3"
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarImage
@@ -236,7 +249,7 @@ export default function Header({
                       {user && getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden md:inline font-medium text-white">
+                  <span className="hidden lg:inline font-medium text-white">
                     {user?.name}
                   </span>
                 </Button>
@@ -246,7 +259,6 @@ export default function Header({
                 align="end"
                 className="w-56 bg-saBlue border border-saBlueLight text-white"
               >
-                {/* Border above Profile */}
                 <div className="border-b border-saBlueLight">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1 text-white p-2">
@@ -256,7 +268,6 @@ export default function Header({
                   </DropdownMenuLabel>
                 </div>
 
-                {/* Profile item */}
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard/profile")}
                   className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
@@ -264,7 +275,6 @@ export default function Header({
                   <User className="mr-2 h-4 w-4" /> Profile
                 </DropdownMenuItem>
 
-                {/* Settings item */}
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard/settings")}
                   className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
@@ -272,10 +282,8 @@ export default function Header({
                   <Settings className="mr-2 h-4 w-4" /> Settings
                 </DropdownMenuItem>
 
-                {/* Border below Settings */}
                 <div className="border-t border-saBlueLight my-1" />
 
-                {/* Logout item */}
                 <DropdownMenuItem
                   onClick={handleLogout}
                   className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
@@ -291,6 +299,11 @@ export default function Header({
       <NotificationPanel
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
+      />
+
+      <AnnouncementPanel
+        isOpen={showAnnouncements}
+        onClose={() => setShowAnnouncements(false)}
       />
     </>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { analyticsService } from '@/services/api';
+import { analyticsService, announcementService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -8,9 +8,12 @@ import {
     Users,
     BookOpen,
     TrendingUp,
-    Award
+    Award,
+    Megaphone
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -43,11 +46,14 @@ export default function TeacherDashboard() {
     const [subjects, setSubjects] = useState<Subject[]>([]);
     const [selectedSubject, setSelectedSubject] = useState<string>('all');
     const [loading, setLoading] = useState(true);
+    const [announcements, setAnnouncements] = useState<any[]>([]);
     const token = useAuthStore((state) => state.token);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchSubjects();
         fetchStudentsAnalytics();
+        fetchAnnouncements();
     }, []);
 
     useEffect(() => {
@@ -72,6 +78,15 @@ export default function TeacherDashboard() {
             }
         } catch (error) {
             console.error('Error fetching subjects:', error);
+        }
+    };
+
+    const fetchAnnouncements = async () => {
+        try {
+            const res = await announcementService.getAnnouncements();
+            setAnnouncements(res.data?.announcements || []);
+        } catch (error) {
+            console.error('Error fetching announcements:', error);
         }
     };
 
@@ -126,6 +141,47 @@ export default function TeacherDashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Announcements Section */}
+            {announcements.length > 0 && (
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                            <div className="p-2 rounded-lg bg-orange-100">
+                                <Megaphone className="h-5 w-5 text-orange-600" />
+                            </div>
+                            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Latest Announcements</h2>
+                        </div>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-primary hover:text-primary hover:bg-primary/5"
+                            onClick={() => navigate('/dashboard/announcements')}
+                        >
+                            View All
+                        </Button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {announcements.slice(0, 3).map((a) => (
+                            <Card 
+                                key={a.id} 
+                                className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-orange-400" 
+                                onClick={() => navigate('/dashboard/announcements')}
+                            >
+                                <CardHeader className="py-3 px-4 flex flex-row items-start justify-between space-y-0">
+                                    <CardTitle className="text-sm font-bold line-clamp-1 pr-2">{a.title}</CardTitle>
+                                    <span className="text-[10px] text-gray-400 whitespace-nowrap bg-gray-100 px-1.5 py-0.5 rounded">
+                                        {new Date(a.created_at).toLocaleDateString()}
+                                    </span>
+                                </CardHeader>
+                                <CardContent className="py-2 px-4">
+                                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{a.content}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
             {/* Top Section: Quick Actions + Filter */}
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>

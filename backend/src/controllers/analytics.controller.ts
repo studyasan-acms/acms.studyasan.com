@@ -508,3 +508,168 @@ async function calculateStudentAnalytics(studentId: number) {
         totalHoursSpent: Math.round(totalHoursSpent * 10) / 10
     };
 }
+
+// Get daily/weekly/monthly performance for the logged-in student
+export const getPerformanceTimeseries = async (req: Request, res: Response) => {
+    try {
+        const userId = (req as any).user.id;
+
+        // Get student record
+        const student = await prisma.student.findUnique({
+            where: { user_id: userId }
+        });
+
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+
+        // Get all test attempts for the student
+        const testAttempts = await prisma.testAttempt.findMany({
+            where: {
+                student_id: student.id,
+                submitted_at: { not: null }
+            },
+            select: {
+                submitted_at: true,
+                score: true,
+                total_marks: true
+            }
+        });
+
+        // Get all activity attempts for the student
+        const activityAttempts = await prisma.activityAttempt.findMany({
+            where: {
+                student_id: student.id,
+                is_completed: true
+            },
+            select: {
+                created_at: true,
+                score: true,
+                max_score: true
+            }
+        });
+
+        // Get module progress (completion)
+        const moduleProgress = await prisma.studentModuleProgress.findMany({
+            where: {
+                student_id: student.id,
+                is_completed: true
+            },
+            select: {
+                completed_on: true
+            }
+        });
+
+        // Get class session attendance (where user attended)
+        const classAttendance = await prisma.classSessionAttendance.findMany({
+            where: {
+                user_id: userId,
+                joined_at: { not: null }
+            },
+            select: {
+                joined_at: true
+            }
+        });
+
+        // Combine all attempts and activities (score = 100 for completion-based activities)
+        const allAttempts = [
+            ...testAttempts.map(a => ({
+                date: a.submitted_at || new Date(),
+                score: (a.score || 0) / a.total_marks * 100
+            })),
+            ...activityAttempts.map(a => ({
+                date: a.created_at,
+                score: (a.score / a.max_score) * 100
+            })),
+            ...moduleProgress.map((m: any) => ({
+                date: m.completed_on || new Date(),
+                score: 100 // Module completion counts as perfect score
+            })),
+            ...classAttendance.map(c => ({
+                date: c.joined_at || new Date(),
+                score: 100 // Class attendance counts as perfect score
+            }))
+        ];
+
+        // Calculate daily performance (last 7 days)
+        const dailyPerformance: Record<string, number[]> = {};
+        const today = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(today);
+            date.setDate(date.getDate() - i);
+            const dateStr = (date.toISOString().split('T')[0]) as string;
+            dailyPerformance[dateStr] = [];
+        }
+
+        allAttempts.forEach(attempt => {
+            const dateStr = (attempt.date.toISOString().split('T')[0]) as string;
+            if (dailyPerformance[dateStr]) {
+                dailyPerformance[dateStr]!.push(attempt.score);
+            }
+        });
+
+        const dailyData = Object.entries(dailyPerformance).map(([date, scores]) => ({
+            label: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
+            date,
+            score: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+            total: 100
+        }));
+
+        // Calculate weekly performance (last 4 weeks)
+        const weeklyPerformance: Record<number, number[]> = {};
+        for (let i = 3; i >= 0; i--) {
+            weeklyPerformance[i] = [];
+        }
+
+        allAttempts.forEach(attempt => {
+            const date = attempt.date;
+            const weeksDiff = Math.floor((today.getTime() - date.getTime()) / (7 * 24 * 60 * 60 * 1000));
+            if (weeksDiff <= 3) {
+                const weekIndex = 3 - weeksDiff;
+                if (weeklyPerformance[weekIndex]) {
+                    weeklyPerformance[weekIndex]!.push(attempt.score);
+                }
+            }
+        });
+
+        const weeklyData = Object.entries(weeklyPerformance).map(([week, scores]: [string, number[]]) => ({
+            label: `Week ${parseInt(week) + 1}`,
+            score: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+            total: 100
+        }));
+
+        // Calculate monthly performance (last 5 months)
+        const monthlyPerformance: Record<string, number[]> = {};
+        for (let i = 4; i >= 0; i--) {
+            const date = new Date(today);
+            date.setMonth(date.getMonth() - i);
+            const monthStr = date.toISOString().slice(0, 7);
+            monthlyPerformance[monthStr] = [];
+        }
+
+        allAttempts.forEach(attempt => {
+            const monthStr = attempt.date.toISOString().slice(0, 7) as string;
+            if (monthlyPerformance[monthStr]) {
+                monthlyPerformance[monthStr]!.push(attempt.score);
+            }
+        });
+
+        const monthlyData = Object.entries(monthlyPerformance).map(([month, scores]: [string, number[]]) => {
+            const date = new Date(month + '-01');
+            return {
+                label: date.toLocaleDateString('en-US', { month: 'long' }),
+                score: scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0,
+                total: 100
+            };
+        });
+
+        res.json({
+            daily: dailyData,
+            weekly: weeklyData,
+            monthly: monthlyData
+        });
+    } catch (error) {
+        console.error('Error fetching performance timeseries:', error);
+        res.status(500).json({ error: 'Failed to fetch performance data' });
+    }
+}

@@ -134,6 +134,13 @@ export const getTeacherById = async (req: Request, res: Response) => {
             profile_url: true,
           },
         },
+        role: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
         teacher_subject_junctions: {
           include: {
             subject: true,

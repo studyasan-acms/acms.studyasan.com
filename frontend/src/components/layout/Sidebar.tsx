@@ -29,6 +29,7 @@ import {
   Shield,
   Briefcase,
   PenTool,
+  Bell,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -158,6 +159,12 @@ const navItems: NavItem[] = [
     title: "Coupons",
     href: "/dashboard/admin/coupons",
     icon: DollarSign,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Announcements",
+    href: "/dashboard/announcements",
+    icon: Bell,
     roles: ["ADMIN"],
   },
 ];

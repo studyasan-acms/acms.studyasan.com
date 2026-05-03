@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import PhotoCropDialog from '@/components/ui/PhotoCropDialog';
 import {
   Select,
   SelectContent,
@@ -83,6 +84,8 @@ export default function EditTeacherPage() {
   // Profile image state
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [showCropDialog, setShowCropDialog] = useState(false);
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
 
   const [formData, setFormData] = useState({
     id_valid_through: null as string | null,
@@ -268,6 +271,8 @@ export default function EditTeacherPage() {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setErrorMessage('Image must be less than 5MB');
         setErrorOpen(true);
+        // Reset file input
+        e.target.value = '';
         return;
       }
 
@@ -275,16 +280,29 @@ export default function EditTeacherPage() {
       if (!validTypes.includes(file.type)) {
         setErrorMessage('Please select a valid image file (JPEG, PNG, WebP)');
         setErrorOpen(true);
+        // Reset file input
+        e.target.value = '';
         return;
       }
 
-      setProfileImage(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      // Show crop dialog instead of directly setting the image
+      setSelectedImageFile(file);
+      setShowCropDialog(true);
+      // Reset file input so the same file can be selected again
+      e.target.value = '';
     }
+  };
+
+  const handleCropComplete = (croppedFile: File) => {
+    // Use the cropped image
+    const reader = new FileReader();
+    reader.onload = () => {
+      setImagePreview(reader.result as string);
+      setProfileImage(croppedFile);
+    };
+    reader.readAsDataURL(croppedFile);
+    setShowCropDialog(false);
+    setSelectedImageFile(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -444,6 +462,16 @@ export default function EditTeacherPage() {
         showButtons={true}
         onConfirm={() => setErrorOpen(false)}
         onClose={() => setErrorOpen(false)}
+      />
+
+      <PhotoCropDialog
+        isOpen={showCropDialog}
+        onClose={() => {
+          setShowCropDialog(false);
+          setSelectedImageFile(null);
+        }}
+        imageFile={selectedImageFile}
+        onCropComplete={handleCropComplete}
       />
 
       <div className="flex flex-col space-y-4">

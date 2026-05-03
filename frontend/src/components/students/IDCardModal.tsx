@@ -23,7 +23,10 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
 
     // Extract data based on type
     const name = data?.user?.name || data?.name || 'N/A';
-    const role = type === 'STUDENT' ? 'Student' : 'Teacher';
+    // For teachers, try to display the custom role name if available
+    const role = type === 'STUDENT' 
+      ? 'Student' 
+      : (data?.role?.name || 'Teacher');
     const bloodGroup = data?.blood_group
         ? String(data.blood_group).replace('_POS', '+').replace('_NEG', '-').replaceAll('_', ' ')
         : '-';

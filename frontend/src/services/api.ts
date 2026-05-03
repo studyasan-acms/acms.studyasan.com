@@ -1182,6 +1182,15 @@ export const homeService = {
     const response = await api.get('/home/items');
     return response.data;
   },
+  
+  getPerformance: async (): Promise<{
+    daily: { label: string; score: number; total: number }[];
+    weekly: { label: string; score: number; total: number }[];
+    monthly: { label: string; score: number; total: number }[];
+  }> => {
+    const response = await api.get('/analytics/performance');
+    return response.data;
+  },
 };
 
 // Enquiry service - Manage student enquiries
@@ -1479,6 +1488,25 @@ export const jobService = {
     const response = await api.patch(`/jobs/applications/${id}/review`, { status, feedback });
     return response.data;
   },
+};
+
+export const announcementService = {
+  getAnnouncements: async () => {
+    const response = await api.get('/announcements');
+    return response.data;
+  },
+  createAnnouncement: async (data: any) => {
+    const response = await api.post('/announcements', data);
+    return response.data;
+  },
+  updateAnnouncement: async (id: number, data: any) => {
+    const response = await api.put(`/announcements/${id}`, data);
+    return response.data;
+  },
+  deleteAnnouncement: async (id: number) => {
+    const response = await api.delete(`/announcements/${id}`);
+    return response.data;
+  }
 };
 
 export default api;

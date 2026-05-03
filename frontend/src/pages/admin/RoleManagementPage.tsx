@@ -35,6 +35,7 @@ const defaultPermissions: PermissionsType = {
     analytics: { viewAdmin: false },
     accountDeletion: { manage: false },
     chat: { viewAll: false },
+    announcements: { manage: false },
 };
 
 const permissionLabels: Record<string, string> = {
@@ -55,6 +56,7 @@ const permissionLabels: Record<string, string> = {
     analytics: 'Analytics',
     accountDeletion: 'Account Deletion',
     chat: 'Chat Management',
+    announcements: 'Announcement Management',
 };
 
 const RoleManagementPage: React.FC = () => {

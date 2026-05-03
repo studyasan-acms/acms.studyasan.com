@@ -36,6 +36,7 @@ import * as pushNotificationController from '../controllers/pushNotification.con
 import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as jobController from '../controllers/job.controller.js';
+import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
 
@@ -706,6 +707,7 @@ router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentControl
 
 // Student analytics
 router.get('/analytics/my-analytics', authenticate, authorize('STUDENT'), analyticsController.getMyAnalytics);
+router.get('/analytics/performance', authenticate, authorize('STUDENT'), analyticsController.getPerformanceTimeseries);
 
 // Teacher analytics
 router.get('/analytics/teacher/students', authenticate, authorize('TEACHER'), analyticsController.getTeacherStudentsAnalytics);
@@ -741,5 +743,8 @@ router.get('/jobs/:job_id/applications', authenticate, authorize('ADMIN'), jobCo
 router.get('/jobs/applications/all', authenticate, authorize('ADMIN'), jobController.getAllApplications);
 router.get('/jobs/applications/:id', authenticate, authorize('ADMIN'), jobController.getApplicationById);
 router.patch('/jobs/applications/:id/review', authenticate, authorize('ADMIN'), jobController.reviewApplication);
+
+// ================== ANNOUNCEMENT ROUTES ==================
+router.use('/announcements', announcementRoutes);
 
 export default router;

@@ -123,6 +123,7 @@ import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
 import CurriculumPage from '@/pages/admin/CurriculumPage';
 import RoleManagementPage from '@/pages/admin/RoleManagementPage';
 import CouponManagementPage from '@/pages/admin/CouponManagementPage';
+import AnnouncementsPage from '@/pages/announcements/AnnouncementsPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -345,6 +346,7 @@ function App() {
 
           <Route path="profile" element={<ProfilePage />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="announcements" element={<AnnouncementsPage />} />
         </Route>
 
         {/* Test Routes (outside dashboard layout for fullscreen test attempt) */}
