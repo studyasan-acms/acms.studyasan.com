@@ -14,6 +14,9 @@ const parseMaxWarningAttempts = (value: any): number | null => {
   return parsed;
 };
 
+const DEFAULT_TEST_INSTRUCTIONS =
+  'This test is proctored. Follow the question color coding and do not switch tabs, copy, or use unauthorized materials.';
+
 // AI Question Generation using Google Gemini
 const generateQuestionsWithAI = async (
   testDetails: {
@@ -23,12 +26,26 @@ const generateQuestionsWithAI = async (
     description?: string;
     totalMarks: number;
   },
-  numQuestions: { mcq: number; trueFalse: number; shortAnswer: number; longAnswer?: number }
+  numQuestions: { mcq: number; trueFalse: number; shortAnswer: number; longAnswer?: number },
+  marks: { mcqMarks?: number; trueFalseMarks?: number; shortAnswerMarks?: number; longAnswerMarks?: number } = {}
 ) => {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyApprDVA4wKBVDMmHHnx2dBPImZOLAS5R8';
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
   const totalQuestions = numQuestions.mcq + numQuestions.trueFalse + numQuestions.shortAnswer + (numQuestions.longAnswer || 0);
+
+  // Use provided marks or default values
+  const mcqMarks = marks.mcqMarks || 1;
+  const trueFalseMarks = marks.trueFalseMarks || 1;
+  const shortAnswerMarks = marks.shortAnswerMarks || 2;
+  const longAnswerMarks = marks.longAnswerMarks || 5;
+
+  // Calculate expected total marks
+  const expectedTotalMarks = 
+    (numQuestions.mcq * mcqMarks) +
+    (numQuestions.trueFalse * trueFalseMarks) +
+    (numQuestions.shortAnswer * shortAnswerMarks) +
+    ((numQuestions.longAnswer || 0) * longAnswerMarks);
 
   const subjectLine = testDetails.subject ? `- Subject: ${testDetails.subject}` : '';
   const classLine = testDetails.className ? `- Class: ${testDetails.className}` : '';
@@ -43,19 +60,19 @@ ${testDetails.description ? `- Description: ${testDetails.description}` : ''}
 - Total Marks Available: ${testDetails.totalMarks}
 - Total Questions to Generate: ${totalQuestions}
 
-**Questions to Generate:**
-- ${numQuestions.mcq} Multiple Choice Questions (MCQ)
-- ${numQuestions.trueFalse} True/False Questions
-${numQuestions.shortAnswer > 0 ? `- ${numQuestions.shortAnswer} Short Answer Questions` : ''}
-${numQuestions.longAnswer ? `- ${numQuestions.longAnswer} Long Answer Questions` : ''}
+**Questions to Generate with Specific Marks:**
+- ${numQuestions.mcq} Multiple Choice Questions (MCQ) - ${mcqMarks} marks each = ${numQuestions.mcq * mcqMarks} marks total
+- ${numQuestions.trueFalse} True/False Questions - ${trueFalseMarks} marks each = ${numQuestions.trueFalse * trueFalseMarks} marks total
+${numQuestions.shortAnswer > 0 ? `- ${numQuestions.shortAnswer} Short Answer Questions - ${shortAnswerMarks} marks each = ${numQuestions.shortAnswer * shortAnswerMarks} marks total` : ''}
+${numQuestions.longAnswer ? `- ${numQuestions.longAnswer} Long Answer Questions - ${longAnswerMarks} marks each = ${(numQuestions.longAnswer || 0) * longAnswerMarks} marks total` : ''}
 
-**Mark Distribution Guidelines:**
-- MCQ questions: 1-2 marks each (simpler concepts)
-- True/False questions: 1 mark each (quick recall)
-- Short Answer questions: 2-3 marks each (brief explanation)
-- Long Answer questions: 5-10 marks each (detailed explanation/analysis)
-- Distribute marks intelligently so the sum approximately equals ${testDetails.totalMarks} marks
-- Adjust marks based on question complexity and depth of knowledge required
+**IMPORTANT: Mark Distribution (MUST USE EXACTLY AS SPECIFIED):**
+- EVERY MCQ must have exactly ${mcqMarks} marks
+- EVERY True/False question must have exactly ${trueFalseMarks} marks
+${numQuestions.shortAnswer > 0 ? `- EVERY Short Answer question must have exactly ${shortAnswerMarks} marks` : ''}
+${numQuestions.longAnswer ? `- EVERY Long Answer question must have exactly ${longAnswerMarks} marks` : ''}
+- The sum of all marks must equal exactly ${expectedTotalMarks} marks
+- Do NOT deviate from these mark values
 
 **Quality Requirements:**
 - Questions must be appropriate for ${testDetails.className} level
@@ -72,7 +89,7 @@ ${numQuestions.longAnswer ? `- ${numQuestions.longAnswer} Long Answer Questions`
       "question": "Question text here",
       "options": ["Option A", "Option B", "Option C", "Option D"], // Only for MCQ, omit for others
       "correctAnswer": "Correct answer text",
-      "marks": <appropriate marks based on guidelines above>
+      "marks": <use the exact marks value specified above for this question type>
     }
   ]
 }
@@ -132,6 +149,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
     const {
       title,
       description,
+      instructions,
       subject_id,
       test_series_id,
       total_marks,
@@ -179,6 +197,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       data: {
         title,
         description,
+        instructions: instructions?.trim() ? instructions.trim() : DEFAULT_TEST_INSTRUCTIONS,
         subject_id: subject_id || null,
         test_series_id: test_series_id || null,
         created_by: userId,
@@ -222,7 +241,17 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
       return sendError(res, 'Test ID is required', 400);
     }
 
-    const { topic, numMCQ = 5, numTrueFalse = 3, numShortAnswer = 2, numLongAnswer = 0 } = req.body;
+    const { 
+      topic, 
+      numMCQ = 5, 
+      numTrueFalse = 3, 
+      numShortAnswer = 2, 
+      numLongAnswer = 0,
+      mcqMarks = 1,
+      trueFalseMarks = 1,
+      shortAnswerMarks = 2,
+      longAnswerMarks = 5
+    } = req.body;
 
     const test = await prisma.test.findUnique({
       where: { id: parseInt(testId) },
@@ -256,12 +285,17 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
       totalMarks: test.total_marks,
     };
 
-    // Generate questions using AI
+    // Generate questions using AI with teacher-specified marks
     const aiQuestions = await generateQuestionsWithAI(testDetails, {
       mcq: numMCQ,
       trueFalse: numTrueFalse,
       shortAnswer: numShortAnswer,
       longAnswer: numLongAnswer,
+    }, {
+      mcqMarks,
+      trueFalseMarks,
+      shortAnswerMarks,
+      longAnswerMarks,
     });
 
     // Get the current max order
@@ -387,9 +421,36 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
 export const updateQuestion = async (req: AuthRequest, res: Response) => {
   try {
     const { questionId } = req.params;
+    const userId = req.user?.id;
 
     if (!questionId) {
       return sendError(res, 'Question ID is required', 400);
+    }
+
+    // Get the question with its test to verify ownership
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(questionId) },
+      include: {
+        test: true,
+      },
+    });
+
+    if (!question) {
+      return sendError(res, 'Question not found', 404);
+    }
+
+    // If user is a teacher, verify they own the test
+    if (req.user?.role === 'TEACHER' && userId) {
+      const isTeacherOwner = await prisma.test.findFirst({
+        where: {
+          id: question.test_id,
+          created_by: userId,
+        },
+      });
+
+      if (!isTeacherOwner) {
+        return sendError(res, 'You do not have permission to update this question', 403);
+      }
     }
 
     const { question_text, question_type, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
@@ -430,12 +491,12 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       updateData.media_type = questionMediaType;
     }
 
-    const question = await prisma.question.update({
+    const updatedQuestion = await prisma.question.update({
       where: { id: parseInt(questionId) },
       data: updateData,
     });
 
-    return sendSuccess(res, question, 'Question updated successfully');
+    return sendSuccess(res, updatedQuestion, 'Question updated successfully');
   } catch (error) {
     console.error('Error updating question:', error);
     return sendError(res, 'Failed to update question');
@@ -446,9 +507,36 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
 export const deleteQuestion = async (req: AuthRequest, res: Response) => {
   try {
     const { questionId } = req.params;
+    const userId = req.user?.id;
 
     if (!questionId) {
       return sendError(res, 'Question ID is required', 400);
+    }
+
+    // Get the question with its test to verify ownership
+    const question = await prisma.question.findUnique({
+      where: { id: parseInt(questionId) },
+      include: {
+        test: true,
+      },
+    });
+
+    if (!question) {
+      return sendError(res, 'Question not found', 404);
+    }
+
+    // If user is a teacher, verify they own the test
+    if (req.user?.role === 'TEACHER' && userId) {
+      const isTeacherOwner = await prisma.test.findFirst({
+        where: {
+          id: question.test_id,
+          created_by: userId,
+        },
+      });
+
+      if (!isTeacherOwner) {
+        return sendError(res, 'You do not have permission to delete this question', 403);
+      }
     }
 
     await prisma.question.delete({
@@ -742,6 +830,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
     const {
       title,
       description,
+      instructions,
       subject_id,
       test_series_id,
       total_marks,
@@ -759,6 +848,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
     const data: any = {
       title,
       description,
+      ...(instructions !== undefined ? { instructions: instructions?.trim() ? instructions.trim() : DEFAULT_TEST_INSTRUCTIONS } : {}),
       total_marks,
       passing_marks,
       duration_minutes,

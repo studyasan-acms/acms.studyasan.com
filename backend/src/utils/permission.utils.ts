@@ -24,6 +24,7 @@ const routeToResource: Record<string, string> = {
     '/chats': 'chat',
     '/homework': 'homework',
     '/tests': 'tests',
+    '/questions': 'tests', // Questions belong to tests
     '/teacher-roles': 'roles',
 };
 

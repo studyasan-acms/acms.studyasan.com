@@ -34,12 +34,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuthStore } from "@/store/authStore";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import ConfirmModal from "@/components/ui/confirmationModal";
 import MediaUpload from "@/components/ui/MediaUpload";
 import { usePageTitle } from "@/hooks/usePageTitle";
+
+const DEFAULT_TEST_INSTRUCTIONS =
+  'This test is proctored. Follow the question color coding and do not switch tabs, copy, or use unauthorized materials.';
 
 export default function TestDetailPage() {
   const { testId } = useParams<{ testId: string }>();
@@ -61,6 +72,8 @@ export default function TestDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState("");
   const [confirmAction, setConfirmAction] = useState<() => void>(() => { });
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
+  const [pendingAttemptMode, setPendingAttemptMode] = useState<"test" | "practice" | null>(null);
 
   // Edit question
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -102,24 +115,22 @@ export default function TestDetailPage() {
 
   useEffect(() => { fetchTest(); }, [fetchTest]);
 
-  const handleStartTest = async () => {
+  const openInstructions = (mode: "test" | "practice") => {
+    setPendingAttemptMode(mode);
+    setInstructionsOpen(true);
+  };
+
+  const startAttempt = async (mode: "test" | "practice") => {
     if (!testId) return;
     try {
-      const response = await testAttemptService.startAttempt(Number(testId));
+      const response = mode === "practice"
+        ? await testAttemptService.startPracticeAttempt(Number(testId))
+        : await testAttemptService.startAttempt(Number(testId));
+      setInstructionsOpen(false);
+      setPendingAttemptMode(null);
       navigate(`/test-attempts/${response.data.id}`);
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : "Failed to start test");
-      setErrorOpen(true);
-    }
-  };
-
-  const handlePracticeTest = async () => {
-    if (!testId) return;
-    try {
-      const response = await testAttemptService.startPracticeAttempt(Number(testId));
-      navigate(`/test-attempts/${response.data.id}`);
-    } catch (error: unknown) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to start practice");
       setErrorOpen(true);
     }
   };
@@ -268,6 +279,38 @@ export default function TestDetailPage() {
       <SuccessModal open={successOpen} title={test.title} description={successMessage} showButtons okText="OK" onConfirm={() => setSuccessOpen(false)} onClose={() => setSuccessOpen(false)} />
       <ErrorModal open={errorOpen} title={test?.title || "Error"} description={errorMessage} showButtons okText="Close" onConfirm={() => setErrorOpen(false)} onClose={() => setErrorOpen(false)} />
       <ConfirmModal open={confirmOpen} title={test?.title || "Confirm Action"} description={confirmMessage} onConfirm={confirmAction} onClose={() => setConfirmOpen(false)} confirmText="Yes" cancelText="No" />
+      <Dialog
+        open={instructionsOpen}
+        onOpenChange={(open) => {
+          setInstructionsOpen(open);
+          if (!open) setPendingAttemptMode(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Read Instructions Before Starting</DialogTitle>
+            <DialogDescription>
+              Review the test instructions carefully. The timer and proctoring will begin when you continue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-4">
+            <p className="whitespace-pre-line text-sm text-amber-950">
+              {test?.instructions || DEFAULT_TEST_INSTRUCTIONS}
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInstructionsOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => pendingAttemptMode && startAttempt(pendingAttemptMode)}
+              className="bg-saBlue text-white hover:bg-saBlueDarkHover"
+            >
+              {pendingAttemptMode === "practice" ? "Begin Practice" : "Begin Test"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
@@ -316,12 +359,12 @@ export default function TestDetailPage() {
             </Button>
           )}
           {isStudent && status.canAttempt && (
-            <Button onClick={handleStartTest} className="bg-saBlue hover:bg-saBlueDarkHover text-white" size="sm">
+            <Button onClick={() => openInstructions("test")} className="bg-saBlue hover:bg-saBlueDarkHover text-white" size="sm">
               <Play className="w-4 h-4 mr-1" /> Start Test
             </Button>
           )}
           {isStudent && status.canPractice && (
-            <Button variant="outline" onClick={handlePracticeTest} size="sm" className="border-saBlue text-saBlue hover:bg-blue-50">
+            <Button variant="outline" onClick={() => openInstructions("practice")} size="sm" className="border-saBlue text-saBlue hover:bg-blue-50">
               <BookOpen className="w-4 h-4 mr-1" /> Practice
             </Button>
           )}

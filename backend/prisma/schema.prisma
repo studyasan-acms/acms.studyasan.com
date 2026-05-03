@@ -391,6 +391,7 @@ model Test {
   id               Int           @id @default(autoincrement())
   title            String
   description      String?
+  instructions     String?       // Default student instructions, editable by teachers/admins
   subject_id       Int? // Optional - for subject-based tests
   test_series_id   Int? // Optional - for test series tests
   created_by       Int

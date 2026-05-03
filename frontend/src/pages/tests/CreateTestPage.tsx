@@ -54,6 +54,12 @@ interface LocalQuestion {
   backendId?: number;
 }
 
+interface QuestionTemplateRow {
+  question_type: QuestionType;
+  count: number;
+  marks: number;
+}
+
 function generateId() {
   return Math.random().toString(36).substring(2, 15);
 }
@@ -97,6 +103,7 @@ export default function CreateTestPage() {
   const [formData, setFormData] = useState<CreateTestData>({
     title: "",
     description: "",
+    instructions: "",
     subject_id: null,
     test_series_id: null,
     total_marks: 0,
@@ -117,11 +124,23 @@ export default function CreateTestPage() {
   const [aiTopic, setAiTopic] = useState("");
   const [aiQuestions, setAiQuestions] = useState({
     mcq: 5,
+    mcqMarks: 1,
     trueFalse: 3,
+    trueFalseMarks: 1,
     shortAnswer: 2,
+    shortAnswerMarks: 2,
     longAnswer: 0,
+    longAnswerMarks: 5,
   });
   const [showAiSection, setShowAiSection] = useState(false);
+
+  const [templateRows, setTemplateRows] = useState<QuestionTemplateRow[]>([
+    { question_type: "MCQ", count: 0, marks: 1 },
+    { question_type: "TRUE_FALSE", count: 0, marks: 1 },
+    { question_type: "SHORT_ANSWER", count: 0, marks: 2 },
+    { question_type: "LONG_ANSWER", count: 0, marks: 5 },
+  ]);
+  const [templateReplaceOpen, setTemplateReplaceOpen] = useState(false);
 
   // Local questions list
   const [questions, setQuestions] = useState<LocalQuestion[]>([]);
@@ -179,6 +198,7 @@ export default function CreateTestPage() {
         setFormData({
           title: test.title,
           description: test.description ?? "",
+          instructions: test.instructions ?? "",
           subject_id: test.subject_id ?? null,
           test_series_id: test.test_series_id ?? null,
           total_marks: test.total_marks,
@@ -280,6 +300,59 @@ export default function CreateTestPage() {
     setQuestions(prev => [...prev, newQ]);
   };
 
+  const createTemplateQuestion = (type: QuestionType, marks: number): LocalQuestion => ({
+    id: generateId(),
+    question_type: type,
+    question_text: "",
+    options: type === "MCQ" ? ["", "", "", ""] : [],
+    correct_answer: "",
+    marks,
+    negative_marks: 0,
+    mediaFile: null,
+    mediaUrl: null,
+    mediaType: null,
+    optionMedia: {},
+    isCollapsed: false,
+    isSaved: false,
+  });
+
+  const templateQuestionCount = templateRows.reduce((sum, row) => sum + Math.max(0, row.count), 0);
+  const templateTotalMarks = templateRows.reduce((sum, row) => sum + Math.max(0, row.count) * Math.max(0, row.marks), 0);
+
+  const applyQuestionTemplate = () => {
+    if (!testId) {
+      setErrorMessage("Please save the test details first.");
+      setErrorOpen(true);
+      return;
+    }
+
+    if (templateQuestionCount <= 0) {
+      setErrorMessage("Please add at least one question in the template.");
+      setErrorOpen(true);
+      return;
+    }
+
+    if (templateTotalMarks !== formData.total_marks) {
+      setErrorMessage(`Template total marks (${templateTotalMarks}) must match the test total marks (${formData.total_marks}).`);
+      setErrorOpen(true);
+      return;
+    }
+
+    const nextQuestions: LocalQuestion[] = [];
+    templateRows.forEach((row) => {
+      const safeCount = Math.max(0, row.count);
+      const safeMarks = Math.max(0, row.marks);
+      for (let index = 0; index < safeCount; index += 1) {
+        nextQuestions.push(createTemplateQuestion(row.question_type, safeMarks));
+      }
+    });
+
+    setQuestions(nextQuestions);
+    setTemplateReplaceOpen(false);
+    setSuccessMessage("Question template created. Update each question below and save them individually.");
+    setSuccessOpen(true);
+  };
+
   // ---- Update Question Locally ----
   const updateQuestion = (id: string, updates: Partial<LocalQuestion>) => {
     setQuestions(prev => prev.map(q => q.id === id ? { ...q, ...updates, isSaved: false } : q));
@@ -357,6 +430,15 @@ export default function CreateTestPage() {
   };
 
   // ---- AI Generate ----
+  const calculateAiTotalMarks = () => {
+    return (
+      (aiQuestions.mcq * aiQuestions.mcqMarks) +
+      (aiQuestions.trueFalse * aiQuestions.trueFalseMarks) +
+      (aiQuestions.shortAnswer * aiQuestions.shortAnswerMarks) +
+      (aiQuestions.longAnswer * aiQuestions.longAnswerMarks)
+    );
+  };
+
   const handleGenerateQuestions = async () => {
     if (!testId) {
       setErrorMessage("Please save the test details first.");
@@ -368,6 +450,14 @@ export default function CreateTestPage() {
       setErrorOpen(true);
       return;
     }
+    const totalAiMarks = calculateAiTotalMarks();
+    if (totalAiMarks !== formData.total_marks) {
+      setErrorMessage(
+        `Total marks from AI questions (${totalAiMarks}) must equal test total marks (${formData.total_marks}). Please adjust the counts or marks per question type.`
+      );
+      setErrorOpen(true);
+      return;
+    }
     try {
       setLoading(true);
       await testService.generateQuestions(testId, {
@@ -376,6 +466,10 @@ export default function CreateTestPage() {
         numTrueFalse: aiQuestions.trueFalse,
         numShortAnswer: aiQuestions.shortAnswer,
         numLongAnswer: aiQuestions.longAnswer,
+        mcqMarks: aiQuestions.mcqMarks,
+        trueFalseMarks: aiQuestions.trueFalseMarks,
+        shortAnswerMarks: aiQuestions.shortAnswerMarks,
+        longAnswerMarks: aiQuestions.longAnswerMarks,
       });
       setSuccessMessage("Questions generated! Refreshing...");
       setSuccessOpen(true);
@@ -506,6 +600,7 @@ export default function CreateTestPage() {
   };
 
   const totalQuestionsMarks = questions.reduce((sum, q) => sum + q.marks, 0);
+  const canFinish = questions.length > 0 && totalQuestionsMarks === formData.total_marks && questions.every((q) => q.isSaved);
 
   return (
     <div className="space-y-6 p-1 sm:p-4 pb-20">
@@ -594,6 +689,76 @@ export default function CreateTestPage() {
             </Button>
             <Button onClick={handleSaveAdjustedMarks} disabled={isSavingMarkAdjustments} className="bg-saBlue hover:bg-saBlueDarkHover text-white">
               {isSavingMarkAdjustments ? "Saving..." : "Save Marks & Continue"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={templateReplaceOpen} onOpenChange={setTemplateReplaceOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Create Question Template</DialogTitle>
+            <DialogDescription>
+              Define how many questions you want of each type and the marks for each question. The total template marks must match the test total marks.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-12 gap-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <span className="col-span-5">Question Type</span>
+              <span className="col-span-3 text-right">Count</span>
+              <span className="col-span-4 text-right">Marks / Question</span>
+            </div>
+            {templateRows.map((row, index) => (
+              <div key={row.question_type} className="grid grid-cols-12 gap-3 items-center rounded-lg border border-gray-200 p-3 bg-gray-50/60">
+                <div className="col-span-5">
+                  <Badge className="border-none bg-white text-gray-700">
+                    {row.question_type.replace("_", " ")}
+                  </Badge>
+                </div>
+                <div className="col-span-3">
+                  <Input
+                    type="number"
+                    min="0"
+                    value={row.count}
+                    onChange={(e) => {
+                      const nextCount = Number(e.target.value);
+                      setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, count: Number.isNaN(nextCount) ? 0 : nextCount } : item));
+                    }}
+                    className="text-right"
+                  />
+                </div>
+                <div className="col-span-4">
+                  <Input
+                    type="number"
+                    min="1"
+                    value={row.marks}
+                    onChange={(e) => {
+                      const nextMarks = Number(e.target.value);
+                      setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, marks: Number.isNaN(nextMarks) ? 0 : nextMarks } : item));
+                    }}
+                    className="text-right"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700 space-y-1">
+            <p><span className="font-semibold">Total Questions:</span> {templateQuestionCount}</p>
+            <p><span className="font-semibold">Template Marks:</span> {templateTotalMarks}</p>
+            <p><span className="font-semibold">Test Total Marks:</span> {formData.total_marks}</p>
+            {templateTotalMarks !== formData.total_marks && (
+              <p className="text-red-600 font-medium">Template marks must exactly match the test total marks.</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplateReplaceOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={applyQuestionTemplate} className="bg-saBlue hover:bg-saBlueDarkHover text-white">
+              Create Template
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -731,6 +896,20 @@ export default function CreateTestPage() {
               placeholder="Brief description of this test..."
               className="mt-1"
             />
+          </div>
+
+          <div>
+            <Label className="text-gray-700">Instructions</Label>
+            <Textarea
+              value={formData.instructions || ""}
+              onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+              rows={4}
+              placeholder="Add teacher-specific instructions for this test..."
+              className="mt-1"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              If left blank, students will see the default proctoring instructions.
+            </p>
           </div>
 
           {/* Marks & Duration */}
@@ -871,6 +1050,9 @@ export default function CreateTestPage() {
                 )}
               </CardTitle>
               <div className="flex gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={() => setTemplateReplaceOpen(true)} className="text-saBlue border-saBlue/30 hover:bg-blue-50">
+                  <FileText className="w-4 h-4 mr-1" /> Question Template
+                </Button>
                 <Button variant="outline" size="sm" onClick={() => setShowAiSection(!showAiSection)} className="text-purple-700 border-purple-300 hover:bg-purple-50">
                   <Sparkles className="w-4 h-4 mr-1" /> AI Generate
                 </Button>
@@ -893,25 +1075,98 @@ export default function CreateTestPage() {
                   <Label className="text-gray-700">Topic *</Label>
                   <Input value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} placeholder="e.g. Photosynthesis, Quadratic Equations..." className="mt-1 bg-white" />
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div>
-                    <Label className="text-xs text-gray-600">MCQ</Label>
-                    <Input type="number" min="0" value={aiQuestions.mcq} onChange={(e) => setAiQuestions({ ...aiQuestions, mcq: Number(e.target.value) })} className="bg-white" />
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* MCQ */}
+                    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                      <Label className="text-sm font-semibold text-gray-700">MCQ</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs text-gray-600">Count</Label>
+                          <Input type="number" min="0" value={aiQuestions.mcq} onChange={(e) => setAiQuestions({ ...aiQuestions, mcq: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">Marks</Label>
+                          <Input type="number" min="0" value={aiQuestions.mcqMarks} onChange={(e) => setAiQuestions({ ...aiQuestions, mcqMarks: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Total: {aiQuestions.mcq * aiQuestions.mcqMarks} marks</p>
+                    </div>
+
+                    {/* True/False */}
+                    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                      <Label className="text-sm font-semibold text-gray-700">True/False</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs text-gray-600">Count</Label>
+                          <Input type="number" min="0" value={aiQuestions.trueFalse} onChange={(e) => setAiQuestions({ ...aiQuestions, trueFalse: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">Marks</Label>
+                          <Input type="number" min="0" value={aiQuestions.trueFalseMarks} onChange={(e) => setAiQuestions({ ...aiQuestions, trueFalseMarks: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Total: {aiQuestions.trueFalse * aiQuestions.trueFalseMarks} marks</p>
+                    </div>
+
+                    {/* Short Answer */}
+                    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                      <Label className="text-sm font-semibold text-gray-700">Short Answer</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs text-gray-600">Count</Label>
+                          <Input type="number" min="0" value={aiQuestions.shortAnswer} onChange={(e) => setAiQuestions({ ...aiQuestions, shortAnswer: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">Marks</Label>
+                          <Input type="number" min="0" value={aiQuestions.shortAnswerMarks} onChange={(e) => setAiQuestions({ ...aiQuestions, shortAnswerMarks: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Total: {aiQuestions.shortAnswer * aiQuestions.shortAnswerMarks} marks</p>
+                    </div>
+
+                    {/* Long Answer */}
+                    <div className="border border-gray-200 rounded-lg p-3 bg-white">
+                      <Label className="text-sm font-semibold text-gray-700">Long Answer</Label>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs text-gray-600">Count</Label>
+                          <Input type="number" min="0" value={aiQuestions.longAnswer} onChange={(e) => setAiQuestions({ ...aiQuestions, longAnswer: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-600">Marks</Label>
+                          <Input type="number" min="0" value={aiQuestions.longAnswerMarks} onChange={(e) => setAiQuestions({ ...aiQuestions, longAnswerMarks: Math.max(0, Number(e.target.value)) })} className="bg-gray-50 text-sm" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-2">Total: {aiQuestions.longAnswer * aiQuestions.longAnswerMarks} marks</p>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-xs text-gray-600">True/False</Label>
-                    <Input type="number" min="0" value={aiQuestions.trueFalse} onChange={(e) => setAiQuestions({ ...aiQuestions, trueFalse: Number(e.target.value) })} className="bg-white" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-600">Short Answer</Label>
-                    <Input type="number" min="0" value={aiQuestions.shortAnswer} onChange={(e) => setAiQuestions({ ...aiQuestions, shortAnswer: Number(e.target.value) })} className="bg-white" />
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-600">Long Answer</Label>
-                    <Input type="number" min="0" value={aiQuestions.longAnswer} onChange={(e) => setAiQuestions({ ...aiQuestions, longAnswer: Number(e.target.value) })} className="bg-white" />
+
+                  {/* Marks Summary */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-700">Total AI Generated Marks:</span>
+                      <span className={`text-sm font-bold ${
+                        calculateAiTotalMarks() === formData.total_marks
+                          ? 'text-green-600'
+                          : 'text-red-600'
+                      }`}>
+                        {calculateAiTotalMarks()} / {formData.total_marks}
+                      </span>
+                    </div>
+                    {calculateAiTotalMarks() !== formData.total_marks && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Adjust counts or marks to match test total marks
+                      </p>
+                    )}
                   </div>
                 </div>
-                <Button onClick={handleGenerateQuestions} disabled={loading} className="bg-purple-600 hover:bg-purple-700 text-white">
+
+                <Button 
+                  onClick={handleGenerateQuestions} 
+                  disabled={loading || calculateAiTotalMarks() !== formData.total_marks} 
+                  className="bg-purple-600 hover:bg-purple-700 text-white w-full"
+                >
                   <Sparkles className="w-4 h-4 mr-2" />
                   {loading ? "Generating..." : "Generate Questions"}
                 </Button>
@@ -923,7 +1178,7 @@ export default function CreateTestPage() {
               <div className="flex flex-col items-center justify-center py-16 border border-dashed border-gray-300 rounded-xl">
                 <FileText className="w-10 h-10 text-gray-300 mb-3" />
                 <p className="text-gray-500 font-medium">No questions added yet</p>
-                <p className="text-gray-400 text-sm mt-1">Click "Add Question" or use AI to generate questions</p>
+                <p className="text-gray-400 text-sm mt-1">Click "Question Template", "Add Question", or use AI to generate questions</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -960,7 +1215,7 @@ export default function CreateTestPage() {
       {testId && (
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={() => navigate("/tests")}>Cancel</Button>
-          <Button onClick={handleFinish} className="bg-saBlue hover:bg-saBlueDarkHover text-white px-8">
+          <Button onClick={handleFinish} disabled={!canFinish} className="bg-saBlue hover:bg-saBlueDarkHover text-white px-8 disabled:opacity-50 disabled:cursor-not-allowed">
             Finish & View Test
           </Button>
         </div>

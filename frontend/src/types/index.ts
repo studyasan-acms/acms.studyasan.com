@@ -678,6 +678,7 @@ export interface Test {
   id: number;
   title: string;
   description: string | null;
+  instructions?: string | null;
   subject_id: number | null;
   test_series_id?: number | null;
   created_by: number;
@@ -764,6 +765,7 @@ export interface TestAttempt {
 export interface CreateTestData {
   title: string;
   description?: string;
+  instructions?: string;
   subject_id?: number | null;
   test_series_id?: number | null;
   total_marks: number;
@@ -781,6 +783,7 @@ export interface CreateTestData {
 export interface UpdateTestData {
   title?: string;
   description?: string;
+  instructions?: string;
   subject_id?: number | null;
   test_series_id?: number | null;
   total_marks?: number;
@@ -800,6 +803,10 @@ export interface GenerateQuestionsData {
   numTrueFalse?: number;
   numShortAnswer?: number;
   numLongAnswer?: number;
+  mcqMarks?: number;
+  trueFalseMarks?: number;
+  shortAnswerMarks?: number;
+  longAnswerMarks?: number;
 }
 
 export interface CreateQuestionData {
