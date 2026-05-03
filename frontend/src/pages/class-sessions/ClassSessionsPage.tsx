@@ -299,7 +299,7 @@ export default function ClassSessionsPage() {
             {session.subject?.name || 'Class Session'}
           </h3>
           <p className="text-xs font-semibold text-gray-400 mt-1">
-            Prof. {session.teacher?.user?.name || 'Teacher'}
+            {session.teacher?.user?.name || 'Teacher'}
           </p>
         </div>
 

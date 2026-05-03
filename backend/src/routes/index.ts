@@ -643,6 +643,12 @@ router.get('/homework/student', authenticate, authorize('STUDENT'), homeworkCont
 // Get homework by ID
 router.get('/homework/:id', authenticate, homeworkController.getHomeworkById);
 
+// Update homework (Teacher/Admin)
+router.put('/homework/:id', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('document'), homeworkController.updateHomework);
+
+// Delete homework (Teacher/Admin)
+router.delete('/homework/:id', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.deleteHomework);
+
 // Submit homework response (Student)
 router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'), upload.single('response_media'), homeworkController.submitHomeworkResponse);
 

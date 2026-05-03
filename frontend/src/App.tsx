@@ -309,6 +309,7 @@ function App() {
           <Route path="homework" element={<HomeworkPage />} />
           <Route path="homework/create" element={<CreateHomeworkPage />} />
           <Route path="homework/:id" element={<HomeworkDetailPage />} />
+          <Route path="homework/:id/edit" element={<CreateHomeworkPage />} />
 
           {/* Job/Internship Routes */}
           <Route path="jobs" element={<JobsPage />} />

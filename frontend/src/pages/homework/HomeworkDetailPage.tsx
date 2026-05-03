@@ -247,6 +247,46 @@ export default function HomeworkDetailPage() {
             Back
           </Button>
 
+            <div className="absolute top-6 right-6 flex items-center gap-2">
+              {(isAdmin || isTeacher) && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate(`/dashboard/homework/${id}/edit`)}
+                    className="text-white hover:bg-white/10 rounded-lg h-8 px-3"
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={async () => {
+                      if (!confirm('Delete this assignment? This cannot be undone.')) return;
+                      try {
+                        const resp = await fetch(`/api/homework/${id}`, {
+                          method: 'DELETE',
+                          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                        });
+                        if (resp.ok) {
+                          toast.success('Assignment deleted');
+                          navigate('/dashboard/homework');
+                        } else {
+                          const err = await resp.json();
+                          throw new Error(err.message || 'Delete failed');
+                        }
+                      } catch (error: any) {
+                        toast.error(error.message || 'Failed to delete');
+                      }
+                    }}
+                    className="rounded-lg h-8 px-3"
+                  >
+                    Delete
+                  </Button>
+                </>
+              )}
+            </div>
+
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
               <Badge className="bg-white/20 text-white rounded-full px-3 py-0.5 border-none text-[10px] font-bold">
@@ -264,7 +304,7 @@ export default function HomeworkDetailPage() {
             <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-blue-50">
               <div className="flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" />
-                <span>Prof. {homework.teacher.user.name}</span>
+                <span> {homework.teacher.user.name}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Calendar className="h-3.5 w-3.5" />

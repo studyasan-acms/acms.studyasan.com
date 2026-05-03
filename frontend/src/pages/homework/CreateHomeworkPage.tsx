@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -48,8 +48,9 @@ function convertLocalToUTC(localDateTimeString: string): string {
 }
 
 export default function CreateHomeworkPage() {
-  usePageTitle("Create Assignment");
   const navigate = useNavigate();
+  const { id } = useParams();
+  usePageTitle(id ? 'Edit Assignment' : 'Create Assignment');
   const { user } = useAuthStore();
   const isTeacher = user?.role === 'TEACHER';
   const [loading, setLoading] = useState(false);
@@ -67,12 +68,31 @@ export default function CreateHomeworkPage() {
   const fetchSubjects = async () => {
     try {
       const params: any = {};
-      if (user?.id && user?.role) {
+      // Only restrict subjects to the logged-in user's assigned subjects when the user is a teacher
+      if (user?.role === 'TEACHER' && user?.id) {
         params.user_id = user.id;
-        params.role = user.role;
+        params.role = 'TEACHER';
       }
-      const response = await subjectService.getAll(params);
-      setSubjects(response.data.data || []);
+
+      const allSubjects: Subject[] = [];
+      let currentPage = 1;
+      let totalPages = 1;
+
+      do {
+        const response = await subjectService.getAll({ ...params, page: currentPage, limit: 100 });
+        const payload: any = response.data?.data;
+        const pageSubjects = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+            ? payload
+            : [];
+
+        allSubjects.push(...pageSubjects);
+        totalPages = payload?.pagination?.totalPages || 1;
+        currentPage += 1;
+      } while (currentPage <= totalPages);
+
+      setSubjects(allSubjects);
     } catch (error) {
       console.error('Error fetching subjects:', error);
       toast.error("Failed to load subjects");
@@ -98,9 +118,52 @@ export default function CreateHomeworkPage() {
     }
   };
 
+  const fetchHomeworkForEdit = async (homeworkId: string) => {
+    try {
+      const response = await fetch(`/api/homework/${homeworkId}`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+
+      if (!response.ok) return;
+      const body = await response.json();
+      const data = body.data;
+
+      setFormData(prev => ({
+        ...prev,
+        subject_id: data.subject?.id?.toString() || prev.subject_id,
+        title: data.title || prev.title,
+        description: data.description || prev.description,
+        due_date: data.due_date ? convertUTCToLocal(data.due_date) : prev.due_date
+      }));
+
+      // Load students for subject and select assigned ones
+      if (data.subject?.id) {
+        await fetchStudentsForSubject(data.subject.id.toString());
+        const assigned = (data.assignments || []).map((a: any) => a.student.id);
+        setSelectedStudents(assigned);
+      }
+    } catch (error) {
+      console.error('Error loading homework for edit:', error);
+    }
+  };
+
+  // convert UTC ISO to local datetime-local input value
+  function convertUTCToLocal(iso?: string) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
   useEffect(() => {
     fetchSubjects();
   }, [user]);
+
+  useEffect(() => {
+    if (id) {
+      fetchHomeworkForEdit(id);
+    }
+  }, [id]);
 
   const handleSubjectChange = (subjectId: string) => {
     setFormData(prev => ({ ...prev, subject_id: subjectId }));
@@ -162,23 +225,30 @@ export default function CreateHomeworkPage() {
         submitData.append('document', documentFile);
       }
 
-      const response = await fetch('/api/homework', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: submitData
-      });
+      let response;
+      if (id) {
+        response = await fetch(`/api/homework/${id}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: submitData
+        });
+      } else {
+        response = await fetch('/api/homework', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+          body: submitData
+        });
+      }
 
       if (response.ok) {
-        toast.success("Assignment published!");
+        toast.success(id ? "Assignment updated!" : "Assignment published!");
         navigate('/dashboard/homework');
       } else {
         const error = await response.json();
-        throw new Error(error.message || 'Failed to create');
+        throw new Error(error.message || (id ? 'Failed to update' : 'Failed to create'));
       }
     } catch (error: any) {
-      console.error('Error creating homework:', error);
+      console.error('Error submitting homework:', error);
       toast.error(error.message || "Something went wrong");
     } finally {
       setLoading(false);
@@ -198,8 +268,8 @@ export default function CreateHomeworkPage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create Assignment</h1>
-        <p className="text-gray-500 text-sm">Fill in the details to publish new work for your students.</p>
+        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{id ? 'Edit Assignment' : 'Create Assignment'}</h1>
+      <p className="text-gray-500 text-sm">{id ? 'Update assignment details and reassign students.' : 'Fill in the details to publish new work for your students.'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

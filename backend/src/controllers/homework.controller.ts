@@ -788,3 +788,118 @@ export const getHomeworkById = async (req: Request, res: Response) => {
     sendError(res, error.message, 500);
   }
 };
+
+// Update homework (Teacher/Admin) - Teachers can edit their own homework
+export const updateHomework = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return sendError(res, 'Homework ID is required', 400);
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) return sendError(res, 'Invalid homework ID', 400);
+
+    const user = (req as any).user;
+    const user_id = user.id;
+    const user_role = user.role;
+
+    let teacher = null;
+    if (user_role === 'TEACHER') {
+      teacher = await prisma.teacher.findUnique({ where: { user_id } });
+      if (!teacher) return sendError(res, 'Teacher not found', 404);
+    }
+
+    // Find homework and check access
+    const homework = await prisma.homework.findUnique({ where: { id: parsedId } });
+    if (!homework) return sendError(res, 'Homework not found', 404);
+
+    if (user_role === 'TEACHER' && homework.teacher_id !== teacher!.id) {
+      return sendError(res, 'Access denied', 403);
+    }
+
+    const { title, description, due_date, assigned_student_ids } = req.body;
+
+    let document_url = homework.document_url;
+    let document_type = homework.document_type;
+
+    if (req.file) {
+      const uploadResult = await uploadToS3(req.file, 'homework-documents');
+      document_url = uploadResult.url;
+      document_type = req.file.mimetype;
+    }
+
+    // Update homework record
+    const updatedHomework = await prisma.homework.update({
+      where: { id: parsedId },
+      data: {
+        title: title !== undefined ? title : homework.title,
+        description: description !== undefined ? description : homework.description,
+        document_url,
+        document_type,
+        due_date: due_date ? new Date(due_date) : homework.due_date
+      },
+      include: {
+        subject: true,
+        teacher: { include: { user: { select: { id: true, name: true } } } },
+        assignments: true,
+        _count: { select: { assignments: true, responses: true } }
+      }
+    });
+
+    // Handle re-assigning students if list provided
+    if (assigned_student_ids && Array.isArray(assigned_student_ids)) {
+      const studentIds = assigned_student_ids.map((s: any) => parseInt(s)).filter((n: number) => !isNaN(n));
+
+      // Simple approach: delete existing assignments and recreate
+      await prisma.$transaction([
+        prisma.homeworkAssignment.deleteMany({ where: { homework_id: parsedId } }),
+        prisma.homeworkAssignment.createMany({
+          data: studentIds.map((student_id: number) => ({ homework_id: parsedId, student_id })),
+          skipDuplicates: true
+        })
+      ]);
+    }
+
+    sendSuccess(res, updatedHomework, 'Homework updated successfully');
+  } catch (error: any) {
+    console.error('Update homework error:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+// Delete homework (Teacher/Admin) - Teachers can delete their own homework
+export const deleteHomework = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!id) return sendError(res, 'Homework ID is required', 400);
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) return sendError(res, 'Invalid homework ID', 400);
+
+    const user = (req as any).user;
+    const user_id = user.id;
+    const user_role = user.role;
+
+    let teacher = null;
+    if (user_role === 'TEACHER') {
+      teacher = await prisma.teacher.findUnique({ where: { user_id } });
+      if (!teacher) return sendError(res, 'Teacher not found', 404);
+    }
+
+    // Verify homework exists and permissions
+    const homework = await prisma.homework.findUnique({ where: { id: parsedId } });
+    if (!homework) return sendError(res, 'Homework not found', 404);
+    if (user_role === 'TEACHER' && homework.teacher_id !== teacher!.id) {
+      return sendError(res, 'Access denied', 403);
+    }
+
+    // Delete responses, assignments then homework
+    await prisma.$transaction([
+      prisma.homeworkResponse.deleteMany({ where: { homework_id: parsedId } }),
+      prisma.homeworkAssignment.deleteMany({ where: { homework_id: parsedId } }),
+      prisma.homework.delete({ where: { id: parsedId } })
+    ]);
+
+    sendSuccess(res, null, 'Homework deleted successfully');
+  } catch (error: any) {
+    console.error('Delete homework error:', error);
+    sendError(res, error.message, 500);
+  }
+};
