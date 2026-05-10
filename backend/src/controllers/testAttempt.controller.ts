@@ -562,7 +562,12 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
             question: true,
           },
         },
-        test: true,
+        test: {
+          include: {
+            subject: true,
+            test_series: true,
+          },
+        },
       },
     });
 
@@ -572,6 +577,75 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
 
     if (attempt.is_graded) {
       return sendError(res, 'Test attempt already graded', 403);
+    }
+
+    // Authorization check: Verify teacher can grade this test
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    console.log('🔍 [GRADE] User role:', user?.role, 'UserId:', userId);
+
+    if (user?.role !== 'ADMIN') {
+      // Not an admin, check teacher permissions
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: userId },
+        include: {
+          role: true,
+          teacher_subject_junctions: {
+            select: { subject_id: true },
+          },
+          test_series_junctions: {
+            select: { test_series_id: true },
+          },
+        },
+      });
+
+      console.log('🔍 [GRADE] Teacher found:', !!teacher, 'Role:', teacher?.role?.name);
+
+      if (!teacher) {
+        return sendError(res, 'Teacher profile not found', 404);
+      }
+
+      // Check if teacher has "subjects and tests" permission
+      const permissions = (teacher.role?.permissions as Record<string, any>) || {};
+      const hasGradeAllPermission = permissions.tests?.grade_all === true;
+
+      console.log('🔍 [GRADE] Permissions:', JSON.stringify(permissions));
+      console.log('🔍 [GRADE] Has grade_all:', hasGradeAllPermission);
+
+      if (!hasGradeAllPermission) {
+        // Teacher doesn't have grade_all permission, check subject/test series access
+        const testHasSubject = !!attempt.test.subject_id;
+        const testHasTestSeries = !!attempt.test.test_series_id;
+        
+        const teachesSubject =
+          testHasSubject &&
+          teacher.teacher_subject_junctions.some(
+            (tj) => tj.subject_id === attempt.test.subject_id
+          );
+
+        const managesTestSeries =
+          testHasTestSeries &&
+          teacher.test_series_junctions.some(
+            (tj) => tj.test_series_id === attempt.test.test_series_id
+          );
+
+        console.log('🔍 [GRADE] Test subject_id:', attempt.test.subject_id, 'Teaches:', teachesSubject);
+        console.log('🔍 [GRADE] Test test_series_id:', attempt.test.test_series_id, 'Manages:', managesTestSeries);
+        console.log('🔍 [GRADE] Teacher subjects:', teacher.teacher_subject_junctions.map(t => t.subject_id));
+        console.log('🔍 [GRADE] Teacher test_series:', teacher.test_series_junctions.map(t => t.test_series_id));
+
+        const canGradeTest = teachesSubject || managesTestSeries;
+
+        if (!canGradeTest) {
+          return sendError(
+            res,
+            'You do not have permission to grade this test. You must either teach the subject or manage the test series.',
+            403
+          );
+        }
+      }
     }
 
     // Update answer grades

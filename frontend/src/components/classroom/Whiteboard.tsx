@@ -503,6 +503,20 @@ export function Whiteboard({
                     >
                         <Trash2 className="w-3.5 h-3.5" />
                     </Button>
+
+                    {/* Delete Selected (shows when image/text selected) */}
+                    {selectedStrokeId && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteSelected()}
+                            className="text-red-500 hover:bg-red-50 h-7 px-2 text-xs font-medium"
+                            title="Delete Selected (Delete key)"
+                        >
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Delete
+                        </Button>
+                    )}
                 </div>
                 )}
 

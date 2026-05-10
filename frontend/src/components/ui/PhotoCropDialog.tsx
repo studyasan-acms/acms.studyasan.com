@@ -24,9 +24,21 @@ export default function PhotoCropDialog({
   const [offsetY, setOffsetY] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [initialPinchDistance, setInitialPinchDistance] = useState(0);
+  const [initialZoom, setInitialZoom] = useState(1);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate distance between two touch points
+  const getTouchDistance = (e: React.TouchEvent<HTMLDivElement>): number => {
+    if (e.touches.length < 2) return 0;
+    const touch1 = e.touches[0];
+    const touch2 = e.touches[1];
+    const deltaX = touch1.clientX - touch2.clientX;
+    const deltaY = touch1.clientY - touch2.clientY;
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  };
 
   React.useEffect(() => {
     if (!imageFile) return;
@@ -62,6 +74,50 @@ export default function PhotoCropDialog({
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  // Touch event handlers for mobile
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      const distance = getTouchDistance(e);
+      setInitialPinchDistance(distance);
+      setInitialZoom(zoom);
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      // Single finger drag
+      setIsDragging(true);
+      const touch = e.touches[0];
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      // Pinch zoom
+      const distance = getTouchDistance(e);
+      if (initialPinchDistance > 0) {
+        const scale = distance / initialPinchDistance;
+        const newZoom = Math.max(1, Math.min(3, initialZoom * scale));
+        setZoom(newZoom);
+      }
+      e.preventDefault();
+    } else if (e.touches.length === 1 && isDragging) {
+      // Single finger drag
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - dragStart.x;
+      const deltaY = touch.clientY - dragStart.y;
+
+      setOffsetX((prev) => prev + deltaX);
+      setOffsetY((prev) => prev + deltaY);
+      setDragStart({ x: touch.clientX, y: touch.clientY });
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = (_e: React.TouchEvent<HTMLDivElement>) => {
+    setIsDragging(false);
+    setInitialPinchDistance(0);
   };
 
   const handleCrop = useCallback(async () => {
@@ -162,7 +218,9 @@ export default function PhotoCropDialog({
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Crop Your Photo</DialogTitle>
-          <p className="text-xs text-gray-500 mt-2">Click and drag to move the image</p>
+          <p className="text-xs text-gray-500 mt-2">
+            Drag to move • Pinch to zoom (mobile) • Scroll wheel to zoom (desktop)
+          </p>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -173,9 +231,13 @@ export default function PhotoCropDialog({
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            className={`relative w-full h-80 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center border-2 border-dashed border-gray-400 cursor-move transition-colors ${
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className={`relative w-full h-80 bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center border-2 border-dashed border-gray-400 cursor-move transition-colors touch-none ${
               isDragging ? 'border-blue-400 bg-gray-800' : ''
             }`}
+            style={{ touchAction: 'none' }}
           >
             <img
               ref={imageRef}
@@ -198,10 +260,11 @@ export default function PhotoCropDialog({
               
               {/* Drag hint when not dragging */}
               {!isDragging && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-center gap-2 text-white/50 pointer-events-none">
-                    <Move className="w-4 h-4" />
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="flex flex-col items-center gap-2 text-white/50">
+                    <Move className="w-5 h-5" />
                     <span className="text-xs">Drag to move</span>
+                    <span className="text-xs text-white/40">Pinch to zoom</span>
                   </div>
                 </div>
               )}

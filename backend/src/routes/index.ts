@@ -383,8 +383,8 @@ router.get('/tests/:testId/attempts', authenticate, authorize('ADMIN', 'TEACHER'
 // Get my test attempts
 router.get('/my-test-attempts', authenticate, authorize('STUDENT'), testAttemptController.getMyTestAttempts);
 
-// Grade test attempt (teachers/admin)
-router.post('/test-attempts/:attemptId/grade', authenticate, authorize('ADMIN', 'TEACHER'), testAttemptController.gradeTestAttempt);
+// Grade test attempt (teachers/admin) - Custom authorization in controller
+router.post('/test-attempts/:attemptId/grade', authenticate, authorizeStrict('ADMIN', 'TEACHER'), testAttemptController.gradeTestAttempt);
 
 // ========== CHAT ROUTES ==========
 // Start a new chat

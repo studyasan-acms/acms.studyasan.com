@@ -233,7 +233,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
           {/* Question Section */}
           <div className="text-center space-y-4 md:space-y-6">
             <Card className="gamified-card p-4 md:p-12 mb-4 md:mb-8">
-              <h3 className="text-lg md:text-4xl font-extrabold leading-tight tracking-tight">
+              <h3 className="text-lg md:text-4xl font-extrabold leading-tight tracking-tight whitespace-pre-wrap">
                 {question.content.question}
               </h3>
             </Card>

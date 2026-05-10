@@ -239,8 +239,15 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                         ctx.stroke();
                     }
                 } else {
-                    // Regular pen or eraser
-                    ctx.strokeStyle = stroke.tool === 'eraser' ? '#ffffff' : stroke.color;
+                    // Regular pen or eraser strokes
+                    // Note: Eraser strokes are not rendered (they delete strokes instead)
+                    if (stroke.tool === 'eraser') {
+                        // Eraser strokes are not rendered
+                        ctx.restore();
+                        return;
+                    }
+                    
+                    ctx.strokeStyle = stroke.color;
                     ctx.lineWidth = stroke.size;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -461,7 +468,8 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
-        } else {
+        } else if (currentTool !== 'eraser') {
+            // Don't create persistent stroke for eraser
             const strokeId = generateStrokeId();
             const color = currentTool === 'rainbow'
                 ? rainbowColors[0] // Start with violet, gradient will be applied during render
@@ -477,6 +485,17 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
+        } else {
+            // Eraser: just track that we're drawing, but don't create a persistent stroke
+            currentStroke.current = {
+                id: '',
+                tool: 'eraser',
+                color: '',
+                size: currentSize,
+                points: [point],
+                board: currentBoard,
+                timestamp: Date.now(),
+            };
         }
 
         redrawCanvas();
@@ -545,13 +564,56 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
 
         if (['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)) {
             currentStroke.current.points[1] = point;
+        } else if (currentTool === 'eraser') {
+            // Eraser mode: detect and delete strokes that intersect with eraser path
+            const canvas = canvasRef.current;
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const eraserX = point.x * rect.width;
+            const eraserY = point.y * rect.height;
+            const eraserSize = currentSize;
+
+            // Check all strokes and remove those that intersect with eraser
+            const strokesArray = Array.from(strokes.current.entries());
+            const strokesIdsToDelete: string[] = [];
+
+            for (const [strokeId, stroke] of strokesArray) {
+                // Eraser only affects pen, rainbow, and highlight strokes
+                // It does NOT affect images, text, or shapes
+                if (!['pen', 'rainbow', 'highlight'].includes(stroke.tool)) {
+                    continue;
+                }
+
+                // Check if eraser path intersects with this stroke
+                for (const strokePoint of stroke.points) {
+                    const strokePixelX = strokePoint.x * rect.width;
+                    const strokePixelY = strokePoint.y * rect.height;
+
+                    // Distance from eraser to stroke point
+                    const dx = eraserX - strokePixelX;
+                    const dy = eraserY - strokePixelY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // If eraser touches this stroke, mark it for deletion
+                    if (distance <= eraserSize) {
+                        strokesIdsToDelete.push(strokeId);
+                        break; // Move to next stroke
+                    }
+                }
+            }
+
+            // Delete the strokes that were hit by the eraser
+            for (const strokeId of strokesIdsToDelete) {
+                strokes.current.delete(strokeId);
+            }
         } else {
             currentStroke.current.points.push(point);
         }
 
         strokes.current.set(currentStroke.current.id, currentStroke.current);
         redrawCanvas();
-    }, [currentTool, getCanvasPoint, redrawCanvas, selectedStrokeId]);
+    }, [currentTool, currentSize, getCanvasPoint, redrawCanvas, selectedStrokeId]);
 
     const handlePointerUp = useCallback(() => {
         // Send drag/resize updates
@@ -566,7 +628,8 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
             }
         }
 
-        if (currentStroke.current) {
+        // Don't send eraser strokes - they don't need to be persisted
+        if (currentStroke.current && currentStroke.current.tool !== 'eraser') {
             sendMessage({
                 type: 'stroke',
                 data: currentStroke.current,
