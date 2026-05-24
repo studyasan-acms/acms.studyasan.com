@@ -651,13 +651,13 @@ router.put('/homework/:id', authenticate, authorize('ADMIN', 'TEACHER'), upload.
 router.delete('/homework/:id', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.deleteHomework);
 
 // Submit homework response (Student)
-router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'), upload.single('response_media'), homeworkController.submitHomeworkResponse);
+router.post('/homework/:homework_id/response', authenticate, authorize('STUDENT'), upload.array('response_media', 10), homeworkController.submitHomeworkResponse);
 
 // Get homework responses (Teacher/Admin)
 router.get('/homework/:homework_id/responses', authenticate, authorize('ADMIN', 'TEACHER'), homeworkController.getHomeworkResponses);
 
 // Check homework response (Teacher/Admin)
-router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('feedback_media'), homeworkController.checkHomeworkResponse);
+router.patch('/homework/responses/:response_id/check', authenticate, authorize('ADMIN', 'TEACHER'), upload.array('feedback_media', 10), homeworkController.checkHomeworkResponse);
 
 // ================== VIDEO ROOM ROUTES ==================
 

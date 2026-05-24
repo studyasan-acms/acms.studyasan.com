@@ -105,11 +105,11 @@ export default function HomeworkDetailPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [responseText, setResponseText] = useState("");
-  const [responseFile, setResponseFile] = useState<File | null>(null);
+  const [responseFiles, setResponseFiles] = useState<File[]>([]);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
-  const [feedbackFile, setFeedbackFile] = useState<File | null>(null);
+  const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
 
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -138,29 +138,22 @@ export default function HomeworkDetailPage() {
     }
   };
 
-  const handleCheckResponse = async (responseId: number, feedback: string, isChecked: boolean, file?: File) => {
+  const handleCheckResponse = async (responseId: number, feedback: string, isChecked: boolean, files?: File[]) => {
     try {
-      let response;
-      if (file) {
-        const formData = new FormData();
-        formData.append('feedback', feedback);
-        formData.append('is_checked', isChecked.toString());
-        formData.append('feedback_media', file);
-        response = await fetch(`/api/homework/responses/${responseId}/check`, {
-          method: 'PATCH',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: formData
-        });
-      } else {
-        response = await fetch(`/api/homework/responses/${responseId}/check`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ feedback, is_checked: isChecked })
+      const formData = new FormData();
+      formData.append('feedback', feedback);
+      formData.append('is_checked', isChecked.toString());
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append(`feedback_media`, file);
         });
       }
+
+      const response = await fetch(`/api/homework/responses/${responseId}/check`, {
+        method: 'PATCH',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      });
 
       if (response.ok) {
         toast.success("Response checked successfully");
@@ -181,7 +174,7 @@ export default function HomeworkDetailPage() {
 
   const handleSubmitResponse = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!responseText.trim() && !responseFile) {
+    if (!responseText.trim() && responseFiles.length === 0) {
       toast.error("Please add content or a file before submitting");
       return;
     }
@@ -189,7 +182,9 @@ export default function HomeworkDetailPage() {
     try {
       const submitData = new FormData();
       submitData.append('response_text', responseText);
-      if (responseFile) submitData.append('response_media', responseFile);
+      responseFiles.forEach((file) => {
+        submitData.append('response_media', file);
+      });
 
       const response = await fetch(`/api/homework/${id}/response`, {
         method: 'POST',
@@ -201,7 +196,7 @@ export default function HomeworkDetailPage() {
         toast.success("Assignment submitted!");
         fetchHomework();
         setResponseText("");
-        setResponseFile(null);
+        setResponseFiles([]);
       } else {
         const error = await response.json();
         throw new Error(error.message || 'Submission failed');
@@ -394,10 +389,30 @@ export default function HomeworkDetailPage() {
                     )}
 
                     {result.response_media_url && (
-                      <Button variant="outline" size="sm" className="rounded-lg font-bold" onClick={() => window.open(result.response_media_url, '_blank')}>
-                        <Download className="h-4 w-4 mr-2" />
-                        View Attachment
-                      </Button>
+                      <div className="space-y-2">
+                        {(() => {
+                          try {
+                            const urls = JSON.parse(result.response_media_url);
+                            if (Array.isArray(urls)) {
+                              return urls.map((url, idx) => (
+                                <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start" onClick={() => window.open(url, '_blank')}>
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download Attachment {urls.length > 1 ? `(${idx + 1})` : ''}
+                                </Button>
+                              ));
+                            }
+                          } catch {
+                            // If not JSON, treat as single URL
+                            return (
+                              <Button variant="outline" size="sm" className="rounded-lg font-bold" onClick={() => window.open(result.response_media_url, '_blank')}>
+                                <Download className="h-4 w-4 mr-2" />
+                                View Attachment
+                              </Button>
+                            );
+                          }
+                          return null;
+                        })()}
+                      </div>
                     )}
 
                     {result.feedback && (
@@ -407,6 +422,34 @@ export default function HomeworkDetailPage() {
                           Feedback
                         </div>
                         <p className="text-gray-800 font-medium italic text-sm">"{result.feedback}"</p>
+                        {result.feedback_media_url && (
+                          <div className="pt-3 border-t border-blue-100 space-y-2">
+                            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">Teacher attachments:</p>
+                            <div className="space-y-2">
+                              {(() => {
+                                try {
+                                  const urls = JSON.parse(result.feedback_media_url);
+                                  if (Array.isArray(urls)) {
+                                    return urls.map((url, idx) => (
+                                      <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start h-8 text-[11px]" onClick={() => window.open(url, '_blank')}>
+                                        <Download className="h-3 w-3 mr-1.5" />
+                                        Download {urls.length > 1 ? `(${idx + 1})` : ''}
+                                      </Button>
+                                    ));
+                                  }
+                                } catch {
+                                  // If not JSON, treat as single URL
+                                  return (
+                                    <Button variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start h-8 text-[11px]" onClick={() => window.open(result.feedback_media_url, '_blank')}>
+                                      <Download className="h-3 w-3 mr-1.5" /> Download Feedback File
+                                    </Button>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -428,7 +471,11 @@ export default function HomeworkDetailPage() {
                         type="file"
                         id="file-up"
                         className="hidden"
-                        onChange={(e) => setResponseFile(e.target.files?.[0] || null)}
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setResponseFiles([...responseFiles, ...files]);
+                        }}
                       />
                       <Button
                         type="button"
@@ -437,8 +484,35 @@ export default function HomeworkDetailPage() {
                         className="h-12 rounded-xl border-dashed border-gray-300 hover:border-saBlue hover:bg-blue-50 font-bold text-gray-500 text-xs"
                       >
                         <Upload className="h-4 w-4 mr-2" />
-                        {responseFile ? responseFile.name : "Attach a file"}
+                        {responseFiles.length > 0 ? `${responseFiles.length} file(s) selected` : "Attach files"}
                       </Button>
+                      
+                      {responseFiles.length > 0 && (
+                        <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Selected files:</p>
+                          <div className="space-y-2">
+                            {responseFiles.map((file, index) => (
+                              <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <FileText className="h-4 w-4 text-saBlue flex-shrink-0" />
+                                  <span className="text-xs font-medium text-gray-700 truncate">{file.name}</span>
+                                  <span className="text-[10px] text-gray-400 flex-shrink-0">({(file.size / 1024).toFixed(1)}KB)</span>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setResponseFiles(responseFiles.filter((_, i) => i !== index))}
+                                  className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       <Button
                         type="submit"
                         disabled={submitting}
@@ -488,9 +562,28 @@ export default function HomeworkDetailPage() {
 
                         <div className="flex flex-wrap items-center gap-3">
                           {res.response_media_url && (
-                            <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(res.response_media_url, '_blank')}>
-                              <Download className="h-3 w-3 mr-1.5" /> Download
-                            </Button>
+                            <div className="flex flex-wrap gap-2 w-full">
+                              {(() => {
+                                try {
+                                  const urls = JSON.parse(res.response_media_url);
+                                  if (Array.isArray(urls)) {
+                                    return urls.map((url, idx) => (
+                                      <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(url, '_blank')}>
+                                        <Download className="h-3 w-3 mr-1.5" /> Download {urls.length > 1 ? `(${idx + 1})` : ''}
+                                      </Button>
+                                    ));
+                                  }
+                                } catch {
+                                  // If not JSON, treat as single URL
+                                  return (
+                                    <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(res.response_media_url, '_blank')}>
+                                      <Download className="h-3 w-3 mr-1.5" /> Download
+                                    </Button>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
                           )}
                           {!res.is_checked && (
                             <Button
@@ -577,17 +670,63 @@ export default function HomeworkDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="font-bold text-gray-800 text-sm">Return File (Optional)</Label>
-              <Input type="file" onChange={(e) => setFeedbackFile(e.target.files?.[0] || null)} className="rounded-xl border-gray-100 text-xs" />
+              <Label className="font-bold text-gray-800 text-sm">Return Files (Optional)</Label>
+              <Input 
+                type="file" 
+                id="feedback-file-input"
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  setFeedbackFiles([...feedbackFiles, ...files]);
+                }}
+                multiple
+                className="rounded-xl border-gray-100 text-xs" 
+              />
+              
+              {feedbackFiles.length > 0 && (
+                <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Selected files:</p>
+                  <div className="space-y-2">
+                    {feedbackFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <FileText className="h-4 w-4 text-saBlue flex-shrink-0" />
+                          <span className="text-xs font-medium text-gray-700 truncate">{file.name}</span>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">({(file.size / 1024).toFixed(1)}KB)</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setFeedbackFiles(feedbackFiles.filter((_, i) => i !== index))}
+                          className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter className="p-6 bg-gray-50 flex items-center justify-end gap-2">
-            <Button variant="ghost" onClick={() => setFeedbackModalOpen(false)} className="rounded-xl font-bold text-xs">Cancel</Button>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setFeedbackModalOpen(false);
+                setFeedbackFiles([]);
+              }} 
+              className="rounded-xl font-bold text-xs"
+            >
+              Cancel
+            </Button>
             <Button
               onClick={async () => {
                 if (selectedResponseId) {
-                  await handleCheckResponse(selectedResponseId, feedbackText, true, feedbackFile || undefined);
+                  await handleCheckResponse(selectedResponseId, feedbackText, true, feedbackFiles.length > 0 ? feedbackFiles : undefined);
                   setFeedbackModalOpen(false);
+                  setFeedbackFiles([]);
+                  setFeedbackText("");
                 }
               }}
               className="rounded-xl bg-saBlue font-bold text-xs px-6"

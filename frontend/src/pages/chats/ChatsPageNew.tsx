@@ -761,7 +761,6 @@ const ChatsPageNew = () => {
                             </Avatar>
                             <div>
                               <p className="font-medium text-sm">{teacher.user.name}</p>
-                              <p className="text-xs text-muted-foreground">{teacher.user.email}</p>
                             </div>
                           </div>
                           <Button size="sm" variant="ghost"><MessageCircle className="h-4 w-4" /></Button>

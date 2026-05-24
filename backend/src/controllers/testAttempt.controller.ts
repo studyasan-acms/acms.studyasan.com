@@ -351,7 +351,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         submitted_at: new Date(),
         score: hasShortAnswers ? null : autoGradedScore,
         is_graded: !hasShortAnswers,
-        is_passed: hasShortAnswers ? null : autoGradedScore >= attempt.total_marks,
+        is_passed: hasShortAnswers ? null : autoGradedScore >= attempt.test.passing_marks,
       },
       include: {
         test: true,

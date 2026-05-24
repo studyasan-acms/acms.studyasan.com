@@ -434,10 +434,14 @@ export const submitHomeworkResponse = async (req: Request, res: Response) => {
     let response_media_url = null;
     let response_media_type = null;
 
-    if (req.file) {
-      const uploadResult = await uploadToS3(req.file, 'homework-responses');
-      response_media_url = uploadResult.url;
-      response_media_type = req.file.mimetype;
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      const uploadPromises = req.files.map(file => 
+        uploadToS3(file, 'homework-responses')
+      );
+      const uploadResults = await Promise.all(uploadPromises);
+      const mediaUrls = uploadResults.map(result => result.url);
+      response_media_url = JSON.stringify(mediaUrls);
+      response_media_type = req.files.map(f => f.mimetype).join(',');
     }
 
     // Create or update response
@@ -635,10 +639,14 @@ export const checkHomeworkResponse = async (req: Request, res: Response) => {
     let feedback_media_url = null;
     let feedback_media_type = null;
 
-    if (req.file) {
-      const uploadResult = await uploadToS3(req.file, 'homework-feedback');
-      feedback_media_url = uploadResult.url;
-      feedback_media_type = req.file.mimetype;
+    if (req.files && Array.isArray(req.files) && req.files.length > 0) {
+      const uploadPromises = req.files.map(file => 
+        uploadToS3(file, 'homework-feedback')
+      );
+      const uploadResults = await Promise.all(uploadPromises);
+      const mediaUrls = uploadResults.map(result => result.url);
+      feedback_media_url = JSON.stringify(mediaUrls);
+      feedback_media_type = req.files.map(f => f.mimetype).join(',');
     }
 
     // Prepare update data
