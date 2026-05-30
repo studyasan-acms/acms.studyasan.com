@@ -38,10 +38,10 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
   const [invoiceNumber, setInvoiceNumber] = useState(() => `#${String(Math.floor(Math.random() * 100000)).padStart(6, '0')}`);
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
-  const [taxAmount, setTaxAmount] = useState(0);
+  const [gstEnabled, setGstEnabled] = useState(true);
+  const [gstRate, setGstRate] = useState(18);
   const [amountPaid, setAmountPaid] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
-  const [applyDiscountOnTax, setApplyDiscountOnTax] = useState(false);
 
   const currencies = {
     INR: { symbol: '₹', name: 'Indian Rupee' },
@@ -64,7 +64,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
               id: `subject-${enrollment.id}`,
               name: enrollment.subject.name,
               type: "subject",
-              price: 0,
+              price: enrollment.price || (enrollment.subject as any).price || 0,
               selected: true,
             });
           } else if (enrollment.type === 'TEST_SERIES' && enrollment.test_series) {
@@ -72,7 +72,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
               id: `test-series-${enrollment.id}`,
               name: enrollment.test_series.title,
               type: "test_series",
-              price: 0,
+              price: enrollment.price || (enrollment.test_series as any).price || 0,
               selected: true,
             });
           } else if (enrollment.type === 'ACTIVITY_GROUP' && enrollment.activity_group) {
@@ -84,7 +84,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                 id: itemId,
                 name: enrollment.activity_group.name,
                 type: "activity_group",
-                price: 0,
+                price: enrollment.price || (enrollment.activity_group as any).price || 0,
                 selected: true,
               });
             }
@@ -108,7 +108,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
               id: itemId,
               name: groupName,
               type: "activity_group",
-              price: 0,
+              price: 0, // Legacy activity enrollments don't store individual prices
               selected: true,
             });
           }
@@ -133,11 +133,12 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
 
   const selectedItems = items.filter(item => item.selected);
   const subtotal = selectedItems.reduce((sum, item) => sum + item.price, 0);
-  // discount can apply to subtotal or to (subtotal + tax) depending on toggle
-  const discountBase = applyDiscountOnTax ? (subtotal + Number(taxAmount || 0)) : subtotal;
-  const discountAmount = (discountBase * discount) / 100;
-  const totalBeforeTax = applyDiscountOnTax ? subtotal + Number(taxAmount || 0) - discountAmount : subtotal - discountAmount;
-  const finalTotal = applyDiscountOnTax ? subtotal + Number(taxAmount || 0) - discountAmount : subtotal - discountAmount + Number(taxAmount || 0);
+  const discountAmount = (subtotal * discount) / 100;
+  const taxableAmount = subtotal - discountAmount;
+  const gstAmount = gstEnabled ? (taxableAmount * gstRate) / 100 : 0;
+  const cgstAmount = gstAmount / 2;
+  const sgstAmount = gstAmount / 2;
+  const finalTotal = taxableAmount + gstAmount;
   const balanceDue = finalTotal - Number(amountPaid || 0);
 
   const formatAmount = (val: number) => {
@@ -145,6 +146,16 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       return `${currencies.INR.symbol}${val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     return `${(currencies as any)[currency]?.symbol || ''}${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  // PDF-safe amount formatter: uses "Rs." instead of Unicode ₹ which jsPDF's Helvetica can't render
+  const formatAmountPDF = (val: number) => {
+    const formatted = val.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (currency === 'INR') {
+      return `Rs.${formatted}`;
+    }
+    // For non-INR, use the code instead of symbol to avoid Unicode issues
+    return `${currency} ${formatted}`;
   };
 
   const generatePDF = async () => {
@@ -155,13 +166,19 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 20;
+      const footerHeight = 35; // reserved space for footer
+      const maxContentY = pageHeight - margin - footerHeight; // max Y before needing new page
 
       // Colors to match sample
       const headerBlue: [number, number, number] = [13, 100, 164];
       const darkText: [number, number, number] = [34, 40, 49];
       const lightGrey: [number, number, number] = [230, 235, 240];
 
-      // (formatAmount is defined outside and reused)
+      // Helper to add a new page and return the reset Y position
+      const addNewPage = () => {
+        pdf.addPage();
+        return margin;
+      };
 
       // Try to load logo from public folder
       const toDataURL = async (url: string) => {
@@ -269,25 +286,40 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.text('Quantity', colQty, tableTop + 8);
       pdf.text('Price', colPrice, tableTop + 8);
 
-      // Rows
+      // Rows - with page break support
       let y = tableTop + 12;
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
       selectedItems.forEach((item, idx) => {
         const rowH = 14;
+
+        // Check if row would overflow into footer area
+        if (y + rowH > maxContentY) {
+          y = addNewPage();
+          // Re-draw table header on new page
+          pdf.setFillColor(224, 236, 249);
+          pdf.rect(tableLeft, y, tableWidth, 12, 'F');
+          pdf.setFontSize(9);
+          pdf.setTextColor(...darkText);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Product or Service', tableLeft + 6, y + 8);
+          pdf.text('Quantity', colQty, y + 8);
+          pdf.text('Price', colPrice, y + 8);
+          y += 12;
+          pdf.setFont('helvetica', 'normal');
+          pdf.setFontSize(9);
+        }
+
         if (idx % 2 === 0) {
           pdf.setFillColor(250, 250, 250);
           pdf.rect(tableLeft, y, tableWidth, rowH, 'F');
         }
 
-        const qty = 1;
-        const lineTotal = item.price * qty;
-
         pdf.setTextColor(...darkText);
         const desc = item.name.length > 80 ? item.name.substring(0, 77) + '...' : item.name;
         pdf.text(desc, tableLeft + 6, y + 9);
-        pdf.text(String(qty), colQty, y + 9);
-        pdf.text(formatAmount(item.price), colPrice, y + 9);
+        pdf.text('1', colQty, y + 9);
+        pdf.text(formatAmountPDF(item.price), colPrice, y + 9);
 
         y += rowH;
       });
@@ -297,24 +329,42 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setLineWidth(0.4);
       pdf.line(tableLeft, y, tableLeft + tableWidth, y);
 
+      // Check if totals section would overflow; if so, add new page
+      const totalsNeededHeight = gstEnabled ? 80 : 55;
+      if (y + totalsNeededHeight > maxContentY) {
+        y = addNewPage();
+      }
+
       // Totals box on the right
       const totalsX = pageWidth - margin - 78;
       let totalsY = y + 8;
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       pdf.text('Subtotal', totalsX, totalsY);
-      pdf.text(formatAmount(subtotal), pageWidth - margin, totalsY, { align: 'right' });
+      pdf.text(formatAmountPDF(subtotal), pageWidth - margin, totalsY, { align: 'right' });
       totalsY += 6;
 
       // Discount (show negative)
       pdf.text(`Discount (${discount}%)`, totalsX, totalsY);
-      pdf.text(`-${formatAmount(discountAmount)}`, pageWidth - margin, totalsY, { align: 'right' });
+      pdf.text(`-${formatAmountPDF(discountAmount)}`, pageWidth - margin, totalsY, { align: 'right' });
       totalsY += 6;
 
-      // Taxes (left-aligned next to label)
-      pdf.text('Taxes', totalsX, totalsY);
-      pdf.text(formatAmount(Number(taxAmount || 0)), pageWidth - margin, totalsY, { align: 'right' });
-      totalsY += 8;
+      // GST breakdown
+      if (gstEnabled) {
+        pdf.text(`CGST (${gstRate / 2}%)`, totalsX, totalsY);
+        pdf.text(formatAmountPDF(cgstAmount), pageWidth - margin, totalsY, { align: 'right' });
+        totalsY += 6;
+        pdf.text(`SGST (${gstRate / 2}%)`, totalsX, totalsY);
+        pdf.text(formatAmountPDF(sgstAmount), pageWidth - margin, totalsY, { align: 'right' });
+        totalsY += 6;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`Total GST (${gstRate}%)`, totalsX, totalsY);
+        pdf.text(formatAmountPDF(gstAmount), pageWidth - margin, totalsY, { align: 'right' });
+        pdf.setFont('helvetica', 'normal');
+        totalsY += 8;
+      } else {
+        totalsY += 2;
+      }
 
       pdf.setDrawColor(...headerBlue);
       pdf.setLineWidth(0.6);
@@ -324,14 +374,14 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(...darkText);
       pdf.text('Invoice Total', totalsX, totalsY);
-      pdf.text(formatAmount(finalTotal), pageWidth - margin, totalsY, { align: 'right' });
+      pdf.text(formatAmountPDF(finalTotal), pageWidth - margin, totalsY, { align: 'right' });
       totalsY += 10;
 
       // Amount Paid
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(...darkText);
       pdf.text('Amount Paid', totalsX, totalsY);
-      pdf.text(formatAmount(Number(amountPaid || 0)), pageWidth - margin, totalsY, { align: 'right' });
+      pdf.text(formatAmountPDF(Number(amountPaid || 0)), pageWidth - margin, totalsY, { align: 'right' });
       totalsY += 10;
 
       // Balance due highlighted
@@ -340,25 +390,42 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(...headerBlue);
       pdf.text('Balance Due', totalsX, totalsY + 4);
-      pdf.text(formatAmount(balanceDue), pageWidth - margin, totalsY + 4, { align: 'right' });
+      pdf.text(formatAmountPDF(balanceDue), pageWidth - margin, totalsY + 4, { align: 'right' });
 
-      // Footer notes and terms (small) at bottom
-      const footerStart = pageHeight - 48;
+      // Footer - placed dynamically after content, or at bottom if space allows
+      const footerContentY = totalsY + 20;
+      const footerY = Math.max(footerContentY, pageHeight - 48);
+
+      // If footer would overflow current page, add new page
+      if (footerY + 25 > pageHeight) {
+        pdf.addPage();
+      }
+      const actualFooterY = footerY + 25 > pageHeight ? margin : footerY;
+
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(120, 125, 130);
-      pdf.text('Thank you for choosing StudyAsan!', margin, footerStart);
-      pdf.text('Payment is due within 30 days. Please include the invoice number on your payment.', margin, footerStart + 6);
-      pdf.text('This invoice is valid for the enrolled courses/activities as per the selected package.', margin, footerStart + 12);
+      pdf.text('Thank you for choosing StudyAsan!', margin, actualFooterY);
+      pdf.text('Payment is due within 30 days. Please include the invoice number on your payment.', margin, actualFooterY + 6);
+      pdf.text('This invoice is valid for the enrolled courses/activities as per the selected package.', margin, actualFooterY + 12);
 
       pdf.setFontSize(8);
       const terms = [
         'The fee submitted shall not be refunded/reversed under any circumstances for any refund/reversal/chargeback or other reasons.'
       ];
-      terms.forEach((t, i) => pdf.text(t, margin, footerStart + 18 + (i * 5)));
+      terms.forEach((t, i) => pdf.text(t, margin, actualFooterY + 18 + (i * 5)));
 
-      // Save
-      pdf.save(`invoice-${student.user.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`);
+      // Save - manually create blob download to avoid service worker interception
+      const pdfBlob = pdf.output('blob');
+      const fileName = `invoice-${student.user.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`;
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
@@ -394,19 +461,31 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
             </div>
             <div className="flex items-center space-x-2">
               <div className="flex flex-col">
-                <Label className="text-sm">Tax Amount</Label>
-                <Input type="number" min="0" step="0.01" value={taxAmount} onChange={(e) => setTaxAmount(parseFloat(e.target.value) || 0)} className="w-40" />
-              </div>
-              <div className="flex flex-col">
                 <Label className="text-sm">Amount Paid</Label>
                 <Input type="number" min="0" step="0.01" value={amountPaid} onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)} className="w-40" />
               </div>
             </div>
             <div className="flex items-center space-x-2">
               <div className="flex items-center space-x-2">
-                <input id="applyDiscountOnTax" type="checkbox" checked={applyDiscountOnTax} onChange={(e) => setApplyDiscountOnTax(e.target.checked)} />
-                <Label htmlFor="applyDiscountOnTax" className="text-sm">Apply discount on taxed amount</Label>
+                <input id="gstEnabled" type="checkbox" checked={gstEnabled} onChange={(e) => setGstEnabled(e.target.checked)} />
+                <Label htmlFor="gstEnabled" className="text-sm">Enable GST</Label>
               </div>
+              {gstEnabled && (
+                <div className="flex items-center space-x-2">
+                  <Label className="text-sm">GST Rate (%):</Label>
+                  <Select value={String(gstRate)} onValueChange={(v) => setGstRate(parseFloat(v))}>
+                    <SelectTrigger className="w-24">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5%</SelectItem>
+                      <SelectItem value="12">12%</SelectItem>
+                      <SelectItem value="18">18%</SelectItem>
+                      <SelectItem value="28">28%</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="flex items-end">
               <Button variant="ghost" onClick={() => setShowPreview((s) => !s)}>
@@ -474,7 +553,13 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                 <div className="w-64">
                   <div className="flex justify-between"><div>Subtotal</div><div>{formatAmount(subtotal)}</div></div>
                   <div className="flex justify-between"><div>Discount ({discount}%)</div><div>-{formatAmount(discountAmount)}</div></div>
-                  <div className="flex justify-between"><div>Taxes</div><div>{formatAmount(Number(taxAmount || 0))}</div></div>
+                  {gstEnabled && (
+                    <>
+                      <div className="flex justify-between text-sm text-gray-500"><div>CGST ({gstRate / 2}%)</div><div>{formatAmount(cgstAmount)}</div></div>
+                      <div className="flex justify-between text-sm text-gray-500"><div>SGST ({gstRate / 2}%)</div><div>{formatAmount(sgstAmount)}</div></div>
+                      <div className="flex justify-between"><div>Total GST ({gstRate}%)</div><div>{formatAmount(gstAmount)}</div></div>
+                    </>
+                  )}
                   <hr className="my-2" />
                   <div className="flex justify-between font-bold text-lg"><div>Invoice Total</div><div>{formatAmount(finalTotal)}</div></div>
                   <div className="flex justify-between mt-2"><div>Amount Paid</div><div>{formatAmount(Number(amountPaid || 0))}</div></div>
@@ -580,10 +665,22 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                     <span>-{formatAmount(discountAmount)}</span>
                   </div>
                 )}
-                <div className="flex justify-between">
-                  <span>Taxes:</span>
-                  <span>{formatAmount(Number(taxAmount || 0))}</span>
-                </div>
+                {gstEnabled && (
+                  <>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>CGST ({gstRate / 2}%):</span>
+                      <span>{formatAmount(cgstAmount)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>SGST ({gstRate / 2}%):</span>
+                      <span>{formatAmount(sgstAmount)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total GST ({gstRate}%):</span>
+                      <span>{formatAmount(gstAmount)}</span>
+                    </div>
+                  </>
+                )}
                 <hr className="my-2" />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total:</span>
@@ -608,7 +705,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
             </Button>
             <Button
               onClick={generatePDF}
-              disabled={selectedItems.length === 0 || isGenerating || !showPreview}
+              disabled={selectedItems.length === 0 || isGenerating}
             >
               <Download className="mr-2 h-4 w-4" />
               {isGenerating ? 'Generating...' : 'Download PDF'}
