@@ -35,6 +35,7 @@ import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import MediaUpload from "@/components/ui/MediaUpload";
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
+import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface LocalQuestion {
@@ -1273,7 +1274,7 @@ function QuestionEditor({
           </Badge>
           {question.question_text && (
             <span className="text-sm text-gray-500 truncate max-w-[200px] hidden sm:inline">
-              {question.question_text}
+              <MathRenderer text={question.question_text} inline={true} />
             </span>
           )}
         </div>

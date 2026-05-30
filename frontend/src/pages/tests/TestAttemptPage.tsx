@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import MediaUpload from '@/components/ui/MediaUpload';
 import ConfirmModal from '@/components/ui/confirmationModal';
+import MathRenderer from '@/components/ui/MathRenderer';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const DEFAULT_MAX_VIOLATIONS = 3;
@@ -770,7 +771,9 @@ export default function TestAttemptPage() {
                 {/* Question Body */}
                 <div className="p-5 sm:p-7 space-y-6">
                   {/* Question Text */}
-                  <p className="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">{currentQuestion.question_text}</p>
+                  <div className="text-base sm:text-lg font-medium text-gray-800 leading-relaxed">
+                    <MathRenderer text={currentQuestion.question_text} />
+                  </div>
 
                   {/* Question Media */}
                   {currentQuestion.media_url && (
@@ -819,7 +822,9 @@ export default function TestAttemptPage() {
                               `}>
                                 {optionLetter}
                               </div>
-                              <span className={`flex-1 ${isSelected ? 'text-gray-800 font-medium' : 'text-gray-700'}`}>{optionText}</span>
+                              <span className={`flex-1 ${isSelected ? 'text-gray-800 font-medium' : 'text-gray-700'}`}>
+                                <MathRenderer text={optionText} inline={true} />
+                              </span>
                               <input
                                 type="radio"
                                 name={`question-${currentQuestion.id}`}

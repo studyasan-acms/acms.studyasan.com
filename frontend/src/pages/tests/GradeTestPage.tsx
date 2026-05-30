@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import SuccessModal from '@/components/ui/successModal';
+import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function GradeTestPage() {
@@ -209,7 +210,9 @@ export default function GradeTestPage() {
                           {index + 1}
                         </span>
                         <div>
-                          <p className="font-medium text-gray-800">{question.question_text}</p>
+                          <p className="font-medium text-gray-800">
+                            <MathRenderer text={question.question_text} />
+                          </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant="outline" className="text-xs">{question.question_type.replace('_', ' ')}</Badge>
                             <span className="text-xs text-gray-400">{question.marks} marks</span>
@@ -233,7 +236,7 @@ export default function GradeTestPage() {
                           return (
                             <div key={optIndex} className={`p-2 rounded-lg text-sm ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100'}`}>
                               <span className={`${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
-                                {optionLetter}. {optionText}
+                                {optionLetter}. <MathRenderer text={optionText} inline={true} />
                                 {isCorrect && <CheckCircle className="inline w-3.5 h-3.5 ml-1 text-green-500" />}
                               </span>
                               {optionMediaUrl && optionMediaType === 'image' && (
@@ -253,7 +256,11 @@ export default function GradeTestPage() {
                           <p className="text-sm text-red-500 italic font-medium">❌ Not Attempted</p>
                         ) : (
                           <>
-                            {answer.answer_text && <p className="text-sm text-gray-700 whitespace-pre-wrap">{answer.answer_text}</p>}
+                            {answer.answer_text && (
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                <MathRenderer text={answer.answer_text} />
+                              </p>
+                            )}
                             {answer.answer_media_url && answer.answer_media_type === 'image' && (
                               <img src={answer.answer_media_url} alt="Student answer" className="mt-2 max-w-md max-h-48 rounded border" />
                             )}

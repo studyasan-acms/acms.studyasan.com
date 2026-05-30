@@ -43,6 +43,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
 } from "lucide-react";
+import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface Homework {
@@ -384,7 +385,7 @@ export default function HomeworkDetailPage() {
 
                     {result.response_text && (
                       <div className="p-4 bg-gray-50 rounded-xl text-gray-700 font-medium text-sm">
-                        {result.response_text}
+                        <MathRenderer text={result.response_text} />
                       </div>
                     )}
 
@@ -421,7 +422,9 @@ export default function HomeworkDetailPage() {
                           <MessageSquare className="h-3.5 w-3.5" />
                           Feedback
                         </div>
-                        <p className="text-gray-800 font-medium italic text-sm">"{result.feedback}"</p>
+                        <p className="text-gray-800 font-medium italic text-sm">
+                          "<MathRenderer text={result.feedback} />"
+                        </p>
                         {result.feedback_media_url && (
                           <div className="pt-3 border-t border-blue-100 space-y-2">
                             <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">Teacher attachments:</p>

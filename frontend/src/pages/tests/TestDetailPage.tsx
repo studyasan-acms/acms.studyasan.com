@@ -47,6 +47,7 @@ import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import ConfirmModal from "@/components/ui/confirmationModal";
 import MediaUpload from "@/components/ui/MediaUpload";
+import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const DEFAULT_TEST_INSTRUCTIONS =
@@ -469,7 +470,11 @@ export default function TestDetailPage() {
                         </span>
                         <div className="flex-1">
                           <p className="font-medium text-gray-800">
-                            {question.question_text || <span className="text-gray-400 italic">(No text)</span>}
+                            {question.question_text ? (
+                              <MathRenderer text={question.question_text} />
+                            ) : (
+                              <span className="text-gray-400 italic">(No text)</span>
+                            )}
                           </p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge className={`${typeColors[question.question_type] || 'bg-gray-100'} text-xs border-none`}>
@@ -518,7 +523,7 @@ export default function TestDetailPage() {
                           return (
                             <div key={optIndex} className={`p-2 rounded-lg text-sm ${isCorrect ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-100'}`}>
                               <span className={`${isCorrect ? 'text-green-700 font-medium' : 'text-gray-700'}`}>
-                                {optionLetter}. {optionText} {isCorrect && <CheckCircle className="inline w-3.5 h-3.5 ml-1 text-green-500" />}
+                                {optionLetter}. <MathRenderer text={optionText} inline={true} /> {isCorrect && <CheckCircle className="inline w-3.5 h-3.5 ml-1 text-green-500" />}
                               </span>
                               {optionMediaUrl && optionMediaType === 'image' && (
                                 <img src={optionMediaUrl} alt={`Option ${optionLetter}`} className="mt-1 ml-4 max-w-xs max-h-24 rounded border" />
@@ -537,7 +542,7 @@ export default function TestDetailPage() {
                     {(question.question_type === "SHORT_ANSWER" || question.question_type === "LONG_ANSWER") && (
                       <p className="ml-10 mt-2 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
                         <span className="text-xs text-gray-400 uppercase tracking-wider block mb-1">Sample Answer</span>
-                        {question.correct_answer}
+                        <MathRenderer text={question.correct_answer || ''} />
                       </p>
                     )}
                   </div>

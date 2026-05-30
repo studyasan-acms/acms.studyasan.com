@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { analyticsService, homeService, announcementService } from '@/services/api';
+import { analyticsService, homeService, announcementService, boardService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import HomeItemCard from '@/components/home/HomeItemCard';
@@ -35,7 +35,9 @@ import {
     Loader2,
     Download,
     Calendar,
-    Megaphone
+    Megaphone,
+    Grid3x3,
+    BookMarked
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -173,6 +175,8 @@ export default function StudentDashboard() {
     const [itemsLoading, setItemsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('ALL');
+    const [selectedBoard, setSelectedBoard] = useState<string>('ALL');
+    const [boardsList, setBoardsList] = useState<Array<{ id: string; name: string; count: number }>>([]);
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [announcements, setAnnouncements] = useState<any[]>([]);
@@ -182,12 +186,39 @@ export default function StudentDashboard() {
         fetchAnalytics();
         fetchPerformanceData();
         fetchHomeItems();
+        fetchBoards();
         fetchAnnouncements();
     }, []);
 
     useEffect(() => {
+        // Update board counts whenever items change
+        // Only count SUBJECT items since only subjects have boards
+        if (items.length > 0) {
+            // Extract unique board names from subjects
+            const boardMap = new Map<string, number>();
+            
+            items.forEach((item: any) => {
+                // Only count subjects with boards
+                if (item.type === 'SUBJECT' && item.board && typeof item.board === 'string') {
+                    const boardName = item.board;
+                    boardMap.set(boardName, (boardMap.get(boardName) || 0) + 1);
+                }
+            });
+            
+            // Convert to formatted boards array
+            const formattedBoards = Array.from(boardMap.entries()).map(([name, count]) => ({
+                id: name,
+                name: name,
+                count: count
+            }));
+            
+            setBoardsList(formattedBoards);
+        }
+    }, [items]);
+
+    useEffect(() => {
         filterItems();
-    }, [searchQuery, filterType, items]);
+    }, [searchQuery, filterType, selectedBoard, items]);
 
     const fetchAnalytics = async () => {
         try {
@@ -208,9 +239,17 @@ export default function StudentDashboard() {
             setItems(response.data);
         } catch (error: any) {
             console.error('Error fetching home items:', error);
-            // toast.error(error.response?.data?.error || 'Failed to fetch items');
         } finally {
             setItemsLoading(false);
+        }
+    };
+
+    const fetchBoards = async () => {
+        try {
+            // Boards will be extracted from items in the updateBoardCounts effect
+            setSelectedBoard('ALL');
+        } catch (error: any) {
+            console.error('Error fetching boards:', error);
         }
     };
 
@@ -482,15 +521,31 @@ export default function StudentDashboard() {
     const filterItems = () => {
         let filtered = items;
 
-        if (filterType !== 'ALL') {
+        // Filter by board (only for SUBJECT type items - courses don't have boards)
+        if (selectedBoard !== 'ALL' && selectedBoard !== '') {
+            filtered = filtered.filter((item) => {
+                // Only filter subjects by board
+                if (item.type === 'SUBJECT') {
+                    // board is a string like "CBSE", not an object
+                    return item.board === selectedBoard;
+                }
+                // Show non-subject items (courses, activities, test series) regardless of board selection
+                return true;
+            });
+        }
+
+        // Filter by type
+        if (filterType !== 'ALL' && filterType !== '') {
             filtered = filtered.filter((item) => item.type === filterType);
         }
 
-        if (searchQuery) {
+        // Filter by search query
+        if (searchQuery && searchQuery.trim() !== '') {
             filtered = filtered.filter((item) =>
                 item.name.toLowerCase().includes(searchQuery.toLowerCase())
             );
         }
+        
         setFilteredItems(filtered);
     };
 
@@ -523,11 +578,6 @@ export default function StudentDashboard() {
         { name: 'Activities', value: analytics.activities.averageScore, fill: '#f59e0b' },
         { name: 'Modules', value: analytics.modules.averageProgress, fill: '#10b981' }
     ] : [];
-
-    // Derived States for Home Items
-    const subjectsAndCourses = filteredItems.filter(item => item.type === 'SUBJECT' || item.type === 'COURSE');
-    const activityGroups = filteredItems.filter(item => item.type === 'ACTIVITY_GROUP');
-    const testSeries = filteredItems.filter(item => item.type === 'TEST_SERIES');
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
@@ -710,7 +760,7 @@ export default function StudentDashboard() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                         <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Explore Learning</h2>
-                        <p className="text-sm text-gray-500 mt-1">Discover courses, activities, and tests</p>
+                        <p className="text-sm text-gray-500 mt-1">Discover courses, subjects, activities, and tests</p>
                     </div>
 
                     {/* Search & Filter */}
@@ -746,25 +796,124 @@ export default function StudentDashboard() {
                         <p className="text-gray-500 font-medium">Loading content...</p>
                     </div>
                 ) : (
-                    <div className="space-y-10">
-                        <ItemSlider
-                            title="Subjects & Courses"
-                            items={subjectsAndCourses}
-                            icon={BookOpen}
-                            onItemClick={handleItemClick}
-                        />
-                        <ItemSlider
-                            title="Activity Groups"
-                            items={activityGroups}
-                            icon={Activity}
-                            onItemClick={handleItemClick}
-                        />
-                        <ItemSlider
-                            title="Test Series"
-                            items={testSeries}
-                            icon={Trophy}
-                            onItemClick={handleItemClick}
-                        />
+                    <div className="space-y-8">
+                        {/* Board Tabs Section */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <Grid3x3 className="h-5 w-5 text-saBlue" />
+                                    <h3 className="text-lg font-semibold text-gray-800">Filter by Board</h3>
+                                </div>
+                            </div>
+
+                            {/* Board Tabs and Dropdown */}
+                            <div className="flex items-center gap-3 overflow-x-auto pb-2 flex-wrap">
+                                {/* All Board Tab */}
+                                <button
+                                    onClick={() => setSelectedBoard('ALL')}
+                                    className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
+                                        selectedBoard === 'ALL'
+                                            ? 'bg-saBlue text-white shadow-md'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    All Boards
+                                </button>
+
+                                {/* Top 4-5 Boards as Tabs */}
+                                {boardsList.slice(0, 4).map((board) => (
+                                    <button
+                                        key={board.id}
+                                        onClick={() => setSelectedBoard(board.id)}
+                                        className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+                                            selectedBoard === board.id
+                                                ? 'bg-saBlue text-white shadow-md'
+                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                        }`}
+                                    >
+                                        <BookMarked className="h-4 w-4" />
+                                        {board.name}
+                                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                                            selectedBoard === board.id
+                                                ? 'bg-white/30 text-white'
+                                                : 'bg-gray-300/50 text-gray-700'
+                                        }`}>
+                                            {board.count}
+                                        </span>
+                                    </button>
+                                ))}
+
+                                {/* Remaining Boards in Dropdown */}
+                                {boardsList.length > 4 && (
+                                    <Select value={selectedBoard} onValueChange={setSelectedBoard}>
+                                        <SelectTrigger className="w-fit h-10 rounded-full border-gray-300 bg-gray-100 hover:bg-gray-200 whitespace-nowrap px-4">
+                                            <SelectValue placeholder="More Boards" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {boardsList.slice(4).map((board) => (
+                                                <SelectItem key={board.id} value={board.id}>
+                                                    <span className="flex items-center gap-2">
+                                                        {board.name}
+                                                        <span className="text-xs text-gray-500">({board.count})</span>
+                                                    </span>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Content Sections */}
+                        {filteredItems.length === 0 ? (
+                            <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
+                                <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                                <p className="text-gray-500 font-medium">No content found</p>
+                                <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or search query</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-10">
+                                {/* Courses Section */}
+                                {filteredItems.some(item => item.type === 'COURSE') && (
+                                    <ItemSlider
+                                        title="Courses"
+                                        items={filteredItems.filter(item => item.type === 'COURSE')}
+                                        icon={BookOpen}
+                                        onItemClick={handleItemClick}
+                                    />
+                                )}
+
+                                {/* Subjects Section */}
+                                {filteredItems.some(item => item.type === 'SUBJECT') && (
+                                    <ItemSlider
+                                        title="Subjects"
+                                        items={filteredItems.filter(item => item.type === 'SUBJECT')}
+                                        icon={GraduationCap}
+                                        onItemClick={handleItemClick}
+                                    />
+                                )}
+
+                                {/* Activity Groups Section */}
+                                {filteredItems.some(item => item.type === 'ACTIVITY_GROUP') && (
+                                    <ItemSlider
+                                        title="Activity Groups"
+                                        items={filteredItems.filter(item => item.type === 'ACTIVITY_GROUP')}
+                                        icon={Activity}
+                                        onItemClick={handleItemClick}
+                                    />
+                                )}
+
+                                {/* Test Series Section */}
+                                {filteredItems.some(item => item.type === 'TEST_SERIES') && (
+                                    <ItemSlider
+                                        title="Test Series"
+                                        items={filteredItems.filter(item => item.type === 'TEST_SERIES')}
+                                        icon={Trophy}
+                                        onItemClick={handleItemClick}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>

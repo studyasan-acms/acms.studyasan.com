@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import MathRenderer from "@/components/ui/MathRenderer";
 
 export default function TestResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
@@ -172,7 +173,9 @@ export default function TestResultsPage() {
                       <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">
                         {index + 1}
                       </span>
-                      <p className="font-medium text-gray-800">{answer.question?.question_text}</p>
+                      <p className="font-medium text-gray-800">
+                        <MathRenderer text={answer.question?.question_text || ''} />
+                      </p>
                     </div>
                     <div className="flex items-center gap-2 ml-4 flex-shrink-0">
                       <Badge variant={answer.is_correct ? 'default' : 'destructive'}>
@@ -193,7 +196,11 @@ export default function TestResultsPage() {
                         <p className="text-sm text-gray-400 italic">Not answered</p>
                       ) : (
                         <>
-                          {answer.answer_text && <p className="text-sm text-gray-700">{answer.answer_text}</p>}
+                          {answer.answer_text && (
+                            <p className="text-sm text-gray-700">
+                              <MathRenderer text={answer.answer_text} />
+                            </p>
+                          )}
                           {answer.answer_media_url && answer.answer_media_type === 'image' && (
                             <img src={answer.answer_media_url} alt="Your answer" className="mt-2 max-w-md max-h-48 rounded border" />
                           )}
@@ -204,7 +211,9 @@ export default function TestResultsPage() {
                     {answer.question?.question_type !== 'SHORT_ANSWER' && (
                       <div className="p-3 bg-green-50 rounded-lg border border-green-100">
                         <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
-                        <p className="text-sm text-green-700 font-medium">{answer.question?.correct_answer}</p>
+                        <p className="text-sm text-green-700 font-medium">
+                          <MathRenderer text={answer.question?.correct_answer || ''} />
+                        </p>
                       </div>
                     )}
                   </div>
