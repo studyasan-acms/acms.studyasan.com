@@ -53,6 +53,14 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
   const [gstRate, setGstRate] = useState(18);
   const [amountPaid, setAmountPaid] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [showBranding, setShowBranding] = useState(false);
+
+  // Editable branding
+  const [companyName, setCompanyName] = useState('StudyAsan');
+  const [companyTagline, setCompanyTagline] = useState('The Path to Success');
+  const [companyAddress, setCompanyAddress] = useState('Uttarakhand, India');
+  const [companyContact, setCompanyContact] = useState('info@studyasan.com | +91 7983758633');
+  const [logoPath, setLogoPath] = useState('/logo.jpg');
 
   const currencies = {
     INR: { symbol: '₹', name: 'Indian Rupee' },
@@ -207,13 +215,13 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
         }
       };
 
-      const logoUrl = await toDataURL('/logo.jpg') || await toDataURL('/studyasan-logo.png') || await toDataURL('/studyasan-logo-lady.png');
+      const logoUrl = await toDataURL(logoPath);
 
       // Place logo at top-left and company info below it (no blue background)
       const logoY = 12;
       if (logoUrl) {
         try {
-          pdf.addImage(logoUrl, 'PNG', margin, logoY, 36, 36);
+          pdf.addImage(logoUrl, 'JPEG', margin, logoY, 36, 36);
         } catch (e) {
           // ignore
         }
@@ -224,11 +232,18 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setFontSize(12);
       pdf.setTextColor(...darkText);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('StudyAsan', margin, companyInfoY);
+      pdf.text(companyName, margin, companyInfoY);
+      if (companyTagline) {
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'italic');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(companyTagline, margin, companyInfoY + 5);
+      }
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Uttarakhand, India', margin, companyInfoY + 6);
-      pdf.text('info@studyasan.com | +91 7983758633', margin, companyInfoY + 12);
+      pdf.setTextColor(...darkText);
+      pdf.text(companyAddress, margin, companyInfoY + 10);
+      pdf.text(companyContact, margin, companyInfoY + 16);
 
       // Invoice meta box (top-right)
       const metaW = 78;
@@ -416,9 +431,9 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(120, 125, 130);
-      pdf.text('Thank you for choosing StudyAsan!', margin, actualFooterY);
-      pdf.text('Payment is due within 30 days. Please include the invoice number on your payment.', margin, actualFooterY + 6);
-      pdf.text('This invoice is valid for the enrolled courses/activities as per the selected package.', margin, actualFooterY + 12);
+      pdf.text(`Thank you for choosing ${companyName}!`, margin, actualFooterY);
+      pdf.text(`Payment is due within 30 days. Please include the ${documentType.toLowerCase()} number on your payment.`, margin, actualFooterY + 6);
+      pdf.text(`This ${documentType.toLowerCase()} is valid for the enrolled courses/activities as per the selected package.`, margin, actualFooterY + 12);
 
       pdf.setFontSize(8);
       const terms = [
@@ -513,22 +528,64 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
               )}
             </div>
             <div className="flex items-end">
+              <Button variant="ghost" onClick={() => setShowBranding((s) => !s)}>
+                {showBranding ? 'Hide Company Details' : 'Edit Company Details'}
+              </Button>
               <Button variant="ghost" onClick={() => setShowPreview((s) => !s)}>
                 {showPreview ? 'Hide Preview' : 'Show Preview'}
               </Button>
             </div>
           </div>
 
+          {showBranding && (
+            <Card>
+              <CardContent className="pt-4 space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="flex flex-col space-y-1">
+                    <Label className="text-xs text-muted-foreground">Company Name</Label>
+                    <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <Label className="text-xs text-muted-foreground">Tagline</Label>
+                    <Input value={companyTagline} onChange={(e) => setCompanyTagline(e.target.value)} placeholder="e.g. The Path to Success" />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <Label className="text-xs text-muted-foreground">Address</Label>
+                    <Input value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <Label className="text-xs text-muted-foreground">Contact Info</Label>
+                    <Input value={companyContact} onChange={(e) => setCompanyContact(e.target.value)} />
+                  </div>
+                  <div className="flex flex-col space-y-1">
+                    <Label className="text-xs text-muted-foreground">Logo</Label>
+                    <Select value={logoPath} onValueChange={setLogoPath}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="/logo.jpg">StudyAsan Logo (Blue)</SelectItem>
+                        <SelectItem value="/studyasan-logo.png">StudyAsan Logo (Text)</SelectItem>
+                        <SelectItem value="/studyasan-logo-lady.png">StudyAsan Mascot</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {showPreview && (
             <div className="border rounded p-4 bg-white">
               {/* Simple HTML preview of the invoice using current editable values */}
               <div className="flex justify-between items-start">
                 <div className="flex items-start space-x-4">
-                  <img src="/studyasan-logo.png" alt="logo" className="h-16 w-16 object-contain" />
+                  <img src={logoPath} alt="logo" className="h-16 w-16 object-contain rounded" />
                   <div>
-                    <div className="font-bold">StudyAsan</div>
-                    <div className="text-sm">Uttarakhand, India</div>
-                    <div className="text-sm">info@studyasan.com | +91 7983758633</div>
+                    <div className="font-bold">{companyName}</div>
+                    {companyTagline && <div className="text-xs text-gray-400 italic">{companyTagline}</div>}
+                    <div className="text-sm">{companyAddress}</div>
+                    <div className="text-sm">{companyContact}</div>
                   </div>
                 </div>
                 <div className="bg-gray-100 rounded p-3 text-sm">
