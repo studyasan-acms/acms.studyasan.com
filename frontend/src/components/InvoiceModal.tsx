@@ -30,11 +30,22 @@ interface InvoiceItem {
   selected: boolean;
 }
 
+const documentTypes = [
+  { value: 'Invoice', label: 'Invoice' },
+  { value: 'Quotation', label: 'Quotation' },
+  { value: 'Proposal', label: 'Proposal' },
+  { value: 'Estimate', label: 'Estimate' },
+  { value: 'Receipt', label: 'Receipt' },
+  { value: 'Credit Note', label: 'Credit Note' },
+  { value: 'Proforma Invoice', label: 'Proforma Invoice' },
+] as const;
+
 export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalProps) {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [currency, setCurrency] = useState('INR');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [documentType, setDocumentType] = useState('Invoice');
   const [invoiceNumber, setInvoiceNumber] = useState(() => `#${String(Math.floor(Math.random() * 100000)).padStart(6, '0')}`);
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10));
@@ -235,7 +246,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(...darkText);
-      pdf.text('Invoice Number:', metaX + 6, metaY + 10);
+      pdf.text(`${documentType} Number:`, metaX + 6, metaY + 10);
       pdf.setFont('helvetica', 'normal');
       pdf.text(invoiceNumber, metaX + 6, metaY + 16);
       pdf.setFontSize(9);
@@ -373,7 +384,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
 
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(...darkText);
-      pdf.text('Invoice Total', totalsX, totalsY);
+      pdf.text(`${documentType} Total`, totalsX, totalsY);
       pdf.text(formatAmountPDF(finalTotal), pageWidth - margin, totalsY, { align: 'right' });
       totalsY += 10;
 
@@ -417,7 +428,8 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
 
       // Save - manually create blob download to avoid service worker interception
       const pdfBlob = pdf.output('blob');
-      const fileName = `invoice-${student.user.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`;
+      const typeSlug = documentType.toLowerCase().replace(/\s+/g, '-');
+      const fileName = `${typeSlug}-${student.user.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`;
       const blobUrl = URL.createObjectURL(pdfBlob);
       const link = document.createElement('a');
       link.href = blobUrl;
@@ -437,16 +449,29 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Generate Invoice</DialogTitle>
+          <DialogTitle>Generate {documentType}</DialogTitle>
           <DialogDescription>
-            Select enrollments and set prices to generate an invoice for {student.user.name}
+            Select enrollments and set prices to generate a {documentType.toLowerCase()} for {student.user.name}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col space-y-2">
-              <Label className="text-sm">Invoice Number</Label>
+              <Label className="text-sm">Document Type</Label>
+              <Select value={documentType} onValueChange={setDocumentType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {documentTypes.map((dt) => (
+                    <SelectItem key={dt.value} value={dt.value}>{dt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col space-y-2">
+              <Label className="text-sm">{documentType} Number</Label>
               <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
             </div>
             <div className="flex items-center space-x-2">
@@ -507,7 +532,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                   </div>
                 </div>
                 <div className="bg-gray-100 rounded p-3 text-sm">
-                  <div className="font-semibold">Invoice</div>
+                  <div className="font-semibold">{documentType}</div>
                   <div>{invoiceNumber}</div>
                   <div>Issue: {new Date(issueDate).toLocaleDateString()}</div>
                   <div>Due: {new Date(dueDate).toLocaleDateString()}</div>
@@ -561,7 +586,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
                     </>
                   )}
                   <hr className="my-2" />
-                  <div className="flex justify-between font-bold text-lg"><div>Invoice Total</div><div>{formatAmount(finalTotal)}</div></div>
+                  <div className="flex justify-between font-bold text-lg"><div>{documentType} Total</div><div>{formatAmount(finalTotal)}</div></div>
                   <div className="flex justify-between mt-2"><div>Amount Paid</div><div>{formatAmount(Number(amountPaid || 0))}</div></div>
                   <div className="bg-slate-100 rounded p-2 mt-3 flex justify-between"><div>Balance Due</div><div className="font-semibold">{formatAmount(balanceDue)}</div></div>
                 </div>
@@ -616,7 +641,7 @@ export default function InvoiceModal({ isOpen, onClose, student }: InvoiceModalP
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Calculator className="mr-2 h-5 w-5" />
-                Invoice Summary
+                {documentType} Summary
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
