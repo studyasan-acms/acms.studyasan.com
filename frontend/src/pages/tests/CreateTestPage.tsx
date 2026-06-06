@@ -111,6 +111,7 @@ export default function CreateTestPage() {
     total_marks: 0,
     passing_marks: 0,
     has_negative_marking: false,
+    is_autograded: true,
     max_warning_attempts: 3,
     enforce_warning_attempts: true,
     duration_minutes: 60,
@@ -206,6 +207,7 @@ export default function CreateTestPage() {
           total_marks: test.total_marks,
           passing_marks: test.passing_marks,
           has_negative_marking: test.has_negative_marking ?? false,
+          is_autograded: test.is_autograded ?? true,
           max_warning_attempts: test.max_warning_attempts ?? 3,
           enforce_warning_attempts: (test as any).enforce_warning_attempts ?? true,
           duration_minutes: test.duration_minutes,
@@ -984,6 +986,27 @@ export default function CreateTestPage() {
             </label>
             {formData.has_negative_marking && (
               <p className="text-sm text-red-600 self-center">Negative marks can be set per-question below.</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 cursor-pointer select-none">
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${formData.is_autograded ? 'bg-saBlue' : 'bg-gray-300'}`}>
+                <input
+                  type="checkbox"
+                  checked={!!formData.is_autograded}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    is_autograded: e.target.checked,
+                  })}
+                  className="sr-only"
+                />
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${formData.is_autograded ? 'translate-x-[18px]' : 'translate-x-[0.5px]'}`} />
+              </div>
+              <span className="text-sm text-gray-700">Auto-grade Questions (MCQs and True/False)</span>
+            </label>
+            {!formData.is_autograded && (
+              <p className="text-sm text-blue-600 self-center">Teachers will grade MCQs manually.</p>
             )}
           </div>
 

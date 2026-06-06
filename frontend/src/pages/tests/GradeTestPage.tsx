@@ -290,33 +290,30 @@ export default function GradeTestPage() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {answer ? (
-                            isAutoGraded ? (
-                              <>
-                                {grades[answer.id]?.is_correct ? (
+                            <div className="flex items-center gap-3">
+                              {isAutoGraded ? (
+                                grades[answer.id]?.is_correct ? (
                                   <CheckCircle className="w-5 h-5 text-green-500" />
                                 ) : (
                                   <XCircle className="w-5 h-5 text-red-500" />
-                                )}
-                                <span className="text-sm font-medium text-gray-700">
-                                  Auto-graded: {grades[answer.id]?.is_correct ? 'Correct' : 'Incorrect'}
-                                </span>
-                              </>
-                            ) : (
-                              <div className="flex items-center gap-3">
+                                )
+                              ) : (
                                 <Award className="w-5 h-5 text-saBlue" />
-                                <label className="text-sm font-medium text-gray-700">Marks:</label>
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max={question.marks}
-                                  value={grades[answer.id]?.marks_obtained || 0}
-                                  onChange={(e) => handleGradeChange(answer.id, parseFloat(e.target.value) || 0, question.marks)}
-                                  className="w-20 h-8 text-center"
-                                  disabled={attempt.is_graded}
-                                />
-                                <span className="text-sm text-gray-500">/ {question.marks}</span>
-                              </div>
-                            )
+                              )}
+                              <label className="text-sm font-medium text-gray-700">
+                                {isAutoGraded ? 'Auto-graded (editable):' : 'Marks:'}
+                              </label>
+                              <Input
+                                type="number"
+                                min="0"
+                                max={question.marks}
+                                value={grades[answer.id]?.marks_obtained || 0}
+                                onChange={(e) => handleGradeChange(answer.id, parseFloat(e.target.value) || 0, question.marks)}
+                                className="w-20 h-8 text-center"
+                                disabled={attempt.is_graded}
+                              />
+                              <span className="text-sm text-gray-500">/ {question.marks}</span>
+                            </div>
                           ) : (
                             <div className="flex items-center gap-3">
                               <XCircle className="w-5 h-5 text-red-500" />

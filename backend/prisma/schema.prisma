@@ -399,6 +399,7 @@ model Test {
   total_marks              Int
   passing_marks            Int
   has_negative_marking     Boolean       @default(false)
+  is_autograded            Boolean       @default(true)
   max_warning_attempts     Int           @default(3)
   enforce_warning_attempts Boolean       @default(true) // Set to false to disable auto-ending test on warnings
   duration_minutes         Int

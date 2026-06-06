@@ -81,7 +81,7 @@ ${numQuestions.longAnswer ? `- EVERY Long Answer question must have exactly ${lo
 - For MCQ: Include 4 options with only one correct answer
 - Ensure educational value and relevance to the topic
 
-**Response Format (MUST be valid JSON):**
+**Response Format (MUST be valid JSON without markdown wrapping or trailing commas):**
 {
   "questions": [
     {
@@ -94,6 +94,7 @@ ${numQuestions.longAnswer ? `- EVERY Long Answer question must have exactly ${lo
   ]
 }
 
+Ensure your response contains ONLY the raw JSON object and nothing else. No explanation, no markdown ticks.
 Generate the questions now:`;
 
   try {
@@ -129,14 +130,24 @@ Generate the questions now:`;
 
     const generatedText = data.candidates[0].content.parts[0].text;
 
-    // Extract JSON from the response
-    const jsonMatch = generatedText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('Could not parse JSON from AI response');
+    // Clean up markdown code blocks if present
+    let cleanText = generatedText.replace(/```json\s*/gi, '').replace(/```\s*$/g, '').trim();
+    
+    // In case there's text before/after, try to extract just the JSON
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      cleanText = jsonMatch[0];
     }
 
-    const parsedData = JSON.parse(jsonMatch[0]);
-    return parsedData.questions;
+    try {
+      const parsedData = JSON.parse(cleanText);
+      return parsedData.questions;
+    } catch (parseError) {
+      console.error('Error parsing JSON from AI response:', parseError);
+      console.error('Raw text was:', generatedText);
+      console.error('Cleaned text was:', cleanText);
+      throw new Error('Could not parse JSON from AI response');
+    }
   } catch (error) {
     console.error('Error generating questions with AI:', error);
     throw new Error('Failed to generate questions with AI');
@@ -162,6 +173,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
       has_negative_marking,
+      is_autograded,
     } = req.body;
 
     const userId = (req as any).user!.id;
@@ -211,6 +223,8 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         is_published: is_published || false,
         is_certification: is_certification || false,
         has_negative_marking: !!has_negative_marking,
+        // @ts-ignore - Prisma client needs generation
+        is_autograded: is_autograded !== false, // default true
       },
       include: {
         subject: true,
@@ -843,6 +857,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
       has_negative_marking,
+      is_autograded,
     } = req.body;
 
     const data: any = {
@@ -855,6 +870,11 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
     };
+
+    if (is_autograded !== undefined) {
+      // @ts-ignore - Prisma client needs generation
+      data.is_autograded = !!is_autograded;
+    }
 
     if (has_negative_marking !== undefined) {
       data.has_negative_marking = !!has_negative_marking;
@@ -968,6 +988,8 @@ export const duplicateTest = async (req: AuthRequest, res: Response) => {
         is_published: false,
         is_certification: originalTest.is_certification,
         has_negative_marking: originalTest.has_negative_marking,
+        // @ts-ignore - Prisma client needs generation
+        is_autograded: originalTest.is_autograded,
         questions: {
           create: originalTest.questions.map((q) => ({
             question_type: q.question_type,

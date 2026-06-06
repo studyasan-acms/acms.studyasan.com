@@ -310,11 +310,13 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
     let autoGradedScore = 0;
     let hasShortAnswers = false;
     const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
+    const isAutograded = (attempt.test as any)?.is_autograded ?? true;
 
     for (const answer of answers) {
       if (
-        answer.question.question_type === 'MCQ' ||
-        answer.question.question_type === 'TRUE_FALSE'
+        isAutograded &&
+        (answer.question.question_type === 'MCQ' ||
+        answer.question.question_type === 'TRUE_FALSE')
       ) {
         const isCorrect =
           answer.answer_text?.trim().toLowerCase() ===
@@ -835,6 +837,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
     });
 
     const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
+    const isAutograded = (attempt.test as any)?.is_autograded ?? true;
 
     for (const ans of answers) {
       const question = questions.find(q => q.id === parseInt(ans.question_id));
@@ -843,7 +846,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
       let isCorrect = false;
       let marksObtained = 0;
 
-      if (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE') {
+      if (isAutograded && (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE')) {
         if (ans.answer_text?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase()) {
           isCorrect = true;
           marksObtained = question.marks;

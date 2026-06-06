@@ -690,6 +690,7 @@ export interface Test {
   total_marks: number;
   passing_marks: number;
   has_negative_marking: boolean;
+  is_autograded: boolean;
   max_warning_attempts: number;
   duration_minutes: number;
   available_from: string;
@@ -776,6 +777,7 @@ export interface CreateTestData {
   total_marks: number;
   passing_marks: number;
   has_negative_marking?: boolean;
+  is_autograded?: boolean;
   max_warning_attempts?: number;
   enforce_warning_attempts?: boolean;
   duration_minutes: number;
@@ -794,6 +796,7 @@ export interface UpdateTestData {
   total_marks?: number;
   passing_marks?: number;
   has_negative_marking?: boolean;
+  is_autograded?: boolean;
   max_warning_attempts?: number;
   duration_minutes?: number;
   available_from?: string;
