@@ -166,9 +166,25 @@ export default function TestResultsPage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="divide-y divide-gray-100">
-              {attempt.answers.map((answer, index) => (
-                <div key={answer.id} className="p-5">
-                  <div className="flex items-start justify-between mb-3">
+              {attempt.answers.map((answer, index) => {
+                const isSubQuestion = answer.question?.parent_id != null;
+                const parentQuestion = isSubQuestion ? attempt.test?.questions?.find((q: any) => q.id === answer.question?.parent_id) : null;
+                
+                return (
+                  <div key={answer.id} className="p-5">
+                    {/* Render Case Study context for sub-questions */}
+                    {isSubQuestion && parentQuestion && (
+                      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-5">
+                        <div className="mb-1.5">
+                          <Badge className="bg-indigo-100 text-indigo-700 border-none">Case Study</Badge>
+                        </div>
+                        <div className="text-sm text-gray-700">
+                          <MathRenderer text={parentQuestion.question_text} />
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start gap-3 flex-1">
                       <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">
                         {index + 1}
@@ -286,7 +302,7 @@ export default function TestResultsPage() {
                     )}
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </CardContent>
         </Card>

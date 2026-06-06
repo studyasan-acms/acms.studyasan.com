@@ -674,9 +674,10 @@ export default function TestAttemptPage() {
 
   const questions = attempt.test.questions;
   const currentQuestion = questions[currentQuestionIndex];
-  const answeredCount = questions.filter((q) => hasAnswerForQuestion(q.id)).length;
+  const answerableQuestions = questions.filter(q => q.question_type !== 'CASE_STUDY');
+  const answeredCount = answerableQuestions.filter((q) => hasAnswerForQuestion(q.id)).length;
   const reviewCount = questions.filter((q) => reviewQuestionIds.has(q.id)).length;
-  const progress = (answeredCount / questions.length) * 100;
+  const progress = answerableQuestions.length > 0 ? (answeredCount / answerableQuestions.length) * 100 : 100;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 select-none" style={{ userSelect: 'none' }}>
@@ -684,7 +685,7 @@ export default function TestAttemptPage() {
       <ConfirmModal
         open={confirmSubmit}
         title="Submit Test"
-        description={`You have answered ${answeredCount} out of ${questions.length} questions. ${answeredCount < questions.length ? `⚠️ ${questions.length - answeredCount} question(s) are unanswered.` : ''} Are you sure you want to submit?`}
+        description={`You have answered ${answeredCount} out of ${answerableQuestions.length} questions. ${answeredCount < answerableQuestions.length ? `⚠️ ${answerableQuestions.length - answeredCount} question(s) are unanswered.` : ''} Are you sure you want to submit?`}
         onConfirm={() => { setConfirmSubmit(false); handleSubmitTest(); }}
         onClose={() => setConfirmSubmit(false)}
         confirmText="Submit"
@@ -718,7 +719,7 @@ export default function TestAttemptPage() {
                 )}
               </div>
               <p className="text-xs text-gray-400 hidden sm:block">
-                Q {currentQuestionIndex + 1}/{questions.length} · {answeredCount} answered
+                Q {currentQuestionIndex + 1}/{questions.length} · {answeredCount}/{answerableQuestions.length} answered
               </p>
             </div>
           </div>
@@ -880,7 +881,7 @@ export default function TestAttemptPage() {
           <div className="p-3 border-t border-gray-100 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-400">Answered</span>
-              <span className="text-gray-800 font-bold">{answeredCount}/{questions.length}</span>
+              <span className="text-gray-800 font-bold">{answeredCount}/{answerableQuestions.length}</span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-gray-400">Review</span>
@@ -896,6 +897,23 @@ export default function TestAttemptPage() {
         <main className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6">
             <div className="max-w-3xl mx-auto">
+
+              {/* Case Study Parent Paragraph */}
+              {currentQuestion.parent_id && (() => {
+                const parent = questions.find(q => q.id === currentQuestion.parent_id);
+                if (!parent) return null;
+                return (
+                  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-5 mb-6 shadow-sm">
+                    <div className="mb-2 flex items-center gap-2">
+                      <Badge className="bg-indigo-100 text-indigo-700 border-none">Case Study</Badge>
+                      <span className="text-xs font-medium text-indigo-400">Read the context below to answer this question.</span>
+                    </div>
+                    <div className="text-sm text-gray-800 leading-relaxed">
+                      <MathRenderer text={parent.question_text} />
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Question Card */}
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -937,6 +955,14 @@ export default function TestAttemptPage() {
                       {currentQuestion.media_type === 'video' && (
                         <video src={currentQuestion.media_url} controls className="max-w-full max-h-80 mx-auto rounded" />
                       )}
+                    </div>
+                  )}
+
+                  {/* ---- Case Study ---- */}
+                  {currentQuestion.question_type === 'CASE_STUDY' && (
+                    <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center">
+                      <p className="text-gray-500 font-medium">This is a Case Study.</p>
+                      <p className="text-sm text-gray-400 mt-1">Please read the text above carefully. The questions that follow will be based on this case study. Click "Next" to proceed to the questions.</p>
                     </div>
                   )}
 

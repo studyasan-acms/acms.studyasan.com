@@ -384,6 +384,16 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         });
 
         autoGradedScore += marksObtained;
+      } else if (answer.question.question_type === 'CASE_STUDY') {
+        // Case Study is just a parent container/paragraph, it doesn't need grading.
+        // We set marks to 0 and mark as correct so it doesn't fail any checks.
+        await prisma.answer.update({
+          where: { id: answer.id },
+          data: {
+            is_correct: true,
+            marks_obtained: 0,
+          },
+        });
       } else {
         hasShortAnswers = true;
       }
@@ -710,10 +720,11 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
       where: { test_attempt_id: parseInt(attemptId) },
     });
 
-    const totalScore = updatedAnswers.reduce(
+    const rawTotalScore = updatedAnswers.reduce(
       (sum, answer) => sum + (answer.marks_obtained || 0),
       0
     );
+    const totalScore = Math.round(rawTotalScore);
 
     // Update test attempt
     const updatedAttempt = await prisma.testAttempt.update({

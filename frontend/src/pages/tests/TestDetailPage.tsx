@@ -460,9 +460,10 @@ export default function TestDetailPage() {
                   TRUE_FALSE: "bg-orange-100 text-orange-700",
                   SHORT_ANSWER: "bg-green-100 text-green-700",
                   LONG_ANSWER: "bg-purple-100 text-purple-700",
+                  CASE_STUDY: "bg-indigo-100 text-indigo-700",
                 };
                 return (
-                  <div key={question.id} className="p-5 hover:bg-gray-50/30 transition-colors">
+                  <div key={question.id} className={`p-5 hover:bg-gray-50/30 transition-colors ${question.parent_id ? 'ml-8 border-l-4 border-l-indigo-300 bg-indigo-50/10' : ''}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3 flex-1">
                         <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">

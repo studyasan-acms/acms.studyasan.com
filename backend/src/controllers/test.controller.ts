@@ -354,7 +354,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test ID is required', 400);
     }
 
-    const { question_type, question_text, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
+    const { question_type, question_text, options, correct_answer, marks, negative_marks, media_url, media_type, parent_id } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     const test = await prisma.test.findUnique({
@@ -421,6 +421,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
         marks: parseInt(marks),
         negative_marks: parseFloat(negative_marks) || 0,
         order,
+        parent_id: parent_id ? parseInt(parent_id) : null,
       },
     });
 

@@ -661,7 +661,7 @@ export interface UpdateProgressData {
 }
 
 // Test module types
-export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER' | 'MATCH_THE_FOLLOWING';
+export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER' | 'MATCH_THE_FOLLOWING' | 'CASE_STUDY';
 
 export interface Question {
   id: number;
@@ -675,6 +675,8 @@ export interface Question {
   marks: number;
   negative_marks: number;
   order: number;
+  parent_id?: number | null;
+  sub_questions?: Question[];
   created_at: string;
   updated_at: string;
 }

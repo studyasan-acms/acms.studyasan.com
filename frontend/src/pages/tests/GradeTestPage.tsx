@@ -203,7 +203,23 @@ export default function GradeTestPage() {
                 const isAutoGraded = question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING';
 
                 return (
-                  <div key={question.id} className="p-5">
+                  <div key={question.id} className={`p-5 ${question.parent_id ? 'ml-8 border-l-4 border-l-indigo-300 bg-indigo-50/10' : ''}`}>
+                    {/* Render Case Study context for sub-questions */}
+                    {question.parent_id && (() => {
+                      const parent = attempt.test?.questions?.find(q => q.id === question.parent_id);
+                      if (!parent) return null;
+                      return (
+                        <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-5">
+                          <div className="mb-1.5">
+                            <Badge className="bg-indigo-100 text-indigo-700 border-none">Case Study Context</Badge>
+                          </div>
+                          <div className="text-sm text-gray-700">
+                            <MathRenderer text={parent.question_text} />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    
                     {/* Question */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-start gap-3 flex-1">

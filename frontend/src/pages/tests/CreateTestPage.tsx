@@ -54,6 +54,7 @@ interface LocalQuestion {
   isCollapsed: boolean;
   isSaved: boolean; // true if already saved to backend
   backendId?: number;
+  parent_id?: string | null; // ID of the parent Case Study if this is a sub-question
 }
 
 interface QuestionTemplateRow {
@@ -236,6 +237,7 @@ export default function CreateTestPage() {
             isCollapsed: true,
             isSaved: true,
             backendId: q.id,
+            parent_id: q.parent_id || null,
           }));
           setQuestions(loadedQuestions);
         }
@@ -286,14 +288,14 @@ export default function CreateTestPage() {
   };
 
   // ---- Add New Question Locally ----
-  const addQuestion = (type: QuestionType = "MCQ") => {
+  const addQuestion = (type: QuestionType = "MCQ", parentId: string | null = null) => {
     const newQ: LocalQuestion = {
       id: generateId(),
       question_type: type,
       question_text: "",
       options: type === "MCQ" ? ["", "", "", ""] : [],
       correct_answer: "",
-      marks: 2,
+      marks: type === "CASE_STUDY" ? 0 : 2,
       negative_marks: 0,
       mediaFile: null,
       mediaUrl: null,
@@ -301,6 +303,7 @@ export default function CreateTestPage() {
       optionMedia: {},
       isCollapsed: false,
       isSaved: false,
+      parent_id: parentId,
     };
     setQuestions(prev => [...prev, newQ]);
   };
@@ -337,8 +340,11 @@ export default function CreateTestPage() {
       return;
     }
 
-    if (templateTotalMarks !== formData.total_marks) {
-      setErrorMessage(`Template total marks (${templateTotalMarks}) must match the test total marks (${formData.total_marks}).`);
+    const currentMarks = questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    const newTotal = currentMarks + templateTotalMarks;
+    
+    if (newTotal > formData.total_marks) {
+      setErrorMessage(`Adding this template (${templateTotalMarks} marks) to existing questions (${currentMarks} marks) exceeds the test total marks (${formData.total_marks}).`);
       setErrorOpen(true);
       return;
     }
@@ -352,7 +358,7 @@ export default function CreateTestPage() {
       }
     });
 
-    setQuestions(nextQuestions);
+    setQuestions(prev => [...prev, ...nextQuestions]);
     setTemplateReplaceOpen(false);
     setSuccessMessage("Question template created. Update each question below and save them individually.");
     setSuccessOpen(true);
@@ -390,6 +396,10 @@ export default function CreateTestPage() {
       fd.append("marks", localQ.marks.toString());
       fd.append("negative_marks", localQ.negative_marks.toString());
 
+      if (localQ.parent_id) {
+        fd.append("parent_id", localQ.parent_id);
+      }
+
       if (localQ.options && localQ.question_type === "MCQ") {
         const optionsWithMedia = localQ.options.map((text, index) => {
           const media = localQ.optionMedia[index];
@@ -422,7 +432,7 @@ export default function CreateTestPage() {
       }
 
       // Mark as saved
-      setQuestions(prev => prev.map(q => q.id === localQ.id ? { ...q, isSaved: true, isCollapsed: true, backendId: localQ.backendId ?? response.data?.id } : q));
+      setQuestions(prev => prev.map(q => q.id === localQ.id ? { ...q, isSaved: true, isCollapsed: localQ.question_type !== "CASE_STUDY", backendId: localQ.backendId ?? response.data?.id } : q));
       setSuccessMessage("Question saved!");
       setSuccessOpen(true);
     } catch (error) {
@@ -753,9 +763,14 @@ export default function CreateTestPage() {
             <p><span className="font-semibold">Total Questions:</span> {templateQuestionCount}</p>
             <p><span className="font-semibold">Template Marks:</span> {templateTotalMarks}</p>
             <p><span className="font-semibold">Test Total Marks:</span> {formData.total_marks}</p>
-            {templateTotalMarks !== formData.total_marks && (
-              <p className="text-red-600 font-medium">Template marks must exactly match the test total marks.</p>
-            )}
+            {(() => {
+              const currentMarks = questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+              const newTotal = currentMarks + templateTotalMarks;
+              if (newTotal > formData.total_marks) {
+                return <p className="text-red-600 font-medium">Adding this template exceeds the test total marks.</p>;
+              }
+              return null;
+            })()}
           </div>
 
           <DialogFooter>
@@ -1216,6 +1231,14 @@ export default function CreateTestPage() {
                     onUpdate={(updates) => updateQuestion(q.id, updates)}
                     onRemove={() => removeQuestion(q.id)}
                     onSave={() => saveQuestion(q)}
+                    onAddSubQuestion={(type) => {
+                      if (q.backendId) {
+                        addQuestion(type, q.backendId.toString());
+                      } else {
+                        setErrorMessage("Please save the Case Study first before adding sub-questions.");
+                        setErrorOpen(true);
+                      }
+                    }}
                     loading={loading}
                     hasNegativeMarking={!!formData.has_negative_marking}
                   />
@@ -1232,6 +1255,7 @@ export default function CreateTestPage() {
                 <Button variant="outline" size="sm" onClick={() => addQuestion("SHORT_ANSWER")} className="text-xs">+ Short Answer</Button>
                 <Button variant="outline" size="sm" onClick={() => addQuestion("LONG_ANSWER")} className="text-xs">+ Long Answer</Button>
                 <Button variant="outline" size="sm" onClick={() => addQuestion("MATCH_THE_FOLLOWING")} className="text-xs">+ Match Up</Button>
+                <Button variant="outline" size="sm" onClick={() => addQuestion("CASE_STUDY")} className="text-xs text-purple-600 border-purple-200 bg-purple-50 hover:bg-purple-100 hover:text-purple-700">+ Case Study</Button>
               </div>
             )}
           </CardContent>
@@ -1255,13 +1279,14 @@ export default function CreateTestPage() {
 // Question Editor Component
 // ============================================================
 function QuestionEditor({
-  question, index, onUpdate, onRemove, onSave, loading, hasNegativeMarking,
+  question, index, onUpdate, onRemove, onSave, onAddSubQuestion, loading, hasNegativeMarking,
 }: {
   question: LocalQuestion;
   index: number;
   onUpdate: (updates: Partial<LocalQuestion>) => void;
   onRemove: () => void;
   onSave: () => void;
+  onAddSubQuestion: (type: QuestionType) => void;
   loading: boolean;
   hasNegativeMarking: boolean;
 }) {
@@ -1277,6 +1302,7 @@ function QuestionEditor({
     SHORT_ANSWER: "Short Answer",
     LONG_ANSWER: "Long Answer",
     MATCH_THE_FOLLOWING: "Match the Following",
+    CASE_STUDY: "Case Study",
   };
 
   // Strip HTML tags for display in plain-text contexts (e.g. select options)
@@ -1292,10 +1318,11 @@ function QuestionEditor({
     SHORT_ANSWER: "bg-green-100 text-green-700",
     LONG_ANSWER: "bg-purple-100 text-purple-700",
     MATCH_THE_FOLLOWING: "bg-teal-100 text-teal-700",
+    CASE_STUDY: "bg-indigo-100 text-indigo-700",
   };
 
   return (
-    <div className={`border rounded-xl overflow-hidden transition-all ${question.isSaved ? 'border-green-200 bg-green-50/20' : 'border-gray-200 bg-white'}`}>
+    <div className={`border rounded-xl overflow-hidden transition-all ${question.isSaved ? 'border-green-200 bg-green-50/20' : 'border-gray-200 bg-white'} ${question.parent_id ? 'ml-8 border-l-4 border-l-indigo-400 shadow-sm' : ''}`}>
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition-colors"
@@ -1346,6 +1373,7 @@ function QuestionEditor({
                   <SelectItem value="SHORT_ANSWER">Short Answer</SelectItem>
                   <SelectItem value="LONG_ANSWER">Long Answer</SelectItem>
                   <SelectItem value="MATCH_THE_FOLLOWING">Match the Following</SelectItem>
+                  <SelectItem value="CASE_STUDY">Case Study</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1353,8 +1381,9 @@ function QuestionEditor({
               <Label className="text-xs text-gray-600">Marks</Label>
               <Input
                 type="number"
-                min="1"
-                value={marksStr}
+                min="0"
+                disabled={question.question_type === 'CASE_STUDY'}
+                value={question.question_type === 'CASE_STUDY' ? '0' : marksStr}
                 onChange={(e) => {
                   setMarksStr(e.target.value);
                   const n = Number(e.target.value);
@@ -1508,7 +1537,7 @@ function QuestionEditor({
           )}
 
           {/* Correct Answer */}
-          {question.question_type !== "MATCH_THE_FOLLOWING" && (
+          {question.question_type !== "MATCH_THE_FOLLOWING" && question.question_type !== "CASE_STUDY" && (
             <div>
               <Label className="text-xs text-gray-600">Correct Answer *</Label>
               {question.question_type === "MCQ" ? (
@@ -1547,7 +1576,20 @@ function QuestionEditor({
           )}
 
           {/* Save Button */}
-          <div className="flex justify-end pt-2 border-t border-gray-100">
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+            <div>
+              {question.question_type === "CASE_STUDY" && question.isSaved && (
+                <div className="flex gap-2">
+                  <span className="text-sm font-medium text-indigo-600 self-center mr-2">Add Sub-Question:</span>
+                  <Button variant="outline" size="sm" onClick={() => onAddSubQuestion("MCQ")} className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">+ MCQ</Button>
+                  <Button variant="outline" size="sm" onClick={() => onAddSubQuestion("TRUE_FALSE")} className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">+ T/F</Button>
+                  <Button variant="outline" size="sm" onClick={() => onAddSubQuestion("SHORT_ANSWER")} className="text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50">+ Short Ans</Button>
+                </div>
+              )}
+              {question.question_type === "CASE_STUDY" && !question.isSaved && (
+                <p className="text-xs text-amber-600">Save this Case Study first to add sub-questions to it.</p>
+              )}
+            </div>
             <Button onClick={onSave} disabled={loading || question.isSaved} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
               <Check className="w-4 h-4 mr-1" />
               {question.isSaved ? "Saved" : "Save Question"}

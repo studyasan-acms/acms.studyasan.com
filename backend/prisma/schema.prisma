@@ -425,6 +425,7 @@ enum QuestionType {
   SHORT_ANSWER
   LONG_ANSWER
   MATCH_THE_FOLLOWING
+  CASE_STUDY
 }
 
 model Question {
@@ -439,9 +440,12 @@ model Question {
   marks          Int
   negative_marks Float        @default(0)
   order          Int
+  parent_id      Int?
   created_at     DateTime     @default(now())
   updated_at     DateTime     @updatedAt
   test           Test         @relation(fields: [test_id], references: [id], onDelete: Cascade)
+  parent         Question?    @relation("CaseStudyQuestions", fields: [parent_id], references: [id], onDelete: Cascade)
+  sub_questions  Question[]   @relation("CaseStudyQuestions")
   answers        Answer[]
 
   @@map("questions")
