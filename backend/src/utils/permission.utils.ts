@@ -15,8 +15,8 @@ const routeToResource: Record<string, string> = {
     '/enrollments': 'enrollments',
     '/payments': 'payments',
     '/test-series': 'testSeries',
-    '/activity-groups': 'activityGroups',
-    '/activities': 'activityGroups', // Activities are part of activity groups
+    '/activity-groups': 'activityGroups', // Activity group management
+    '/activities': 'activities',           // Individual activity CRUD — separate from group management
     '/notifications': 'notifications',
     '/enquiries': 'enquiries',
     '/analytics': 'analytics',

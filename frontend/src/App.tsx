@@ -94,6 +94,7 @@ import TestSeriesDetailPage from '@/pages/test-series/TestSeriesDetailPage';
 import ActivityGroupsPage from '@/pages/activities/ActivityGroupsPage';
 import ActivitiesPage from '@/pages/activities/ActivitiesPage';
 import StudentActivitiesPage from '@/pages/activities/StudentActivitiesPage';
+import ActivityFormPage from '@/pages/activities/ActivityFormPage';
 
 // Home and Enquiry imports
 import StudentHomePage from '@/pages/StudentHomePage';
@@ -304,6 +305,8 @@ function App() {
           {/* Activity Routes */}
           <Route path="activity-groups" element={<ActivityGroupsPage />} />
           <Route path="activities" element={<ActivitiesPage />} />
+          <Route path="activities/create" element={<ActivityFormPage />} />
+          <Route path="activities/:id/edit" element={<ActivityFormPage />} />
           <Route path="student-activities" element={<StudentActivitiesPage />} />
 
           {/* Homework Routes */}

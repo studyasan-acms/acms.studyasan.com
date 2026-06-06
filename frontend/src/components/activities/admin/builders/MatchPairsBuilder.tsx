@@ -1,6 +1,9 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Trash2, ImagePlus, Loader2, X } from 'lucide-react';
 import { Button } from '../../../ui/button';
 import { Input } from '../../../ui/input';
+import { uploadService } from '../../../../services/api';
+import { toast } from 'sonner';
 import type { MatchPairsContent } from '../../../../types/activity';
 
 interface Props {
@@ -9,6 +12,8 @@ interface Props {
 }
 
 export default function MatchPairsBuilder({ items, onItemsChange }: Props) {
+  const [uploadingId, setUploadingId] = useState<string | null>(null);
+
   const addPair = () => {
     const newItem = {
       content: {
@@ -110,15 +115,46 @@ export default function MatchPairsBuilder({ items, onItemsChange }: Props) {
                       updatePair(itemIndex, pairIndex, 'left', e.target.value)
                     }
                   />
-                  <input
-                    type="url"
-                    placeholder="Image URL (optional)"
-                    className="w-full px-3 py-2 border rounded text-sm mt-2"
-                    value={pair.imageLeft || ''}
-                    onChange={(e) =>
-                      updatePair(itemIndex, pairIndex, 'imageLeft', e.target.value)
-                    }
-                  />
+                  {pair.imageLeft ? (
+                    <div className="relative w-full h-24 mt-2 rounded border overflow-hidden">
+                      <img src={pair.imageLeft} alt="Left media" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => updatePair(itemIndex, pairIndex, 'imageLeft', '')}
+                        className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-black/70 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 cursor-pointer text-sm text-gray-500 hover:text-blue-600 w-full h-24 mt-2 border-2 border-dashed rounded bg-gray-50 hover:bg-gray-100">
+                      {uploadingId === `left-${itemIndex}-${pairIndex}` ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+                      ) : (
+                        <><ImagePlus className="w-4 h-4" /> Add Image</>
+                      )}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        disabled={uploadingId !== null}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            setUploadingId(`left-${itemIndex}-${pairIndex}`);
+                            const res = await uploadService.uploadFile(file, 'activities/matchpairs');
+                            updatePair(itemIndex, pairIndex, 'imageLeft', res.url);
+                          } catch (err) {
+                            toast.error('Upload failed');
+                          } finally {
+                            setUploadingId(null);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1">Right Item</label>
@@ -131,15 +167,46 @@ export default function MatchPairsBuilder({ items, onItemsChange }: Props) {
                       updatePair(itemIndex, pairIndex, 'right', e.target.value)
                     }
                   />
-                  <input
-                    type="url"
-                    placeholder="Image URL (optional)"
-                    className="w-full px-3 py-2 border rounded text-sm mt-2"
-                    value={pair.imageRight || ''}
-                    onChange={(e) =>
-                      updatePair(itemIndex, pairIndex, 'imageRight', e.target.value)
-                    }
-                  />
+                  {pair.imageRight ? (
+                    <div className="relative w-full h-24 mt-2 rounded border overflow-hidden">
+                      <img src={pair.imageRight} alt="Right media" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => updatePair(itemIndex, pairIndex, 'imageRight', '')}
+                        className="absolute top-1 right-1 p-1 bg-black/50 hover:bg-black/70 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 cursor-pointer text-sm text-gray-500 hover:text-blue-600 w-full h-24 mt-2 border-2 border-dashed rounded bg-gray-50 hover:bg-gray-100">
+                      {uploadingId === `right-${itemIndex}-${pairIndex}` ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</>
+                      ) : (
+                        <><ImagePlus className="w-4 h-4" /> Add Image</>
+                      )}
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        disabled={uploadingId !== null}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          try {
+                            setUploadingId(`right-${itemIndex}-${pairIndex}`);
+                            const res = await uploadService.uploadFile(file, 'activities/matchpairs');
+                            updatePair(itemIndex, pairIndex, 'imageRight', res.url);
+                          } catch (err) {
+                            toast.error('Upload failed');
+                          } finally {
+                            setUploadingId(null);
+                            e.target.value = '';
+                          }
+                        }}
+                      />
+                    </label>
+                  )}
                 </div>
                 {item.content.pairs.length > 1 && (
                   <div className="col-span-2 flex justify-end">

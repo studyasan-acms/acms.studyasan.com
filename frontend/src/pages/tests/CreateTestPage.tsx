@@ -36,6 +36,7 @@ import ErrorModal from "@/components/ui/errorModal";
 import MediaUpload from "@/components/ui/MediaUpload";
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import MathRenderer from "@/components/ui/MathRenderer";
+import RichTextEditor from "@/components/ui/RichTextEditor";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface LocalQuestion {
@@ -1252,6 +1253,13 @@ function QuestionEditor({
     LONG_ANSWER: "Long Answer",
   };
 
+  // Strip HTML tags for display in plain-text contexts (e.g. select options)
+  const stripHtml = (html: string): string => {
+    const div = document.createElement("div");
+    div.innerHTML = html;
+    return div.textContent || div.innerText || "";
+  };
+
   const typeColors: Record<QuestionType, string> = {
     MCQ: "bg-blue-100 text-blue-700",
     TRUE_FALSE: "bg-orange-100 text-orange-700",
@@ -1273,9 +1281,10 @@ function QuestionEditor({
             {typeLabels[question.question_type]}
           </Badge>
           {question.question_text && (
-            <span className="text-sm text-gray-500 truncate max-w-[200px] hidden sm:inline">
-              <MathRenderer text={question.question_text} inline={true} />
-            </span>
+            <span
+              className="text-sm text-gray-500 truncate max-w-[200px] hidden sm:inline"
+              dangerouslySetInnerHTML={{ __html: question.question_text }}
+            />
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -1356,7 +1365,14 @@ function QuestionEditor({
           {/* Question Text */}
           <div>
             <Label className="text-xs text-gray-600">Question Text *</Label>
-            <Textarea rows={2} value={question.question_text} onChange={(e) => onUpdate({ question_text: e.target.value })} className="mt-1" placeholder="Enter your question..." />
+            <div className="mt-1">
+              <RichTextEditor
+                value={question.question_text}
+                onChange={(html) => onUpdate({ question_text: html })}
+                placeholder="Enter your question... (Select text → Ctrl+. for superscript, Ctrl+, for subscript)"
+                rows={2}
+              />
+            </div>
           </div>
 
           {/* Media Upload */}
@@ -1375,14 +1391,15 @@ function QuestionEditor({
                 <div key={idx} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
                   <span className="mt-2 text-sm font-bold text-gray-500 w-6">{String.fromCharCode(65 + idx)}.</span>
                   <div className="flex-1 space-y-2">
-                    <Input
+                    <RichTextEditor
                       value={opt}
-                      onChange={(e) => {
+                      onChange={(html) => {
                         const newOpts = [...question.options];
-                        newOpts[idx] = e.target.value;
+                        newOpts[idx] = html;
                         onUpdate({ options: newOpts });
                       }}
                       placeholder={`Option ${String.fromCharCode(65 + idx)}`}
+                      rows={1}
                     />
                     <MediaUpload
                       label={`Option ${String.fromCharCode(65 + idx)} Image (Optional)`}
@@ -1402,14 +1419,22 @@ function QuestionEditor({
           <div>
             <Label className="text-xs text-gray-600">Correct Answer *</Label>
             {question.question_type === "MCQ" ? (
-              <Select value={question.correct_answer || "unset"} onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}>
+              <Select
+                value={question.correct_answer || "unset"}
+                onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}
+              >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select correct answer" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unset">Select correct answer</SelectItem>
                   {question.options.map((opt, idx) => {
                     const letter = String.fromCharCode(65 + idx);
-                    const val = opt || letter;
-                    return <SelectItem key={idx} value={val}>{letter}. {opt || "(Image only)"}</SelectItem>;
+                    // Use the letter as the stable value; strip HTML for readable label
+                    const plainText = stripHtml(opt);
+                    return (
+                      <SelectItem key={idx} value={letter}>
+                        {letter}. {plainText || "(Image only)"}
+                      </SelectItem>
+                    );
                   })}
                 </SelectContent>
               </Select>

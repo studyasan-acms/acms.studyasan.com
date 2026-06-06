@@ -195,23 +195,30 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-8 flex flex-col items-center justify-start md:justify-center">
-        <div className="max-w-4xl w-full space-y-4 md:space-y-8 py-4">
+      <div className="flex-1 overflow-hidden p-3 md:p-6 flex flex-col items-center justify-center min-h-0">
+        <div className="max-w-4xl w-full h-full flex flex-col gap-4 py-2">
           {/* Question Section */}
-          <div className="text-center space-y-4 md:space-y-6">
-            <Card className="gamified-card p-6 md:p-12 mb-4 md:mb-8">
-              <h3 className="text-3xl md:text-4xl font-extrabold leading-tight tracking-tight">
-                {question.content.statement}
-              </h3>
+          <div className="flex-[4] min-h-0 flex flex-col w-full">
+            <Card className="gamified-card p-4 md:p-6 w-full h-full flex flex-col justify-center items-center overflow-hidden">
+              {question.content.statementMedia && (
+                <div className="mb-2 flex justify-center w-full max-w-full flex-1 min-h-0">
+                  <img src={question.content.statementMedia} alt="Statement" className="h-full w-auto max-w-full rounded-lg object-contain shadow-md drop-shadow-md" />
+                </div>
+              )}
+              {question.content.statement && (
+                <h3 className="text-xl md:text-3xl font-extrabold leading-tight tracking-tight text-center shrink-0 line-clamp-3 w-full">
+                  {question.content.statement}
+                </h3>
+              )}
             </Card>
           </div>
 
           {/* Answer Buttons */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 pb-4 md:pb-20">
+          <div className="flex-[5] min-h-0 grid grid-cols-1 md:grid-cols-2 gap-4 pb-2 w-full">
             <button
               onClick={() => handleAnswer(true)}
               disabled={showResult}
-              className={`btn-3d group min-h-[100px] md:min-h-[120px] flex items-center justify-center p-4 md:p-6 text-left transition-all duration-300 ${
+              className={`btn-3d group h-full w-full flex items-center justify-center p-4 md:p-6 text-center transition-all duration-300 overflow-hidden ${
                 showResult && selectedAnswer === true
                   ? question.content.correctAnswer === true
                     ? 'btn-3d-success scale-105 z-10'
@@ -219,12 +226,12 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
                   : 'btn-3d-primary hover:scale-102'
               }`}
             >
-              <span className="text-xl md:text-4xl font-black uppercase tracking-widest">TRUE</span>
+              <span className="text-2xl md:text-4xl font-black uppercase tracking-widest w-full">TRUE</span>
             </button>
             <button
               onClick={() => handleAnswer(false)}
               disabled={showResult}
-              className={`btn-3d group min-h-[100px] md:min-h-[120px] flex items-center justify-center p-4 md:p-6 text-left transition-all duration-300 ${
+              className={`btn-3d group h-full w-full flex items-center justify-center p-4 md:p-6 text-center transition-all duration-300 overflow-hidden ${
                 showResult && selectedAnswer === false
                   ? question.content.correctAnswer === false
                     ? 'btn-3d-success scale-105 z-10'
@@ -232,7 +239,7 @@ export default function TrueFalseGame({ activity, attemptId, onComplete, onCance
                   : 'btn-3d-success hover:scale-102'
               }`}
             >
-              <span className="text-xl md:text-4xl font-black uppercase tracking-widest">FALSE</span>
+              <span className="text-2xl md:text-4xl font-black uppercase tracking-widest w-full">FALSE</span>
             </button>
           </div>
 

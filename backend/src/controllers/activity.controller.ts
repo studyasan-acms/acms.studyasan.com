@@ -99,21 +99,30 @@ export const getAllActivities = async (req: Request, res: Response) => {
     if (difficulty) where.difficulty = difficulty;
     if (is_published !== undefined) where.is_published = is_published === 'true';
 
-    // If user is TEACHER, only show activities from groups they are assigned to
+    // If user is TEACHER, check if they have 'activityGroups.view' permission (elevated access).
+    // If they do, show all activities (same as admin). Otherwise restrict to their assigned groups.
     if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: userId },
-        select: { id: true },
+        include: { role: true },
       });
       if (!teacher) {
         return sendError(res, 'Teacher profile not found', 404);
       }
-      const teacherGroups = await prisma.activityGroupTeacherJunction.findMany({
-        where: { teacher_id: teacher.id },
-        select: { activity_group_id: true },
-      });
-      const groupIds = teacherGroups.map(tg => tg.activity_group_id);
-      where.group_id = { in: groupIds };
+
+      const permissions = teacher.role?.permissions as any;
+      const hasViewAllPermission = teacher.role?.is_active && permissions?.activityGroups?.view === true;
+
+      if (!hasViewAllPermission) {
+        // Plain teacher: restrict to activities within their assigned groups only
+        const teacherGroups = await prisma.activityGroupTeacherJunction.findMany({
+          where: { teacher_id: teacher.id },
+          select: { activity_group_id: true },
+        });
+        const groupIds = teacherGroups.map(tg => tg.activity_group_id);
+        where.group_id = { in: groupIds };
+      }
+      // else: hasViewAllPermission — no group_id filter applied, teacher sees everything
     }
 
     const [activities, total] = await Promise.all([

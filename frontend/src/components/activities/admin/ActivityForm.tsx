@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Trash2, Sparkles } from 'lucide-react';
+import { X, Plus, Trash2, Sparkles, Loader2, ImagePlus } from 'lucide-react';
+import { uploadService } from '../../../services/api';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { Input } from '../../ui/input';
@@ -30,6 +31,7 @@ interface Props {
   activityGroups: ActivityGroup[];
   onSuccess: () => void;
   onCancel: () => void;
+  isStandalone?: boolean;
 }
 
 export default function ActivityForm({
@@ -37,6 +39,7 @@ export default function ActivityForm({
   activityGroups,
   onSuccess,
   onCancel,
+  isStandalone = false,
 }: Props) {
   const [formData, setFormData] = useState<CreateActivityInput>({
     group_id: 0,
@@ -51,6 +54,7 @@ export default function ActivityForm({
     items: [],
   });
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
   const [aiTopic, setAiTopic] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
@@ -191,15 +195,17 @@ export default function ActivityForm({
   };
 
   return (
-    <Card className="p-6 mb-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">
-          {activity ? 'Edit Activity' : 'Create Activity'}
-        </h2>
-        <Button variant="ghost" size="sm" onClick={onCancel}>
-          <X className="w-5 h-5" />
-        </Button>
-      </div>
+    <Card className={`p-6 mb-6 ${isStandalone ? 'w-full shadow-sm' : 'max-w-5xl mx-auto'}`}>
+      {!isStandalone && (
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">
+            {activity ? 'Edit Activity' : 'Create Activity'}
+          </h2>
+          <Button variant="ghost" size="sm" onClick={onCancel}>
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="space-y-6">
@@ -352,22 +358,76 @@ export default function ActivityForm({
 
           <div>
             <label className="block text-sm font-medium mb-2">
-              Cover Image URL
+              Cover Image
+              <span className="ml-2 text-xs font-normal text-gray-400">
+                Recommended: 16:9 ratio (e.g. 1280 × 720 px) — shown on activity cards &amp; student home page
+              </span>
             </label>
-            <input
-              type="url"
-              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              value={formData.cover_image}
-              onChange={(e) =>
-                setFormData({ ...formData, cover_image: e.target.value })
-              }
-            />
-            {formData.cover_image && (
-              <img
-                src={formData.cover_image}
-                alt="Preview"
-                className="mt-2 w-32 h-32 object-cover rounded-lg"
-              />
+
+            {formData.cover_image ? (
+              <div className="relative w-full rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '16/9' }}>
+                <img
+                  src={formData.cover_image}
+                  alt="Cover preview"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, cover_image: '' })}
+                  className="absolute top-2 right-2 p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="activity-cover-upload"
+                className={`flex flex-col items-center justify-center w-full rounded-lg border-2 border-dashed cursor-pointer transition-colors ${
+                  isUploading
+                    ? 'border-blue-400 bg-blue-50'
+                    : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50'
+                }`}
+                style={{ aspectRatio: '16/9' }}
+              >
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-8 w-8 text-blue-500 animate-spin mb-2" />
+                    <span className="text-sm text-blue-600 font-medium">Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <ImagePlus className="h-10 w-10 text-gray-400 mb-2" />
+                    <span className="text-sm text-gray-600 font-medium">Click to upload cover image</span>
+                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, WebP · 16:9 recommended</span>
+                  </>
+                )}
+                <input
+                  id="activity-cover-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error('File size must be under 10 MB');
+                      return;
+                    }
+                    try {
+                      setIsUploading(true);
+                      const result = await uploadService.uploadFile(file, 'activities');
+                      setFormData({ ...formData, cover_image: result.url });
+                      toast.success('Image uploaded');
+                    } catch {
+                      toast.error('Failed to upload image');
+                    } finally {
+                      setIsUploading(false);
+                      e.target.value = '';
+                    }
+                  }}
+                />
+              </label>
             )}
           </div>
 

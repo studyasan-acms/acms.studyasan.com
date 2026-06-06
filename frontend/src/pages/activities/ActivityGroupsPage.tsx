@@ -52,6 +52,7 @@ import { currencyService, uploadService } from '@/services/api';
 import type { ActivityGroup, CreateActivityGroupInput } from '@/types/activity';
 import type { Currency } from '@/types';
 import { useAuthStore } from '@/store/authStore';
+import { usePermissions } from '@/hooks/usePermissions';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import ConfirmModal from '@/components/ui/confirmationModal';
 import SuccessModal from '@/components/ui/successModal';
@@ -63,7 +64,13 @@ import { toast } from 'sonner';
 export default function ActivityGroupsPage() {
   usePageTitle("Activity Groups");
   const { user } = useAuthStore();
+  const { hasPermission } = usePermissions();
   const isAdmin = user?.role === 'ADMIN';
+
+  // Permission guards for action buttons
+  const canCreate = isAdmin || hasPermission('activityGroups', 'create');
+  const canUpdate = isAdmin || hasPermission('activityGroups', 'update');
+  const canDelete = isAdmin || hasPermission('activityGroups', 'delete');
 
   const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -377,9 +384,11 @@ export default function ActivityGroupsPage() {
             Organize activities into groups for easy management
           </p>
         </div>
-        <Button onClick={openCreateModal} className="bg-saBlue hover:bg-saBlueDarkHover text-white w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" /> Create Group
-        </Button>
+        {canCreate && (
+          <Button onClick={openCreateModal} className="bg-saBlue hover:bg-saBlueDarkHover text-white w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" /> Create Group
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -494,16 +503,20 @@ export default function ActivityGroupsPage() {
                         <DropdownMenuItem onClick={() => window.location.href = `/dashboard/activities?group_id=${group.id}`}>
                           <Eye className="h-4 w-4 mr-2" /> View Activities
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openEditModal(group)}>
-                          <Edit className="h-4 w-4 mr-2" /> Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => confirmDelete(group.id, group.name)}
-                          className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" /> Delete
-                        </DropdownMenuItem>
+                        {canUpdate && (
+                          <DropdownMenuItem onClick={() => openEditModal(group)}>
+                            <Edit className="h-4 w-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                        )}
+                        {(canUpdate || canDelete) && <DropdownMenuSeparator />}
+                        {canDelete && (
+                          <DropdownMenuItem
+                            onClick={() => confirmDelete(group.id, group.name)}
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

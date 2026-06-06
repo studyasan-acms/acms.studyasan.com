@@ -51,7 +51,7 @@ const upload = multer({
 const router = express.Router();
 
 // ================== GENERIC UPLOAD ROUTE ==================
-router.post('/upload', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('file'), uploadController.uploadFile);
+router.post('/upload', authenticate, authorizeStrict('ADMIN', 'TEACHER'), upload.single('file'), uploadController.uploadFile);
 
 // Auth routes
 router.post('/auth/register', authController.register);
@@ -507,17 +507,17 @@ router.get('/activities/student/available', authenticate, authorize('STUDENT'), 
 // Get activity by ID
 router.get('/activities/:id', authenticate, activityController.getActivityById);
 
-// Create activity
-router.post('/activities', authenticate, authorize('ADMIN', 'TEACHER'), activityController.createActivity);
+// Create activity — any teacher can create for their assigned groups (enforced in controller)
+router.post('/activities', authenticate, authorizeStrict('ADMIN', 'TEACHER'), activityController.createActivity);
 
 // Update activity
-router.put('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.updateActivity);
+router.put('/activities/:id', authenticate, authorizeStrict('ADMIN', 'TEACHER'), activityController.updateActivity);
 
 // Delete activity
-router.delete('/activities/:id', authenticate, authorize('ADMIN', 'TEACHER'), activityController.deleteActivity);
+router.delete('/activities/:id', authenticate, authorizeStrict('ADMIN', 'TEACHER'), activityController.deleteActivity);
 
 // Publish/Unpublish activity
-router.patch('/activities/:id/publish', authenticate, authorize('ADMIN', 'TEACHER'), activityController.togglePublishActivity);
+router.patch('/activities/:id/publish', authenticate, authorizeStrict('ADMIN', 'TEACHER'), activityController.togglePublishActivity);
 
 // Generate activity content with AI
 router.post('/activities/generate-content', authenticate, authorize('ADMIN'), activityController.generateActivityContent);

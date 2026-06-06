@@ -238,7 +238,9 @@ export interface MemoryGameContent {
 // Quiz Game
 export interface QuizGameContent {
   question: string;
+  questionMedia?: string;
   options: string[];
+  optionsMedia?: string[];
   correctAnswer: number;
   timeLimit?: number;
 }
@@ -256,6 +258,7 @@ export interface SequenceOrderContent {
 // True/False
 export interface TrueFalseContent {
   statement: string;
+  statementMedia?: string;
   correctAnswer: boolean;
 }
 

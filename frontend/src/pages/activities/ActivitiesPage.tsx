@@ -6,6 +6,7 @@ import { activityAPI, activityGroupAPI } from '../../services/activity.service';
 import type { Activity, ActivityGroup, ActivityType } from '../../types/activity';
 import ActivityForm from '../../components/activities/admin/ActivityForm.tsx';
 import ActivityAttemptsModal from '../../components/activities/admin/ActivityAttemptsModal.tsx';
+import { useNavigate } from 'react-router-dom';
 import TeacherQuizHost from '../../components/activities/admin/TeacherQuizHost.tsx';
 import MatchPairsGame from '../../components/activities/games/MatchPairsGame.tsx';
 import QuizGameComponent from '../../components/activities/games/QuizGameComponent.tsx';
@@ -39,8 +40,7 @@ export default function ActivitiesPage() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const navigate = useNavigate();
   const [viewingAttempts, setViewingAttempts] = useState<Activity | null>(null);
   const [hostingActivity, setHostingActivity] = useState<Activity | null>(null);
   const [playingActivity, setPlayingActivity] = useState<Activity | null>(null);
@@ -85,16 +85,12 @@ export default function ActivitiesPage() {
   };
 
   const handleCreate = () => {
-    setEditingActivity(null);
-    setShowForm(true);
+    navigate('/dashboard/activities/create');
   };
 
   const handleEdit = async (activity: Activity) => {
     try {
-      // Fetch the full activity with items
-      const response = await activityAPI.getById(activity.id);
-      setEditingActivity(response.data.data);
-      setShowForm(true);
+      navigate(`/dashboard/activities/${activity.id}/edit`);
     } catch (error: any) {
       toast.error('Failed to load activity details');
     }
@@ -120,12 +116,6 @@ export default function ActivitiesPage() {
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to update activity');
     }
-  };
-
-  const handleFormSuccess = () => {
-    setShowForm(false);
-    setEditingActivity(null);
-    fetchActivities();
   };
 
   const getActivityTypeLabel = (type: ActivityType) => {
@@ -282,17 +272,7 @@ export default function ActivitiesPage() {
         </div>
       </Card>
 
-      {showForm && (
-        <ActivityForm
-          activity={editingActivity}
-          activityGroups={activityGroups}
-          onSuccess={handleFormSuccess}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingActivity(null);
-          }}
-        />
-      )}
+
 
       {hostingActivity && (
         <TeacherQuizHost

@@ -228,19 +228,26 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-8 flex flex-col items-center justify-start md:justify-center">
-        <div className="max-w-4xl w-full space-y-4 md:space-y-8 py-4">
+      <div className="flex-1 overflow-hidden p-3 md:p-6 flex flex-col items-center justify-center min-h-0">
+        <div className="max-w-4xl w-full h-full flex flex-col gap-4 py-2">
           {/* Question Section */}
-          <div className="text-center space-y-4 md:space-y-6">
-            <Card className="gamified-card p-4 md:p-12 mb-4 md:mb-8">
-              <h3 className="text-lg md:text-4xl font-extrabold leading-tight tracking-tight whitespace-pre-wrap">
-                {question.content.question}
-              </h3>
+          <div className="flex-[4] min-h-0 flex flex-col w-full">
+            <Card className="gamified-card p-4 md:p-6 w-full h-full flex flex-col justify-center items-center overflow-hidden">
+              {question.content.questionMedia && (
+                <div className="mb-2 flex justify-center w-full max-w-full flex-1 min-h-0">
+                  <img src={question.content.questionMedia} alt="Question" className="h-full w-auto max-w-full rounded-lg object-contain shadow-md drop-shadow-md" />
+                </div>
+              )}
+              {question.content.question && (
+                <h3 className="text-lg md:text-3xl font-extrabold leading-tight tracking-tight text-center whitespace-pre-wrap shrink-0 line-clamp-3 w-full">
+                  {question.content.question}
+                </h3>
+              )}
             </Card>
           </div>
 
           {/* Answers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 pb-4 md:pb-20">
+          <div className="flex-[5] min-h-0 grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-3 pb-2 w-full">
             {question.content.options.map((option: string, index: number) => {
               const isSelected = selectedAnswer === index;
               const isCorrectOption = index === question.content.correctAnswer;
@@ -259,12 +266,19 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
                   key={index}
                   onClick={() => handleAnswerSelect(index)}
                   disabled={showResult}
-                  className={`btn-3d group min-h-[80px] md:min-h-[100px] flex items-center p-3 md:p-6 text-left transition-all duration-300 ${statusClass}`}
+                  className={`btn-3d group h-full w-full flex items-center p-3 md:p-5 text-left transition-all duration-300 overflow-hidden ${statusClass}`}
                 >
-                  <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/10 flex items-center justify-center mr-2 md:mr-4 font-bold text-base md:text-xl group-hover:bg-black/20 shrink-0">
+                  <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/10 flex items-center justify-center mr-3 font-bold text-base md:text-xl group-hover:bg-black/20 shrink-0">
                     {String.fromCharCode(65 + index)}
                   </span>
-                  <span className="text-base md:text-2xl font-bold line-clamp-3 md:line-clamp-2">{option}</span>
+                  <div className="flex-1 min-w-0 h-full flex flex-col justify-center items-start">
+                    {question.content.optionsMedia?.[index] && (
+                        <div className="flex-1 min-h-0 w-full flex justify-start items-center mb-1">
+                            <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="h-full w-auto max-w-full rounded object-contain drop-shadow-sm" />
+                        </div>
+                    )}
+                    {option && <span className="text-base md:text-lg font-bold line-clamp-2 w-full">{option}</span>}
+                  </div>
                 </button>
               );
             })}

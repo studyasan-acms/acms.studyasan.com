@@ -336,15 +336,24 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
             )}
 
             {/* Main Game Area */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col items-center justify-center">
-                <div className="max-w-4xl w-full space-y-8">
-                    <Card className="gamified-card p-8 md:p-12 mb-8">
-                        <h3 className="text-2xl md:text-4xl font-extrabold leading-tight tracking-tight text-center">
-                            {question.content.question}
-                        </h3>
-                    </Card>
+            <div className="flex-1 overflow-hidden p-3 md:p-6 flex flex-col items-center justify-center min-h-0">
+                <div className="max-w-4xl w-full h-full flex flex-col gap-4 py-2">
+                    <div className="flex-[4] min-h-0 flex flex-col w-full">
+                        <Card className="gamified-card p-4 md:p-6 w-full h-full flex flex-col justify-center items-center overflow-hidden">
+                            {question.content.questionMedia && (
+                                <div className="mb-2 flex justify-center w-full max-w-full flex-1 min-h-0">
+                                    <img src={question.content.questionMedia} alt="Question" className="h-full w-auto max-w-full rounded-lg object-contain shadow-md drop-shadow-md" />
+                                </div>
+                            )}
+                            {question.content.question && (
+                                <h3 className="text-xl md:text-3xl font-extrabold leading-tight tracking-tight text-center shrink-0 line-clamp-3 w-full">
+                                    {question.content.question}
+                                </h3>
+                            )}
+                        </Card>
+                    </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
+                    <div className="flex-[5] min-h-0 grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-3 pb-2 w-full">
                         {question.content.options.map((option: string, index: number) => {
                             const isSelected = selectedAnswer === index;
                             let statusClass = "btn-3d-neutral";
@@ -355,12 +364,19 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                                     key={index}
                                     onClick={() => handleAnswerSelect(index)}
                                     disabled={isSubmitted}
-                                    className={`btn-3d group min-h-[100px] flex items-center p-6 text-left transition-all duration-300 ${statusClass}`}
+                                    className={`btn-3d group h-full w-full flex items-center p-3 md:p-5 text-left transition-all duration-300 overflow-hidden ${statusClass}`}
                                 >
-                                    <span className="w-10 h-10 rounded-full bg-black/10 flex items-center justify-center mr-4 font-bold text-xl group-hover:bg-black/20 shrink-0">
+                                    <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/10 flex items-center justify-center mr-3 font-bold text-lg md:text-xl group-hover:bg-black/20 shrink-0">
                                         {String.fromCharCode(65 + index)}
                                     </span>
-                                    <span className="text-xl md:text-2xl font-bold line-clamp-2">{option}</span>
+                                    <div className="flex-1 min-w-0 h-full flex flex-col justify-center items-start">
+                                        {question.content.optionsMedia?.[index] && (
+                                            <div className="flex-1 min-h-0 w-full flex justify-start items-center mb-1">
+                                                <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="h-full w-auto max-w-full rounded object-contain shadow" />
+                                            </div>
+                                        )}
+                                        {option && <span className="text-base md:text-lg font-bold line-clamp-2 w-full">{option}</span>}
+                                    </div>
                                 </button>
                             );
                         })}

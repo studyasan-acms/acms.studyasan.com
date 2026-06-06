@@ -60,20 +60,29 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
       where.is_active = is_active === 'true';
     }
 
-    // If user is TEACHER, only show groups they are assigned to
+    // If user is TEACHER, check if they have the elevated 'activityGroups.view' permission.
+    // If they do, show all groups (same as admin). Otherwise, filter to only their assigned groups.
     if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
         where: { user_id: userId },
-        select: { id: true },
+        include: { role: true },
       });
       if (!teacher) {
         return sendError(res, 'Teacher profile not found', 404);
       }
-      where.teacher_junctions = {
-        some: {
-          teacher_id: teacher.id,
-        },
-      };
+
+      const permissions = teacher.role?.permissions as any;
+      const hasViewAllPermission = teacher.role?.is_active && permissions?.activityGroups?.view === true;
+
+      // Teachers with the 'activityGroups.view' role permission see all groups (admin-level view).
+      // All other teachers see only the groups they are explicitly assigned to.
+      if (!hasViewAllPermission) {
+        where.teacher_junctions = {
+          some: {
+            teacher_id: teacher.id,
+          },
+        };
+      }
     }
 
     const [activityGroups, total] = await Promise.all([
