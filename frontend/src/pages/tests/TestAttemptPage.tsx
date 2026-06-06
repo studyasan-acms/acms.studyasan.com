@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Clock,
@@ -166,6 +166,152 @@ function useFaceDetection(enabled: boolean) {
 }
 
 // ============================================================
+// Match the Following Interactive Component
+// ============================================================
+function MatchTheFollowingInteractive({
+  pairs,
+  currentAnswer,
+  onAnswerChange,
+}: {
+  pairs: { left: string; right: string }[];
+  currentAnswer: { left: string; right: string }[];
+  onAnswerChange: (newAnswer: { left: string; right: string }[]) => void;
+}) {
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+
+  const rightChoices = useMemo(() => {
+    return [...new Set(pairs.map((p) => p.right))].sort();
+  }, [pairs]);
+
+  const handleLeftClick = (left: string) => {
+    if (selectedLeft === left) setSelectedLeft(null);
+    else setSelectedLeft(left);
+  };
+
+  const handleRightClick = (right: string) => {
+    if (!selectedLeft) return;
+    const newAnswer = currentAnswer.filter((a) => a.left !== selectedLeft && a.right !== right);
+    newAnswer.push({ left: selectedLeft, right });
+    onAnswerChange(newAnswer);
+    setSelectedLeft(null);
+  };
+
+  const handleUnmatch = (left: string) => {
+    onAnswerChange(currentAnswer.filter((a) => a.left !== left));
+  };
+
+  const [lines, setLines] = useState<{ x1: number; y1: number; x2: number; y2: number }[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const leftRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const rightRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const updateLines = () => {
+      if (!containerRef.current) return;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const newLines = [];
+
+      for (const match of currentAnswer) {
+        const leftEl = leftRefs.current[match.left];
+        const rightEl = rightRefs.current[match.right];
+
+        if (leftEl && rightEl) {
+          const lRect = leftEl.getBoundingClientRect();
+          const rRect = rightEl.getBoundingClientRect();
+
+          newLines.push({
+            x1: lRect.right - containerRect.left,
+            y1: lRect.top + lRect.height / 2 - containerRect.top,
+            x2: rRect.left - containerRect.left,
+            y2: rRect.top + rRect.height / 2 - containerRect.top,
+          });
+        }
+      }
+      setLines(newLines);
+    };
+
+    updateLines();
+    // Use timeout to handle post-render positioning
+    const t = setTimeout(updateLines, 50);
+    window.addEventListener('resize', updateLines);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', updateLines);
+    };
+  }, [currentAnswer, pairs, rightChoices]);
+
+  return (
+    <div className="relative flex justify-between gap-10 p-4 select-none min-h-[200px]" ref={containerRef}>
+      <svg className="absolute inset-0 pointer-events-none w-full h-full z-0 overflow-visible">
+        {lines.map((line, i) => (
+          <line key={i} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" />
+        ))}
+      </svg>
+
+      {/* Left Column */}
+      <div className="flex flex-col gap-4 w-1/2 z-10">
+        {pairs.map((p, i) => {
+          const isMatched = currentAnswer.some((a) => a.left === p.left);
+          const isSelected = selectedLeft === p.left;
+          return (
+            <div
+              key={i}
+              ref={(el) => { leftRefs.current[p.left] = el; }}
+              onClick={() => handleLeftClick(p.left)}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
+                isSelected
+                  ? 'border-saBlue bg-blue-50 ring-2 ring-blue-200 shadow-md transform scale-[1.02]'
+                  : isMatched
+                  ? 'border-green-300 bg-green-50'
+                  : 'border-gray-200 bg-white hover:border-saBlue'
+              }`}
+            >
+              <span className="font-medium text-gray-800"><MathRenderer text={p.left} inline={true} /></span>
+              {isMatched && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUnmatch(p.left);
+                  }}
+                  className="text-red-500 text-xs font-bold hover:underline bg-white/50 px-2 py-1 rounded"
+                >
+                  Unmatch
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Right Column */}
+      <div className="flex flex-col gap-4 w-1/2 z-10">
+        {rightChoices.map((choice, i) => {
+          const matchedBy = currentAnswer.find((a) => a.right === choice)?.left;
+          const isMatched = !!matchedBy;
+
+          return (
+            <div
+              key={i}
+              ref={(el) => { rightRefs.current[choice] = el; }}
+              onClick={() => handleRightClick(choice)}
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+                selectedLeft && !isMatched
+                  ? 'border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100 hover:border-solid hover:border-saBlue'
+                  : isMatched
+                  ? 'border-green-300 bg-green-50'
+                  : 'border-gray-200 bg-white opacity-90'
+              }`}
+            >
+              <span className="font-medium text-gray-800"><MathRenderer text={choice} inline={true} /></span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
 // Main Component
 // ============================================================
 export default function TestAttemptPage() {
@@ -270,8 +416,9 @@ export default function TestAttemptPage() {
   useEffect(() => {
     const handle = () => {
       if (!document.fullscreenElement && !attempt?.submitted_at) {
-        addViolation({ type: 'fullscreen_exit', timestamp: new Date(), message: 'Fullscreen exited — re-entering...' });
-        enterFullscreen();
+        addViolation({ type: 'fullscreen_exit', timestamp: new Date(), message: 'Fullscreen exited.' });
+        // NOTE: We cannot automatically re-enter fullscreen here because it requires a user gesture.
+        // The user will have to manually re-enter or we can show a UI prompt if needed.
       }
     };
     document.addEventListener('fullscreenchange', handle);
@@ -801,7 +948,7 @@ export default function TestAttemptPage() {
                         const optionMediaUrl = typeof option === 'object' ? option?.media_url : null;
                         const optionMediaType = typeof option === 'object' ? option?.media_type : null;
                         const optionLetter = String.fromCharCode(65 + index);
-                        const optionValue = optionText || optionLetter;
+                        const optionValue = optionLetter; // Save the letter to match correct_answer
                         const isSelected = answers[currentQuestion.id] === optionValue;
 
                         return (
@@ -874,6 +1021,41 @@ export default function TestAttemptPage() {
                         );
                       })}
                     </div>
+                  )}
+
+                  {/* ---- Match the Following ---- */}
+                  {currentQuestion.question_type === 'MATCH_THE_FOLLOWING' && (
+                    (() => {
+                      let pairs: { left: string; right: string }[] = [];
+                      try {
+                        const rawOptions = typeof currentQuestion.options === 'string'
+                          ? JSON.parse(currentQuestion.options)
+                          : (currentQuestion.options as any || []);
+                        if (Array.isArray(rawOptions)) {
+                          pairs = rawOptions.map(opt => {
+                            if (typeof opt === 'string') {
+                              try { return JSON.parse(opt); } catch(e) { return {left: '', right: ''}; }
+                            }
+                            return opt;
+                          });
+                        }
+                      } catch (e) {}
+
+                      let currentAnswer: { left: string; right: string }[] = [];
+                      try {
+                        currentAnswer = answers[currentQuestion.id]
+                          ? JSON.parse(answers[currentQuestion.id]!)
+                          : [];
+                      } catch (e) {}
+
+                      return (
+                        <MatchTheFollowingInteractive
+                          pairs={pairs}
+                          currentAnswer={currentAnswer}
+                          onAnswerChange={(newAnswer) => handleAnswerChange(currentQuestion.id, JSON.stringify(newAnswer))}
+                        />
+                      );
+                    })()
                   )}
 
                   {/* ---- Short/Long Answer ---- */}

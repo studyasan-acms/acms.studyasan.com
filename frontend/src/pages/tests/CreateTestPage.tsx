@@ -142,6 +142,7 @@ export default function CreateTestPage() {
     { question_type: "TRUE_FALSE", count: 0, marks: 1 },
     { question_type: "SHORT_ANSWER", count: 0, marks: 2 },
     { question_type: "LONG_ANSWER", count: 0, marks: 5 },
+    { question_type: "MATCH_THE_FOLLOWING", count: 0, marks: 5 },
   ]);
   const [templateReplaceOpen, setTemplateReplaceOpen] = useState(false);
 
@@ -1230,6 +1231,7 @@ export default function CreateTestPage() {
                 <Button variant="outline" size="sm" onClick={() => addQuestion("TRUE_FALSE")} className="text-xs">+ True/False</Button>
                 <Button variant="outline" size="sm" onClick={() => addQuestion("SHORT_ANSWER")} className="text-xs">+ Short Answer</Button>
                 <Button variant="outline" size="sm" onClick={() => addQuestion("LONG_ANSWER")} className="text-xs">+ Long Answer</Button>
+                <Button variant="outline" size="sm" onClick={() => addQuestion("MATCH_THE_FOLLOWING")} className="text-xs">+ Match Up</Button>
               </div>
             )}
           </CardContent>
@@ -1274,6 +1276,7 @@ function QuestionEditor({
     TRUE_FALSE: "True / False",
     SHORT_ANSWER: "Short Answer",
     LONG_ANSWER: "Long Answer",
+    MATCH_THE_FOLLOWING: "Match the Following",
   };
 
   // Strip HTML tags for display in plain-text contexts (e.g. select options)
@@ -1288,6 +1291,7 @@ function QuestionEditor({
     TRUE_FALSE: "bg-orange-100 text-orange-700",
     SHORT_ANSWER: "bg-green-100 text-green-700",
     LONG_ANSWER: "bg-purple-100 text-purple-700",
+    MATCH_THE_FOLLOWING: "bg-teal-100 text-teal-700",
   };
 
   return (
@@ -1334,13 +1338,14 @@ function QuestionEditor({
           <div className={`grid grid-cols-1 gap-4 ${hasNegativeMarking ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
             <div>
               <Label className="text-xs text-gray-600">Question Type</Label>
-              <Select value={question.question_type} onValueChange={(v) => onUpdate({ question_type: v as QuestionType, options: v === "MCQ" ? ["", "", "", ""] : [] })}>
+              <Select value={question.question_type} onValueChange={(v) => onUpdate({ question_type: v as QuestionType, options: v === "MCQ" ? ["", "", "", ""] : (v === "MATCH_THE_FOLLOWING" ? ['{"left":"","right":""}', '{"left":"","right":""}'] : []) })}>
                 <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MCQ">Multiple Choice</SelectItem>
                   <SelectItem value="TRUE_FALSE">True / False</SelectItem>
                   <SelectItem value="SHORT_ANSWER">Short Answer</SelectItem>
                   <SelectItem value="LONG_ANSWER">Long Answer</SelectItem>
+                  <SelectItem value="MATCH_THE_FOLLOWING">Match the Following</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1438,42 +1443,108 @@ function QuestionEditor({
             </div>
           )}
 
-          {/* Correct Answer */}
-          <div>
-            <Label className="text-xs text-gray-600">Correct Answer *</Label>
-            {question.question_type === "MCQ" ? (
-              <Select
-                value={question.correct_answer || "unset"}
-                onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}
+          {/* Match the Following Pairs */}
+          {question.question_type === "MATCH_THE_FOLLOWING" && (
+            <div className="space-y-3">
+              <Label className="text-xs text-gray-600">Pairs</Label>
+              {question.options.map((optString, idx) => {
+                let pair = { left: "", right: "" };
+                try {
+                  pair = JSON.parse(optString || '{"left":"","right":""}');
+                } catch (e) { }
+                return (
+                  <div key={idx} className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <span className="mt-2 text-sm font-bold text-gray-500 w-6">{idx + 1}.</span>
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <Input
+                        value={pair.left}
+                        onChange={(e) => {
+                          const newOpts = [...question.options];
+                          const newPair = { ...pair, left: e.target.value };
+                          newOpts[idx] = JSON.stringify(newPair);
+                          onUpdate({ options: newOpts });
+                        }}
+                        placeholder="Left item"
+                      />
+                      <Input
+                        value={pair.right}
+                        onChange={(e) => {
+                          const newOpts = [...question.options];
+                          const newPair = { ...pair, right: e.target.value };
+                          newOpts[idx] = JSON.stringify(newPair);
+                          onUpdate({ options: newOpts });
+                        }}
+                        placeholder="Right match"
+                      />
+                    </div>
+                    {question.options.length > 2 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-red-500 hover:bg-red-50"
+                        onClick={() => {
+                          const newOpts = question.options.filter((_, i) => i !== idx);
+                          onUpdate({ options: newOpts });
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full text-saBlue border-blue-200 hover:bg-blue-50"
+                onClick={() => {
+                  onUpdate({ options: [...question.options, '{"left":"","right":""}'] });
+                }}
               >
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select correct answer" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unset">Select correct answer</SelectItem>
-                  {question.options.map((opt, idx) => {
-                    const letter = String.fromCharCode(65 + idx);
-                    // Use the letter as the stable value; strip HTML for readable label
-                    const plainText = stripHtml(opt);
-                    return (
-                      <SelectItem key={idx} value={letter}>
-                        {letter}. {plainText || "(Image only)"}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            ) : question.question_type === "TRUE_FALSE" ? (
-              <Select value={question.correct_answer || "unset"} onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select answer" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unset">Select answer</SelectItem>
-                  <SelectItem value="True">True</SelectItem>
-                  <SelectItem value="False">False</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : (
-              <Textarea rows={2} value={question.correct_answer} onChange={(e) => onUpdate({ correct_answer: e.target.value })} className="mt-1" placeholder="Sample/expected answer..." />
-            )}
-          </div>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Pair
+              </Button>
+            </div>
+          )}
+
+          {/* Correct Answer */}
+          {question.question_type !== "MATCH_THE_FOLLOWING" && (
+            <div>
+              <Label className="text-xs text-gray-600">Correct Answer *</Label>
+              {question.question_type === "MCQ" ? (
+                <Select
+                  value={question.correct_answer || "unset"}
+                  onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}
+                >
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select correct answer" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">Select correct answer</SelectItem>
+                    {question.options.map((opt, idx) => {
+                      const letter = String.fromCharCode(65 + idx);
+                      // Use the letter as the stable value; strip HTML for readable label
+                      const plainText = stripHtml(opt);
+                      return (
+                        <SelectItem key={idx} value={letter}>
+                          {letter}. {plainText || "(Image only)"}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              ) : question.question_type === "TRUE_FALSE" ? (
+                <Select value={question.correct_answer || "unset"} onValueChange={(v) => onUpdate({ correct_answer: v === "unset" ? "" : v })}>
+                  <SelectTrigger className="mt-1"><SelectValue placeholder="Select answer" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unset">Select answer</SelectItem>
+                    <SelectItem value="True">True</SelectItem>
+                    <SelectItem value="False">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Textarea rows={2} value={question.correct_answer} onChange={(e) => onUpdate({ correct_answer: e.target.value })} className="mt-1" placeholder="Sample/expected answer..." />
+              )}
+            </div>
+          )}
 
           {/* Save Button */}
           <div className="flex justify-end pt-2 border-t border-gray-100">

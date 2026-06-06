@@ -341,19 +341,63 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         } else if (testHasNegativeMarking) {
           autoGradedScore -= questionNegativeMarks;
         }
+      } else if (isAutograded && answer.question.question_type === 'MATCH_THE_FOLLOWING') {
+        let correctPairs = 0;
+        let totalPairs = 0;
+        try {
+          let correctOptions = typeof answer.question.options === 'string'
+            ? JSON.parse(answer.question.options)
+            : answer.question.options;
+            
+          if (Array.isArray(correctOptions)) {
+            correctOptions = correctOptions.map((opt: any) => {
+              if (typeof opt === 'string') {
+                try { return JSON.parse(opt); } catch(e) { return opt; }
+              }
+              return opt;
+            });
+          }
+          const studentAnswers = answer.answer_text ? JSON.parse(answer.answer_text) : [];
+
+          if (Array.isArray(correctOptions) && Array.isArray(studentAnswers)) {
+            totalPairs = correctOptions.length;
+            studentAnswers.forEach(ansPair => {
+              const correctPair = correctOptions.find(opt => opt.left === ansPair.left);
+              if (correctPair && correctPair.right === ansPair.right) {
+                correctPairs++;
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing MATCH_THE_FOLLOWING answers', e);
+        }
+
+        const isCorrect = totalPairs > 0 && correctPairs === totalPairs;
+        const marksObtained = totalPairs > 0 ? (answer.question.marks / totalPairs) * correctPairs : 0;
+
+        await prisma.answer.update({
+          where: { id: answer.id },
+          data: {
+            is_correct: isCorrect,
+            marks_obtained: marksObtained,
+          },
+        });
+
+        autoGradedScore += marksObtained;
       } else {
         hasShortAnswers = true;
       }
     }
 
     // Update test attempt
+    const finalScore = hasShortAnswers ? null : Math.round(autoGradedScore);
     const updatedAttempt = await prisma.testAttempt.update({
       where: { id: parseInt(attemptId) },
       data: {
         submitted_at: new Date(),
-        score: hasShortAnswers ? null : autoGradedScore,
+        score: finalScore,
         is_graded: !hasShortAnswers,
-        is_passed: hasShortAnswers ? null : autoGradedScore >= attempt.test.passing_marks,
+        is_passed: hasShortAnswers ? null : (finalScore !== null && finalScore >= attempt.test.passing_marks),
       },
       include: {
         test: true,
@@ -853,6 +897,39 @@ export const submitPublicTest = async (req: Request, res: Response) => {
         } else if (testHasNegativeMarking) {
           marksObtained = -Number((question as any).negative_marks || 0);
         }
+      } else if (isAutograded && question.question_type === 'MATCH_THE_FOLLOWING') {
+        let correctPairs = 0;
+        let totalPairs = 0;
+        try {
+          let correctOptions = typeof question.options === 'string'
+            ? JSON.parse(question.options)
+            : question.options;
+            
+          if (Array.isArray(correctOptions)) {
+            correctOptions = correctOptions.map((opt: any) => {
+              if (typeof opt === 'string') {
+                try { return JSON.parse(opt); } catch(e) { return opt; }
+              }
+              return opt;
+            });
+          }
+          const studentAnswers = ans.answer_text ? JSON.parse(ans.answer_text) : [];
+
+          if (Array.isArray(correctOptions) && Array.isArray(studentAnswers)) {
+            totalPairs = correctOptions.length;
+            studentAnswers.forEach(ansPair => {
+              const correctPair = correctOptions.find(opt => opt.left === ansPair.left);
+              if (correctPair && correctPair.right === ansPair.right) {
+                correctPairs++;
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing MATCH_THE_FOLLOWING answers', e);
+        }
+
+        isCorrect = totalPairs > 0 && correctPairs === totalPairs;
+        marksObtained = totalPairs > 0 ? (question.marks / totalPairs) * correctPairs : 0;
       }
       // Auto-pass descriptive for now or mark as 0? 
       // For certification, usually only MCQs are auto-graded. 

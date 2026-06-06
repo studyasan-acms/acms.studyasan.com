@@ -578,26 +578,22 @@ router.get('/activities/:activityId/leaderboard', authenticate, activityAttemptC
 // ================== QUIZ SESSION ROUTES ==================
 import * as quizSessionController from '../controllers/quizSession.controller.js';
 
-// Get Session by ID
+// Quiz Sessions (Real-time gameplay)
 router.get('/quiz-sessions/:id', authenticate, quizSessionController.getSessionById);
 
-// Create Session (Host)
-router.post('/quiz-sessions', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.createSession);
+// Host
+router.post('/quiz-sessions', authenticate, authorizeStrict('ADMIN', 'TEACHER'), quizSessionController.createSession);
 
-// Get Session by ID
-router.get('/quiz-sessions/:id', authenticate, quizSessionController.getSessionById);
-
-// Join Session (Student)
+// Join (Student)
+// NOTE: Replaced duplicate getSessionById below with just joinSession
 router.post('/quiz-sessions/join', authenticate, quizSessionController.joinSession);
 
-// Start Session (Host)
-router.post('/quiz-sessions/:id/start', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.startSession);
+// Controls
+router.post('/quiz-sessions/:id/start', authenticate, authorizeStrict('ADMIN', 'TEACHER'), quizSessionController.startSession);
 
-// Next Question (Host)
-router.post('/quiz-sessions/:id/next', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.nextQuestion);
+router.post('/quiz-sessions/:id/next', authenticate, authorizeStrict('ADMIN', 'TEACHER'), quizSessionController.nextQuestion);
 
-// End Session (Host)
-router.post('/quiz-sessions/:id/end', authenticate, authorize('ADMIN', 'TEACHER'), quizSessionController.endSession);
+router.post('/quiz-sessions/:id/end', authenticate, authorizeStrict('ADMIN', 'TEACHER'), quizSessionController.endSession);
 
 
 // ================== HOME ROUTES (STUDENT) ==================

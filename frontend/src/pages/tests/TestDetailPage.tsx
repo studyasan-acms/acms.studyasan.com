@@ -534,6 +534,44 @@ export default function TestDetailPage() {
                       </div>
                     )}
 
+                    {question.question_type === "MATCH_THE_FOLLOWING" && question.options && (
+                      <div className="ml-10 mt-3 space-y-1.5">
+                        {(() => {
+                          try {
+                            let parsedStr: any = question.options || "[]";
+                            if (typeof parsedStr === 'string' && parsedStr.startsWith('"') && parsedStr.endsWith('"')) {
+                              parsedStr = JSON.parse(parsedStr);
+                            }
+                            let parsed = typeof parsedStr === 'string' ? JSON.parse(parsedStr) : parsedStr;
+                            if (typeof parsed === 'string') {
+                              parsed = JSON.parse(parsed);
+                            }
+                            if (Array.isArray(parsed) && parsed.length > 0) {
+                              return parsed.map((opt: any, optIndex: number) => {
+                                let p = opt;
+                                if (typeof p === 'string') {
+                                  try { p = JSON.parse(p); } catch(e) {}
+                                }
+                                return (
+                                  <div key={optIndex} className="p-2 rounded-lg text-sm bg-gray-50 border border-gray-100 flex items-center gap-2">
+                                    <span className="font-bold text-gray-500 w-6">{optIndex + 1}.</span>
+                                    <div className="flex gap-2 w-full max-w-sm bg-white p-2 rounded shadow-sm border border-gray-200">
+                                      <span className="font-medium flex-1">{p?.left || 'Empty'}</span>
+                                      <span className="text-gray-400">→</span>
+                                      <span className="flex-1">{p?.right || 'Empty'}</span>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            }
+                          } catch (e) {
+                            console.error("Error parsing MATCH_THE_FOLLOWING options", e);
+                          }
+                          return <p className="text-sm text-gray-400 italic">No pairs available</p>;
+                        })()}
+                      </div>
+                    )}
+
                     {question.question_type === "TRUE_FALSE" && (
                       <p className="ml-10 mt-2 text-sm text-green-600 font-medium bg-green-50 inline-block px-3 py-1 rounded-lg">
                         Answer: {question.correct_answer}

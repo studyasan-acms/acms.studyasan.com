@@ -196,10 +196,39 @@ export default function TestResultsPage() {
                         <p className="text-sm text-gray-400 italic">Not answered</p>
                       ) : (
                         <>
-                          {answer.answer_text && (
+                          {answer.answer_text && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
                             <p className="text-sm text-gray-700">
                               <MathRenderer text={answer.answer_text} />
                             </p>
+                          )}
+                          {answer.answer_text && answer.question?.question_type === 'MATCH_THE_FOLLOWING' && (
+                            <div className="space-y-1 mt-2">
+                              {(() => {
+                                try {
+                                  let parsedStr = answer.answer_text || "[]";
+                                  if (parsedStr.startsWith('"') && parsedStr.endsWith('"')) {
+                                    parsedStr = JSON.parse(parsedStr);
+                                  }
+                                  let parsed = JSON.parse(parsedStr);
+                                  if (typeof parsed === 'string') {
+                                    parsed = JSON.parse(parsed);
+                                  }
+                                  if (Array.isArray(parsed)) {
+                                    parsed = parsed.map(opt => typeof opt === 'string' ? JSON.parse(opt) : opt);
+                                    return parsed.map((p: any, i: number) => (
+                                      <div key={i} className="flex gap-2 text-sm text-gray-700 bg-white p-2 rounded border border-gray-100 shadow-sm">
+                                        <span className="font-medium">{p?.left || 'Empty'}</span>
+                                        <span className="text-gray-400">→</span>
+                                        <span>{p?.right || 'Empty'}</span>
+                                      </div>
+                                    ));
+                                  }
+                                } catch (e) {
+                                  console.error("Error parsing student answer JSON", e, answer.answer_text);
+                                }
+                                return <p className="text-sm text-gray-700">{answer.answer_text}</p>;
+                              })()}
+                            </div>
                           )}
                           {answer.answer_media_url && answer.answer_media_type === 'image' && (
                             <img src={answer.answer_media_url} alt="Your answer" className="mt-2 max-w-md max-h-48 rounded border" />
@@ -208,12 +237,51 @@ export default function TestResultsPage() {
                       )}
                     </div>
 
-                    {answer.question?.question_type !== 'SHORT_ANSWER' && (
+                    {answer.question?.question_type !== 'SHORT_ANSWER' && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
                       <div className="p-3 bg-green-50 rounded-lg border border-green-100">
                         <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
                         <p className="text-sm text-green-700 font-medium">
                           <MathRenderer text={answer.question?.correct_answer || ''} />
                         </p>
+                      </div>
+                    )}
+                    {answer.question?.question_type === 'MATCH_THE_FOLLOWING' && (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                        <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
+                        <div className="space-y-1 mt-2">
+                          {(() => {
+                            try {
+                              let parsedStr = answer.question?.options || "[]";
+                              if (typeof parsedStr === 'string' && parsedStr.startsWith('"') && parsedStr.endsWith('"')) {
+                                parsedStr = JSON.parse(parsedStr);
+                              }
+                              let parsed = typeof parsedStr === 'string' ? JSON.parse(parsedStr) : parsedStr;
+                              if (typeof parsed === 'string') {
+                                parsed = JSON.parse(parsed);
+                              }
+                              if (Array.isArray(parsed)) {
+                                parsed = parsed.map((opt: any) => {
+                                  if (typeof opt === 'string') {
+                                    try { return JSON.parse(opt); } catch(e) { return opt; }
+                                  }
+                                  return opt;
+                                });
+                                if (parsed.length > 0) {
+                                  return parsed.map((p: any, i: number) => (
+                                    <div key={i} className="flex gap-2 text-sm text-green-700 bg-green-100/50 p-2 rounded border border-green-200">
+                                      <span className="font-medium">{p?.left || 'Empty'}</span>
+                                      <span className="text-green-500/50">→</span>
+                                      <span>{p?.right || 'Empty'}</span>
+                                    </div>
+                                  ));
+                                }
+                              }
+                            } catch (e) {
+                              console.error("Error parsing correct answer JSON", e, answer.question?.options);
+                            }
+                            return <p className="text-sm text-green-700 font-medium">Data missing or failed to parse.</p>;
+                          })()}
+                        </div>
                       </div>
                     )}
                   </div>

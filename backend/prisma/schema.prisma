@@ -424,6 +424,7 @@ enum QuestionType {
   TRUE_FALSE
   SHORT_ANSWER
   LONG_ANSWER
+  MATCH_THE_FOLLOWING
 }
 
 model Question {
@@ -494,7 +495,7 @@ model Answer {
   answer_text       String?
   answer_media_url  String? // URL for uploaded answer media (image/PDF)
   answer_media_type String? // Type: image, pdf
-  marks_obtained    Int?
+  marks_obtained    Float?
   is_correct        Boolean?
   created_at        DateTime    @default(now())
   updated_at        DateTime    @updatedAt

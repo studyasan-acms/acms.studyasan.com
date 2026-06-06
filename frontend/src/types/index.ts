@@ -661,7 +661,7 @@ export interface UpdateProgressData {
 }
 
 // Test module types
-export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER';
+export type QuestionType = 'MCQ' | 'TRUE_FALSE' | 'SHORT_ANSWER' | 'LONG_ANSWER' | 'MATCH_THE_FOLLOWING';
 
 export interface Question {
   id: number;
