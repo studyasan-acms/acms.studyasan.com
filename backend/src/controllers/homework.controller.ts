@@ -853,8 +853,17 @@ export const updateHomework = async (req: Request, res: Response) => {
     });
 
     // Handle re-assigning students if list provided
-    if (assigned_student_ids && Array.isArray(assigned_student_ids)) {
-      const studentIds = assigned_student_ids.map((s: any) => parseInt(s)).filter((n: number) => !isNaN(n));
+    let parsedAssignedStudentIds = assigned_student_ids;
+    if (typeof assigned_student_ids === 'string') {
+      try {
+        parsedAssignedStudentIds = JSON.parse(assigned_student_ids);
+      } catch (e) {
+        console.error('Error parsing assigned_student_ids:', e);
+      }
+    }
+
+    if (parsedAssignedStudentIds && Array.isArray(parsedAssignedStudentIds)) {
+      const studentIds = parsedAssignedStudentIds.map((s: any) => parseInt(s)).filter((n: number) => !isNaN(n));
 
       // Simple approach: delete existing assignments and recreate
       await prisma.$transaction([

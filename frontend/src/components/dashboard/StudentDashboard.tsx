@@ -301,7 +301,7 @@ export default function StudentDashboard() {
         const periodLabel = performancePeriod.charAt(0).toUpperCase() + performancePeriod.slice(1);
         const selectedPeriodData = performanceData?.[performancePeriod] || [];
         const avgScore = selectedPeriodData.length > 0 
-            ? (selectedPeriodData.reduce((sum: number, d: any) => sum + d.score, 0) / selectedPeriodData.length).toFixed(0)
+            ? (selectedPeriodData.reduce((sum: number, d: any) => sum + (d.score || 0), 0) / selectedPeriodData.length || 0).toFixed(0)
             : 0;
         const maxScore = selectedPeriodData.length > 0 
             ? Math.max(...selectedPeriodData.map((d: any) => d.score))
@@ -701,7 +701,7 @@ export default function StudentDashboard() {
                             <p className="text-xs text-blue-600 font-semibold uppercase">Average Score</p>
                             <p className="text-2xl font-bold text-blue-700 mt-1">
                                 {performanceData[performancePeriod]?.length > 0 
-                                    ? (performanceData[performancePeriod].reduce((sum: number, d: any) => sum + d.score, 0) / performanceData[performancePeriod].length).toFixed(0)
+                                    ? (performanceData[performancePeriod].reduce((sum: number, d: any) => sum + (d.score || 0), 0) / performanceData[performancePeriod].length || 0).toFixed(0)
                                     : 0}%
                             </p>
                         </div>

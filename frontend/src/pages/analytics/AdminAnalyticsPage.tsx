@@ -151,7 +151,7 @@ export default function AdminAnalyticsPage() {
                         />
                         <StatCard
                             title="Avg. Test Score"
-                            value={`${(studentsAnalytics.reduce((sum, s) => sum + s.tests.averageScore, 0) / studentsAnalytics.length || 0).toFixed(1)}%`}
+                            value={`${(studentsAnalytics.reduce((sum, s) => sum + (s.tests?.averageScore || 0), 0) / studentsAnalytics.length || 0).toFixed(1)}%`}
                             icon={TrendingUp}
                         />
                         <StatCard
@@ -161,7 +161,7 @@ export default function AdminAnalyticsPage() {
                         />
                         <StatCard
                             title="Total Study Hours"
-                            value={studentsAnalytics.reduce((sum, s) => sum + s.totalHoursSpent, 0).toFixed(1)}
+                            value={studentsAnalytics.reduce((sum, s) => sum + (s.totalHoursSpent || 0), 0).toFixed(1)}
                             icon={GraduationCap}
                         />
                     </div>
@@ -193,9 +193,9 @@ export default function AdminAnalyticsPage() {
                                                     <p className="text-sm text-muted-foreground">{student.studentEmail}</p>
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
-                                                    <Badge>Tests: {student.tests.averageScore.toFixed(1)}%</Badge>
-                                                    <Badge>Activities: {student.activities.played}</Badge>
-                                                    <Badge>Hours: {student.totalHoursSpent.toFixed(1)}h</Badge>
+                                                    <Badge>Tests: {(student.tests?.averageScore || 0).toFixed(1)}%</Badge>
+                                                    <Badge>Activities: {student.activities?.played || 0}</Badge>
+                                                    <Badge>Hours: {(student.totalHoursSpent || 0).toFixed(1)}h</Badge>
                                                 </div>
                                             </div>
                                         </div>

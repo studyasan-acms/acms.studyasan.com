@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { analyticsService } from '@/services/api';
+import { analyticsService, subjectService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import {
@@ -33,19 +33,7 @@ interface StudentAnalytics {
     totalHoursSpent: number;
 }
 
-interface Subject {
-    id: number;
-    name: string;
-    class?: {
-        id: number;
-        name: string;
-    };
-    board?: {
-        id: number;
-        name: string;
-    };
-}
-
+import type { Subject } from '@/types';
 export default function TeacherAnalyticsPage() {
     usePageTitle("Teacher Analytics");
     const [studentsAnalytics, setStudentsAnalytics] = useState<StudentAnalytics[]>([]);
@@ -75,16 +63,8 @@ export default function TeacherAnalyticsPage() {
 
     const fetchSubjects = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subjects`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setSubjects(data);
-            }
+            const response = await subjectService.getAll();
+            setSubjects(response.data?.data || []);
         } catch (error) {
             console.error('Error fetching subjects:', error);
         }
@@ -126,12 +106,12 @@ export default function TeacherAnalyticsPage() {
 
     const totalStudents = studentsAnalytics.length;
     const avgTestScore = studentsAnalytics.length > 0
-        ? studentsAnalytics.reduce((sum, s) => sum + s.tests.averageScore, 0) / studentsAnalytics.length
+        ? studentsAnalytics.reduce((sum, s) => sum + (s.tests?.averageScore || 0), 0) / studentsAnalytics.length
         : 0;
     const avgActivityScore = studentsAnalytics.length > 0
-        ? studentsAnalytics.reduce((sum, s) => sum + s.activities.averageScore, 0) / studentsAnalytics.length
+        ? studentsAnalytics.reduce((sum, s) => sum + (s.activities?.averageScore || 0), 0) / studentsAnalytics.length
         : 0;
-    const totalHoursSpent = studentsAnalytics.reduce((sum, s) => sum + s.totalHoursSpent, 0);
+    const totalHoursSpent = studentsAnalytics.reduce((sum, s) => sum + (s.totalHoursSpent || 0), 0);
 
     const performanceData = studentsAnalytics.map(s => ({
         name: s.studentName.split(' ')[0], // First name only for chart
@@ -176,19 +156,19 @@ export default function TeacherAnalyticsPage() {
                 />
                 <StatCard
                     title="Avg. Test Score"
-                    value={`${avgTestScore.toFixed(1)}%`}
+                    value={`${(avgTestScore || 0).toFixed(1)}%`}
                     icon={Award}
                     description="Across all students"
                 />
                 <StatCard
                     title="Avg. Activity Score"
-                    value={`${avgActivityScore.toFixed(1)}%`}
+                    value={`${(avgActivityScore || 0).toFixed(1)}%`}
                     icon={TrendingUp}
                     description="Across all students"
                 />
                 <StatCard
                     title="Total Study Hours"
-                    value={totalHoursSpent.toFixed(1)}
+                    value={(totalHoursSpent || 0).toFixed(1)}
                     icon={BookOpen}
                     description="Combined student hours"
                 />
@@ -244,19 +224,19 @@ export default function TeacherAnalyticsPage() {
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-sm">
                                             <div>
                                                 <p className="text-muted-foreground">Test Avg.</p>
-                                                <p className="font-semibold">{student.tests.averageScore.toFixed(1)}%</p>
+                                                <p className="font-semibold">{(student.tests?.averageScore || 0).toFixed(1)}%</p>
                                             </div>
                                             <div>
                                                 <p className="text-muted-foreground">Activity Avg.</p>
-                                                <p className="font-semibold">{student.activities.averageScore.toFixed(1)}%</p>
+                                                <p className="font-semibold">{(student.activities?.averageScore || 0).toFixed(1)}%</p>
                                             </div>
                                             <div>
                                                 <p className="text-muted-foreground">Module Progress</p>
-                                                <p className="font-semibold">{student.modules.averageProgress.toFixed(1)}%</p>
+                                                <p className="font-semibold">{(student.modules?.averageProgress || 0).toFixed(1)}%</p>
                                             </div>
                                             <div>
                                                 <p className="text-muted-foreground">Total Hours</p>
-                                                <p className="font-semibold">{student.totalHoursSpent.toFixed(1)}h</p>
+                                                <p className="font-semibold">{(student.totalHoursSpent || 0).toFixed(1)}h</p>
                                             </div>
                                         </div>
                                     </div>

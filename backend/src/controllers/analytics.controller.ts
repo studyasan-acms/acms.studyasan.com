@@ -441,7 +441,10 @@ async function calculateStudentAnalytics(studentId: number) {
 
     const totalTestsAttempted = testAttempts.length;
     const averageTestScore = testAttempts.length > 0
-        ? testAttempts.reduce((sum, attempt) => sum + ((attempt.score || 0) / attempt.total_marks) * 100, 0) / testAttempts.length
+        ? testAttempts.reduce((sum, attempt) => {
+            const totalMarks = attempt.total_marks || 1;
+            return sum + ((attempt.score || 0) / totalMarks) * 100;
+        }, 0) / testAttempts.length
         : 0;
 
     // Activities played
@@ -454,7 +457,10 @@ async function calculateStudentAnalytics(studentId: number) {
 
     const totalActivitiesPlayed = activityAttempts.length;
     const averageActivityScore = activityAttempts.length > 0
-        ? activityAttempts.reduce((sum, attempt) => sum + (attempt.score / attempt.max_score) * 100, 0) / activityAttempts.length
+        ? activityAttempts.reduce((sum, attempt) => {
+            const maxScore = attempt.max_score || 1;
+            return sum + ((attempt.score || 0) / maxScore) * 100;
+        }, 0) / activityAttempts.length
         : 0;
     const totalActivityTime = activityAttempts.reduce((sum, attempt) => sum + (attempt.time_taken || 0), 0) / 3600; // Convert to hours
 
@@ -466,7 +472,7 @@ async function calculateStudentAnalytics(studentId: number) {
     const totalModulesCompleted = moduleProgress.filter(m => m.is_completed).length;
     const totalModules = moduleProgress.length;
     const averageModuleProgress = totalModules > 0
-        ? moduleProgress.reduce((sum, m) => sum + m.progress_percent, 0) / totalModules
+        ? moduleProgress.reduce((sum, m) => sum + (m.progress_percent || 0), 0) / totalModules
         : 0;
     const totalModuleTime = moduleProgress.reduce((sum, m) => sum + m.time_spent_minutes, 0) / 60; // Convert to hours
 

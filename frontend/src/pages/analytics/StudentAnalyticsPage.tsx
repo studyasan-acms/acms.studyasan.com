@@ -114,23 +114,23 @@ export default function StudentAnalyticsPage() {
                     title="Classes Attended"
                     value={analytics.classes.attended}
                     icon={BookOpen}
-                    description={`${analytics.classes.totalHours.toFixed(1)} hours total`}
+                    description={`${(analytics.classes?.totalHours || 0).toFixed(1)} hours total`}
                 />
                 <StatCard
                     title="Tests Attempted"
                     value={analytics.tests.attempted}
                     icon={FileText}
-                    description={`Avg. Score: ${analytics.tests.averageScore.toFixed(1)}%`}
+                    description={`Avg. Score: ${(analytics.tests?.averageScore || 0).toFixed(1)}%`}
                 />
                 <StatCard
                     title="Activities Played"
                     value={analytics.activities.played}
                     icon={Gamepad2}
-                    description={`Avg. Score: ${analytics.activities.averageScore.toFixed(1)}%`}
+                    description={`Avg. Score: ${(analytics.activities?.averageScore || 0).toFixed(1)}%`}
                 />
                 <StatCard
                     title="Total Hours"
-                    value={analytics.totalHoursSpent.toFixed(1)}
+                    value={(analytics.totalHoursSpent || 0).toFixed(1)}
                     icon={Clock}
                     description="Time spent learning"
                 />
@@ -196,19 +196,19 @@ export default function StudentAnalyticsPage() {
                             label: 'Classes Attended',
                             value: analytics.classes.attended,
                             icon: BookOpen,
-                            subtext: `${analytics.classes.totalHours.toFixed(1)} hours`
+                            subtext: `${(analytics.classes?.totalHours || 0).toFixed(1)} hours`
                         },
                         {
                             label: 'Tests Attempted',
                             value: analytics.tests.attempted,
                             icon: FileText,
-                            subtext: `Average: ${analytics.tests.averageScore.toFixed(1)}%`
+                            subtext: `Average: ${(analytics.tests?.averageScore || 0).toFixed(1)}%`
                         },
                         {
                             label: 'Activities Completed',
                             value: analytics.activities.played,
                             icon: Gamepad2,
-                            subtext: `Average: ${analytics.activities.averageScore.toFixed(1)}%`
+                            subtext: `Average: ${(analytics.activities?.averageScore || 0).toFixed(1)}%`
                         }
                     ]}
                 />
@@ -220,7 +220,7 @@ export default function StudentAnalyticsPage() {
                             label: 'Modules Completed',
                             value: `${analytics.modules.completed}/${analytics.modules.total}`,
                             icon: GraduationCap,
-                            subtext: `${moduleCompletionRate.toFixed(1)}% complete`
+                            subtext: `${(moduleCompletionRate || 0).toFixed(1)}% complete`
                         },
                         {
                             label: 'Homework Submitted',
@@ -230,7 +230,7 @@ export default function StudentAnalyticsPage() {
                         },
                         {
                             label: 'Total Study Time',
-                            value: `${analytics.totalHoursSpent.toFixed(1)}h`,
+                            value: `${(analytics.totalHoursSpent || 0).toFixed(1)}h`,
                             icon: Clock,
                             subtext: 'Across all activities'
                         }

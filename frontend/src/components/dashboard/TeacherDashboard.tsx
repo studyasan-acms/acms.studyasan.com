@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
-import { analyticsService, announcementService } from '@/services/api';
+import { analyticsService, announcementService, subjectService } from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -36,11 +36,7 @@ interface StudentAnalytics {
     totalHoursSpent: number;
 }
 
-interface Subject {
-    id: number;
-    name: string;
-}
-
+import type { Subject } from '@/types';
 export default function TeacherDashboard() {
     const [studentsAnalytics, setStudentsAnalytics] = useState<StudentAnalytics[]>([]);
     const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -66,16 +62,8 @@ export default function TeacherDashboard() {
 
     const fetchSubjects = async () => {
         try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/subjects`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setSubjects(data);
-            }
+            const response = await subjectService.getAll();
+            setSubjects(response.data?.data || []);
         } catch (error) {
             console.error('Error fetching subjects:', error);
         }
@@ -126,12 +114,12 @@ export default function TeacherDashboard() {
 
     const totalStudents = studentsAnalytics.length;
     const avgTestScore = studentsAnalytics.length > 0
-        ? studentsAnalytics.reduce((sum, s) => sum + s.tests.averageScore, 0) / studentsAnalytics.length
+        ? studentsAnalytics.reduce((sum, s) => sum + (s.tests?.averageScore || 0), 0) / studentsAnalytics.length
         : 0;
     const avgActivityScore = studentsAnalytics.length > 0
-        ? studentsAnalytics.reduce((sum, s) => sum + s.activities.averageScore, 0) / studentsAnalytics.length
+        ? studentsAnalytics.reduce((sum, s) => sum + (s.activities?.averageScore || 0), 0) / studentsAnalytics.length
         : 0;
-    const totalHoursSpent = studentsAnalytics.reduce((sum, s) => sum + s.totalHoursSpent, 0);
+    const totalHoursSpent = studentsAnalytics.reduce((sum, s) => sum + (s.totalHoursSpent || 0), 0);
 
     const performanceData = studentsAnalytics.map(s => ({
         name: s.studentName.split(' ')[0], // First name only for chart
@@ -217,20 +205,20 @@ export default function TeacherDashboard() {
                         />
                         <StatCard
                             title="Avg. Class Performance"
-                            value={`${avgTestScore.toFixed(1)}%`}
+                            value={`${(avgTestScore || 0).toFixed(1)}%`}
                             icon={Award}
                             className="bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800"
                             description="Based on recent tests"
                         />
                         <StatCard
                             title="Avg. Activity Score"
-                            value={`${avgActivityScore.toFixed(1)}%`}
+                            value={`${(avgActivityScore || 0).toFixed(1)}%`}
                             className="bg-amber-50/50 dark:bg-amber-900/10 border-amber-100 dark:border-amber-800"
                             icon={TrendingUp}
                         />
                         <StatCard
                             title="Total Learning Hours"
-                            value={totalHoursSpent.toFixed(1)}
+                            value={(totalHoursSpent || 0).toFixed(1)}
                             icon={BookOpen}
                             className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
                             description="Cumulative student time"
@@ -275,8 +263,8 @@ export default function TeacherDashboard() {
                                         >
                                             <div className="flex justify-between items-start mb-2">
                                                 <h3 className="font-semibold text-sm">{student.studentName}</h3>
-                                                <Badge variant={student.tests.averageScore > 75 ? "default" : "secondary"} className="text-[10px]">
-                                                    {student.tests.averageScore.toFixed(0)}% Avg
+                                                <Badge variant={(student.tests?.averageScore || 0) > 75 ? "default" : "secondary"} className="text-[10px]">
+                                                    {(student.tests?.averageScore || 0).toFixed(0)}% Avg
                                                 </Badge>
                                             </div>
                                             <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">

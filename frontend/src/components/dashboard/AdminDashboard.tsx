@@ -263,7 +263,7 @@ export default function AdminDashboard() {
                                                 <div className="flex flex-wrap gap-4 mt-4 md:mt-0">
                                                     <div className="text-center">
                                                         <p className="text-xs text-muted-foreground">Tests</p>
-                                                        <p className="font-semibold">{student.tests.averageScore.toFixed(1)}%</p>
+                                                        <p className="font-semibold">{(student.tests?.averageScore || 0).toFixed(1)}%</p>
                                                     </div>
                                                     <div className="text-center">
                                                         <p className="text-xs text-muted-foreground">Activities</p>
@@ -271,7 +271,7 @@ export default function AdminDashboard() {
                                                     </div>
                                                     <div className="text-center">
                                                         <p className="text-xs text-muted-foreground">Hours</p>
-                                                        <p className="font-semibold">{student.totalHoursSpent.toFixed(1)}h</p>
+                                                        <p className="font-semibold">{(student.totalHoursSpent || 0).toFixed(1)}h</p>
                                                     </div>
                                                 </div>
                                             </div>
