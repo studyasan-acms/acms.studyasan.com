@@ -307,11 +307,25 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
       include: { question: true },
     });
 
-    let autoGradedScore = 0;
-    let hasShortAnswers = false;
-    const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
     const isAutograded = (attempt.test as any)?.is_autograded ?? true;
+    let hasShortAnswers = !isAutograded;
+    const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
 
+    if (isAutograded) {
+      const manualQuestionsCount = await prisma.question.count({
+        where: {
+          test_id: attempt.test_id,
+          question_type: {
+            notIn: ['MCQ', 'TRUE_FALSE', 'MATCH_THE_FOLLOWING', 'CASE_STUDY']
+          }
+        }
+      });
+      if (manualQuestionsCount > 0) {
+        hasShortAnswers = true;
+      }
+    }
+
+    let autoGradedScore = 0;
     for (const answer of answers) {
       if (
         isAutograded &&
@@ -706,13 +720,35 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
 
     // Update answer grades
     for (const grade of grades) {
-      await prisma.answer.update({
-        where: { id: grade.answer_id },
-        data: {
-          marks_obtained: grade.marks_obtained,
-          is_correct: grade.is_correct,
-        },
-      });
+      if (grade.answer_id) {
+        await prisma.answer.update({
+          where: { id: grade.answer_id },
+          data: {
+            marks_obtained: grade.marks_obtained,
+            is_correct: grade.is_correct,
+          },
+        });
+      } else if (grade.question_id) {
+        await prisma.answer.upsert({
+          where: {
+            test_attempt_id_question_id: {
+              test_attempt_id: parseInt(attemptId),
+              question_id: grade.question_id,
+            }
+          },
+          update: {
+            marks_obtained: grade.marks_obtained,
+            is_correct: grade.is_correct,
+          },
+          create: {
+            test_attempt_id: parseInt(attemptId),
+            question_id: grade.question_id,
+            marks_obtained: grade.marks_obtained,
+            is_correct: grade.is_correct,
+            answer_text: null,
+          }
+        });
+      }
     }
 
     // Calculate total score

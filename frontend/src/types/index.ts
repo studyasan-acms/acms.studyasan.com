@@ -848,7 +848,8 @@ export interface SubmitAnswerData {
 }
 
 export interface GradeAnswerData {
-  answer_id: number;
+  answer_id?: number;
+  question_id?: number;
   marks_obtained: number;
   is_correct: boolean;
 }

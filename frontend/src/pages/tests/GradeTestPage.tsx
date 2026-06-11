@@ -33,8 +33,9 @@ export default function GradeTestPage() {
       setAttempt(response.data);
       const initialGrades: { [key: number]: GradeAnswerData } = {};
       response.data.answers?.forEach((answer) => {
-        initialGrades[answer.id] = {
+        initialGrades[answer.question_id] = {
           answer_id: answer.id,
+          question_id: answer.question_id,
           marks_obtained: answer.marks_obtained ?? 0,
           is_correct: answer.is_correct ?? false,
         };
@@ -48,12 +49,13 @@ export default function GradeTestPage() {
     }
   };
 
-  const handleGradeChange = (answerId: number, marks: number, maxMarks: number) => {
+  const handleGradeChange = (questionId: number, marks: number, maxMarks: number, answerId?: number) => {
     const validMarks = Math.min(Math.max(0, marks), maxMarks);
     setGrades({
       ...grades,
-      [answerId]: {
+      [questionId]: {
         answer_id: answerId,
+        question_id: questionId,
         marks_obtained: validMarks,
         is_correct: validMarks > 0,
       },
@@ -200,7 +202,7 @@ export default function GradeTestPage() {
               .map((question, index) => {
                 // Find corresponding answer for this question
                 const answer = attempt.answers?.find(a => a.question_id === question.id);
-                const isAutoGraded = question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING';
+                const isAutoGraded = attempt.test?.is_autograded !== false && (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING');
 
                 return (
                   <div key={question.id} className={`p-5 ${question.parent_id ? 'ml-8 border-l-4 border-l-indigo-300 bg-indigo-50/10' : ''}`}>
@@ -373,10 +375,10 @@ export default function GradeTestPage() {
                     <div className={`ml-10 mt-3 p-4 rounded-xl border ${isAutoGraded ? 'bg-gray-50 border-gray-200' : 'bg-blue-50 border-blue-200'}`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          {answer ? (
+                          {answer || !isAutoGraded ? (
                             <div className="flex items-center gap-3">
                               {isAutoGraded ? (
-                                grades[answer.id]?.is_correct ? (
+                                grades[question.id]?.is_correct ? (
                                   <CheckCircle className="w-5 h-5 text-green-500" />
                                 ) : (
                                   <XCircle className="w-5 h-5 text-red-500" />
@@ -391,8 +393,8 @@ export default function GradeTestPage() {
                                 type="number"
                                 min="0"
                                 max={question.marks}
-                                value={grades[answer.id]?.marks_obtained || 0}
-                                onChange={(e) => handleGradeChange(answer.id, parseFloat(e.target.value) || 0, question.marks)}
+                                value={grades[question.id]?.marks_obtained || 0}
+                                onChange={(e) => handleGradeChange(question.id, parseFloat(e.target.value) || 0, question.marks, answer?.id)}
                                 className="w-20 h-8 text-center"
                                 disabled={attempt.is_graded}
                               />
@@ -405,8 +407,8 @@ export default function GradeTestPage() {
                             </div>
                           )}
                         </div>
-                        <Badge variant={answer && grades[answer.id]?.is_correct ? 'default' : 'destructive'} className="text-xs">
-                          {answer ? (grades[answer.id]?.marks_obtained || 0) : 0} / {question.marks}
+                        <Badge variant={grades[question.id]?.is_correct ? 'default' : 'destructive'} className="text-xs">
+                          {grades[question.id]?.marks_obtained || 0} / {question.marks}
                         </Badge>
                       </div>
                     </div>
