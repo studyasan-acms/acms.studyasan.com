@@ -233,55 +233,55 @@ export default function HomeworkDetailPage() {
       {/* Simple Header */}
       <div className="bg-saBlue rounded-2xl p-6 md:p-8 text-white shadow-sm overflow-hidden relative">
         <div className="relative z-10 space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/dashboard/homework')}
-            className="text-white hover:bg-white/10 rounded-lg h-8 px-3 -ml-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
+          <div className="flex justify-between items-center flex-wrap gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate('/dashboard/homework')}
+              className="text-white hover:bg-white/10 rounded-lg h-8 px-3 -ml-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
 
-            <div className="absolute top-6 right-6 flex items-center gap-2">
-              {(isAdmin || isTeacher) && (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => navigate(`/dashboard/homework/${id}/edit`)}
-                    className="text-white hover:bg-white/10 rounded-lg h-8 px-3"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={async () => {
-                      if (!confirm('Delete this assignment? This cannot be undone.')) return;
-                      try {
-                        const resp = await fetch(`/api/homework/${id}`, {
-                          method: 'DELETE',
-                          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                        });
-                        if (resp.ok) {
-                          toast.success('Assignment deleted');
-                          navigate('/dashboard/homework');
-                        } else {
-                          const err = await resp.json();
-                          throw new Error(err.message || 'Delete failed');
-                        }
-                      } catch (error: any) {
-                        toast.error(error.message || 'Failed to delete');
+            {(isAdmin || isTeacher) && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(`/dashboard/homework/${id}/edit`)}
+                  className="text-white hover:bg-white/10 rounded-lg h-8 px-3"
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={async () => {
+                    if (!confirm('Delete this assignment? This cannot be undone.')) return;
+                    try {
+                      const resp = await fetch(`/api/homework/${id}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                      });
+                      if (resp.ok) {
+                        toast.success('Assignment deleted');
+                        navigate('/dashboard/homework');
+                      } else {
+                        const err = await resp.json();
+                        throw new Error(err.message || 'Delete failed');
                       }
-                    }}
-                    className="rounded-lg h-8 px-3"
-                  >
-                    Delete
-                  </Button>
-                </>
-              )}
-            </div>
+                    } catch (error: any) {
+                      toast.error(error.message || 'Failed to delete');
+                    }
+                  }}
+                  className="rounded-lg h-8 px-3"
+                >
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-2">
             <div className="flex flex-wrap gap-2">
