@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Video, MapPin, Clock, Calendar, Users, RefreshCw, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import { Plus, Video, MapPin, Clock, Calendar, Users, RefreshCw, ChevronLeft, ChevronRight, BookOpen, Trash2 } from 'lucide-react';
 import { classSessionService, subjectService, teacherService } from '@/services/api';
 import type { ClassSession, Subject, Teacher } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -41,10 +41,11 @@ export default function ClassSessionsPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
-  const { canCreate, canUpdate } = usePermissions();
+  const { canCreate, canUpdate, canDelete } = usePermissions();
   const canManage = isAdmin || isTeacher;
   const canAddSession = isAdmin || canCreate('classSessions');
   const canEditSession = isAdmin || canUpdate('classSessions');
+  const canDeleteSession = isAdmin || canDelete('classSessions');
 
   const findBoardNameForSubject = (subjectId: number) => {
     const fromSessions = sessions.find((session) => session.subject_id === subjectId && session.board?.name)?.board?.name;
@@ -360,8 +361,24 @@ export default function ClassSessionsPage() {
                   e.stopPropagation();
                   navigate(`/dashboard/class-sessions/${session.id}/edit`);
                 }}
+                title="Edit Session"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
+              </Button>
+            )}
+
+            {canDeleteSession && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="w-10 h-10 rounded-xl border-gray-100 hover:border-red-500 hover:text-red-500 transition-all text-red-500/80"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteSession(session);
+                }}
+                title="Delete Session"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>
