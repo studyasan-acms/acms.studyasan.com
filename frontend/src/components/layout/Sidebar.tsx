@@ -30,6 +30,7 @@ import {
   Briefcase,
   PenTool,
   Bell,
+  Search,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -182,6 +183,7 @@ export default function Sidebar({
 }) {
   const user = useAuthStore((state) => state.user);
   const { hasPermission } = usePermissions();
+  const [searchQuery, setSearchQuery] = useState("");
   const [tooltip, setTooltip] = useState<{ title: string; top: number } | null>(
     null
   );
@@ -207,6 +209,10 @@ export default function Sidebar({
 
     return hasRole;
   });
+
+  const searchedNavItems = filteredNavItems.filter((item) =>
+    item.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <>
@@ -253,12 +259,41 @@ export default function Sidebar({
           </button>
         </div>
 
+        {/* Search */}
+        {!collapsed && (
+          <div className="px-3 py-2 border-b border-saBlueLight bg-saBlueDarkHover/10">
+            <div className="relative flex items-center">
+              <Search className="absolute left-2.5 h-3.5 w-3.5 text-white/50" />
+              <input
+                type="text"
+                placeholder="Search menu..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/15 border border-white/10 focus:border-white/20 text-white rounded-md pl-8 pr-7 py-1 text-xs outline-none transition-all placeholder:text-white/40"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 p-0.5 rounded-full hover:bg-white/10 text-white/50 hover:text-white"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Navigation */}
         <nav
           className="flex-1 px-1 py-2 space-y-1 overflow-y-auto"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.15) transparent" }}
         >
-          {filteredNavItems.map((item, index) => (
+          {searchedNavItems.length === 0 ? (
+            <div className="text-center py-4 text-xs text-white/40">
+              No results found
+            </div>
+          ) : (
+            searchedNavItems.map((item, index) => (
             <div
               key={item.href}
               className="group relative flex items-center"
@@ -317,12 +352,22 @@ export default function Sidebar({
                 )}
               </NavLink>
             </div>
-          ))}
+          )))}
 
           <style>
             {`
               nav::-webkit-scrollbar {
-                display: none;
+                width: 4px;
+              }
+              nav::-webkit-scrollbar-track {
+                background: transparent;
+              }
+              nav::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 4px;
+              }
+              nav::-webkit-scrollbar-thumb:hover {
+                background: rgba(255, 255, 255, 0.3);
               }
             `}
           </style>
