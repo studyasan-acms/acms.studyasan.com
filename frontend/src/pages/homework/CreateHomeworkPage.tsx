@@ -385,26 +385,23 @@ export default function CreateHomeworkPage() {
               <CardContent className="p-4 space-y-5">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Academic Subject *</Label>
-                  <Select value={formData.subject_id} onValueChange={handleSubjectChange}>
-                    <SelectTrigger className="w-full border-gray-100 bg-gray-50 rounded-xl h-10 text-xs font-medium">
-                      <SelectValue placeholder="Select subject" />
-                    </SelectTrigger>
-                    <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-hidden rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
-                      <SearchablePaginatedSelect
-                        pageSize={5}
-                        searchPlaceholder="Search subject..."
-                        options={subjects.map((subject) => {
-                          const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
-                          const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
-                          return {
-                            value: subject.id.toString(),
-                            label: `${subject.name}${classPart}${boardPart}`,
-                            searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`
-                          };
-                        })}
-                      />
-                    </SelectContent>
-                  </Select>
+                  <SearchablePaginatedSelect
+                    value={formData.subject_id}
+                    onValueChange={handleSubjectChange}
+                    placeholder="Select subject"
+                    pageSize={5}
+                    searchPlaceholder="Search subject..."
+                    triggerClassName="w-full border-gray-100 bg-gray-50 rounded-xl h-10 text-xs font-medium"
+                    options={subjects.map((subject) => {
+                      const classPart = subject.class?.name ? ` (${subject.class.name})` : '';
+                      const boardPart = subject.board?.name ? ` [${subject.board.name}]` : '';
+                      return {
+                        value: subject.id.toString(),
+                        label: `${subject.name}${classPart}${boardPart}`,
+                        searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`
+                      };
+                    })}
+                  />
                 </div>
 
                 <div className="space-y-1.5">

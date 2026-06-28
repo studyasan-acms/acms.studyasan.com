@@ -621,20 +621,16 @@ export default function TeacherDetailPage() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Select Subject</Label>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={subjectListLoading ? "Loading..." : "Select a subject"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    <SearchablePaginatedSelect
-                      searchPlaceholder="Search subject..."
-                      options={subjects.map((s) => ({
-                        value: s.id.toString(),
-                        label: `${s.name}${s.class ? ` (${s.class.name})` : ''}`,
-                      }))}
-                    />
-                  </SelectContent>
-                </Select>
+                <SearchablePaginatedSelect
+                  value={selectedSubject}
+                  onValueChange={setSelectedSubject}
+                  placeholder={subjectListLoading ? "Loading..." : "Select a subject"}
+                  searchPlaceholder="Search subject..."
+                  options={subjects.map((s) => ({
+                    value: s.id.toString(),
+                    label: `${s.name}${s.class ? ` (${s.class.name})` : ''}`,
+                  }))}
+                />
               </div>
 
               {assignError && <p className="text-red-500 text-sm">{assignError}</p>}

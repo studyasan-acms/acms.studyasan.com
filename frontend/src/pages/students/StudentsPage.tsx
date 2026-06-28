@@ -181,26 +181,20 @@ export default function StudentsPage() {
 
         {/* Dropdowns Container */}
         <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
-          <Select
+          <SearchablePaginatedSelect
             value={selectedClass || 'all'}
             onValueChange={(value) => {
               setSelectedClass(value === 'all' ? '' : value);
               handleFilterChange();
             }}
-          >
-            <SelectTrigger className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
-              <SelectValue placeholder="All Classes" />
-            </SelectTrigger>
-            <SelectContent>
-              <SearchablePaginatedSelect
-                searchPlaceholder="Search class..."
-                options={[
-                  { value: 'all', label: 'All Classes' },
-                  ...classes.map((c) => ({ value: String(c.id), label: c.name })),
-                ]}
-              />
-            </SelectContent>
-          </Select>
+            placeholder="All Classes"
+            searchPlaceholder="Search class..."
+            triggerClassName="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 min-w-[140px]"
+            options={[
+              { value: 'all', label: 'All Classes' },
+              ...classes.map((c) => ({ value: String(c.id), label: c.name })),
+            ]}
+          />
 
           <select
             value={selectedBoard}

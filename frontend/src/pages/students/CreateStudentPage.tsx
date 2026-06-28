@@ -413,20 +413,14 @@ export default function CreateStudentPage() {
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
                 <FormLabel icon={BookOpen}>Class</FormLabel>
-                <Select
+                <SearchablePaginatedSelect
                   value={formData.class_id?.toString() || ''}
                   onValueChange={(value) => handleChange('class_id', parseInt(value))}
-                >
-                  <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
-                    <SelectValue placeholder="Select Class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SearchablePaginatedSelect
-                      searchPlaceholder="Search class..."
-                      options={classes.map((cls) => ({ value: cls.id.toString(), label: cls.name }))}
-                    />
-                  </SelectContent>
-                </Select>
+                  placeholder="Select Class"
+                  searchPlaceholder="Search class..."
+                  triggerClassName="h-11 rounded-xl bg-gray-50 border-gray-200"
+                  options={classes.map((cls) => ({ value: cls.id.toString(), label: cls.name }))}
+                />
               </div>
 
               <div className="space-y-2">

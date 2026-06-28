@@ -126,24 +126,21 @@ export default function TeacherAnalyticsPage() {
                     <h1 className="text-3xl font-bold">Student Analytics</h1>
                     <p className="text-muted-foreground">Monitor your students' progress and performance</p>
                 </div>
-                <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                    <SelectTrigger className="w-full md:w-[250px]">
-                        <SelectValue placeholder="Filter by subject" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SearchablePaginatedSelect
-                            searchPlaceholder="Search subject..."
-                            options={[
-                                { value: 'all', label: 'All Subjects' },
-                                ...subjects.map((subject) => ({
-                                    value: subject.id.toString(),
-                                    label: formatSubjectFilterLabel(subject),
-                                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
-                                })),
-                            ]}
-                        />
-                    </SelectContent>
-                </Select>
+                <SearchablePaginatedSelect
+                    value={selectedSubject}
+                    onValueChange={setSelectedSubject}
+                    placeholder="Filter by subject"
+                    searchPlaceholder="Search subject..."
+                    triggerClassName="w-full md:w-[250px]"
+                    options={[
+                        { value: 'all', label: 'All Subjects' },
+                        ...subjects.map((subject) => ({
+                            value: subject.id.toString(),
+                            label: formatSubjectFilterLabel(subject),
+                            searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
+                        })),
+                    ]}
+                />
             </div>
 
             {/* Overview Cards */}

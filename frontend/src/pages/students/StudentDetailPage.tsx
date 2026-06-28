@@ -555,15 +555,14 @@ export default function StudentDetailPage() {
 
               <div className="space-y-4">
                 <Label className="text-xs font-bold uppercase text-gray-500 tracking-wider">Subject</Label>
-                <Select value={selectedSubjectId?.toString() || ""} onValueChange={(value) => setSelectedSubjectId(parseInt(value))}>
-                  <SelectTrigger className="h-12 rounded-xl border-gray-200 bg-gray-50"><SelectValue placeholder="Choose Subject" /></SelectTrigger>
-                  <SelectContent>
-                    <SearchablePaginatedSelect
-                      searchPlaceholder="Search subject..."
-                      options={subjects.map((s) => ({ value: s.id.toString(), label: s.name }))}
-                    />
-                  </SelectContent>
-                </Select>
+                <SearchablePaginatedSelect
+                  value={selectedSubjectId?.toString() || ""}
+                  onValueChange={(value) => setSelectedSubjectId(parseInt(value))}
+                  placeholder="Choose Subject"
+                  searchPlaceholder="Search subject..."
+                  triggerClassName="h-12 rounded-xl border-gray-200 bg-gray-50"
+                  options={subjects.map((s) => ({ value: s.id.toString(), label: s.name }))}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-8">

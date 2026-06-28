@@ -500,27 +500,21 @@ export default function ClassSessionsPage() {
       {/* ULTRA-COMPACT FILTERS - One Line */}
       <div className="flex flex-wrap items-center gap-2 bg-gray-50/50 p-1.5 rounded-2xl border border-gray-100">
           <div className="flex-1 min-w-[120px] relative">
-            <Select
+            <SearchablePaginatedSelect
               value={selectedSubject ? String(selectedSubject) : 'all'}
               onValueChange={(value) => setSelectedSubject(value === 'all' ? null : parseInt(value))}
-            >
-              <SelectTrigger className="w-full h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 focus:ring-2 focus:ring-saBlue/5">
-                <SelectValue placeholder="Subject: All" />
-              </SelectTrigger>
-              <SelectContent>
-                <SearchablePaginatedSelect
-                  searchPlaceholder="Search subject..."
-                  options={[
-                    { value: 'all', label: 'Subject: All' },
-                    ...subjects.map((subject) => ({
-                      value: String(subject.id),
-                      label: formatSubjectFilterLabel(subject),
-                      searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
-                    })),
-                  ]}
-                />
-              </SelectContent>
-            </Select>
+              placeholder="Subject: All"
+              searchPlaceholder="Search subject..."
+              triggerClassName="w-full h-9 pl-3 pr-8 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold uppercase tracking-wider text-gray-600 focus:ring-2 focus:ring-saBlue/5"
+              options={[
+                { value: 'all', label: 'Subject: All' },
+                ...subjects.map((subject) => ({
+                  value: String(subject.id),
+                  label: formatSubjectFilterLabel(subject),
+                  searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
+                })),
+              ]}
+            />
           </div>
 
           <div className="flex-1 min-w-[120px] relative">
