@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Search, Eye, Trash2, Users, BookOpen } from "lucide-react";
+import { Plus, Search, Eye, Trash2, Users, BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   enrollmentService,
   studentService,
@@ -40,7 +40,6 @@ const EnrollmentsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState("SUBJECT");
 
   // Subject Enrollments State
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
 
@@ -59,6 +58,8 @@ const EnrollmentsPage: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [selectedEnrollment, setSelectedEnrollment] =
@@ -74,39 +75,42 @@ const EnrollmentsPage: React.FC = () => {
 
 
   // Unified fetch
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await enrollmentService.getAll({
+        page: currentPage,
+        limit,
+        type: activeTab, // backend expects SUBJECT, TEST_SERIES, ACTIVITY_GROUP
+        search: searchTerm
+      });
+
+      // Map to a display format if needed, or use directly
+      const mappedData = res.data.data.map(e => ({
+        id: e.id,
+        type: e.type,
+        student_name: e.student.user.name,
+        student_email: e.student.user.email,
+        student: e.student,
+        // Determine item name based on type
+        item_name: e.subject?.name || e.test_series?.title || e.activity_group?.name || 'Unknown Item',
+        enrolled_at: e.created_on,
+        original: e
+      }));
+
+      setAllEnrollments(mappedData);
+      setTotalPages(res.data.pagination.totalPages);
+      setTotal(res.data.pagination.total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, searchTerm, currentPage, limit]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const res = await enrollmentService.getAll({
-          limit: 100,
-          type: activeTab, // backend expects SUBJECT, TEST_SERIES, ACTIVITY_GROUP
-          search: searchTerm
-        });
-
-        // Map to a display format if needed, or use directly
-        const mappedData = res.data.data.map(e => ({
-          id: e.id,
-          type: e.type,
-          student_name: e.student.user.name,
-          student_email: e.student.user.email,
-          student: e.student,
-          // Determine item name based on type
-          item_name: e.subject?.name || e.test_series?.title || e.activity_group?.name || 'Unknown Item',
-          enrolled_at: e.created_on,
-          original: e
-        }));
-
-        setAllEnrollments(mappedData);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [activeTab, searchTerm]);
+  }, [fetchData]);
 
   const handleDeleteClick = (item: any) => {
     setSelectedEnrollment(item.original);
@@ -119,11 +123,9 @@ const EnrollmentsPage: React.FC = () => {
       const enrollmentId = selectedEnrollment.id;
       await enrollmentService.delete(enrollmentId);
 
-      // Update the list of displayed enrollments
-      setAllEnrollments((prev) => prev.filter((e) => e.id !== enrollmentId));
-
       setDeleteModalOpen(false);
       setSelectedEnrollment(null);
+      fetchData();
     } catch (error) {
       console.error("Error deleting enrollment:", error);
     }
@@ -136,7 +138,7 @@ const EnrollmentsPage: React.FC = () => {
       day: "numeric",
     });
 
-  if (loading && enrollments.length === 0) {
+  if (loading && allEnrollments.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -203,7 +205,7 @@ const EnrollmentsPage: React.FC = () => {
                   variant={activeTab === 'SUBJECT' ? 'default' : 'ghost'}
                   size="sm"
                   className={`text-xs rounded-xl ${activeTab === 'SUBJECT' ? 'bg-saBlue text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-                  onClick={() => setActiveTab('SUBJECT')}
+                  onClick={() => { setActiveTab('SUBJECT'); setCurrentPage(1); }}
                 >
                   Subjects
                 </Button>
@@ -211,7 +213,7 @@ const EnrollmentsPage: React.FC = () => {
                   variant={activeTab === 'TEST_SERIES' ? 'default' : 'ghost'}
                   size="sm"
                   className={`text-xs rounded-xl ${activeTab === 'TEST_SERIES' ? 'bg-saBlue text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-                  onClick={() => setActiveTab('TEST_SERIES')}
+                  onClick={() => { setActiveTab('TEST_SERIES'); setCurrentPage(1); }}
                 >
                   Test Series
                 </Button>
@@ -219,7 +221,7 @@ const EnrollmentsPage: React.FC = () => {
                   variant={activeTab === 'ACTIVITY_GROUP' ? 'default' : 'ghost'}
                   size="sm"
                   className={`text-xs rounded-xl ${activeTab === 'ACTIVITY_GROUP' ? 'bg-saBlue text-white' : 'text-gray-600 hover:bg-gray-200'}`}
-                  onClick={() => setActiveTab('ACTIVITY_GROUP')}
+                  onClick={() => { setActiveTab('ACTIVITY_GROUP'); setCurrentPage(1); }}
                 >
                   Activity Groups
                 </Button>
@@ -232,7 +234,10 @@ const EnrollmentsPage: React.FC = () => {
                 type="text"
                 placeholder="Search enrollments..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
               />
             </div>
@@ -309,7 +314,34 @@ const EnrollmentsPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Pagination removed for now as we are doing client side mixing or need unified endpoint */}
+          {/* Pagination Styled */}
+          {allEnrollments.length > 0 && (
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                {Math.min(currentPage * limit, total)} of {total} Enrollments
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                  className="h-8 text-xs font-medium rounded-lg"
+                >
+                  <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  className="h-8 text-xs font-medium rounded-lg"
+                >
+                  Next <ChevronRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
 
           <DeleteConfirmationModal
             open={deleteModalOpen}

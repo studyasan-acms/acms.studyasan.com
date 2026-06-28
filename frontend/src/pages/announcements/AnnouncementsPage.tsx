@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { usePermissions } from '@/hooks/usePermissions';
-import { announcementService } from '@/services/api';
+import {
+  announcementService,
+  boardService,
+  classService,
+  subjectService,
+  activityGroupService,
+} from '@/services/api';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { MultiSelect } from '@/components/ui/multiSelect';
+import type { Board, Class, Subject, ActivityGroup } from '@/types';
 
 interface Announcement {
   id: number;
@@ -39,14 +47,20 @@ export default function AnnouncementsPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [currentId, setCurrentId] = useState<number | null>(null);
 
+  // Master data states
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [groups, setGroups] = useState<ActivityGroup[]>([]);
+
   // Form state
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [targetRoles, setTargetRoles] = useState<string[]>([]);
-  const [targetBoardsStr, setTargetBoardsStr] = useState('');
-  const [targetClassesStr, setTargetClassesStr] = useState('');
-  const [targetSubjectsStr, setTargetSubjectsStr] = useState('');
-  const [targetGroupsStr, setTargetGroupsStr] = useState('');
+  const [targetBoards, setTargetBoards] = useState<number[]>([]);
+  const [targetClasses, setTargetClasses] = useState<number[]>([]);
+  const [targetSubjects, setTargetSubjects] = useState<number[]>([]);
+  const [targetGroups, setTargetGroups] = useState<number[]>([]);
 
   const canManage =
     user?.role === 'ADMIN' ||
@@ -65,17 +79,36 @@ export default function AnnouncementsPage() {
   };
 
   useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const [boardsRes, classesRes, subjectsRes, groupsRes] = await Promise.all([
+          boardService.getAll({ limit: 1000 }),
+          classService.getAll({ limit: 1000 }),
+          subjectService.getAll({ limit: 1000 }),
+          activityGroupService.getAll({ limit: 1000 }),
+        ]);
+
+        setBoards(boardsRes.data?.data || []);
+        setClasses(classesRes.data?.data || []);
+        setSubjects(subjectsRes.data?.data || []);
+        setGroups(groupsRes.data?.activityGroups || []);
+      } catch (error) {
+        console.error('Failed to fetch targeting options data:', error);
+      }
+    };
+
     fetchAnnouncements();
+    fetchMasterData();
   }, []);
 
   const resetForm = () => {
     setTitle('');
     setContent('');
     setTargetRoles([]);
-    setTargetBoardsStr('');
-    setTargetClassesStr('');
-    setTargetSubjectsStr('');
-    setTargetGroupsStr('');
+    setTargetBoards([]);
+    setTargetClasses([]);
+    setTargetSubjects([]);
+    setTargetGroups([]);
     setIsEditing(false);
     setCurrentId(null);
   };
@@ -90,10 +123,10 @@ export default function AnnouncementsPage() {
     setTitle(a.title);
     setContent(a.content);
     setTargetRoles(a.target_roles || []);
-    setTargetBoardsStr(a.target_boards?.join(', ') || '');
-    setTargetClassesStr(a.target_classes?.join(', ') || '');
-    setTargetSubjectsStr(a.target_subjects?.join(', ') || '');
-    setTargetGroupsStr(a.target_groups?.join(', ') || '');
+    setTargetBoards(a.target_boards || []);
+    setTargetClasses(a.target_classes || []);
+    setTargetSubjects(a.target_subjects || []);
+    setTargetGroups(a.target_groups || []);
     setIsEditing(true);
     setCurrentId(a.id);
     setIsModalOpen(true);
@@ -110,14 +143,6 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const parseNumberList = (str: string) => {
-    if (!str.trim()) return null;
-    return str
-      .split(',')
-      .map((s) => parseInt(s.trim()))
-      .filter((n) => !isNaN(n));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content) {
@@ -129,10 +154,10 @@ export default function AnnouncementsPage() {
       title,
       content,
       target_roles: targetRoles.length > 0 ? targetRoles : null,
-      target_boards: parseNumberList(targetBoardsStr),
-      target_classes: parseNumberList(targetClassesStr),
-      target_subjects: parseNumberList(targetSubjectsStr),
-      target_groups: parseNumberList(targetGroupsStr),
+      target_boards: targetBoards.length > 0 ? targetBoards : null,
+      target_classes: targetClasses.length > 0 ? targetClasses : null,
+      target_subjects: targetSubjects.length > 0 ? targetSubjects : null,
+      target_groups: targetGroups.length > 0 ? targetGroups : null,
     };
 
     try {
@@ -267,22 +292,25 @@ export default function AnnouncementsPage() {
                     ) : null}
                     {a.target_boards?.length ? (
                       <span className="bg-gray-100 px-2 py-1 rounded break-all">
-                        Boards: {a.target_boards.join(', ')}
+                        Boards: {a.target_boards.map(id => boards.find(b => b.id === id)?.name || id).join(', ')}
                       </span>
                     ) : null}
                     {a.target_classes?.length ? (
                       <span className="bg-gray-100 px-2 py-1 rounded break-all">
-                        Classes: {a.target_classes.join(', ')}
+                        Classes: {a.target_classes.map(id => classes.find(c => c.id === id)?.name || id).join(', ')}
                       </span>
                     ) : null}
                     {a.target_subjects?.length ? (
                       <span className="bg-gray-100 px-2 py-1 rounded break-all">
-                        Subjects: {a.target_subjects.join(', ')}
+                        Subjects: {a.target_subjects.map(id => {
+                          const sub = subjects.find(s => s.id === id);
+                          return sub ? `${sub.name}${sub.class?.name ? ` (${sub.class.name})` : ''}` : id;
+                        }).join(', ')}
                       </span>
                     ) : null}
                     {a.target_groups?.length ? (
                       <span className="bg-gray-100 px-2 py-1 rounded break-all">
-                        Groups: {a.target_groups.join(', ')}
+                        Groups: {a.target_groups.map(id => groups.find(g => g.id === id)?.name || id).join(', ')}
                       </span>
                     ) : null}
                   </div>
@@ -331,8 +359,7 @@ export default function AnnouncementsPage() {
                 Targeting Options (Optional)
               </h3>
               <p className="text-xs text-gray-500 mb-3">
-                Leave blank to send to everyone. For IDs, enter comma-separated
-                numbers (e.g., 1, 2, 3).
+                Leave blank to send to everyone.
               </p>
 
               <div className="space-y-3">
@@ -363,46 +390,53 @@ export default function AnnouncementsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Target Board IDs
+                      Target Boards
                     </label>
-                    <Input
-                      value={targetBoardsStr}
-                      onChange={(e) => setTargetBoardsStr(e.target.value)}
-                      placeholder="e.g. 1, 2"
-                      className="text-sm"
+                    <MultiSelect
+                      options={boards.map((b) => ({ value: b.id, label: b.name }))}
+                      selectedValues={targetBoards}
+                      onSelectChange={setTargetBoards}
+                      placeholder="Select Target Boards"
+                      searchPlaceholder="Search boards..."
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Target Class IDs
+                      Target Classes
                     </label>
-                    <Input
-                      value={targetClassesStr}
-                      onChange={(e) => setTargetClassesStr(e.target.value)}
-                      placeholder="e.g. 5, 6"
-                      className="text-sm"
+                    <MultiSelect
+                      options={classes.map((c) => ({ value: c.id, label: c.name }))}
+                      selectedValues={targetClasses}
+                      onSelectChange={setTargetClasses}
+                      placeholder="Select Target Classes"
+                      searchPlaceholder="Search classes..."
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Target Subject IDs
+                      Target Subjects
                     </label>
-                    <Input
-                      value={targetSubjectsStr}
-                      onChange={(e) => setTargetSubjectsStr(e.target.value)}
-                      placeholder="e.g. 10, 11"
-                      className="text-sm"
+                    <MultiSelect
+                      options={subjects.map((s) => ({
+                        value: s.id,
+                        label: `${s.name}${s.class?.name ? ` (${s.class.name})` : ''}`,
+                      }))}
+                      selectedValues={targetSubjects}
+                      onSelectChange={setTargetSubjects}
+                      placeholder="Select Target Subjects"
+                      searchPlaceholder="Search subjects..."
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Target Group IDs
+                      Target Groups
                     </label>
-                    <Input
-                      value={targetGroupsStr}
-                      onChange={(e) => setTargetGroupsStr(e.target.value)}
-                      placeholder="e.g. 3, 4"
-                      className="text-sm"
+                    <MultiSelect
+                      options={groups.map((g) => ({ value: g.id, label: g.name }))}
+                      selectedValues={targetGroups}
+                      onSelectChange={setTargetGroups}
+                      placeholder="Select Target Groups"
+                      searchPlaceholder="Search groups..."
                     />
                   </div>
                 </div>
