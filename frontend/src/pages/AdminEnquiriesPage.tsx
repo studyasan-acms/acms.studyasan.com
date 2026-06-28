@@ -17,8 +17,15 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trash2, Filter } from 'lucide-react';
+import { Loader2, Trash2, Filter, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/components/ui/dialog';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,6 +60,7 @@ export default function AdminEnquiriesPage() {
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState<any>(null);
     const [deleteId, setDeleteId] = useState<number | null>(null);
+    const [selectedEnquiry, setSelectedEnquiry] = useState<any | null>(null);
 
     const fetchEnquiries = useCallback(async () => {
         try {
@@ -202,8 +210,19 @@ export default function AdminEnquiriesPage() {
                                             '-'
                                         )}
                                     </TableCell>
-                                    <TableCell className="max-w-xs truncate">
-                                        {enquiry.message || '-'}
+                                    <TableCell>
+                                        <div 
+                                            className="max-w-xs truncate cursor-pointer text-gray-700 hover:text-saBlue hover:underline flex items-center gap-1"
+                                            onClick={() => setSelectedEnquiry(enquiry)}
+                                            title="Click to view full message"
+                                        >
+                                            {enquiry.message ? (
+                                                <>
+                                                    <Eye className="w-3 h-3 flex-shrink-0" />
+                                                    <span className="truncate">{enquiry.message}</span>
+                                                </>
+                                            ) : '-'}
+                                        </div>
                                     </TableCell>
                                     <TableCell>
                                         <Select
@@ -289,6 +308,52 @@ export default function AdminEnquiriesPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            {/* Full Enquiry Details Dialog */}
+            <Dialog open={!!selectedEnquiry} onOpenChange={(open) => !open && setSelectedEnquiry(null)}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle>Enquiry Details</DialogTitle>
+                        <DialogDescription>
+                            Full information for the enquiry submitted by {selectedEnquiry?.student_name}
+                        </DialogDescription>
+                    </DialogHeader>
+                    {selectedEnquiry && (
+                        <div className="space-y-4 mt-2 text-sm text-gray-700">
+                            <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Student Name</span>
+                                    {selectedEnquiry.student_name}
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Contact</span>
+                                    {selectedEnquiry.student_email}<br/>
+                                    {selectedEnquiry.student_phone}
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Interested In</span>
+                                    {selectedEnquiry.item_name} <Badge variant="outline" className="ml-1 text-[10px] py-0">{typeLabels[selectedEnquiry.item_type as keyof typeof typeLabels]}</Badge>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-900 block mb-1">Date Submitted</span>
+                                    {new Date(selectedEnquiry.created_at).toLocaleString()}
+                                </div>
+                                {selectedEnquiry.coupon_code && (
+                                    <div className="col-span-2">
+                                        <span className="font-semibold text-gray-900 block mb-1">Applied Coupon</span>
+                                        {selectedEnquiry.coupon_code} ({selectedEnquiry.discount_type === 'PERCENTAGE' ? `${selectedEnquiry.discount_value}%` : `Flat ${selectedEnquiry.discount_value}`})
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <span className="font-semibold text-gray-900 block mb-2">Message:</span>
+                                <div className="bg-white border border-gray-200 rounded-lg p-4 whitespace-pre-wrap min-h-[100px] max-h-[300px] overflow-y-auto">
+                                    {selectedEnquiry.message || <span className="text-gray-400 italic">No message provided.</span>}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

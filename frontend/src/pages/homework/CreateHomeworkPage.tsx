@@ -152,7 +152,7 @@ export default function CreateHomeworkPage() {
     if (!iso) return "";
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export default function CreateHomeworkPage() {
           Back
         </Button>
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{id ? 'Edit Assignment' : 'Create Assignment'}</h1>
-      <p className="text-gray-500 text-sm">{id ? 'Update assignment details and reassign students.' : 'Fill in the details to publish new work for your students.'}</p>
+        <p className="text-gray-500 text-sm">{id ? 'Update assignment details and reassign students.' : 'Fill in the details to publish new work for your students.'}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -296,7 +296,7 @@ export default function CreateHomeworkPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="description" className="text-xs font-bold text-gray-700">Instructions</Label>
+                  <Label htmlFor="description" className="text-xs font-bold text-gray-700">Homework</Label>
                   <Textarea
                     id="description"
                     placeholder="What should students do?..."
@@ -344,13 +344,13 @@ export default function CreateHomeworkPage() {
                         key={student.id}
                         onClick={() => handleStudentToggle(student.id)}
                         className={`flex items-center space-x-3 p-3 rounded-xl border transition-all cursor-pointer ${selectedStudents.includes(student.id)
-                            ? "bg-blue-50 border-saBlue/20"
-                            : "bg-white border-gray-50 hover:border-gray-200"
+                          ? "bg-blue-50 border-saBlue/20"
+                          : "bg-white border-gray-50 hover:border-gray-200"
                           }`}
                       >
                         <div className={`h-4 w-4 rounded flex items-center justify-center border transition-colors ${selectedStudents.includes(student.id)
-                            ? "bg-saBlue border-saBlue text-white"
-                            : "bg-white border-gray-300"
+                          ? "bg-saBlue border-saBlue text-white"
+                          : "bg-white border-gray-300"
                           }`}>
                           {selectedStudents.includes(student.id) && <Check className="h-2.5 w-2.5" />}
                         </div>

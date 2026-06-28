@@ -58,7 +58,7 @@ export default function RichTextEditor({
   id,
 }: RichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const lastValueRef = useRef<string>(value);
+  const lastValueRef = useRef<string | null>(null);
   const [isSuperActive, setIsSuperActive] = useState(false);
   const [isSubActive, setIsSubActive] = useState(false);
 

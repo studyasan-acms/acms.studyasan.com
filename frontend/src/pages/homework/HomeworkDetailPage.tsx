@@ -320,7 +320,7 @@ export default function HomeworkDetailPage() {
             <CardHeader className="p-5 pb-3 border-b border-gray-50 flex flex-row items-center justify-between">
               <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
                 <FileSearch className="h-5 w-5 text-saBlue" />
-                Instructions
+                Homework
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
@@ -489,7 +489,7 @@ export default function HomeworkDetailPage() {
                         <Upload className="h-4 w-4 mr-2" />
                         {responseFiles.length > 0 ? `${responseFiles.length} file(s) selected` : "Attach files"}
                       </Button>
-                      
+
                       {responseFiles.length > 0 && (
                         <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
                           <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Selected files:</p>
@@ -515,7 +515,7 @@ export default function HomeworkDetailPage() {
                           </div>
                         </div>
                       )}
-                      
+
                       <Button
                         type="submit"
                         disabled={submitting}
@@ -674,17 +674,17 @@ export default function HomeworkDetailPage() {
             </div>
             <div className="space-y-2">
               <Label className="font-bold text-gray-800 text-sm">Return Files (Optional)</Label>
-              <Input 
-                type="file" 
+              <Input
+                type="file"
                 id="feedback-file-input"
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
                   setFeedbackFiles([...feedbackFiles, ...files]);
                 }}
                 multiple
-                className="rounded-xl border-gray-100 text-xs" 
+                className="rounded-xl border-gray-100 text-xs"
               />
-              
+
               {feedbackFiles.length > 0 && (
                 <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
                   <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Selected files:</p>
@@ -713,12 +713,12 @@ export default function HomeworkDetailPage() {
             </div>
           </div>
           <DialogFooter className="p-6 bg-gray-50 flex items-center justify-end gap-2">
-            <Button 
-              variant="ghost" 
+            <Button
+              variant="ghost"
               onClick={() => {
                 setFeedbackModalOpen(false);
                 setFeedbackFiles([]);
-              }} 
+              }}
               className="rounded-xl font-bold text-xs"
             >
               Cancel

@@ -61,6 +61,11 @@ interface QuestionTemplateRow {
   question_type: QuestionType;
   count: number;
   marks: number;
+  caseSubQuestions?: {
+    MCQ: number;
+    TRUE_FALSE: number;
+    SHORT_ANSWER: number;
+  };
 }
 
 function generateId() {
@@ -144,6 +149,7 @@ export default function CreateTestPage() {
     { question_type: "SHORT_ANSWER", count: 0, marks: 2 },
     { question_type: "LONG_ANSWER", count: 0, marks: 5 },
     { question_type: "MATCH_THE_FOLLOWING", count: 0, marks: 5 },
+    { question_type: "CASE_STUDY", count: 0, marks: 1, caseSubQuestions: { MCQ: 0, TRUE_FALSE: 0, SHORT_ANSWER: 0 } },
   ]);
   const [templateReplaceOpen, setTemplateReplaceOpen] = useState(false);
 
@@ -324,8 +330,21 @@ export default function CreateTestPage() {
     isSaved: false,
   });
 
-  const templateQuestionCount = templateRows.reduce((sum, row) => sum + Math.max(0, row.count), 0);
-  const templateTotalMarks = templateRows.reduce((sum, row) => sum + Math.max(0, row.count) * Math.max(0, row.marks), 0);
+  const templateQuestionCount = templateRows.reduce((sum, row) => {
+    if (row.question_type === "CASE_STUDY") {
+      const subTotal = Object.values(row.caseSubQuestions || {}).reduce((a, b) => a + b, 0);
+      return sum + Math.max(0, row.count) * (1 + subTotal);
+    }
+    return sum + Math.max(0, row.count);
+  }, 0);
+  
+  const templateTotalMarks = templateRows.reduce((sum, row) => {
+    if (row.question_type === "CASE_STUDY") {
+      const subTotal = Object.values(row.caseSubQuestions || {}).reduce((a, b) => a + b, 0);
+      return sum + Math.max(0, row.count) * subTotal * Math.max(0, row.marks);
+    }
+    return sum + Math.max(0, row.count) * Math.max(0, row.marks);
+  }, 0);
 
   const applyQuestionTemplate = () => {
     if (!testId) {
@@ -344,7 +363,7 @@ export default function CreateTestPage() {
     const newTotal = currentMarks + templateTotalMarks;
     
     if (newTotal > formData.total_marks) {
-      setErrorMessage(`Adding this template (${templateTotalMarks} marks) to existing questions (${currentMarks} marks) exceeds the test total marks (${formData.total_marks}).`);
+      setErrorMessage(`Adding this template (${templateTotalMarks} marks) to existing questions (${currentMarks} marks) = ${newTotal} marks, which exceeds the test total marks (${formData.total_marks}).`);
       setErrorOpen(true);
       return;
     }
@@ -354,7 +373,25 @@ export default function CreateTestPage() {
       const safeCount = Math.max(0, row.count);
       const safeMarks = Math.max(0, row.marks);
       for (let index = 0; index < safeCount; index += 1) {
-        nextQuestions.push(createTemplateQuestion(row.question_type, safeMarks));
+        if (row.question_type === "CASE_STUDY") {
+          const parentId = generateId();
+          nextQuestions.push({
+            ...createTemplateQuestion("CASE_STUDY", 0),
+            id: parentId,
+          });
+          if (row.caseSubQuestions) {
+            Object.entries(row.caseSubQuestions).forEach(([type, subCount]) => {
+              const safeSubCount = Math.max(0, subCount);
+              for (let j = 0; j < safeSubCount; j++) {
+                const subQ = createTemplateQuestion(type as QuestionType, safeMarks);
+                subQ.parent_id = parentId;
+                nextQuestions.push(subQ);
+              }
+            });
+          }
+        } else {
+          nextQuestions.push(createTemplateQuestion(row.question_type, safeMarks));
+        }
       }
     });
 
@@ -387,6 +424,13 @@ export default function CreateTestPage() {
       setErrorOpen(true);
       return;
     }
+
+    if (localQ.parent_id && isNaN(Number(localQ.parent_id))) {
+      setErrorMessage("Please save the parent Case Study first. Sub-questions cannot be saved until their parent is saved.");
+      setErrorOpen(true);
+      return;
+    }
+
     try {
       setLoading(true);
       const fd = new FormData();
@@ -431,8 +475,19 @@ export default function CreateTestPage() {
         response = await testService.addQuestionWithMedia(testId, fd);
       }
 
-      // Mark as saved
-      setQuestions(prev => prev.map(q => q.id === localQ.id ? { ...q, isSaved: true, isCollapsed: localQ.question_type !== "CASE_STUDY", backendId: localQ.backendId ?? response.data?.id } : q));
+      const newBackendId = localQ.backendId ?? response.data?.id;
+
+      // Mark as saved and update children if this is a parent Case Study
+      setQuestions(prev => prev.map(q => {
+        if (q.id === localQ.id) {
+          return { ...q, isSaved: true, isCollapsed: localQ.question_type !== "CASE_STUDY", backendId: newBackendId };
+        }
+        if (q.parent_id === localQ.id) {
+          return { ...q, parent_id: newBackendId.toString() };
+        }
+        return q;
+      }));
+
       setSuccessMessage("Question saved!");
       setSuccessOpen(true);
     } catch (error) {
@@ -615,7 +670,7 @@ export default function CreateTestPage() {
   };
 
   const totalQuestionsMarks = questions.reduce((sum, q) => sum + q.marks, 0);
-  const canFinish = questions.length > 0 && totalQuestionsMarks === formData.total_marks && questions.every((q) => q.isSaved);
+  const canFinish = questions.length > 0 && questions.every((q) => q.isSaved);
 
   return (
     <div className="space-y-6 p-1 sm:p-4 pb-20">
@@ -718,43 +773,94 @@ export default function CreateTestPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">
             <div className="grid grid-cols-12 gap-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-              <span className="col-span-5">Question Type</span>
-              <span className="col-span-3 text-right">Count</span>
+              <span className="col-span-4">Question Type</span>
+              <span className="col-span-4 text-center">Count & Type</span>
               <span className="col-span-4 text-right">Marks / Question</span>
             </div>
             {templateRows.map((row, index) => (
-              <div key={row.question_type} className="grid grid-cols-12 gap-3 items-center rounded-lg border border-gray-200 p-3 bg-gray-50/60">
-                <div className="col-span-5">
-                  <Badge className="border-none bg-white text-gray-700">
-                    {row.question_type.replace("_", " ")}
-                  </Badge>
+              <div key={row.question_type} className="flex flex-col gap-3 rounded-lg border border-gray-200 p-3 bg-gray-50/60">
+                <div className="grid grid-cols-12 gap-3 items-center">
+                  <div className="col-span-4">
+                    <Badge className="border-none bg-white text-gray-700">
+                      {row.question_type.replace(/_/g, " ")}
+                    </Badge>
+                  </div>
+                  <div className="col-span-4">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={row.count}
+                      onChange={(e) => {
+                        const nextCount = Number(e.target.value);
+                        setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, count: Number.isNaN(nextCount) ? 0 : nextCount } : item));
+                      }}
+                      className="text-center"
+                    />
+                  </div>
+                  <div className="col-span-4">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={row.marks}
+                      onChange={(e) => {
+                        const nextMarks = Number(e.target.value);
+                        setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, marks: Number.isNaN(nextMarks) ? 0 : nextMarks } : item));
+                      }}
+                      className="text-right"
+                    />
+                  </div>
                 </div>
-                <div className="col-span-3">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={row.count}
-                    onChange={(e) => {
-                      const nextCount = Number(e.target.value);
-                      setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, count: Number.isNaN(nextCount) ? 0 : nextCount } : item));
-                    }}
-                    className="text-right"
-                  />
-                </div>
-                <div className="col-span-4">
-                  <Input
-                    type="number"
-                    min="1"
-                    value={row.marks}
-                    onChange={(e) => {
-                      const nextMarks = Number(e.target.value);
-                      setTemplateRows((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, marks: Number.isNaN(nextMarks) ? 0 : nextMarks } : item));
-                    }}
-                    className="text-right"
-                  />
-                </div>
+                {row.question_type === "CASE_STUDY" && row.count > 0 && (
+                  <div className="pt-2 border-t border-gray-200 mt-1">
+                    <div className="text-xs text-gray-600 font-medium mb-2 flex items-center justify-between">
+                      <span>Sub-Questions (per case study)</span>
+                      <span className="text-[10px] text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Marks apply to each sub-question</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-[10px] uppercase text-gray-500">MCQ</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={row.caseSubQuestions?.MCQ || 0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTemplateRows((prev) => prev.map((item, i) => i === index ? { ...item, caseSubQuestions: { ...item.caseSubQuestions!, MCQ: Number.isNaN(val) ? 0 : val } } : item));
+                          }}
+                          className="text-center h-8 text-sm mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] uppercase text-gray-500">True/False</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={row.caseSubQuestions?.TRUE_FALSE || 0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTemplateRows((prev) => prev.map((item, i) => i === index ? { ...item, caseSubQuestions: { ...item.caseSubQuestions!, TRUE_FALSE: Number.isNaN(val) ? 0 : val } } : item));
+                          }}
+                          className="text-center h-8 text-sm mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[10px] uppercase text-gray-500">Short Answer</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          value={row.caseSubQuestions?.SHORT_ANSWER || 0}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setTemplateRows((prev) => prev.map((item, i) => i === index ? { ...item, caseSubQuestions: { ...item.caseSubQuestions!, SHORT_ANSWER: Number.isNaN(val) ? 0 : val } } : item));
+                          }}
+                          className="text-center h-8 text-sm mt-1"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -767,7 +873,12 @@ export default function CreateTestPage() {
               const currentMarks = questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
               const newTotal = currentMarks + templateTotalMarks;
               if (newTotal > formData.total_marks) {
-                return <p className="text-red-600 font-medium">Adding this template exceeds the test total marks.</p>;
+                return (
+                  <p className="text-red-600 font-medium mt-2 p-2 bg-red-50 rounded border border-red-100">
+                    Existing Questions ({currentMarks}) + Template ({templateTotalMarks}) = {newTotal} marks.<br/>
+                    This exceeds your Test Total Marks limit of {formData.total_marks}.
+                  </p>
+                );
               }
               return null;
             })()}
