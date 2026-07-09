@@ -416,26 +416,20 @@ export default function EditSubjectPage() {
             <div className="grid gap-6 md:grid-cols-2 p-4 pt-2">
               <div className="space-y-1.5">
                 <FormLabel icon={Users}>Class</FormLabel>
-                <Select
+                <SearchablePaginatedSelect
                   value={formData.class_id?.toString() || 'none'}
                   onValueChange={(value) =>
                     handleChange('class_id', value === 'none' ? null : parseInt(value))
                   }
                   disabled={isSaving || formData.is_course}
-                >
-                  <SelectTrigger id="class" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
-                    <SelectValue placeholder="Select class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SearchablePaginatedSelect
-                      searchPlaceholder="Search class..."
-                      options={[
-                        { value: 'none', label: 'None' },
-                        ...classes.map((cls) => ({ value: cls.id.toString(), label: cls.name })),
-                      ]}
-                    />
-                  </SelectContent>
-                </Select>
+                  placeholder="Select class"
+                  searchPlaceholder="Search class..."
+                  triggerClassName="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm"
+                  options={[
+                    { value: 'none', label: 'None' },
+                    ...classes.map((cls) => ({ value: cls.id.toString(), label: cls.name })),
+                  ]}
+                />
               </div>
 
               <div className="space-y-1.5">

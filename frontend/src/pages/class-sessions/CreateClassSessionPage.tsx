@@ -500,23 +500,17 @@ export default function CreateClassSessionPage() {
                       <div className="bg-gray-50/50 p-5 rounded-2xl border border-gray-100 space-y-4">
                         <div>
                           <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest'>Optional Class Filter</Label>
-                          <Select
+                          <SearchablePaginatedSelect
                             value={formData.class_id ? String(formData.class_id) : 'all'}
                             onValueChange={(value) => handleClassChange(value === 'all' ? null : parseInt(value))}
-                          >
-                            <SelectTrigger className="w-full h-11 border border-gray-100 bg-white rounded-xl mt-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/10">
-                              <SelectValue placeholder="All Classes" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SearchablePaginatedSelect
-                                searchPlaceholder="Search class..."
-                                options={[
-                                  { value: 'all', label: 'All Classes' },
-                                  ...classes.map((cls) => ({ value: String(cls.id), label: cls.name })),
-                                ]}
-                              />
-                            </SelectContent>
-                          </Select>
+                            placeholder="All Classes"
+                            searchPlaceholder="Search class..."
+                            triggerClassName="w-full h-11 border border-gray-100 bg-white rounded-xl mt-2 text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/10"
+                            options={[
+                              { value: 'all', label: 'All Classes' },
+                              ...classes.map((cls) => ({ value: String(cls.id), label: cls.name })),
+                            ]}
+                          />
                         </div>
 
                         <div>

@@ -982,25 +982,21 @@ export default function CreateTestPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-gray-700">Subject (optional)</Label>
-              <Select
+              <SearchablePaginatedSelect
                 value={formData.subject_id?.toString() || "none"}
                 onValueChange={(v) => setFormData({ ...formData, subject_id: v === "none" ? null : Number(v) })}
-              >
-                <SelectTrigger className="mt-1"><SelectValue placeholder="Select a subject" /></SelectTrigger>
-                <SelectContent>
-                  <SearchablePaginatedSelect
-                    searchPlaceholder="Search subject..."
-                    options={[
-                      { value: 'none', label: 'None' },
-                      ...subjects.map((s) => ({
-                        value: s.id.toString(),
-                        label: formatSubjectFilterLabel(s),
-                        searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
-                      })),
-                    ]}
-                  />
-                </SelectContent>
-              </Select>
+                placeholder="Select a subject"
+                searchPlaceholder="Search subject..."
+                triggerClassName="mt-1"
+                options={[
+                  { value: 'none', label: 'None' },
+                  ...subjects.map((s) => ({
+                    value: s.id.toString(),
+                    label: formatSubjectFilterLabel(s),
+                    searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
+                  })),
+                ]}
+              />
             </div>
             <div>
               <Label className="text-gray-700">Test Series (optional)</Label>

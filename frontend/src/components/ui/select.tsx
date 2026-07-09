@@ -75,6 +75,27 @@ const SelectContent = React.forwardRef<
         className
       )}
       position={position}
+      onPointerDown={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.stopPropagation();
+        }
+        props.onPointerDown?.(e);
+      }}
+      onPointerUp={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.stopPropagation();
+        }
+        props.onPointerUp?.(e);
+      }}
+      onTouchStart={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.stopPropagation();
+        }
+        props.onTouchStart?.(e);
+      }}
       {...props}
     >
       <SelectPrimitive.Viewport

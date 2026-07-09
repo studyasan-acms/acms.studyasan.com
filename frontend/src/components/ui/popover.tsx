@@ -23,6 +23,43 @@ const PopoverContent = React.forwardRef<
         className
       )}
       {...props}
+      onFocusOutside={(e) => {
+        e.preventDefault();
+        props.onFocusOutside?.(e);
+      }}
+      onInteractOutside={(e) => {
+        if (e.detail?.originalEvent?.type === 'focusin') {
+          e.preventDefault();
+        }
+        // Prevent closing if the user is interacting with an input inside the popover
+        // Sometimes mobile browsers report the target weirdly or Radix misinterprets it
+        const target = e.detail?.originalEvent?.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.preventDefault();
+        }
+        props.onInteractOutside?.(e);
+      }}
+      onPointerDownOutside={(e) => {
+        const target = e.detail?.originalEvent?.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.preventDefault();
+        }
+        props.onPointerDownOutside?.(e);
+      }}
+      onPointerDown={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.stopPropagation();
+        }
+        props.onPointerDown?.(e);
+      }}
+      onTouchStart={(e) => {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.closest('input'))) {
+          e.stopPropagation();
+        }
+        props.onTouchStart?.(e);
+      }}
     />
   </PopoverPrimitive.Portal>
 ))

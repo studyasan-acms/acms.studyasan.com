@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Play, Users, Trophy, Radio, Presentation, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Play, Users, Trophy, Radio, Presentation, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { activityAPI, activityGroupAPI } from '../../services/activity.service';
@@ -52,15 +52,23 @@ export default function ActivitiesPage() {
     is_published: '',
   });
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 12;
+
   useEffect(() => {
     fetchActivities();
+  }, [filters, currentPage]);
+
+  useEffect(() => {
     fetchActivityGroups();
-  }, [filters]);
+  }, []);
 
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      const params: any = {};
+      const params: any = { page: currentPage, limit };
       if (filters.group_id) params.group_id = filters.group_id;
       if (filters.activity_type) params.activity_type = filters.activity_type;
       if (filters.difficulty) params.difficulty = filters.difficulty;
@@ -68,6 +76,8 @@ export default function ActivitiesPage() {
 
       const response = await activityAPI.getAll(params);
       setActivities(response.data.data.activities || []);
+      setTotalPages(response.data.data.pagination?.totalPages || 1);
+      setTotal(response.data.data.pagination?.total || 0);
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to fetch activities');
     } finally {
@@ -207,7 +217,10 @@ export default function ActivitiesPage() {
             <select
               className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.group_id}
-              onChange={(e) => setFilters({ ...filters, group_id: e.target.value })}
+              onChange={(e) => {
+                setFilters({ ...filters, group_id: e.target.value });
+                setCurrentPage(1);
+              }}
             >
               <option value="">All Groups</option>
               {activityGroups.map((group) => (
@@ -223,9 +236,10 @@ export default function ActivitiesPage() {
             <select
               className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.activity_type}
-              onChange={(e) =>
-                setFilters({ ...filters, activity_type: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, activity_type: e.target.value });
+                setCurrentPage(1);
+              }}
             >
               <option value="">All Types</option>
               <option value="MATCH_PAIRS">Match Pairs</option>
@@ -244,9 +258,10 @@ export default function ActivitiesPage() {
             <select
               className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.difficulty}
-              onChange={(e) =>
-                setFilters({ ...filters, difficulty: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, difficulty: e.target.value });
+                setCurrentPage(1);
+              }}
             >
               <option value="">All Levels</option>
               <option value="EASY">Easy</option>
@@ -260,9 +275,10 @@ export default function ActivitiesPage() {
             <select
               className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
               value={filters.is_published}
-              onChange={(e) =>
-                setFilters({ ...filters, is_published: e.target.value })
-              }
+              onChange={(e) => {
+                setFilters({ ...filters, is_published: e.target.value });
+                setCurrentPage(1);
+              }}
             >
               <option value="">All</option>
               <option value="true">Published</option>
@@ -414,6 +430,35 @@ export default function ActivitiesPage() {
             <Plus className="w-4 h-4 mr-2" />
             Create Activity
           </Button>
+        </div>
+      )}
+
+      {/* Pagination Styled */}
+      {activities.length > 0 && (
+        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+            {Math.min(currentPage * limit, total)} of {total} Activities
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => p - 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => p + 1)}
+              className="h-8 text-xs font-medium rounded-lg"
+            >
+              Next <ChevronRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
         </div>
       )}
 

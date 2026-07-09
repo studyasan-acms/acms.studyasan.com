@@ -143,25 +143,21 @@ export default function MyResultsPage() {
           />
         </div>
         <div className="w-full md:w-64">
-          <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-            <SelectTrigger className="h-10 w-full">
-              <Filter className="h-4 w-4 mr-2 text-gray-500" />
-              <SelectValue placeholder="Filter by Subject" />
-            </SelectTrigger>
-            <SelectContent>
-              <SearchablePaginatedSelect
-                searchPlaceholder="Search subject..."
-                options={[
-                  { value: 'ALL', label: 'All Subjects' },
-                  ...subjects.map((subject) => ({
-                    value: subject.id.toString(),
-                    label: formatSubjectFilterLabel(subject),
-                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
-                  })),
-                ]}
-              />
-            </SelectContent>
-          </Select>
+          <SearchablePaginatedSelect
+            value={selectedSubject}
+            onValueChange={setSelectedSubject}
+            placeholder="Filter by Subject"
+            searchPlaceholder="Search subject..."
+            triggerClassName="h-10 w-full"
+            options={[
+              { value: 'ALL', label: 'All Subjects' },
+              ...subjects.map((subject) => ({
+                value: subject.id.toString(),
+                label: formatSubjectFilterLabel(subject),
+                searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || ''}`,
+              })),
+            ]}
+          />
         </div>
       </div>
 
