@@ -481,7 +481,7 @@ export default function CreateClassSessionPage() {
 
       <Stepper />
 
-      <Card className="border border-gray-100 shadow-md shadow-gray-200/20 rounded-2xl overflow-hidden bg-white/80 backdrop-blur-sm">
+      <Card className="border border-gray-100 shadow-md shadow-gray-200/20 rounded-2xl overflow-visible bg-white/80 backdrop-blur-sm">
         <CardContent className="p-0">
           <form onSubmit={handleSubmit}>
             <div className="p-6 sm:p-10 min-h-[400px]">
