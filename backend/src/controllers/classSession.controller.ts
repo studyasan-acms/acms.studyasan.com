@@ -240,9 +240,17 @@ export const getAllClassSessions = async (req: Request, res: Response) => {
       mode,
       start_date,
       end_date,
+      search,
     } = req.query;
 
     const where: any = {};
+
+    if (search) {
+      where.OR = [
+        { subject: { name: { contains: search as string, mode: 'insensitive' } } },
+        { teacher: { user: { name: { contains: search as string, mode: 'insensitive' } } } },
+      ];
+    }
 
     if (teacher_id) where.teacher_id = parseInt(teacher_id as string);
     if (subject_id) where.subject_id = parseInt(subject_id as string);
@@ -799,7 +807,7 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
       req.query.page as string,
       req.query.limit as string
     );
-    const { upcoming_only, subject_id } = req.query;
+    const { upcoming_only, subject_id, search } = req.query;
 
     // Get the student profile
     const student = await prisma.student.findUnique({
@@ -827,6 +835,13 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
     const where: any = {
       subject_id: { in: enrolledSubjectIds },
     };
+
+    if (search) {
+      where.OR = [
+        { subject: { name: { contains: search as string, mode: 'insensitive' } } },
+        { teacher: { user: { name: { contains: search as string, mode: 'insensitive' } } } },
+      ];
+    }
 
     // Filter by specific subject if provided
     if (subject_id) {

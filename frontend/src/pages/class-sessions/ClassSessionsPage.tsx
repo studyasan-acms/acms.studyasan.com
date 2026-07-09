@@ -35,6 +35,11 @@ export default function ClassSessionsPage() {
   const [weeklyData, setWeeklyData] = useState<{ [key: string]: ClassSession[] } | null>(null);
   const [selectedDay, setSelectedDay] = useState<string>('');
   const [now, setNow] = useState<Date>(new Date());
+  
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -95,10 +100,15 @@ export default function ClassSessionsPage() {
       setLoading(true);
       let data: ClassSession[] = [];
 
-      const params: SessionParams = {};
+      const params: any = {};
       if (selectedSubject) params.subject_id = selectedSubject;
       if (selectedTeacher) params.teacher_id = selectedTeacher;
       if (selectedMode) params.mode = selectedMode as 'ONLINE' | 'OFFLINE';
+      if (search) params.search = search;
+      if (viewMode === 'all') {
+        params.page = page;
+        params.limit = 12;
+      }
 
       if (viewMode === 'week') {
         const weekRes = await classSessionService.getWeeklySchedule({ week_offset: weekOffset });
@@ -170,11 +180,16 @@ export default function ClassSessionsPage() {
           if (isStudent) {
             const myRes = await classSessionService.getMySchedule({
               subject_id: selectedSubject || undefined,
+              search: search || undefined,
+              page: viewMode === 'all' ? page : undefined,
+              limit: viewMode === 'all' ? 12 : undefined,
             });
             data = myRes.data.data;
+            if (viewMode === 'all') setTotalPages(myRes.data.pagination?.totalPages || 1);
           } else {
             const allRes = await classSessionService.getAll(params);
             data = allRes.data.data;
+            if (viewMode === 'all') setTotalPages(allRes.data.pagination?.totalPages || 1);
           }
         }
       }
@@ -190,7 +205,7 @@ export default function ClassSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [viewMode, selectedSubject, selectedTeacher, selectedMode, weekOffset, isStudent, selectedDay]);
+  }, [viewMode, selectedSubject, selectedTeacher, selectedMode, weekOffset, isStudent, selectedDay, search, page]);
 
   useEffect(() => {
     fetchSubjects();
@@ -530,6 +545,18 @@ export default function ClassSessionsPage() {
             <ChevronRight className="absolute right-2.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 text-gray-300 rotate-90" />
           </div>
 
+          {viewMode === 'all' && (
+            <div className="flex-1 min-w-[120px] relative">
+              <input
+                type="text"
+                placeholder="Search..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full h-9 pl-3 pr-3 bg-white border border-gray-100 rounded-lg text-[10px] font-semibold text-gray-600 outline-none focus:ring-2 focus:ring-saBlue/5 transition-all"
+              />
+            </div>
+          )}
+
           <div className="flex gap-1 p-1 bg-white border border-gray-100 rounded-lg">
             {(isStudent ? ['week', 'all', 'upcoming', 'past'] : ['week', 'all']).map((mode) => (
               <button
@@ -537,6 +564,7 @@ export default function ClassSessionsPage() {
                 onClick={() => {
                   setViewMode(mode as typeof viewMode);
                   setWeekOffset(0);
+                  setPage(1);
                 }}
                 className={`px-3 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all ${viewMode === mode ? 'bg-saBlue/10 text-saBlue' : 'text-gray-400 hover:text-gray-600'
                   }`}
@@ -563,9 +591,34 @@ export default function ClassSessionsPage() {
           <p className="text-gray-400 mt-2 max-w-xs">There are no classes scheduled for your selection at the moment.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {sessions.map(renderSessionCard)}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {sessions.map(renderSessionCard)}
+          </div>
+          {viewMode === 'all' && totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-8">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-4 font-bold text-[10px] uppercase tracking-wider rounded-xl"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm font-semibold text-gray-500">Page {page} of {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-4 font-bold text-[10px] uppercase tracking-wider rounded-xl"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {/* Delete Confirmation Modal */}

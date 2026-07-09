@@ -131,9 +131,8 @@ export default function CreateClassSessionPage() {
       setClasses(Array.isArray(classesRes.data?.data) ? classesRes.data.data : []);
       setBoards(Array.isArray(boardsRes.data?.data) ? boardsRes.data.data : []);
 
-      if (isAdmin) {
-        const teachersRes = await teacherService.getAll();
-        setTeachers(teachersRes.data.data);
+      if (isAdmin && !id) {
+        // We only fetch teachers when a subject is selected
       }
 
       // Editing case
@@ -170,6 +169,14 @@ export default function CreateClassSessionPage() {
         });
 
         if (session.recurrence_rule) setRecurrenceRule(session.recurrence_rule);
+        
+        // Fetch teachers for the existing subject
+        try {
+          const res = await teacherService.getBySubject(session.subject_id);
+          setTeachers(res.data);
+        } catch (err) {
+          console.error("Failed to fetch teachers for subject", err);
+        }
       }
     } catch (error) {
       setErrorModal({
@@ -605,18 +612,18 @@ export default function CreateClassSessionPage() {
 
                         <div>
                           <Label className='text-[9px] font-semibold text-gray-400 block uppercase tracking-widest mb-2 px-1'>Teacher Allocation *</Label>
-                          <select
-                            className="w-full p-3 border border-gray-200 bg-white rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/5 outline-none disabled:opacity-50"
-                            value={formData.teacher_id || ''}
-                            onChange={(e) => setFormData((prev) => ({ ...prev, teacher_id: parseInt(e.target.value) }))}
-                            required
+                          <SearchablePaginatedSelect
+                            value={formData.teacher_id ? String(formData.teacher_id) : ''}
+                            onValueChange={(val) => setFormData((prev) => ({ ...prev, teacher_id: parseInt(val) }))}
+                            placeholder={formData.subject_id ? "Select Teacher" : "Select Subject First"}
+                            searchPlaceholder="Search teacher..."
                             disabled={!formData.subject_id || (!isAdmin && formData.teacher_id !== 0)}
-                          >
-                            <option value="">{formData.subject_id ? "Select Teacher" : "Select Subject First"}</option>
-                            {teachers.map((teacher) => (
-                              <option key={teacher.id} value={teacher.id}>{teacher.user.name}</option>
-                            ))}
-                          </select>
+                            triggerClassName="w-full h-11 border border-gray-200 bg-white rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-saBlue/5 disabled:opacity-50"
+                            options={teachers.map(t => ({
+                              value: String(t.id),
+                              label: t.user?.name || 'Unknown',
+                            }))}
+                          />
                           {teachers.length === 0 && formData.subject_id !== 0 && (
                             <p className="text-[10px] text-destructive mt-2 font-semibold px-2">No teachers assigned to this subject.</p>
                           )}

@@ -843,6 +843,7 @@ export const classSessionService = {
     mode?: 'ONLINE' | 'OFFLINE';
     start_date?: string;
     end_date?: string;
+    search?: string;
   }): Promise<PaginatedResponse<ClassSession>> => {
     const response = await api.get<PaginatedResponse<ClassSession>>('/class-sessions', { params });
     return response.data;
@@ -880,6 +881,7 @@ export const classSessionService = {
     limit?: number;
     upcoming_only?: boolean;
     subject_id?: number;
+    search?: string;
   }): Promise<PaginatedResponse<ClassSession>> => {
     const response = await api.get<PaginatedResponse<ClassSession>>('/class-sessions/my-schedule', { params });
     return response.data;
