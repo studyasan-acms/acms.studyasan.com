@@ -138,6 +138,7 @@ router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'TEACHER', 'S
 // Payment routes
 router.get('/payments', authenticate, paymentController.getAllPayments);
 router.get('/payments/:id', authenticate, paymentController.getPaymentById);
+router.put('/payments/:id', authenticate, authorize('ADMIN'), paymentController.updatePayment);
 router.put('/payments/:id/pay', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
 router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 
@@ -696,6 +697,7 @@ router.delete('/enrollments/:id', authenticate, authorize('ADMIN'), enrollmentCo
 // ================== PAYMENT ROUTES ==================
 router.get('/payments', authenticate, authorize('ADMIN'), paymentController.getAllPayments);
 router.get('/payments/:id', authenticate, authorize('ADMIN'), paymentController.getPaymentById);
+router.put('/payments/:id', authenticate, authorize('ADMIN'), paymentController.updatePayment);
 router.put('/payments/:id/mark-paid', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
 router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 

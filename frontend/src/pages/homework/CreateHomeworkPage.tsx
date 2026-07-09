@@ -389,7 +389,7 @@ export default function CreateHomeworkPage() {
                     <SelectTrigger className="w-full border-gray-100 bg-gray-50 rounded-xl h-10 text-xs font-medium">
                       <SelectValue placeholder="Select subject" />
                     </SelectTrigger>
-                    <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-hidden rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
+                    <SelectContent className="w-[calc(100vw-2rem)] max-w-[28rem] overflow-visible rounded-xl border-gray-100 p-0 md:w-[var(--radix-select-trigger-width)]">
                       <SearchablePaginatedSelect
                         pageSize={5}
                         searchPlaceholder="Search subject..."

@@ -546,6 +546,11 @@ export const paymentService = {
     return response.data;
   },
 
+  update: async (id: number, data: { amount?: number; due_date?: string; is_paid?: boolean; paid_date?: string }): Promise<{ success: boolean; data: EnrollmentPayment }> => {
+    const response = await api.put(`/payments/${id}`, data);
+    return response.data;
+  },
+
   markAsPaid: async (id: number, paidDate?: string): Promise<{ success: boolean; data: EnrollmentPayment }> => {
     const response = await api.put(`/payments/${id}/mark-paid`, { paid_date: paidDate });
     return response.data;

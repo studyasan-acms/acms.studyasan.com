@@ -437,6 +437,7 @@ export interface CreateEnrollmentData {
   frequency?: string | null;
   end_date?: string | null;
   one_time_amount?: number | null;
+  due_date?: string | null;
 }
 
 export interface BulkEnrollmentData {

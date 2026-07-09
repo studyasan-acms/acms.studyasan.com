@@ -278,3 +278,47 @@ export const getOverduePayments = async (req: Request, res: Response) => {
     sendError(res, error.message, 500);
   }
 };
+
+export const updatePayment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { amount, due_date, is_paid, paid_date } = req.body;
+
+    const payment = await prisma.payment.findUnique({
+      where: { id: parseInt(id!) },
+    });
+
+    if (!payment) {
+      return sendError(res, 'Payment not found', 404);
+    }
+
+    const updateData: any = {};
+    if (amount !== undefined) updateData.amount = amount;
+    if (due_date !== undefined) updateData.due_date = due_date ? new Date(due_date) : null;
+    if (is_paid !== undefined) updateData.is_paid = is_paid;
+    if (paid_date !== undefined) updateData.paid_date = paid_date ? new Date(paid_date) : null;
+
+    const updatedPayment = await prisma.payment.update({
+      where: { id: parseInt(id!) },
+      data: updateData,
+      include: {
+        enrollment: {
+          include: {
+            student: {
+              include: {
+                user: true,
+              },
+            },
+            subject: true,
+            test_series: true,
+            activity_group: true,
+          },
+        },
+      },
+    });
+
+    sendSuccess(res, updatedPayment, 'Payment updated successfully');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};

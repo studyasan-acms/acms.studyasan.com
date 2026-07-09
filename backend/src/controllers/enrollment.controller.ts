@@ -94,7 +94,7 @@ export const getEnrollmentById = async (req: Request, res: Response) => {
 
 export const createEnrollment = async (req: Request, res: Response) => {
   try {
-    const { student_id, subject_id, price, is_recurring, frequency, end_date, one_time_amount } = req.body;
+    const { student_id, subject_id, price, is_recurring, frequency, end_date, one_time_amount, due_date } = req.body;
 
     const existingEnrollment = await prisma.enrollment.findFirst({
       where: {
@@ -150,7 +150,7 @@ export const createEnrollment = async (req: Request, res: Response) => {
 
     // If this is a paid enrollment, create payment schedule or one-time payment
     if (is_recurring && price && frequency) {
-      await createPaymentSchedule(enrollment.id, price, frequency, end_date ? new Date(end_date) : null, student.user_id, subject);
+      await createPaymentSchedule(enrollment.id, price, frequency, end_date ? new Date(end_date) : null, student.user_id, subject, due_date ? new Date(due_date) : new Date());
     } else if (!is_recurring && one_time_amount !== undefined && one_time_amount !== null) {
       await createOneTimePayment({
         enrollmentId: enrollment.id,
@@ -158,6 +158,7 @@ export const createEnrollment = async (req: Request, res: Response) => {
         userId: student.user_id,
         itemName: subject.name,
         type: 'SUBJECT',
+        dueDate: due_date ? new Date(due_date) : undefined,
       });
     }
 
@@ -241,10 +242,11 @@ async function createPaymentSchedule(
   frequency: string,
   endDate: Date | null,
   userId: number,
-  subject: any
+  subject: any,
+  startDate: Date = new Date()
 ) {
   try {
-    const now = new Date();
+    const now = startDate;
     const paymentRecords = [];
     const immediateNotifications = [];
     const pendingNotifications = [];

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, DollarSign, Search } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, Search, Edit } from 'lucide-react';
 import { paymentService } from '@/services/api';
 import type { EnrollmentPayment, PaginatedResponse } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,8 @@ import { useAuthStore } from '@/store/authStore';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 const PaymentsPage: React.FC = () => {
   usePageTitle("Payments");
@@ -37,6 +39,12 @@ const PaymentsPage: React.FC = () => {
   const [overdueCount, setOverdueCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [paidCount, setPaidCount] = useState(0);
+
+  // EDIT MODAL
+  const [editOpen, setEditOpen] = useState(false);
+  const [editPaymentData, setEditPaymentData] = useState<EnrollmentPayment | null>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [editDueDate, setEditDueDate] = useState<string>('');
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -127,6 +135,28 @@ const PaymentsPage: React.FC = () => {
       fetchPayments(); // Refresh the list
     } catch (err: any) {
       setErrorMessage('Failed to mark payment as paid.');
+      setErrorOpen(true);
+    }
+  };
+
+  // ----------------------------
+  // Handle Edit Submit
+  // ----------------------------
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPaymentData) return;
+
+    try {
+      await paymentService.update(editPaymentData.id, {
+        amount: parseFloat(editAmount),
+        due_date: editDueDate,
+      });
+      setSuccessMessage('Payment updated successfully!');
+      setSuccessOpen(true);
+      setEditOpen(false);
+      fetchPayments();
+    } catch (err: any) {
+      setErrorMessage('Failed to update payment.');
       setErrorOpen(true);
     }
   };
@@ -369,14 +399,29 @@ const PaymentsPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4">
                         {!payment.is_paid && (
-                          <Button
-                            size="sm"
-                            onClick={() => handleMarkAsPaid(payment.id)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Mark Paid
-                          </Button>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setEditPaymentData(payment);
+                                setEditAmount(payment.amount.toString());
+                                setEditDueDate(payment.due_date.split('T')[0]);
+                                setEditOpen(true);
+                              }}
+                              className="bg-blue-600 hover:bg-blue-700"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleMarkAsPaid(payment.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Mark Paid
+                            </Button>
+                          </div>
                         )}
                       </td>
                     </tr>
@@ -414,6 +459,42 @@ const PaymentsPage: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* EDIT MODAL */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Payment</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <Label>Amount (₹)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                required
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Due Date</Label>
+              <Input
+                type="date"
+                required
+                value={editDueDate}
+                onChange={(e) => setEditDueDate(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* SUCCESS MODAL */}
       <SuccessModal

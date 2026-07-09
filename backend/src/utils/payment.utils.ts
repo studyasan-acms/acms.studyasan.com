@@ -18,6 +18,7 @@ interface OneTimePaymentParams {
     userId: number;
     itemName: string;
     type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+    dueDate?: Date | undefined;
 }
 
 export const createPaymentSchedule = async ({
@@ -131,10 +132,11 @@ export const createOneTimePayment = async ({
     userId,
     itemName,
     type,
+    dueDate,
 }: OneTimePaymentParams) => {
     try {
         const now = new Date();
-        const dueDate = new Date(now); // Due immediately
+        const paymentDueDate = dueDate || new Date(now); // Due date from params or immediately
 
         // Create single payment record
         await prisma.payment.create({
@@ -142,7 +144,7 @@ export const createOneTimePayment = async ({
                 enrollment_id: enrollmentId,
                 type,
                 period: 'ONE_TIME',
-                due_date: dueDate,
+                due_date: paymentDueDate,
                 amount,
                 is_paid: false,
             },

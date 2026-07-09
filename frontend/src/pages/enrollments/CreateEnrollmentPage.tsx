@@ -52,6 +52,7 @@ const CreateEnrollmentPage: React.FC = () => {
     is_recurring: false,
     frequency: null as string | null,
     end_date: null as string | null,
+    due_date: null as string | null,
     one_time_amount: null as number | null,
   });
 
@@ -160,6 +161,7 @@ const CreateEnrollmentPage: React.FC = () => {
         is_recurring: formData.is_recurring,
         frequency: formData.frequency,
         end_date: formData.end_date,
+        due_date: formData.due_date,
         one_time_amount: formData.one_time_amount,
       };
 
@@ -475,6 +477,15 @@ const CreateEnrollmentPage: React.FC = () => {
                       <p className="text-red-600 text-sm mt-1">Please enter a valid amount</p>
                     )}
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Due Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={formData.due_date || ''}
+                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value || null })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue"
+                    />
+                  </div>
                 </>
               )}
 
@@ -531,6 +542,17 @@ const CreateEnrollmentPage: React.FC = () => {
                       min={new Date().toISOString().split('T')[0]}
                     />
                     <p className="text-xs text-gray-500 mt-1">Leave empty for ongoing payments</p>
+                  </div>
+                  
+                  {/* Due Date (Optional) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">First Payment Due Date (Optional)</label>
+                    <input
+                      type="date"
+                      value={formData.due_date || ''}
+                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value || null })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-saBlue focus:border-saBlue"
+                    />
                   </div>
                 </>
               )}
