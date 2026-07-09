@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, DollarSign, Search, Edit } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, DollarSign, Search, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { paymentService } from '@/services/api';
 import type { EnrollmentPayment, PaginatedResponse } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import SuccessModal from '@/components/ui/successModal';
 import ErrorModal from '@/components/ui/errorModal';
+import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -45,6 +46,10 @@ const PaymentsPage: React.FC = () => {
   const [editPaymentData, setEditPaymentData] = useState<EnrollmentPayment | null>(null);
   const [editAmount, setEditAmount] = useState<string>('');
   const [editDueDate, setEditDueDate] = useState<string>('');
+
+  // DELETE MODAL
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<number | null>(null);
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -136,6 +141,41 @@ const PaymentsPage: React.FC = () => {
     } catch (err: any) {
       setErrorMessage('Failed to mark payment as paid.');
       setErrorOpen(true);
+    }
+  };
+
+  // ----------------------------
+  // Mark Payment as Unpaid (Move to Due)
+  // ----------------------------
+  const handleMarkAsUnpaid = async (paymentId: number) => {
+    try {
+      await paymentService.update(paymentId, { is_paid: false, paid_date: null });
+      setSuccessMessage('Payment moved back to due.');
+      setSuccessOpen(true);
+      fetchPayments(); // Refresh the list
+    } catch (err: any) {
+      setErrorMessage('Failed to move payment to due.');
+      setErrorOpen(true);
+    }
+  };
+
+  // ----------------------------
+  // Handle Delete
+  // ----------------------------
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    try {
+      await paymentService.delete(paymentToDelete);
+      setSuccessMessage('Payment deleted successfully!');
+      setSuccessOpen(true);
+      setDeleteOpen(false);
+      setPaymentToDelete(null);
+      fetchPayments();
+    } catch (err: any) {
+      setErrorMessage('Failed to delete payment.');
+      setErrorOpen(true);
+      setDeleteOpen(false);
+      setPaymentToDelete(null);
     }
   };
 
@@ -398,31 +438,54 @@ const PaymentsPage: React.FC = () => {
                         {getStatusBadge(payment)}
                       </td>
                       <td className="py-3 px-4">
-                        {!payment.is_paid && (
-                          <div className="flex space-x-2">
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                setEditPaymentData(payment);
-                                setEditAmount(payment.amount.toString());
-                                setEditDueDate(payment.due_date.split('T')[0]);
-                                setEditOpen(true);
-                              }}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Edit
-                            </Button>
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditPaymentData(payment);
+                              setEditAmount(payment.amount.toString());
+                              setEditDueDate(payment.due_date.split('T')[0]);
+                              setEditOpen(true);
+                            }}
+                            className="hover:bg-blue-50 text-blue-600 border-blue-200"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+
+                          {!payment.is_paid ? (
                             <Button
                               size="sm"
                               onClick={() => handleMarkAsPaid(payment.id)}
-                              className="bg-green-600 hover:bg-green-700"
+                              className="bg-green-600 hover:bg-green-700 text-white"
                             >
                               <CheckCircle className="w-4 h-4 mr-1" />
                               Mark Paid
                             </Button>
-                          </div>
-                        )}
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleMarkAsUnpaid(payment.id)}
+                              className="hover:bg-yellow-50 text-yellow-600 border-yellow-200"
+                              title="Move back to due"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setPaymentToDelete(payment.id);
+                              setDeleteOpen(true);
+                            }}
+                            className="hover:bg-red-50 text-red-600 border-red-200"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -518,6 +581,22 @@ const PaymentsPage: React.FC = () => {
         okText="OK"
         onConfirm={() => setErrorOpen(false)}
         onClose={() => setErrorOpen(false)}
+      />
+
+      {/* DELETE MODAL */}
+      <DeleteConfirmationModal
+        open={deleteOpen}
+        title="Delete Payment"
+        message="Are you sure you want to delete this payment record? This action cannot be undone."
+        onConfirm={handleDeletePayment}
+        onCancel={() => {
+          setDeleteOpen(false);
+          setPaymentToDelete(null);
+        }}
+        onClose={() => {
+          setDeleteOpen(false);
+          setPaymentToDelete(null);
+        }}
       />
     </div>
   );

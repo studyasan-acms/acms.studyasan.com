@@ -322,3 +322,25 @@ export const updatePayment = async (req: Request, res: Response) => {
     sendError(res, error.message, 500);
   }
 };
+
+export const deletePayment = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const payment = await prisma.payment.findUnique({
+      where: { id: parseInt(id!) },
+    });
+
+    if (!payment) {
+      return sendError(res, 'Payment not found', 404);
+    }
+
+    await prisma.payment.delete({
+      where: { id: parseInt(id!) },
+    });
+
+    sendSuccess(res, null, 'Payment deleted successfully');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};

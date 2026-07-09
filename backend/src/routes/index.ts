@@ -140,6 +140,7 @@ router.get('/payments', authenticate, paymentController.getAllPayments);
 router.get('/payments/:id', authenticate, paymentController.getPaymentById);
 router.put('/payments/:id', authenticate, authorize('ADMIN'), paymentController.updatePayment);
 router.put('/payments/:id/pay', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
+router.delete('/payments/:id', authenticate, authorize('ADMIN'), paymentController.deletePayment);
 router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 
 // Teacher routes
@@ -699,6 +700,7 @@ router.get('/payments', authenticate, authorize('ADMIN'), paymentController.getA
 router.get('/payments/:id', authenticate, authorize('ADMIN'), paymentController.getPaymentById);
 router.put('/payments/:id', authenticate, authorize('ADMIN'), paymentController.updatePayment);
 router.put('/payments/:id/mark-paid', authenticate, authorize('ADMIN'), paymentController.markPaymentAsPaid);
+router.delete('/payments/:id', authenticate, authorize('ADMIN'), paymentController.deletePayment);
 router.get('/payments/overdue', authenticate, authorize('ADMIN'), paymentController.getOverduePayments);
 
 // ================== ANALYTICS ROUTES ==================
