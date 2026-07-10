@@ -4,7 +4,7 @@ import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 interface ErrorModalProps {
   open: boolean;
   title?: string;
-  description?: string;
+  description?: any;
   showButtons?: boolean;
   cancelText?: string;
   okText?: string;
@@ -36,6 +36,48 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
 
   if (!open) return null;
 
+  const renderDescription = (desc: any) => {
+    if (!desc) return null;
+
+    if (typeof desc === 'string') {
+      return <p className="text-gray-600 text-sm mt-2">{desc}</p>;
+    }
+
+    if (Array.isArray(desc)) {
+      return (
+        <div className="text-gray-600 text-sm mt-2 text-left max-h-40 overflow-y-auto bg-gray-50 p-2 rounded border">
+          <ul className="list-disc pl-5 space-y-1">
+            {desc.map((err, idx) => {
+              if (typeof err === 'string') return <li key={idx}>{err}</li>;
+              if (err && typeof err === 'object') {
+                const loc = err.loc ? err.loc.join(' -> ') : '';
+                const msg = err.msg || JSON.stringify(err);
+                return <li key={idx}>{loc ? `${loc}: ${msg}` : msg}</li>;
+              }
+              return <li key={idx}>{String(err)}</li>;
+            })}
+          </ul>
+        </div>
+      );
+    }
+
+    if (typeof desc === 'object') {
+      // If it's a generic object (e.g. from axios response)
+      // Check if it has message or detail
+      const errorMsg = desc.message || desc.detail || desc.error;
+      if (errorMsg) {
+        return renderDescription(errorMsg);
+      }
+      return (
+        <div className="text-gray-600 text-sm mt-2 text-left max-h-40 overflow-y-auto bg-gray-50 p-2 rounded border">
+          <pre className="whitespace-pre-wrap text-xs">{JSON.stringify(desc, null, 2)}</pre>
+        </div>
+      );
+    }
+
+    return <p className="text-gray-600 text-sm mt-2">{String(desc)}</p>;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
       <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in">
@@ -58,11 +100,7 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
         )}
 
         {/* Description */}
-        {description && (
-          <p className="text-gray-600 text-sm mt-2">
-            {description}
-          </p>
-        )}
+        {renderDescription(description)}
 
         {/* Buttons */}
         {showButtons && (
