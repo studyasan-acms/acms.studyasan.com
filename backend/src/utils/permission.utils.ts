@@ -76,10 +76,13 @@ export async function checkTeacherPermission(
     try {
         const userId = req.user!.id;
 
-        // Get teacher with role
+        // Get teacher with role and assigned subjects
         const teacher = await prisma.teacher.findUnique({
             where: { user_id: userId },
-            include: { role: true }
+            include: {
+                role: true,
+                teacher_subject_junctions: { select: { subject_id: true } }
+            }
         });
 
         console.log('🔍 [PERMISSION] Teacher found:', teacher?.id, 'Role:', teacher?.role?.name, 'Active:', teacher?.role?.is_active);
@@ -105,7 +108,30 @@ export async function checkTeacherPermission(
         console.log('🔍 [PERMISSION] Checking:', permissions[resource]?.[action]);
 
         // Check if permission exists and is true
-        const hasPermission = permissions[resource]?.[action] === true;
+        let hasPermission = permissions[resource]?.[action] === true;
+
+        // Special handling for subject modules/content sub-routes (/subjects/:subjectId/modules/...):
+        // Managing modules or deleting/uploading content within a module should be allowed
+        // if teacher has subjects permissions OR if they are assigned to teach that subject.
+        if (!hasPermission && resource === 'subjects' && req.path.includes('/modules')) {
+            const subjectIdMatch = req.path.match(/\/subjects\/(\d+)/);
+            const subjectId = subjectIdMatch ? parseInt(subjectIdMatch[1]) : null;
+
+            const teachesSubject = subjectId !== null && teacher.teacher_subject_junctions.some(
+                (tj) => tj.subject_id === subjectId
+            );
+
+            const hasSubjectPermission = permissions.subjects?.update === true ||
+                                          permissions.subjects?.create === true ||
+                                          permissions.subjects?.view === true ||
+                                          permissions.subjects?.delete === true;
+
+            if (teachesSubject || hasSubjectPermission) {
+                hasPermission = true;
+                console.log('✅ [PERMISSION] Allowed module/content operation via subject assignment or permission');
+            }
+        }
+
         console.log(hasPermission ? '✅ [PERMISSION] Allowed' : '❌ [PERMISSION] Denied');
         return hasPermission;
     } catch (error) {
