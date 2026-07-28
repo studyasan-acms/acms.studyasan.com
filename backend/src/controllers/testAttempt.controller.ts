@@ -422,6 +422,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         score: finalScore,
         is_graded: !hasShortAnswers,
         is_passed: hasShortAnswers ? null : (finalScore !== null && finalScore >= attempt.test.passing_marks),
+        total_marks: attempt.test.total_marks, // Sync to current test value in case test was edited after attempt started
       },
       include: {
         test: true,
@@ -529,6 +530,9 @@ export const getTestAttempts = async (req: AuthRequest, res: Response) => {
     const attempts = await prisma.testAttempt.findMany({
       where: { test_id: parseInt(testId) },
       include: {
+        test: {
+          select: { total_marks: true },
+        },
         student: {
           include: {
             user: {
@@ -553,7 +557,15 @@ export const getTestAttempts = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    return sendSuccess(res, attempts, 'Test attempts fetched successfully');
+    // Normalize total_marks to the current test value so all attempts
+    // show a consistent denominator even if the test was edited after
+    // some students had already started their attempts.
+    const normalizedAttempts = attempts.map(attempt => ({
+      ...attempt,
+      total_marks: attempt.test.total_marks,
+    }));
+
+    return sendSuccess(res, normalizedAttempts, 'Test attempts fetched successfully');
   } catch (error) {
     console.error('Error fetching test attempts:', error);
     return sendError(res, 'Failed to fetch test attempts');
@@ -769,6 +781,7 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
         score: totalScore,
         is_graded: true,
         is_passed: totalScore >= attempt.test.passing_marks,
+        total_marks: attempt.test.total_marks, // Sync to current test value in case test was edited after attempt started
         graded_by: userId,
         graded_at: new Date(),
       },

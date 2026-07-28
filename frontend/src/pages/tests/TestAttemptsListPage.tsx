@@ -221,7 +221,7 @@ export default function TestAttemptsListPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       {attempt.is_graded ? (
-                        <span className="font-semibold text-gray-800">{attempt.score} / {attempt.total_marks}</span>
+                        <span className="font-semibold text-gray-800">{attempt.score} / {test?.total_marks ?? attempt.total_marks}</span>
                       ) : (
                         <span className="text-gray-400">—</span>
                       )}
