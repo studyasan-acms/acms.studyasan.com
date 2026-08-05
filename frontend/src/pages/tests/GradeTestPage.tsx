@@ -96,7 +96,8 @@ export default function GradeTestPage() {
   }
 
   const isPassed = totalScore >= (attempt.test?.passing_marks || 0);
-  const percentage = attempt.total_marks > 0 ? (totalScore / attempt.total_marks) * 100 : 0;
+  const totalMarks = attempt.test?.total_marks ?? attempt.total_marks;
+  const percentage = totalMarks > 0 ? (totalScore / totalMarks) * 100 : 0;
 
   return (
     <div className="space-y-6 p-1 sm:p-4 pb-20 max-w-5xl mx-auto">
@@ -172,7 +173,7 @@ export default function GradeTestPage() {
                 <div className="text-2xl text-gray-300">/</div>
                 <div className="text-center">
                   <p className="text-xs text-gray-500">Total</p>
-                  <p className="text-3xl font-extrabold text-gray-800">{attempt.total_marks}</p>
+                  <p className="text-3xl font-extrabold text-gray-800">{totalMarks}</p>
                 </div>
               </div>
               <Badge className={`${isPassed ? 'bg-green-500' : 'bg-red-500'} text-white border-none text-sm px-3 py-1`}>

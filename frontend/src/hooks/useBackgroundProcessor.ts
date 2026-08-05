@@ -122,6 +122,15 @@ export function useBackgroundProcessor(): UseBackgroundProcessorReturn {
             return;
         }
 
+        // Keep canvas size in sync with actual video dimensions to prevent
+        // stretch/distortion when camera resolution changes (e.g. mobile rotation)
+        if (video.videoWidth && video.videoHeight &&
+            (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            console.log('[BackgroundProcessor] Canvas resized to match video:', canvas.width, 'x', canvas.height);
+        }
+
         // Check if background processing is active using ref (not stale state)
         if (isBackgroundActiveRef.current && isModelLoadedRef.current && selfieSegmentationRef.current) {
             // Use MediaPipe for segmentation

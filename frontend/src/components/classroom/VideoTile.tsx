@@ -85,8 +85,8 @@ export function VideoTile({
         <div
             onClick={onClick}
             className={`
-        relative rounded-xl bg-slate-100 border border-slate-200
-        ${isMain ? 'w-full h-full' : 'aspect-video'}
+        relative rounded-xl border border-slate-200
+        ${isMain ? 'w-full h-full bg-slate-900' : 'aspect-video bg-slate-100'}
         ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-sky-400 transition-all' : ''}
         ${className}
       `}
@@ -100,7 +100,7 @@ export function VideoTile({
                         autoPlay
                         playsInline
                         muted={isLocal}
-                        className={`w-full h-full object-cover ${isLocal ? 'scale-x-[-1]' : ''}`}
+                        className={`w-full h-full object-contain bg-slate-900 ${isLocal ? 'scale-x-[-1]' : ''}`}
                     />
                 ) : (
                     /* Avatar placeholder when no video */

@@ -29,20 +29,29 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import { moduleService } from "@/services/api";
-import type { Module, UpdateModuleData } from "@/types";
+import type { Module, ModuleContent, UpdateModuleData } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import ErrorModal from "@/components/ui/errorModal";
 import SuccessModal from "@/components/ui/successModal";
-import { cn } from "@/lib/utils";
+import { cn, resolveImageUrl } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function EditModulePage() {
   usePageTitle("Edit Module");
@@ -63,6 +72,25 @@ export default function EditModulePage() {
   });
   const [textContent, setTextContent] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [selectedTextContent, setSelectedTextContent] = useState<string | null>(null);
+
+  const handleViewContent = (content: ModuleContent) => {
+    if (content.type === "text") {
+      if (content.text_content) {
+        setSelectedTextContent(content.text_content);
+      } else {
+        setError("Text content is empty.");
+      }
+      return;
+    }
+    const rawUrl = content.s3_url || (content as any).url || (content as any).file_url;
+    const fileUrl = resolveImageUrl(rawUrl);
+    if (fileUrl) {
+      window.open(fileUrl, "_blank", "noopener,noreferrer");
+    } else {
+      setError("Unable to open file: Document URL is missing.");
+    }
+  };
 
   useEffect(() => {
     if (subjectId && moduleId) {
@@ -444,13 +472,17 @@ export default function EditModulePage() {
                         key={content.content_id}
                         className="group flex flex-col md:flex-row items-stretch border border-gray-100 rounded-xl hover:border-saBlue/20 hover:bg-saBlue/[0.02] transition-all duration-300 overflow-hidden"
                       >
-                        <div className="flex-1 p-3 flex items-center gap-3">
+                        <div
+                          onClick={() => handleViewContent(content)}
+                          className="flex-1 p-3 flex items-center gap-3 cursor-pointer"
+                          title="Click to view content"
+                        >
                           <div className="shrink-0">{getContentIcon(content.type)}</div>
                           <div className="flex-1 min-w-0 pr-2">
-                            <h5 className="text-xs font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors">
+                            <h5 className="text-xs font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors flex items-center gap-1.5">
                               {content.type === "text"
                                 ? content.text_content?.substring(0, 80) + (content.text_content?.length! > 80 ? "..." : "")
-                                : content.file_name || "Instructional Material"}
+                                : (content.file_name || (content as any).filename || "Instructional Material")}
                             </h5>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
                               <span className="text-[10px] font-black uppercase tracking-widest text-saBlue/50 bg-saBlue/5 px-2 py-0.5 rounded-full">
@@ -471,12 +503,30 @@ export default function EditModulePage() {
                             </div>
                           </div>
                         </div>
-                        <div className="md:w-20 border-t md:border-t-0 md:border-l border-gray-100 flex items-center justify-center p-3 md:p-0 bg-gray-50/30 group-hover:bg-red-50/30 group-hover:border-red-100 transition-colors">
+                        <div className="md:w-28 border-t md:border-t-0 md:border-l border-gray-100 flex items-center justify-center gap-1 p-3 md:p-0 bg-gray-50/30 transition-colors">
                           <Button
+                            type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleRemoveContent(content.content_id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewContent(content);
+                            }}
+                            className="h-8 w-8 text-gray-400 hover:text-saBlue hover:bg-saBlue/10 rounded-lg transition-all"
+                            title="View Content"
+                          >
+                            {content.type === "text" ? <Eye className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveContent(content.content_id);
+                            }}
                             className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                            title="Delete Content"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -500,6 +550,18 @@ export default function EditModulePage() {
       </div>
 
       {/* Modals */}
+      <Dialog open={selectedTextContent !== null} onOpenChange={(open) => { if (!open) setSelectedTextContent(null); }}>
+        <DialogContent className="max-w-2xl rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-gray-900">Module Text Content</DialogTitle>
+            <DialogDescription className="text-xs text-gray-500">Instructional material preview</DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-800 leading-relaxed max-h-[60vh] overflow-y-auto whitespace-pre-wrap font-medium">
+            {selectedTextContent}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ErrorModal
         open={!!error}
         onConfirm={() => setError("")}
