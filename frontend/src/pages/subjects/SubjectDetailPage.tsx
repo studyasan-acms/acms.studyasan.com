@@ -412,8 +412,8 @@ export default function SubjectDetailPage() {
                 {subject.teacher_subject_junctions?.map((junction) => (
                   <div
                     key={junction.id}
-                    className={`flex items-center gap-3 p-2.5 rounded-2xl transition-colors border border-transparent ${user?.role !== "STUDENT" ? "hover:bg-gray-50 hover:border-gray-100 cursor-pointer" : "cursor-default"}`}
-                    onClick={() => user?.role !== "STUDENT" && navigate(`/dashboard/teachers/${junction.teacher.id}`)}
+                    className={`flex items-center gap-3 p-2.5 rounded-2xl transition-colors border border-transparent ${isAdmin ? "hover:bg-gray-50 hover:border-gray-100 cursor-pointer" : "cursor-default"}`}
+                    onClick={() => isAdmin && navigate(`/dashboard/teachers/${junction.teacher.id}`)}
                   >
                     <Avatar className="h-10 w-10 border-2 border-white shadow-sm ring-1 ring-gray-100">
                       <AvatarImage src={resolveImageUrl(junction.teacher.user.profile_url)} />
@@ -421,7 +421,6 @@ export default function SubjectDetailPage() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-700 text-xs truncate">{junction.teacher.user.name}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{junction.teacher.user.email}</p>
                     </div>
                   </div>
                 ))}
@@ -444,7 +443,6 @@ export default function SubjectDetailPage() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-gray-700 text-xs truncate">{enrollment.student.user.name}</p>
-                      <p className="text-[10px] text-gray-400 truncate">{enrollment.student.user.email}</p>
                     </div>
                   </div>
                 ))}
