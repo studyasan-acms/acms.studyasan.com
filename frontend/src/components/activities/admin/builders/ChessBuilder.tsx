@@ -11,35 +11,58 @@ export default function ChessBuilder({ items, onItemsChange }: Props) {
         const newItem = {
             content: {
                 type: 'chess',
-                description: 'Play a game of chess',
+                description: 'Play chess against the computer or face-to-face with a teacher.',
+                vsComputer: true,
+                isInfiniteLevels: true,
+                totalLevels: 10,
+                pointsPerLevel: 100,
             },
             points: 100,
         };
-        onItemsChange([...items, newItem]);
+        onItemsChange([newItem]);
+    };
+
+    const hasGame = items.length > 0;
+    const gameContent = items[0]?.content || {};
+
+    const updateContent = (updates: any) => {
+        const newItems = [...items];
+        if (newItems[0]) {
+            newItems[0].content = {
+                ...newItems[0].content,
+                ...updates,
+            };
+            onItemsChange(newItems);
+        }
     };
 
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-600">
-                    Chess is a strategic board game. Players earn points by capturing opponent pieces.
+                <p className="text-xs text-slate-500 font-medium">
+                    Chess Battle Mode. Configure matches against the computer AI (progression levels) or two-player local games.
                 </p>
             </div>
 
-            {items.length === 0 ? (
-                <div className="text-center py-8 border-2 border-dashed rounded-lg">
-                    <p className="text-gray-500 mb-3">No chess game added yet</p>
-                    <Button type="button" onClick={addChessGame} size="sm">
-                        Add Chess Game
+            {!hasGame ? (
+                <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/30">
+                    <p className="text-slate-400 text-sm font-medium mb-3">No chess game config added yet</p>
+                    <Button 
+                        type="button" 
+                        onClick={addChessGame} 
+                        size="sm"
+                        className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold px-4 h-9 shadow-sm shadow-blue-500/10"
+                    >
+                        Add Chess Game Config
                     </Button>
                 </div>
             ) : (
-                <div className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex justify-between items-center">
+                <div className="border border-slate-200 bg-slate-50/50 rounded-2xl p-5 space-y-5">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
                         <div>
-                            <h4 className="font-semibold">Chess Game</h4>
-                            <p className="text-sm text-gray-600 mt-1">
-                                Standard chess game with move validation
+                            <h4 className="font-bold text-sm text-slate-800">Chess Game Config</h4>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                                Select match mode and level progression parameters.
                             </p>
                         </div>
                         <Button
@@ -47,80 +70,136 @@ export default function ChessBuilder({ items, onItemsChange }: Props) {
                             variant="ghost"
                             size="sm"
                             onClick={() => onItemsChange([])}
+                            className="text-xs font-semibold text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg px-2.5 h-8"
                         >
-                            Remove
+                            Remove Game
                         </Button>
                     </div>
 
-                    <div className="mt-4 space-y-4">
+                    <div className="space-y-5 pt-1">
+                        
+                        {/* Game Mode selection */}
                         <div>
-                            <label className="block text-sm font-medium mb-2">Game Mode</label>
-                            <div className="flex items-center gap-4">
-                                <label className="flex items-center">
+                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">Game Mode</label>
+                            <div className="flex items-center gap-6">
+                                <label className="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
                                     <input
                                         type="radio"
-                                        className="mr-2"
-                                        checked={items[0]?.content?.vsComputer !== false}
-                                        onChange={() => {
-                                            const newItems = [...items];
-                                            newItems[0].content = { ...newItems[0].content, vsComputer: true };
-                                            onItemsChange(newItems);
-                                        }}
+                                        name="chessGameMode"
+                                        className="mr-2 h-4 w-4 text-saBlue border-slate-300 focus:ring-saBlue"
+                                        checked={gameContent.vsComputer !== false}
+                                        onChange={() => updateContent({ vsComputer: true })}
                                     />
-                                    vs Computer
+                                    vs Computer (Level Progression)
                                 </label>
-                                <label className="flex items-center">
+                                <label className="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
                                     <input
                                         type="radio"
-                                        className="mr-2"
-                                        checked={items[0]?.content?.vsComputer === false}
-                                        onChange={() => {
-                                            const newItems = [...items];
-                                            newItems[0].content = { ...newItems[0].content, vsComputer: false };
-                                            onItemsChange(newItems);
-                                        }}
+                                        name="chessGameMode"
+                                        className="mr-2 h-4 w-4 text-saBlue border-slate-300 focus:ring-saBlue"
+                                        checked={gameContent.vsComputer === false}
+                                        onChange={() => updateContent({ vsComputer: false })}
                                     />
-                                    vs Player (Pass & Play)
+                                    vs Player / Teacher (Pass & Play)
                                 </label>
                             </div>
                         </div>
 
-                        {items[0]?.content?.vsComputer !== false && (
-                            <div>
-                                <label className="block text-sm font-medium mb-2">Computer Difficulty</label>
-                                <select
-                                    className="w-full px-3 py-2 border rounded"
-                                    value={items[0]?.content?.difficulty || 'easy'}
-                                    onChange={(e) => {
-                                        const newItems = [...items];
-                                        newItems[0].content = { ...newItems[0].content, difficulty: e.target.value };
-                                        onItemsChange(newItems);
-                                    }}
-                                >
-                                    <option value="easy">Easy (Random Moves)</option>
-                                    <option value="medium">Medium (Basic Strategy)</option>
-                                    <option value="hard">Hard (Advanced)</option>
-                                </select>
+                        {/* Computer AI levels parameters */}
+                        {gameContent.vsComputer !== false ? (
+                            <div className="space-y-4 border-t border-slate-100 pt-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Levels Setup</label>
+                                    <div className="flex items-center gap-6">
+                                        <label className="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="chessLevelsType"
+                                                className="mr-2 h-4 w-4 text-saBlue border-slate-300 focus:ring-saBlue"
+                                                checked={gameContent.isInfiniteLevels !== false}
+                                                onChange={() => updateContent({ isInfiniteLevels: true })}
+                                            />
+                                            Infinite Levels (No limit)
+                                        </label>
+                                        <label className="flex items-center text-sm font-medium text-slate-700 cursor-pointer">
+                                            <input
+                                                type="radio"
+                                                name="chessLevelsType"
+                                                className="mr-2 h-4 w-4 text-saBlue border-slate-300 focus:ring-saBlue"
+                                                checked={gameContent.isInfiniteLevels === false}
+                                                onChange={() => updateContent({ isInfiniteLevels: false })}
+                                            />
+                                            Fixed Number of Levels
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {gameContent.isInfiniteLevels === false && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Levels *</label>
+                                            <Input
+                                                type="number"
+                                                min="1"
+                                                max="100"
+                                                className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent text-slate-800 text-sm font-medium h-10"
+                                                value={gameContent.totalLevels || 10}
+                                                onChange={(e) => updateContent({ totalLevels: Math.max(1, Number(e.target.value)) })}
+                                            />
+                                            <p className="text-[10px] text-slate-400">Total levels the student must complete to finish the activity.</p>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Points per Level Clear *</label>
+                                        <Input
+                                            type="number"
+                                            min="10"
+                                            className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent text-slate-800 text-sm font-medium h-10"
+                                            value={gameContent.pointsPerLevel || 100}
+                                            onChange={(e) => {
+                                                const p = Math.max(0, Number(e.target.value));
+                                                updateContent({ pointsPerLevel: p });
+                                                // Also update the parent item points
+                                                const newItems = [...items];
+                                                if (newItems[0]) {
+                                                    newItems[0].points = p;
+                                                    onItemsChange(newItems);
+                                                }
+                                            }}
+                                        />
+                                        <p className="text-[10px] text-slate-400">Points awarded to the student upon completing each level.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-4 border-t border-slate-100 pt-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Match Win Points *</label>
+                                        <Input
+                                            type="number"
+                                            min="10"
+                                            className="w-full px-3 py-2 border border-slate-200 bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent text-slate-800 text-sm font-medium h-10"
+                                            value={gameContent.pointsPerLevel || 100}
+                                            onChange={(e) => {
+                                                const p = Math.max(0, Number(e.target.value));
+                                                updateContent({ pointsPerLevel: p });
+                                                // Also update the parent item points
+                                                const newItems = [...items];
+                                                if (newItems[0]) {
+                                                    newItems[0].points = p;
+                                                    onItemsChange(newItems);
+                                                }
+                                            }}
+                                        />
+                                        <p className="text-[10px] text-slate-400">Points awarded to the winning player.</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
-
-                        <div>
-                            <label className="block text-sm font-medium mb-2">Points per Captured Piece</label>
-                            <p className="text-xs text-gray-500 mb-2">
-                                Pawn: 10, Knight/Bishop: 30, Rook: 50, Queen: 90, King: 1000
-                            </p>
-                            <Input
-                                type="number"
-                                min="1"
-                                className="w-32 px-3 py-2 border rounded"
-                                value={items[0]?.points || 100}
-                                onChange={(e) => {
-                                    const newItems = [...items];
-                                    newItems[0].points = Number(e.target.value);
-                                    onItemsChange(newItems);
-                                }}
-                            />
-                        </div>
                     </div>
                 </div>
             )}

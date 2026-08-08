@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Play, Users, Trophy, Radio, Presentation, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { 
+  Plus, Edit, Trash2, Play, Users, Trophy, Radio, 
+  Presentation, X, ChevronLeft, ChevronRight, MoreVertical, 
+  Loader2, Eye, EyeOff, LayoutGrid, List 
+} from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { activityAPI, activityGroupAPI } from '../../services/activity.service';
@@ -45,6 +49,9 @@ export default function ActivitiesPage() {
   const [hostingActivity, setHostingActivity] = useState<Activity | null>(null);
   const [playingActivity, setPlayingActivity] = useState<Activity | null>(null);
   const [playingActivityData, setPlayingActivityData] = useState<Activity | null>(null);
+  const [activeDropdownId, setActiveDropdownId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+
   const [filters, setFilters] = useState({
     group_id: '',
     activity_type: '',
@@ -56,6 +63,17 @@ export default function ActivitiesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 12;
+
+  useEffect(() => {
+    const handleClose = () => setActiveDropdownId(null);
+    window.addEventListener('click', handleClose);
+    return () => window.removeEventListener('click', handleClose);
+  }, []);
+
+  const toggleDropdown = (id: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setActiveDropdownId(activeDropdownId === id ? null : id);
+  };
 
   useEffect(() => {
     fetchActivities();
@@ -193,29 +211,67 @@ export default function ActivitiesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-saBlue" />
+        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest animate-pulse">Loading Activities...</p>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">Activities</h1>
-        <Button onClick={handleCreate} className="w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Activity
-        </Button>
+    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 max-w-7xl space-y-8">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">Activities</h1>
+          <p className="text-xs text-slate-500 font-medium mt-1">Manage game content, host live sessions, and track results.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-end">
+          {/* View Toggle Group */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/60">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white text-saBlue shadow-xs font-bold'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg transition-all ${
+                viewMode === 'table'
+                  ? 'bg-white text-saBlue shadow-xs font-bold'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="Table List View"
+            >
+              <List className="w-4 h-4" />
+            </button>
+          </div>
+
+          <Button 
+            onClick={handleCreate} 
+            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-4 font-bold shadow-md shadow-blue-500/10 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Activity
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card className="p-3 sm:p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Group</label>
+      {/* Filters Box */}
+      <Card className="p-5 border border-slate-200/80 shadow-xs rounded-2xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Group</label>
             <select
-              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
+              className="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent transition-all font-medium text-slate-700 text-sm cursor-pointer"
               value={filters.group_id}
               onChange={(e) => {
                 setFilters({ ...filters, group_id: e.target.value });
@@ -231,10 +287,10 @@ export default function ActivitiesPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Type</label>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</label>
             <select
-              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
+              className="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent transition-all font-medium text-slate-700 text-sm cursor-pointer"
               value={filters.activity_type}
               onChange={(e) => {
                 setFilters({ ...filters, activity_type: e.target.value });
@@ -253,10 +309,10 @@ export default function ActivitiesPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Difficulty</label>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Difficulty</label>
             <select
-              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
+              className="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent transition-all font-medium text-slate-700 text-sm cursor-pointer"
               value={filters.difficulty}
               onChange={(e) => {
                 setFilters({ ...filters, difficulty: e.target.value });
@@ -270,10 +326,10 @@ export default function ActivitiesPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Status</label>
+          <div className="space-y-1.5">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</label>
             <select
-              className="w-full px-3 sm:px-4 py-2 border rounded-lg text-sm"
+              className="w-full px-3.5 py-2.5 border border-slate-200 bg-slate-50/50 focus:bg-white rounded-xl focus:ring-2 focus:ring-saBlue focus:border-transparent transition-all font-medium text-slate-700 text-sm cursor-pointer"
               value={filters.is_published}
               onChange={(e) => {
                 setFilters({ ...filters, is_published: e.target.value });
@@ -288,8 +344,6 @@ export default function ActivitiesPage() {
         </div>
       </Card>
 
-
-
       {hostingActivity && (
         <TeacherQuizHost
           activity={hostingActivity}
@@ -297,147 +351,366 @@ export default function ActivitiesPage() {
         />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {activities.map((activity) => (
-          <Card key={activity.id} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg sm:text-xl font-semibold mb-1 truncate">{activity.title}</h3>
-                <p className="text-sm text-gray-500">
-                  {getActivityTypeLabel(activity.activity_type)}
-                </p>
-              </div>
-              <div className="flex gap-1 ml-2">
-                <Button variant="ghost" size="sm" onClick={() => handleEdit(activity)} className="p-1 sm:p-2">
-                  <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDelete(activity.id)}
-                  className="p-1 sm:p-2"
-                >
-                  <Trash2 className="w-3 h-3 sm:w-4 sm:h-4 text-red-600" />
-                </Button>
-              </div>
-            </div>
+      {/* Grid / Table Content Views */}
+      {viewMode === 'table' ? (
+        <div className="overflow-x-auto bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Activity</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Type</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Difficulty</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Rewards</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Status</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-center">Play / Host</th>
+                <th className="px-5 py-3.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {activities.map((activity) => {
+                const isDropdownOpen = activeDropdownId === activity.id;
+                return (
+                  <tr key={activity.id} className="hover:bg-slate-50/40 transition-colors">
+                    
+                    {/* Activity Title & Group */}
+                    <td className="px-5 py-3.5 min-w-[240px]">
+                      <div className="flex items-center gap-3">
+                        <div className="w-14 h-9 rounded-lg overflow-hidden bg-slate-50 border border-slate-100 shrink-0">
+                          {activity.cover_image || activity.group?.cover_image ? (
+                            <img
+                              src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
+                              alt={activity.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`} />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-bold text-sm text-slate-800 truncate" title={activity.title}>
+                            {activity.title}
+                          </h4>
+                          <span className="text-[10px] font-semibold text-slate-400 block truncate">
+                            {activity.group?.name || 'No Group'}
+                          </span>
+                        </div>
+                      </div>
+                    </td>
 
-            {activity.cover_image || activity.group?.cover_image ? (
-              <div className="w-full h-32 sm:h-40 rounded-md mb-3 overflow-hidden bg-gray-100">
-                <img
-                  src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
-                  alt={activity.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className={`w-full h-32 sm:h-40 rounded-md mb-3 bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center`}>
-                <h3 className="text-lg sm:text-2xl font-bold text-white text-center px-4">
-                  {activity.title}
-                </h3>
-              </div>
-            )}
+                    {/* Type Badge */}
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="text-xs font-semibold text-slate-600 bg-slate-100 border border-slate-200/50 px-2 py-0.5 rounded-lg">
+                        {getActivityTypeLabel(activity.activity_type)}
+                      </span>
+                    </td>
 
-            {activity.description && (
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                {activity.description}
-              </p>
-            )}
+                    {/* Difficulty Badge */}
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold ${
+                        activity.difficulty === 'EASY' 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100/55' 
+                          : activity.difficulty === 'HARD'
+                          ? 'bg-red-50 text-red-700 border border-red-100/55'
+                          : 'bg-blue-50 text-blue-700 border border-blue-100/55'
+                      }`}>
+                        {activity.difficulty}
+                      </span>
+                    </td>
 
-            <div className="flex flex-wrap gap-2 mb-3">
-              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                {activity.difficulty}
-              </span>
-              <span className="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
-                {activity.points} points
-              </span>
-            </div>
+                    {/* Rewards */}
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      <span className="text-xs font-bold text-slate-700">
+                        {activity.points} EXP
+                      </span>
+                    </td>
 
-            <div className="flex items-center gap-4 text-sm text-gray-600 mb-4">
-              <div className="flex items-center">
-                <Users className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span className="text-xs sm:text-sm">{activity._count?.enrollments || 0}</span>
-              </div>
-              <div className="flex items-center">
-                <Play className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
-                <span className="text-xs sm:text-sm">{activity._count?.attempts || 0}</span>
-              </div>
-            </div>
+                    {/* Status Dot */}
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        activity.is_published 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                          : 'bg-slate-50 text-slate-600 border border-slate-200/60'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${activity.is_published ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                        {activity.is_published ? 'Published' : 'Draft'}
+                      </span>
+                    </td>
 
-            <div className="flex flex-wrap gap-1 sm:gap-2 pt-3 border-t">
-              <Button
-                variant={activity.is_published ? 'outline' : 'default'}
-                size="sm"
-                onClick={() =>
-                  handleTogglePublish(activity.id, activity.is_published)
-                }
-                className="text-xs sm:text-sm px-2 sm:px-3"
-              >
-                <span className="hidden sm:inline">{activity.is_published ? 'Unpublish' : 'Publish'}</span>
-                <span className="sm:hidden">{activity.is_published ? 'Unpub' : 'Pub'}</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setViewingAttempts(activity)}
-                className="text-xs sm:text-sm px-2 sm:px-3"
-              >
-                <Trophy className="w-3 h-3 mr-1" />
-                <span className="hidden sm:inline">Scores</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={async () => {
-                  try {
-                    const response = await activityAPI.getById(activity.id);
-                    setPlayingActivityData(response.data.data);
-                    setPlayingActivity(activity);
-                  } catch (error: any) {
-                    toast.error('Failed to load activity details');
-                  }
-                }}
-                className="text-xs sm:text-sm px-2 sm:px-3"
-              >
-                <Play className="w-3 h-3 mr-1" />
-                <span className="hidden sm:inline">Play</span>
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => setHostingActivity(activity)}
-                className="bg-saVividOrange hover:bg-amber-600 text-white text-xs sm:text-sm px-2 sm:px-3"
-              >
-                <Presentation className="w-3 h-3 mr-1" />
-                <span className="hidden sm:inline">Host Game</span>
-                <span className="sm:hidden">Host</span>
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+                    {/* Play/Host buttons */}
+                    <td className="px-5 py-3.5 text-center whitespace-nowrap">
+                      <div className="inline-flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const response = await activityAPI.getById(activity.id);
+                              setPlayingActivityData(response.data.data);
+                              setPlayingActivity(activity);
+                            } catch (error: any) {
+                              toast.error('Failed to load activity details');
+                            }
+                          }}
+                          className="h-8 px-2.5 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center gap-1"
+                        >
+                          <Play className="w-3.5 h-3.5 text-slate-500 fill-current" /> Play
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setHostingActivity(activity)}
+                          className="h-8 px-2.5 rounded-lg bg-saVividOrange hover:bg-orange-600 text-[10px] font-bold text-white transition-colors flex items-center gap-1 shadow-xs"
+                        >
+                          <Presentation className="w-3.5 h-3.5 mr-1" /> Host
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* Admin settings */}
+                    <td className="px-5 py-3.5 text-right relative whitespace-nowrap">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleDropdown(activity.id, e)}
+                        className="h-8 w-8 hover:bg-slate-100 text-slate-500 hover:text-slate-700 rounded-lg inline-flex items-center justify-center transition-colors border border-transparent hover:border-slate-200"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {/* Dropdown Menu */}
+                      {isDropdownOpen && (
+                        <div className="absolute right-5 mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1.5 text-left animate-in slide-in-from-top-1 duration-100">
+                          <button
+                            type="button"
+                            onClick={() => { handleEdit(activity); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-slate-400" /> Edit Settings
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleTogglePublish(activity.id, activity.is_published); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            {activity.is_published ? (
+                              <><EyeOff className="w-3.5 h-3.5 text-slate-400" /> Unpublish</>
+                            ) : (
+                              <><Eye className="w-3.5 h-3.5 text-slate-400" /> Publish</>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setViewingAttempts(activity); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            <Trophy className="w-3.5 h-3.5 text-slate-400" /> Scores & Attempts
+                          </button>
+                          <div className="h-px bg-slate-100 my-1" />
+                          <button
+                            type="button"
+                            onClick={() => { handleDelete(activity.id); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete Activity
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {activities.map((activity) => {
+            const isDropdownOpen = activeDropdownId === activity.id;
+            return (
+              <Card key={activity.id} className="relative flex flex-col justify-between overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 hover:shadow-md hover:border-slate-300 transition-all duration-200 group">
+                <div className="space-y-4">
+                  
+                  {/* Visual Cover Asset */}
+                  <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-50 border border-slate-100">
+                    {activity.cover_image || activity.group?.cover_image ? (
+                      <img
+                        src={resolveImageUrl(activity.cover_image || activity.group?.cover_image) || activity.cover_image || activity.group?.cover_image}
+                        alt={activity.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className={`w-full h-full bg-gradient-to-br ${getRandomGradient()} flex items-center justify-center p-4`}>
+                        <span className="text-lg font-bold text-white text-center drop-shadow-sm select-none">
+                          {activity.title}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Badges Overlay */}
+                    <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-xs ${
+                        activity.is_published 
+                          ? 'bg-emerald-500 text-white' 
+                          : 'bg-slate-700/80 text-white backdrop-blur-xs'
+                      }`}>
+                        {activity.is_published ? 'Published' : 'Draft'}
+                      </span>
+                    </div>
+
+                    {/* Actions Dropdown Button Trigger */}
+                    <div className="absolute top-3 right-3 z-20">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleDropdown(activity.id, e)}
+                        className="h-8 w-8 bg-white/90 hover:bg-white text-slate-600 hover:text-slate-800 rounded-lg flex items-center justify-center shadow-sm backdrop-blur-xs border border-slate-200/50 transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+
+                      {/* Absolute Dropdown Portal Menu */}
+                      {isDropdownOpen && (
+                        <div className="absolute right-0 mt-1.5 w-44 bg-white border border-slate-200 rounded-xl shadow-lg z-30 py-1.5 animate-in slide-in-from-top-1 duration-100">
+                          <button
+                            type="button"
+                            onClick={() => { handleEdit(activity); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            <Edit className="w-3.5 h-3.5 text-slate-400" /> Edit Settings
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { handleTogglePublish(activity.id, activity.is_published); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            {activity.is_published ? (
+                              <><EyeOff className="w-3.5 h-3.5 text-slate-400" /> Unpublish</>
+                            ) : (
+                              <><Eye className="w-3.5 h-3.5 text-slate-400" /> Publish</>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setViewingAttempts(activity); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 flex items-center gap-2"
+                          >
+                            <Trophy className="w-3.5 h-3.5 text-slate-400" /> Scores & Attempts
+                          </button>
+                          <div className="h-px bg-slate-100 my-1" />
+                          <button
+                            type="button"
+                            onClick={() => { handleDelete(activity.id); setActiveDropdownId(null); }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete Activity
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Text Information block */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        {getActivityTypeLabel(activity.activity_type)}
+                      </span>
+                      <div className="flex items-center gap-3 text-xs text-slate-400">
+                        <div className="flex items-center gap-1" title="Enrolled students">
+                          <Users className="w-3.5 h-3.5" />
+                          <span>{activity._count?.enrollments || 0}</span>
+                        </div>
+                        <div className="flex items-center gap-1" title="Attempts play count">
+                          <Play className="w-3.5 h-3.5" />
+                          <span>{activity._count?.attempts || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <h3 className="text-base font-bold text-slate-800 line-clamp-1 leading-tight" title={activity.title}>
+                      {activity.title}
+                    </h3>
+                    
+                    {activity.description ? (
+                      <p className="text-slate-500 text-xs line-clamp-2 leading-relaxed h-8">
+                        {activity.description}
+                      </p>
+                    ) : (
+                      <p className="text-slate-400 text-xs italic leading-relaxed h-8">
+                        No description provided.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Score & Reward Badges */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${
+                      activity.difficulty === 'EASY' 
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                        : activity.difficulty === 'HARD'
+                        ? 'bg-red-50 text-red-700 border border-red-100'
+                        : 'bg-blue-50 text-blue-700 border border-blue-100'
+                    }`}>
+                      {activity.difficulty}
+                    </span>
+                    <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-100">
+                      {activity.points} EXP Points
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions Footer */}
+                <div className="grid grid-cols-2 gap-2 mt-5 pt-4 border-t border-slate-100">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const response = await activityAPI.getById(activity.id);
+                        setPlayingActivityData(response.data.data);
+                        setPlayingActivity(activity);
+                      } catch (error: any) {
+                        toast.error('Failed to load activity details');
+                      }
+                    }}
+                    className="rounded-xl font-bold text-xs h-9 border-slate-200 text-slate-700 hover:bg-slate-50"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1 text-slate-500" /> Play Preview
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setHostingActivity(activity)}
+                    className="bg-saVividOrange hover:bg-orange-600 text-white rounded-xl font-bold text-xs h-9 shadow-sm shadow-orange-500/10 transition-all flex items-center justify-center animate-none"
+                  >
+                    <Presentation className="w-3.5 h-3.5 mr-1" /> Host Activity
+                  </Button>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {activities.length === 0 && (
-        <div className="text-center py-8 sm:py-12">
-          <Play className="w-12 h-12 sm:w-16 sm:h-16 mx-auto text-gray-400 mb-4" />
-          <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">
-            No Activities Yet
-          </h3>
-          <p className="text-gray-500 mb-4 px-4">
-            Create your first activity to get started
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-8 max-w-md mx-auto">
+          <div className="w-16 h-16 bg-slate-50 rounded-2xl border border-slate-150 flex items-center justify-center mx-auto mb-4">
+            <Play className="w-8 h-8 text-slate-400" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 mb-1">No Activities Match</h3>
+          <p className="text-xs text-slate-500 mb-6">
+            There are no activities matching the current filter criteria, or you haven't created any yet.
           </p>
-          <Button onClick={handleCreate} className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Activity
+          <Button 
+            onClick={handleCreate} 
+            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-5 font-bold shadow-md shadow-blue-500/10"
+          >
+            Create First Activity
           </Button>
         </div>
       )}
 
-      {/* Pagination Styled */}
+      {/* Pagination */}
       {activities.length > 0 && (
-        <div className="flex items-center justify-between pt-6 mt-6 border-t border-gray-100">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            {Math.min(currentPage * limit, total)} of {total} Activities
+        <div className="flex items-center justify-between pt-6 border-t border-slate-200">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Showing {Math.min((currentPage - 1) * limit + 1, total)} - {Math.min(currentPage * limit, total)} of {total} Activities
           </p>
           <div className="flex gap-2">
             <Button
@@ -445,18 +718,18 @@ export default function ActivitiesPage() {
               size="sm"
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(p => p - 1)}
-              className="h-8 text-xs font-medium rounded-lg"
+              className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+              <ChevronLeft className="w-4 h-4 mr-1" /> Prev
             </Button>
             <Button
               variant="outline"
               size="sm"
               disabled={currentPage === totalPages}
               onClick={() => setCurrentPage(p => p + 1)}
-              className="h-8 text-xs font-medium rounded-lg"
+              className="h-9 px-3 text-xs font-semibold rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50"
             >
-              Next <ChevronRight className="w-3 h-3 ml-1" />
+              Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         </div>
@@ -472,18 +745,22 @@ export default function ActivitiesPage() {
 
       {/* Play Activity Modal */}
       {playingActivity && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg w-full max-w-4xl sm:max-w-6xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
-            <div className="flex justify-between items-center p-3 sm:p-4 border-b">
-              <h2 className="text-lg sm:text-xl font-bold truncate pr-2">Preview: {playingActivity.title}</h2>
-              <Button variant="ghost" onClick={() => {
-                setPlayingActivity(null);
-                setPlayingActivityData(null);
-              }} className="p-1 sm:p-2">
-                <X className="w-4 h-4 sm:w-5 sm:h-5" />
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-slate-950 rounded-2xl w-full max-w-6xl max-h-[92vh] overflow-hidden shadow-2xl border border-slate-800/80 flex flex-col">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-800/80 bg-slate-900">
+              <h2 className="text-base font-bold text-white truncate pr-4">Play Preview: {playingActivity.title}</h2>
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setPlayingActivity(null);
+                  setPlayingActivityData(null);
+                }} 
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
               </Button>
             </div>
-            <div className="p-2 sm:p-4 max-h-[calc(95vh-60px)] sm:max-h-[calc(90vh-80px)] overflow-auto">
+            <div className="flex-1 overflow-auto bg-slate-900/30">
               {renderPreviewGame(playingActivity)}
             </div>
           </div>
