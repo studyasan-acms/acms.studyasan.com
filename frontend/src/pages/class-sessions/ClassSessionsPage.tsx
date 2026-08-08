@@ -519,37 +519,39 @@ export default function ClassSessionsPage() {
           </div>
 
           {/* DAY SELECTOR PILLS */}
-          <div className="flex flex-wrap gap-2">
-            {orderedDays.map((day) => {
-              const isToday = day === dayNames[todayIndex] && weekOffset === 0;
-              const isSelected = day === selectedDay;
-              const daySessionCount = (weeklyData[day] || []).length;
+          <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
+            <div className="flex gap-2 min-w-max">
+              {orderedDays.map((day) => {
+                const isToday = day === dayNames[todayIndex] && weekOffset === 0;
+                const isSelected = day === selectedDay;
+                const daySessionCount = (weeklyData[day] || []).length;
 
-              return (
-                <button
-                  key={day}
-                  onClick={() => setSelectedDay(day)}
-                  className={cn(
-                    "flex-1 min-w-[70px] sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5",
-                    isSelected
-                      ? "bg-saBlue border-saBlue text-white shadow-md shadow-saBlue/20 scale-105"
-                      : isToday
-                        ? "bg-saVividOrange/15 border-saVividOrange/30 text-saVividOrange font-black"
-                        : "bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-saBlue/10 hover:text-saBlue"
-                  )}
-                >
-                  <span>{isToday ? 'Today' : day.slice(0, 3)}</span>
-                  {daySessionCount > 0 && (
-                    <span className={cn(
-                      "text-[10px] px-1.5 py-0.2 rounded-full font-extrabold",
-                      isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
-                    )}>
-                      {daySessionCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={day}
+                    onClick={() => setSelectedDay(day)}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 shrink-0",
+                      isSelected
+                        ? "bg-saBlue border-saBlue text-white shadow-md shadow-saBlue/20 scale-105"
+                        : isToday
+                          ? "bg-saVividOrange/15 border-saVividOrange/30 text-saVividOrange font-black"
+                          : "bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-saBlue/10 hover:text-saBlue"
+                    )}
+                  >
+                    <span>{isToday ? 'Today' : day.slice(0, 3)}</span>
+                    {daySessionCount > 0 && (
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded-full font-extrabold",
+                        isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-700"
+                      )}>
+                        {daySessionCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -605,208 +607,167 @@ export default function ClassSessionsPage() {
         </div>
       </div>
 
-      {/* BRAND UNIFIED STATS CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Classes</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">{allCurrentSessions.length}</h3>
-            </div>
-            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
-              <Calendar className="h-5 w-5" />
-            </div>
+      {/* COMPACT STATS STRIP */}
+      <div className="grid grid-cols-4 gap-2">
+        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+            <Calendar className="h-3.5 w-3.5" />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">Classes in current view</p>
-        </Card>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Total</p>
+            <p className="text-sm font-black text-slate-900 leading-tight">{allCurrentSessions.length}</p>
+          </div>
+        </div>
 
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Now</p>
-              <h3 className="text-2xl font-black text-saBlue mt-1">{liveCount}</h3>
-            </div>
-            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
-              <Radio className="h-5 w-5 animate-pulse" />
-            </div>
+        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+            <Radio className="h-3.5 w-3.5 animate-pulse" />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">Active live sessions</p>
-        </Card>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Live</p>
+            <p className="text-sm font-black text-saBlue leading-tight">{liveCount}</p>
+          </div>
+        </div>
 
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Online Sessions</p>
-              <h3 className="text-2xl font-black text-saBlue mt-1">{onlineCount}</h3>
-            </div>
-            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
-              <Video className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+            <Video className="h-3.5 w-3.5" />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">Virtual classroom link</p>
-        </Card>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Online</p>
+            <p className="text-sm font-black text-saBlue leading-tight">{onlineCount}</p>
+          </div>
+        </div>
 
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saVividOrange/40 hover:shadow-md transition-all">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Offline Classes</p>
-              <h3 className="text-2xl font-black text-saVividOrange mt-1">{offlineCount}</h3>
-            </div>
-            <div className="h-10 w-10 bg-saVividOrange/10 rounded-xl flex items-center justify-center text-saVividOrange">
-              <BookOpen className="h-5 w-5" />
-            </div>
+        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
+          <div className="h-7 w-7 bg-saVividOrange/10 rounded-lg flex items-center justify-center text-saVividOrange shrink-0">
+            <BookOpen className="h-3.5 w-3.5" />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">Physical classroom venue</p>
-        </Card>
+          <div className="min-w-0">
+            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Offline</p>
+            <p className="text-sm font-black text-saVividOrange leading-tight">{offlineCount}</p>
+          </div>
+        </div>
       </div>
 
-      {/* SEARCH, MULTI-FILTER & VIEW TABS TOOLBAR */}
-      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
-        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
-          {/* Search Bar */}
-          <div className="relative flex-1 min-w-0">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+      {/* COMPACT SINGLE-ROW FILTER TOOLBAR */}
+      <div className="bg-white border border-slate-200/80 shadow-sm rounded-xl p-2.5 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2 min-w-max">
+          {/* Search */}
+          <div className="relative shrink-0 w-52">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search class by subject, teacher, location..."
-              className="pl-10 h-10 border-slate-200/80 rounded-xl bg-slate-50/50 focus:bg-white text-sm focus:ring-saBlue focus:border-saBlue"
+              placeholder="Search..."
+              className="pl-8 h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs focus:ring-saBlue focus:border-saBlue"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                <X className="h-3.5 w-3.5" />
+                <X className="h-3 w-3" />
               </button>
             )}
           </div>
 
-          {/* Filter Dropdowns & View Mode Tabs */}
-          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
-            {/* Subject Filter */}
-            <div className="flex-1 sm:flex-initial min-w-[140px]">
-              <SearchablePaginatedSelect
-                value={selectedSubject}
-                onValueChange={setSelectedSubject}
-                placeholder="All Subjects"
-                searchPlaceholder="Search subject..."
-                triggerClassName="h-10 px-3 rounded-xl border-slate-200/80 bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue"
-                options={[
-                  { value: 'all', label: 'All Subjects' },
-                  ...subjects.map((subject) => ({
-                    value: String(subject.id),
-                    label: formatSubjectFilterLabel(subject),
-                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
-                  })),
-                ]}
-              />
-            </div>
+          {/* Subject Filter */}
+          <div className="shrink-0 w-40">
+            <SearchablePaginatedSelect
+              value={selectedSubject}
+              onValueChange={setSelectedSubject}
+              placeholder="All Subjects"
+              searchPlaceholder="Search subject..."
+              triggerClassName="h-8 px-2.5 rounded-lg border-slate-200/80 bg-slate-50/50 text-xs font-medium"
+              options={[
+                { value: 'all', label: 'All Subjects' },
+                ...subjects.map((subject) => ({
+                  value: String(subject.id),
+                  label: formatSubjectFilterLabel(subject),
+                  searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
+                })),
+              ]}
+            />
+          </div>
 
-            {/* Mode Filter */}
-            <div className="flex-1 sm:flex-initial min-w-[110px]">
-              <Select value={selectedMode} onValueChange={setSelectedMode}>
-                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
-                  <SelectValue placeholder="All Modes" />
+          {/* Mode Filter */}
+          <div className="shrink-0 w-32">
+            <Select value={selectedMode} onValueChange={setSelectedMode}>
+              <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium">
+                <SelectValue placeholder="All Modes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modes</SelectItem>
+                <SelectItem value="ONLINE">Online</SelectItem>
+                <SelectItem value="OFFLINE">Offline</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Teacher Filter (Admin only) */}
+          {isAdmin && teachers.length > 0 && (
+            <div className="shrink-0 w-36">
+              <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium">
+                  <SelectValue placeholder="All Teachers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Modes</SelectItem>
-                  <SelectItem value="ONLINE">Online Only</SelectItem>
-                  <SelectItem value="OFFLINE">Offline Only</SelectItem>
+                  <SelectItem value="all">All Teachers</SelectItem>
+                  {teachers.map((t) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      {t.user.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+          )}
 
-            {/* Teacher Filter (Admin only) */}
-            {isAdmin && teachers.length > 0 && (
-              <div className="flex-1 sm:flex-initial min-w-[130px]">
-                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                  <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
-                    <SelectValue placeholder="All Teachers" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Teachers</SelectItem>
-                    {teachers.map((t) => (
-                      <SelectItem key={t.id} value={t.id.toString()}>
-                        {t.user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+          {/* Divider */}
+          <div className="h-6 w-px bg-slate-200 shrink-0" />
 
-            {/* View Mode Tabs (Scrollable on mobile) */}
-            <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-              <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
-                {[
-                  { id: 'week', label: 'Week' },
-                  { id: 'today', label: 'Today' },
-                  { id: 'upcoming', label: 'Upcoming' },
-                  { id: 'past', label: 'Past' },
-                  { id: 'all', label: 'All' },
-                ].map((mode) => (
-                  <button
-                    key={mode.id}
-                    onClick={() => {
-                      setViewMode(mode.id as typeof viewMode);
-                      setWeekOffset(0);
-                      setPage(1);
-                    }}
-                    className={cn(
-                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
-                      viewMode === mode.id
-                        ? "bg-white shadow-sm text-saBlue"
-                        : "text-slate-600 hover:text-slate-900"
-                    )}
-                  >
-                    {mode.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* View Mode Tabs */}
+          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
+            {[
+              { id: 'week', label: 'Week' },
+              { id: 'today', label: 'Today' },
+              { id: 'upcoming', label: 'Upcoming' },
+              { id: 'past', label: 'Past' },
+              { id: 'all', label: 'All' },
+            ].map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => {
+                  setViewMode(mode.id as typeof viewMode);
+                  setWeekOffset(0);
+                  setPage(1);
+                }}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap",
+                  viewMode === mode.id
+                    ? "bg-white shadow-sm text-saBlue"
+                    : "text-slate-600 hover:text-slate-900"
+                )}
+              >
+                {mode.label}
+              </button>
+            ))}
           </div>
-        </div>
 
-        {/* Active Filters Bar */}
-        {hasActiveFilters && (
-          <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs text-slate-500">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-slate-700 flex items-center gap-1">
-                <Filter className="h-3 w-3 text-saBlue" /> Active Filters:
-              </span>
-              {debouncedSearch && (
-                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-[10px]">
-                  Search: "{debouncedSearch}"
-                </Badge>
-              )}
-              {selectedSubject !== 'all' && (
-                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
-                  Subject: {subjects.find((s) => s.id.toString() === selectedSubject)?.name || selectedSubject}
-                </Badge>
-              )}
-              {selectedMode !== 'all' && (
-                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
-                  Mode: {selectedMode}
-                </Badge>
-              )}
-              {selectedTeacher !== 'all' && (
-                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
-                  Teacher: {teachers.find((t) => t.id.toString() === selectedTeacher)?.user.name || selectedTeacher}
-                </Badge>
-              )}
-            </div>
+          {/* Clear Filters */}
+          {hasActiveFilters && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="h-6 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2 font-semibold"
+              className="h-8 shrink-0 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 font-semibold rounded-lg"
             >
-              Clear Filters
+              Clear
             </Button>
-          </div>
-        )}
-      </Card>
+          )}
+        </div>
+      </div>
 
       {/* CONTENT DISPLAY */}
       {loading ? (
