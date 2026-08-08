@@ -67,7 +67,6 @@ export const createHomework = async (req: Request, res: Response) => {
           data: {
             user_id: teacher_user_id, // Use admin's user_id for now
             salary: 0,
-            salary_currency_id: 1,
             qualification: 'Admin',
             gender: null,
             experience: '0',

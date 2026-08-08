@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 import { useAuthStore } from "@/store/authStore";
+import { cn } from "@/lib/utils";
 
 import {
   ArrowLeft,
@@ -229,430 +230,409 @@ export default function HomeworkDetailPage() {
   const overDue = homework.due_date && new Date(homework.due_date) < new Date();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      {/* Simple Header */}
-      <div className="bg-saBlue rounded-2xl p-6 md:p-8 text-white shadow-sm overflow-hidden relative">
-        <div className="relative z-10 space-y-4">
-          <div className="flex justify-between items-center flex-wrap gap-3">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 animate-in fade-in duration-500">
+      {/* Clean Navigation & Header Row */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200 pb-5">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={() => navigate('/dashboard/homework')}
-              className="text-white hover:bg-white/10 rounded-lg h-8 px-3 -ml-2"
+              className="h-8 px-3 text-slate-600 border-slate-200 rounded-lg text-xs"
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
+              <ArrowLeft className="h-3.5 w-3.5 mr-1" />
               Back
             </Button>
-
-            {(isAdmin || isTeacher) && (
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate(`/dashboard/homework/${id}/edit`)}
-                  className="text-white hover:bg-white/10 rounded-lg h-8 px-3"
-                >
-                  Edit
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={async () => {
-                    if (!confirm('Delete this assignment? This cannot be undone.')) return;
-                    try {
-                      const resp = await fetch(`/api/homework/${id}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                      });
-                      if (resp.ok) {
-                        toast.success('Assignment deleted');
-                        navigate('/dashboard/homework');
-                      } else {
-                        const err = await resp.json();
-                        throw new Error(err.message || 'Delete failed');
-                      }
-                    } catch (error: any) {
-                      toast.error(error.message || 'Failed to delete');
-                    }
-                  }}
-                  className="rounded-lg h-8 px-3"
-                >
-                  Delete
-                </Button>
-              </div>
+            <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold">
+              {homework.subject.name}
+            </Badge>
+            {overDue && !result && (
+              <Badge variant="destructive" className="text-xs font-bold">
+                LATE SUBMISSION
+              </Badge>
             )}
           </div>
-
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              <Badge className="bg-white/20 text-white rounded-full px-3 py-0.5 border-none text-[10px] font-bold">
-                {homework.subject.name}
-              </Badge>
-              {overDue && !result && (
-                <Badge variant="destructive" className="rounded-full px-3 py-0.5 border-none text-[10px] font-bold">
-                  LATE SUBMISSION
-                </Badge>
-              )}
-            </div>
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-              {homework.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-blue-50">
-              <div className="flex items-center gap-1.5">
-                <User className="h-3.5 w-3.5" />
-                <span> {homework.teacher.user.name}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                <span>Due: {homework.due_date ? new Date(homework.due_date).toLocaleDateString() : "No limit"}</span>
-              </div>
-            </div>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight mt-1">{homework.title}</h1>
+          <div className="flex items-center gap-4 text-xs text-slate-500 font-medium">
+            <span className="flex items-center gap-1.5">
+              <User className="h-3.5 w-3.5 text-slate-400" /> {homework.teacher.user.name}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-slate-400" /> Due: {homework.due_date ? new Date(homework.due_date).toLocaleDateString() : "No limit"}
+            </span>
           </div>
         </div>
-        {/* Subtle Decorative Elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+
+        {(isAdmin || isTeacher) && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/dashboard/homework/${id}/edit`)}
+              className="h-9 px-4 rounded-lg border-slate-200 text-slate-700 font-semibold text-xs hover:bg-slate-50"
+            >
+              Edit
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                if (!confirm('Delete this assignment? This cannot be undone.')) return;
+                try {
+                  const resp = await fetch(`/api/homework/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                  });
+                  if (resp.ok) {
+                    toast.success('Assignment deleted');
+                    navigate('/dashboard/homework');
+                  } else {
+                    const err = await resp.json();
+                    throw new Error(err.message || 'Delete failed');
+                  }
+                } catch (error: any) {
+                  toast.error(error.message || 'Failed to delete');
+                }
+              }}
+              className="rounded-lg h-9 px-4 font-semibold text-xs"
+            >
+              Delete
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Main Content */}
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden">
-            <CardHeader className="p-5 pb-3 border-b border-gray-50 flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <FileSearch className="h-5 w-5 text-saBlue" />
-                Homework
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              {homework.description ? (
-                <div className="text-gray-600 font-medium whitespace-pre-wrap">
-                  {homework.description}
-                </div>
-              ) : (
-                <div className="py-8 text-center text-gray-400 italic text-sm">No instructions provided.</div>
-              )}
-
-              {homework.document_url && (
-                <div className="bg-gray-50 rounded-xl p-4 flex items-center justify-between gap-4 border border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-white shadow-sm flex items-center justify-center text-saBlue">
-                      <FileText className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-800 text-sm">Material File</h4>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Reference</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(homework.document_url, '_blank')}
-                    className="rounded-lg h-9 px-4 border-blue-100 text-saBlue font-bold hover:bg-saBlue hover:text-white"
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-              )}
+      {/* Insights Row for Teachers/Admins */}
+      {(isAdmin || isTeacher) && (
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="border border-slate-200/80 shadow-sm rounded-xl bg-white">
+            <CardContent className="p-3.5 flex items-center gap-3">
+              <div className="h-9 w-9 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Assigned</p>
+                <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{homework.assignments.length}</p>
+              </div>
             </CardContent>
           </Card>
-
-          {/* Submission Section */}
-          {isStudent && (
-            <Card className="rounded-2xl border-gray-100 shadow-sm overflow-hidden bg-white">
-              <CardHeader className="p-5 pb-3 border-b border-gray-50">
-                <CardTitle className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                  <Upload className="h-5 w-5 text-saBlue" />
-                  Your Submission
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
-                {result ? (
-                  <div className="space-y-5">
-                    <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                      <div className="flex items-center gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                        <div>
-                          <p className="text-emerald-900 font-bold text-sm">Submitted</p>
-                          <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{new Date(result.submitted_at).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      {result.is_checked ?
-                        <Badge className="bg-emerald-500 text-[9px] font-bold tracking-wider">CHECKED</Badge> :
-                        <Badge className="bg-blue-500 text-[9px] font-bold tracking-wider">WAITING</Badge>
-                      }
-                    </div>
-
-                    {result.response_text && (
-                      <div className="p-4 bg-gray-50 rounded-xl text-gray-700 font-medium text-sm">
-                        <MathRenderer text={result.response_text} />
-                      </div>
-                    )}
-
-                    {result.response_media_url && (
-                      <div className="space-y-2">
-                        {(() => {
-                          try {
-                            const urls = JSON.parse(result.response_media_url);
-                            if (Array.isArray(urls)) {
-                              return urls.map((url, idx) => (
-                                <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start" onClick={() => window.open(url, '_blank')}>
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download Attachment {urls.length > 1 ? `(${idx + 1})` : ''}
-                                </Button>
-                              ));
-                            }
-                          } catch {
-                            // If not JSON, treat as single URL
-                            return (
-                              <Button variant="outline" size="sm" className="rounded-lg font-bold" onClick={() => window.open(result.response_media_url, '_blank')}>
-                                <Download className="h-4 w-4 mr-2" />
-                                View Attachment
-                              </Button>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </div>
-                    )}
-
-                    {result.feedback && (
-                      <div className="p-5 rounded-xl border border-blue-100 bg-blue-50/50 space-y-2">
-                        <div className="flex items-center gap-2 text-saBlue font-bold text-xs uppercase tracking-wider">
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Feedback
-                        </div>
-                        <p className="text-gray-800 font-medium italic text-sm">
-                          "<MathRenderer text={result.feedback} />"
-                        </p>
-                        {result.feedback_media_url && (
-                          <div className="pt-3 border-t border-blue-100 space-y-2">
-                            <p className="text-[10px] font-bold text-gray-600 uppercase tracking-wide">Teacher attachments:</p>
-                            <div className="space-y-2">
-                              {(() => {
-                                try {
-                                  const urls = JSON.parse(result.feedback_media_url);
-                                  if (Array.isArray(urls)) {
-                                    return urls.map((url, idx) => (
-                                      <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start h-8 text-[11px]" onClick={() => window.open(url, '_blank')}>
-                                        <Download className="h-3 w-3 mr-1.5" />
-                                        Download {urls.length > 1 ? `(${idx + 1})` : ''}
-                                      </Button>
-                                    ));
-                                  }
-                                } catch {
-                                  // If not JSON, treat as single URL
-                                  return (
-                                    <Button variant="outline" size="sm" className="rounded-lg font-bold w-full justify-start h-8 text-[11px]" onClick={() => window.open(result.feedback_media_url, '_blank')}>
-                                      <Download className="h-3 w-3 mr-1.5" /> Download Feedback File
-                                    </Button>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmitResponse} className="space-y-5">
-                    <div className="space-y-2">
-                      <Label className="font-bold text-gray-800 text-sm">Response Body</Label>
-                      <Textarea
-                        placeholder="Complete your work here..."
-                        rows={8}
-                        className="rounded-xl border-gray-100 bg-gray-50/50 p-4 focus:ring-1 focus:ring-saBlue tracking-tight font-medium"
-                        value={responseText}
-                        onChange={(e) => setResponseText(e.target.value)}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                      <Input
-                        type="file"
-                        id="file-up"
-                        className="hidden"
-                        multiple
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          setResponseFiles([...responseFiles, ...files]);
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById('file-up')?.click()}
-                        className="h-12 rounded-xl border-dashed border-gray-300 hover:border-saBlue hover:bg-blue-50 font-bold text-gray-500 text-xs"
-                      >
-                        <Upload className="h-4 w-4 mr-2" />
-                        {responseFiles.length > 0 ? `${responseFiles.length} file(s) selected` : "Attach files"}
-                      </Button>
-
-                      {responseFiles.length > 0 && (
-                        <div className="space-y-2 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Selected files:</p>
-                          <div className="space-y-2">
-                            {responseFiles.map((file, index) => (
-                              <div key={index} className="flex items-center justify-between bg-white p-3 rounded-lg border border-gray-100">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <FileText className="h-4 w-4 text-saBlue flex-shrink-0" />
-                                  <span className="text-xs font-medium text-gray-700 truncate">{file.name}</span>
-                                  <span className="text-[10px] text-gray-400 flex-shrink-0">({(file.size / 1024).toFixed(1)}KB)</span>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setResponseFiles(responseFiles.filter((_, i) => i !== index))}
-                                  className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <Button
-                        type="submit"
-                        disabled={submitting}
-                        className="h-10 rounded-xl bg-saBlue text-white font-bold text-sm shadow-sm"
-                      >
-                        {submitting ? <Loader2 className="animate-spin h-5 w-5" /> : "Submit Assignment"}
-                      </Button>
-                    </div>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Teacher View */}
-          {(isAdmin || isTeacher) && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 ml-2">Submissions</h2>
-              {homework.responses.length === 0 ? (
-                <div className="p-12 text-center bg-white rounded-2xl border border-gray-100 shadow-sm">
-                  <Users className="h-10 w-10 text-gray-100 mx-auto mb-3" />
-                  <p className="text-gray-400 font-bold text-sm">No submissions yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {homework.responses.map(res => (
-                    <Card key={res.id} className="rounded-xl border border-gray-100 shadow-sm bg-white">
-                      <CardContent className="p-5 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-9 w-9 rounded-full bg-blue-50 flex items-center justify-center text-saBlue font-bold text-sm">
-                              {res.student.user.name[0]}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-gray-900 text-sm">{res.student.user.name}</h4>
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{new Date(res.submitted_at).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <Badge className={res.is_checked ? "bg-emerald-500 text-[10px]" : "bg-amber-500 text-[10px]"}>
-                            {res.is_checked ? "CHECKED" : "PENDING"}
-                          </Badge>
-                        </div>
-
-                        <div className="p-4 bg-gray-50 rounded-xl text-gray-700 font-medium text-sm">
-                          {res.response_text || "No text body."}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3">
-                          {res.response_media_url && (
-                            <div className="flex flex-wrap gap-2 w-full">
-                              {(() => {
-                                try {
-                                  const urls = JSON.parse(res.response_media_url);
-                                  if (Array.isArray(urls)) {
-                                    return urls.map((url, idx) => (
-                                      <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(url, '_blank')}>
-                                        <Download className="h-3 w-3 mr-1.5" /> Download {urls.length > 1 ? `(${idx + 1})` : ''}
-                                      </Button>
-                                    ));
-                                  }
-                                } catch {
-                                  // If not JSON, treat as single URL
-                                  return (
-                                    <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-[11px]" onClick={() => window.open(res.response_media_url, '_blank')}>
-                                      <Download className="h-3 w-3 mr-1.5" /> Download
-                                    </Button>
-                                  );
-                                }
-                                return null;
-                              })()}
-                            </div>
-                          )}
-                          {!res.is_checked && (
-                            <Button
-                              size="sm"
-                              onClick={() => { setSelectedResponseId(res.id); setFeedbackModalOpen(true); }}
-                              className="rounded-lg bg-saBlue font-bold h-8 text-[11px]"
-                            >
-                              Check now
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="lg:col-span-4 space-y-6">
-          <Card className="rounded-2xl border border-gray-100 shadow-sm bg-white p-6 space-y-6 sticky top-6">
-            {(isAdmin || isTeacher) && (
-              <>
-                <div className="space-y-3">
-                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Insights</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <span className="text-gray-500 font-bold text-xs uppercase tracking-tight">Assigned</span>
-                      <span className="text-base font-bold text-gray-900">{homework.assignments.length}</span>
-                    </div>
-                    <div className="flex justify-between items-center bg-blue-50 p-3 rounded-xl border border-blue-100">
-                      <span className="text-saBlue font-bold text-xs uppercase tracking-tight">Received</span>
-                      <span className="text-base font-bold text-saBlue">{homework.responses.length}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <span>Progress</span>
-                    <span>{Math.round((homework.responses.length / (homework.assignments.length || 1)) * 100)}%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+          <Card className="border border-slate-200/80 shadow-sm rounded-xl bg-white">
+            <CardContent className="p-3.5 flex items-center gap-3">
+              <div className="h-9 w-9 bg-sky-50 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+                <ClipboardCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Received</p>
+                <p className="text-lg font-extrabold text-slate-900 leading-none mt-1">{homework.responses.length}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="border border-slate-200/80 shadow-sm rounded-xl bg-white">
+            <CardContent className="p-3.5 flex items-center gap-3">
+              <div className="h-9 w-9 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Submission Rate</p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-lg font-extrabold text-slate-900 leading-none">{Math.round((homework.responses.length / (homework.assignments.length || 1)) * 100)}%</span>
+                  <div className="flex-1 h-1.5 bg-slate-150 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-saBlue rounded-full transition-all duration-700"
+                      className="h-full bg-saBlue rounded-full"
                       style={{ width: `${(homework.responses.length / (homework.assignments.length || 1)) * 100}%` }}
                     />
                   </div>
                 </div>
-                <div className="pt-4 border-t border-gray-100" />
-              </>
-            )}
-
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                <AlertCircle className="h-5 w-5" />
               </div>
-              <div>
-                <h5 className="font-bold text-xs text-gray-900">Need help?</h5>
-                <p className="text-[10px] font-medium text-gray-400 uppercase tracking-tight">Ask teacher</p>
-              </div>
-            </div>
+            </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Main Content Area */}
+      <div className="space-y-6">
+        {/* Homework Instructions */}
+        <Card className="rounded-xl border border-slate-200/80 shadow-sm overflow-hidden bg-white">
+          <CardHeader className="p-4 pb-3 border-b border-slate-150 flex flex-row items-center justify-between">
+            <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <FileSearch className="h-4 w-4 text-saBlue" />
+              Homework Instructions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4">
+            {homework.description ? (
+              <div className="text-slate-700 font-medium text-sm whitespace-pre-wrap leading-relaxed">
+                {homework.description}
+              </div>
+            ) : (
+              <div className="py-4 text-center text-slate-400 italic text-xs">No instructions provided.</div>
+            )}
+
+            {homework.document_url && (
+              <div className="bg-slate-50 rounded-lg p-3 flex items-center justify-between gap-3 border border-slate-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-lg bg-white shadow-sm flex items-center justify-center text-saBlue border border-slate-200/60">
+                    <FileText className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-xs">Material File</h4>
+                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Reference Attachment</p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(homework.document_url, '_blank')}
+                  className="rounded-lg h-8 px-3 border-saBlue/30 text-saBlue font-bold text-xs hover:bg-saBlue hover:text-white transition-all"
+                >
+                  <Download className="h-3.5 w-3.5 mr-1.5" />
+                  Download
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Student Submission View */}
+        {isStudent && (
+          <Card className="rounded-xl border border-slate-200/80 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="p-4 pb-3 border-b border-slate-100">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <Upload className="h-4 w-4 text-saBlue" />
+                Your Submission
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4">
+              {result ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-sky-50 rounded-lg border border-sky-100">
+                    <div className="flex items-center gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-saBlue" />
+                      <div>
+                        <p className="text-slate-900 font-bold text-xs">Submitted</p>
+                        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">{new Date(result.submitted_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    {result.is_checked ?
+                      <Badge className="bg-saBlue text-white text-[10px] font-bold px-2 py-0.5 rounded">CHECKED</Badge> :
+                      <Badge className="bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded">PENDING REVIEW</Badge>
+                    }
+                  </div>
+
+                  {result.response_text && (
+                    <div className="p-3 bg-slate-50 rounded-lg text-slate-700 font-medium text-xs border border-slate-100">
+                      <MathRenderer text={result.response_text} />
+                    </div>
+                  )}
+
+                  {result.response_media_url && (
+                    <div className="space-y-2">
+                      {(() => {
+                        try {
+                          const urls = JSON.parse(result.response_media_url);
+                          if (Array.isArray(urls)) {
+                            return urls.map((url, idx) => (
+                              <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200" onClick={() => window.open(url, '_blank')}>
+                                <Download className="h-3.5 w-3.5 mr-2 text-saBlue" />
+                                Attachment {urls.length > 1 ? `(${idx + 1})` : ''}
+                              </Button>
+                            ));
+                          }
+                        } catch {
+                          return (
+                            <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200" onClick={() => window.open(result.response_media_url, '_blank')}>
+                              <Download className="h-3.5 w-3.5 mr-2 text-saBlue" />
+                              Download Attachment
+                            </Button>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <form onSubmit={handleSubmitResponse} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-700">Answer / Text Body</Label>
+                    <Textarea
+                      placeholder="Write your response here..."
+                      rows={4}
+                      className="rounded-lg bg-slate-50 border-slate-200 text-xs font-medium focus-visible:ring-1 focus-visible:ring-saBlue"
+                      value={responseText}
+                      onChange={(e) => setResponseText(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-col space-y-3">
+                    <input
+                      type="file"
+                      id="file-up"
+                      className="hidden"
+                      multiple
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setResponseFiles([...responseFiles, ...files]);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('file-up')?.click()}
+                      className="h-9 rounded-lg border-dashed border-slate-300 hover:border-saBlue hover:bg-sky-50 font-bold text-slate-600 text-xs"
+                    >
+                      <Upload className="h-3.5 w-3.5 mr-2" />
+                      {responseFiles.length > 0 ? `${responseFiles.length} file(s) selected` : "Attach Files"}
+                    </Button>
+
+                    {responseFiles.length > 0 && (
+                      <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Selected files:</p>
+                        <div className="space-y-1.5">
+                          {responseFiles.map((file, index) => (
+                            <div key={index} className="flex items-center justify-between bg-white p-2 rounded border border-slate-200/80">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <FileText className="h-3.5 w-3.5 text-saBlue flex-shrink-0" />
+                                <span className="text-xs font-medium text-slate-700 truncate">{file.name}</span>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setResponseFiles(responseFiles.filter((_, i) => i !== index))}
+                                className="h-5 w-5 p-0 text-slate-400 hover:text-red-500"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <Button
+                      type="submit"
+                      disabled={submitting}
+                      className="h-9 rounded-lg bg-saBlue text-white font-bold text-xs shadow-sm hover:bg-sky-700"
+                    >
+                      {submitting ? <Loader2 className="animate-spin h-4 w-4" /> : "Submit Assignment"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Teacher/Admin View: Submissions Data Table */}
+        {(isAdmin || isTeacher) && (
+          <Card className="rounded-xl border border-slate-200/80 shadow-sm overflow-hidden bg-white">
+            <CardHeader className="p-4 pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
+              <CardTitle className="text-base font-bold text-slate-800 flex items-center gap-2">
+                <Users className="h-4 w-4 text-saBlue" />
+                Student Submissions ({homework.responses.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {homework.responses.length === 0 ? (
+                <div className="py-12 text-center bg-slate-50/50">
+                  <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-slate-500 font-semibold text-xs">No submissions received yet.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
+                      <tr>
+                        <th className="py-2.5 px-4">Student</th>
+                        <th className="py-2.5 px-4">Submitted At</th>
+                        <th className="py-2.5 px-4">Response</th>
+                        <th className="py-2.5 px-4">Files</th>
+                        <th className="py-2.5 px-4">Status</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {homework.responses.map((res) => (
+                        <tr key={res.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-7 w-7 rounded-full bg-saBlue/10 text-saBlue font-bold text-xs flex items-center justify-center border border-saBlue/20">
+                                {res.student.user.name[0]}
+                              </div>
+                              <span className="font-bold text-slate-900">{res.student.user.name}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-slate-500 font-medium">
+                            {new Date(res.submitted_at).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4 max-w-xs truncate text-slate-700">
+                            {res.response_text || <span className="text-slate-400 italic">No text</span>}
+                          </td>
+                          <td className="py-3 px-4">
+                            {res.response_media_url ? (
+                              <div className="flex flex-wrap gap-1">
+                                {(() => {
+                                  try {
+                                    const urls = JSON.parse(res.response_media_url);
+                                    if (Array.isArray(urls)) {
+                                      return urls.map((url, idx) => (
+                                        <Button key={idx} variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50" onClick={() => window.open(url, '_blank')}>
+                                          <Download className="h-3 w-3 mr-1" /> Attachment {urls.length > 1 ? `#${idx + 1}` : ''}
+                                        </Button>
+                                      ));
+                                    }
+                                  } catch {
+                                    return (
+                                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50" onClick={() => window.open(res.response_media_url, '_blank')}>
+                                        <Download className="h-3 w-3 mr-1" /> File
+                                      </Button>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                              </div>
+                            ) : (
+                              <span className="text-slate-400 text-[10px]">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            {res.is_checked ? (
+                              <Badge className="bg-saBlue text-white text-[10px] font-bold px-2 py-0.5 rounded">CHECKED</Badge>
+                            ) : (
+                              <Badge className="bg-slate-100 text-slate-600 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded">PENDING</Badge>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {!res.is_checked ? (
+                              <Button
+                                size="sm"
+                                onClick={() => { setSelectedResponseId(res.id); setFeedbackModalOpen(true); }}
+                                className="h-7 px-3 rounded-lg bg-saBlue hover:bg-sky-700 text-white font-bold text-[11px]"
+                              >
+                                Check Now
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => { setSelectedResponseId(res.id); setFeedbackModalOpen(true); }}
+                                className="h-7 px-2.5 rounded-lg text-slate-600 font-bold text-[11px] hover:bg-slate-100"
+                              >
+                                Review
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Grade Dialog */}

@@ -3,15 +3,22 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
 
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION!,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-  },
-});
+const BUCKET_NAME = process.env.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET_NAME!;
 
-const BUCKET_NAME = process.env.AWS_S3_BUCKET_NAME!;
+const getBucketRegion = (bucketName: string): string => {
+  if (bucketName === 'teacher-profiles') return 'ap-southeast-1';
+  return process.env.AWS_REGION || 'us-east-1';
+};
+
+const getS3Client = (bucketName: string): S3Client => {
+  return new S3Client({
+    region: getBucketRegion(bucketName),
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  });
+};
 
 interface UploadResult {
   url: string;
@@ -78,20 +85,20 @@ export const uploadToS3 = async (
     const fileExtension = path.extname(file.originalname);
     const uniqueFilename = `${uuidv4()}${fileExtension}`;
     const key = `${folder}/${uniqueFilename}`;
+    const client = getS3Client(BUCKET_NAME);
 
     const command = new PutObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
       Body: file.buffer,
       ContentType: getContentType(file.originalname),
-      // Make file publicly readable (optional, you can use signed URLs instead)
-      // ACL: 'public-read',
     });
 
-    await s3Client.send(command);
+    await client.send(command);
 
     // Generate public URL
-    const url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    const region = getBucketRegion(BUCKET_NAME);
+    const url = `https://${BUCKET_NAME}.s3.${region}.amazonaws.com/${key}`;
 
     return {
       url,
@@ -121,12 +128,13 @@ export const uploadMultipleToS3 = async (
 // Delete a file from S3
 export const deleteFromS3 = async (key: string): Promise<void> => {
   try {
+    const client = getS3Client(BUCKET_NAME);
     const command = new DeleteObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
     });
 
-    await s3Client.send(command);
+    await client.send(command);
   } catch (error) {
     console.error('S3 Delete Error:', error);
     throw new Error('Failed to delete file from S3');
@@ -150,12 +158,13 @@ export const generatePresignedUrl = async (
   expiresIn: number = 3600 // 1 hour default
 ): Promise<string> => {
   try {
+    const client = getS3Client(BUCKET_NAME);
     const command = new GetObjectCommand({
       Bucket: BUCKET_NAME,
       Key: key,
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn });
+    const url = await getSignedUrl(client, command, { expiresIn });
     return url;
   } catch (error) {
     console.error('Presigned URL Error:', error);
@@ -166,7 +175,7 @@ export const generatePresignedUrl = async (
 // Extract S3 key from URL
 export const extractS3KeyFromUrl = (url: string): string | null => {
   try {
-    const urlPattern = new RegExp(`https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/(.+)`);
+    const urlPattern = new RegExp(`https://${BUCKET_NAME}\\.s3\\.[a-z0-9-]+\\.amazonaws\\.com/(.+)`);
     const match = url.match(urlPattern);
     return match && match[1] ? match[1] : null;
   } catch (error) {
