@@ -433,6 +433,16 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                   <List className="h-3.5 w-3.5" />
                 </button>
               </div>
+
+              {/* Add Subject Action for Embedded View */}
+              {embedded && canAddSubject && (
+                <Button
+                  onClick={() => navigate("/dashboard/subjects/new")}
+                  className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-lg h-8 text-xs font-semibold px-3 shadow-xs shrink-0 ml-1"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Subject
+                </Button>
+              )}
             </div>
           </div>
 
@@ -493,13 +503,26 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
               </div>
               <h3 className="text-lg font-bold text-slate-800 mb-1">No Curriculums Found</h3>
               <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto mb-4">
-                No curriculums match your selected alphabetical letter or filter options.
+                {hasActiveFilters 
+                  ? "No curriculums match your selected alphabetical letter or filter options."
+                  : "Get started by creating your first subject/curriculum in the system."}
               </p>
-              {hasActiveFilters && (
-                <Button variant="outline" onClick={clearFilters} className="rounded-xl text-xs font-semibold hover:border-saBlue hover:text-saBlue">
-                  Clear Filters & Show All
-                </Button>
-              )}
+              <div className="flex justify-center gap-3">
+                {hasActiveFilters && (
+                  <Button variant="outline" onClick={clearFilters} className="rounded-xl text-xs font-semibold hover:border-saBlue hover:text-saBlue">
+                    Clear Filters & Show All
+                  </Button>
+                )}
+                {canAddSubject && (
+                  <Button
+                    className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl px-4 py-2 font-semibold transition-all"
+                    onClick={() => navigate("/dashboard/subjects/new")}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Subject
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ) : (
