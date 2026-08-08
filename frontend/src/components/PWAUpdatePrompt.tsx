@@ -58,26 +58,26 @@ export function PWAUpdatePrompt() {
 
     return (
         <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50">
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-2xl p-4 text-white animate-in slide-in-from-bottom-5">
+            <div className="bg-saBlue text-white rounded-2xl shadow-2xl p-4 border border-white/20 animate-in slide-in-from-bottom-5">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
                         {needRefresh ? (
                             <>
-                                <h3 className="font-semibold text-lg flex items-center gap-2">
-                                    <RefreshCw className="w-5 h-5" />
+                                <h3 className="font-bold text-base flex items-center gap-2">
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
                                     New Version Available!
                                 </h3>
-                                <p className="text-sm text-white/80 mt-1">
+                                <p className="text-xs text-white/90 mt-1">
                                     A new version of StudyAsan is ready. Reload to update.
                                 </p>
                             </>
                         ) : (
                             <>
-                                <h3 className="font-semibold text-lg flex items-center gap-2">
-                                    <Download className="w-5 h-5" />
+                                <h3 className="font-bold text-base flex items-center gap-2">
+                                    <Download className="w-4 h-4" />
                                     Install StudyAsan
                                 </h3>
-                                <p className="text-sm text-white/80 mt-1">
+                                <p className="text-xs text-white/90 mt-1">
                                     Add StudyAsan to your home screen for quick access.
                                 </p>
                             </>
@@ -85,35 +85,35 @@ export function PWAUpdatePrompt() {
                     </div>
                     <button
                         onClick={close}
-                        className="text-white/60 hover:text-white transition-colors"
+                        className="text-white/70 hover:text-white transition-colors"
                         aria-label="Close"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
 
-                <div className="flex gap-2 mt-3">
+                <div className="flex items-center gap-2 mt-3">
                     {needRefresh ? (
                         <Button
                             onClick={() => updateServiceWorker(true)}
-                            className="flex-1 bg-white text-indigo-600 hover:bg-white/90"
+                            className="flex-1 bg-white text-saBlue hover:bg-slate-100 font-bold text-xs h-9 rounded-xl shadow-sm"
                         >
-                            <RefreshCw className="w-4 h-4 mr-2" />
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
                             Reload Now
                         </Button>
                     ) : (
                         <Button
                             onClick={handleInstallClick}
-                            className="flex-1 bg-white text-indigo-600 hover:bg-white/90"
+                            className="flex-1 bg-white text-saBlue hover:bg-slate-100 font-bold text-xs h-9 rounded-xl shadow-sm"
                         >
-                            <Download className="w-4 h-4 mr-2" />
+                            <Download className="w-3.5 h-3.5 mr-1.5" />
                             Install App
                         </Button>
                     )}
                     <Button
                         onClick={close}
                         variant="ghost"
-                        className="text-white hover:bg-white/10"
+                        className="text-white hover:bg-white/10 font-medium text-xs h-9 rounded-xl px-3"
                     >
                         Later
                     </Button>

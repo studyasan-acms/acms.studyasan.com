@@ -638,13 +638,13 @@ export default function ClassSessionsPage() {
           <p className="text-[11px] text-slate-400 mt-2">Classes in current view</p>
         </Card>
 
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-emerald-500/40 hover:shadow-md transition-all">
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Live Now</p>
-              <h3 className="text-2xl font-black text-emerald-600 mt-1">{liveCount}</h3>
+              <h3 className="text-2xl font-black text-saBlue mt-1">{liveCount}</h3>
             </div>
-            <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
               <Radio className="h-5 w-5 animate-pulse" />
             </div>
           </div>
@@ -682,7 +682,7 @@ export default function ClassSessionsPage() {
       <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Search Bar */}
-          <div className="relative flex-1 min-w-[220px]">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               value={searchTerm}
@@ -700,10 +700,10 @@ export default function ClassSessionsPage() {
             )}
           </div>
 
-          {/* Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Filter Dropdowns & View Mode Tabs */}
+          <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 sm:gap-3">
             {/* Subject Filter */}
-            <div className="min-w-[150px]">
+            <div className="flex-1 sm:flex-initial min-w-[140px]">
               <SearchablePaginatedSelect
                 value={selectedSubject}
                 onValueChange={setSelectedSubject}
@@ -722,7 +722,7 @@ export default function ClassSessionsPage() {
             </div>
 
             {/* Mode Filter */}
-            <div className="min-w-[120px]">
+            <div className="flex-1 sm:flex-initial min-w-[110px]">
               <Select value={selectedMode} onValueChange={setSelectedMode}>
                 <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
                   <SelectValue placeholder="All Modes" />
@@ -737,7 +737,7 @@ export default function ClassSessionsPage() {
 
             {/* Teacher Filter (Admin only) */}
             {isAdmin && teachers.length > 0 && (
-              <div className="min-w-[140px]">
+              <div className="flex-1 sm:flex-initial min-w-[130px]">
                 <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
                   <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
                     <SelectValue placeholder="All Teachers" />
@@ -754,32 +754,34 @@ export default function ClassSessionsPage() {
               </div>
             )}
 
-            {/* View Mode Tabs */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
-              {[
-                { id: 'week', label: 'Week' },
-                { id: 'today', label: 'Today' },
-                { id: 'upcoming', label: 'Upcoming' },
-                { id: 'past', label: 'Past' },
-                { id: 'all', label: 'All' },
-              ].map((mode) => (
-                <button
-                  key={mode.id}
-                  onClick={() => {
-                    setViewMode(mode.id as typeof viewMode);
-                    setWeekOffset(0);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                    viewMode === mode.id
-                      ? "bg-white shadow-sm text-saBlue"
-                      : "text-slate-600 hover:text-slate-900"
-                  )}
-                >
-                  {mode.label}
-                </button>
-              ))}
+            {/* View Mode Tabs (Scrollable on mobile) */}
+            <div className="w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+              <div className="inline-flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+                {[
+                  { id: 'week', label: 'Week' },
+                  { id: 'today', label: 'Today' },
+                  { id: 'upcoming', label: 'Upcoming' },
+                  { id: 'past', label: 'Past' },
+                  { id: 'all', label: 'All' },
+                ].map((mode) => (
+                  <button
+                    key={mode.id}
+                    onClick={() => {
+                      setViewMode(mode.id as typeof viewMode);
+                      setWeekOffset(0);
+                      setPage(1);
+                    }}
+                    className={cn(
+                      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap",
+                      viewMode === mode.id
+                        ? "bg-white shadow-sm text-saBlue"
+                        : "text-slate-600 hover:text-slate-900"
+                    )}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
