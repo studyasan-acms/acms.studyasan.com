@@ -21,7 +21,7 @@ import {
   ArrowUpDown,
   UserCheck,
 } from 'lucide-react';
-import { classSessionService, subjectService, teacherService } from '@/services/api';
+import { classSessionService, subjectService, teacherService, attendanceService } from '@/services/api';
 import type { ClassSession, Subject, Teacher } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -313,11 +313,13 @@ export default function ClassSessionsPage() {
 
   const handleJoinSession = async (session: ClassSession) => {
     const status = getSessionStatus(session);
-    if (!status.canJoin && session.mode === 'ONLINE') {
-      // allow viewing detail if ended or upcoming
-    }
 
     if (session.mode === 'ONLINE' && session.meeting_link && status.canJoin) {
+      try {
+        await attendanceService.markJoinTime(session.id);
+      } catch (err) {
+        console.error('Failed to auto-record attendance for meeting link:', err);
+      }
       window.open(session.meeting_link, '_blank');
     } else {
       navigate(`/dashboard/class-sessions/${session.id}`);
@@ -435,14 +437,16 @@ export default function ClassSessionsPage() {
               {status.canJoin ? 'Join Live Class' : 'View Details'}
             </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 px-3 rounded-xl font-semibold text-xs border-slate-200 hover:bg-saBlue/10 hover:text-saBlue hover:border-saBlue/30"
-              onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
-            >
-              Attendance
-            </Button>
+            {status.label !== 'Ended' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 rounded-xl font-semibold text-xs border-slate-200 hover:bg-saBlue/10 hover:text-saBlue hover:border-saBlue/30"
+                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
+              >
+                Attendance
+              </Button>
+            )}
 
             {canEditSession && (
               <Button

@@ -4,6 +4,7 @@ import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
+import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -622,6 +623,9 @@ export default function StudentDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Live Class Attendance Banner */}
+            <LiveClassAttendanceWidget isStudent={true} />
 
             {/* 1. Analytics Section */}
             {analytics && performanceData ? (

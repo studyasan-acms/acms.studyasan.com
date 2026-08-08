@@ -4,6 +4,7 @@ import { analyticsService, announcementService, subjectService } from '@/service
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
+import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
 import {
     Users,
     BookOpen,
@@ -169,8 +170,9 @@ export default function TeacherDashboard() {
                     </div>
                 </div>
             )}
-            
-            {/* Top Section: Quick Actions + Filter */}
+
+            {/* Live Class Attendance Banner */}
+            <LiveClassAttendanceWidget isStudent={false} />
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h2 className="text-xl font-semibold text-muted-foreground">Classroom Overview</h2>

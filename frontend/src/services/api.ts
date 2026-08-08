@@ -943,6 +943,21 @@ export const classSessionService = {
   },
 };
 
+export const attendanceService = {
+  markJoinTime: async (classSessionId: number) => {
+    const response = await api.post('/attendances/join', { class_session_id: classSessionId });
+    return response.data;
+  },
+  markLeaveTime: async (classSessionId: number) => {
+    const response = await api.post('/attendances/leave', { class_session_id: classSessionId });
+    return response.data;
+  },
+  getBySession: async (sessionId: number) => {
+    const response = await api.get(`/attendances/session/${sessionId}`);
+    return response.data;
+  },
+};
+
 export const chatService = {
   // Start a new chat
   startChat: async (data: StartChatData): Promise<{ success: boolean; data: Chat }> => {
