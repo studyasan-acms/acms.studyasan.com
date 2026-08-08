@@ -70,6 +70,17 @@ export default function ActivitiesPage() {
     return () => window.removeEventListener('click', handleClose);
   }, []);
 
+  useEffect(() => {
+    if (playingActivity) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [playingActivity]);
+
   const toggleDropdown = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     setActiveDropdownId(activeDropdownId === id ? null : id);

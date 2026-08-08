@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Trophy, Clock, Star, Volume2, VolumeX } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -158,13 +158,6 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
         setIsSubmitted(false);
         setSelectedAnswer(null);
         setShowResult(false);
-
-        // We rely on currentQuestionIndex state update to get new question data?
-        // session.activity.items is static.
-        // We just need to reset timer.
-        // We need to access the NEW question to set timeLeft.
-        // But state update might be async? We use `currentQuestionIndex` from the event data usually.
-        // For simplicity, just reset to default or read inside render.
         setTimeLeft(30);
         setQuestionStartTime(Date.now());
     };
@@ -188,7 +181,6 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
                 attempt_id: attemptId,
                 item_id: question.id,
                 response: { answer: selectedAnswer },
-                // we don't send is_correct, server calculates it
                 time_taken: timeTaken
             });
 
@@ -226,55 +218,81 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
 
     if (status === 'LOBBY') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-                <div className="text-center animate-in fade-in zoom-in duration-500">
-                    <div className="mb-8 relative inline-block">
-                        <div className="absolute inset-0 bg-saBlueLight/30 blur-3xl rounded-full animate-pulse"></div>
-                        <Star className="w-24 h-24 text-saVividOrange fill-current relative z-10 animate-spin-slow" />
-                    </div>
-                    <h2 className="text-4xl font-bold mb-4">You're in!</h2>
-                    <p className="text-xl text-blue-200">Waiting for {session?.host?.name || 'teacher'} to start...</p>
-                    <div className="mt-8">
-                        <div className="loading-dots flex justify-center gap-2">
-                            {[0, 1, 2].map(i => <div key={i} className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>)}
-                        </div>
-                    </div>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800 font-sans overflow-hidden">
+                {/* Background Shapes & Grid */}
+                <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+                    <style>{`
+                      @keyframes float-slow {
+                        0%, 100% { transform: translateY(0px) rotate(0deg); }
+                        50% { transform: translateY(-25px) rotate(180deg); }
+                      }
+                      .animate-float-slow { animation: float-slow 16s ease-in-out infinite; }
+                    `}</style>
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+                    <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+                    <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+                    
+                    <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+                    <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-slow" style={{ top: '12%', right: '12%' }} />
                 </div>
-                <Button variant="ghost" className="absolute top-4 right-4" onClick={onExit}> <X /> </Button>
+
+                <Card className="gamified-card p-10 text-center max-w-sm w-full mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
+                    <div className="relative inline-block mb-6">
+                        <Star className="w-20 h-20 text-saVividOrange fill-current relative z-10 animate-bounce" />
+                    </div>
+                    <h2 className="text-3xl font-black mb-1.5 text-slate-800">You're in!</h2>
+                    <p className="text-sm text-slate-500 mb-6 font-medium">Waiting for the teacher to start...</p>
+                    <div className="flex justify-center gap-1.5">
+                        {[0, 1, 2].map(i => <div key={i} className="w-2.5 h-2.5 bg-saBlue rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }}></div>)}
+                    </div>
+                </Card>
+                <Button variant="ghost" className="absolute top-4 right-4 text-slate-400 hover:text-slate-600" onClick={onExit}> <X /> </Button>
             </div>
         );
     }
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-                <Card className="gamified-card p-8 md:p-12 text-center max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <Trophy className="w-24 h-24 mx-auto text-saVividOrange mb-6" />
-                    <h2 className="text-4xl font-bold mb-2">Quiz Ended</h2>
-                    <p className="text-xl text-saBlueLight mb-8">Your Final Score: {score}</p>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800 font-sans overflow-hidden">
+                {/* Background Shapes & Grid */}
+                <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+                    <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+                    <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+                    <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+                </div>
 
-                    <div className="bg-slate-800/50 rounded-2xl p-6 mb-8 text-left">
-                        <h3 className="text-lg font-bold mb-4 text-center uppercase tracking-widest text-slate-400">Leaderboard</h3>
-                        <div className="space-y-3">
-                            {leaderboard.length === 0 ? (
-                                <p className="text-center text-slate-500">Wait for final scores...</p>
-                            ) : (
-                                leaderboard.map((s, i) => (
-                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-saVividOrange/20 border border-saVividOrange/50' : 'bg-slate-700/50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-saVividOrange text-slate-950' : 'bg-slate-600'}`}>
-                                                #{i + 1}
+                <Card className="gamified-card p-10 text-center max-w-md w-full mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl relative overflow-hidden max-h-[90vh] flex flex-col">
+                    <div className="overflow-y-auto flex-1 pr-1">
+                        <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-5 animate-bounce" />
+                        <h2 className="text-3xl font-black mb-1.5 text-slate-800">Quiz Ended!</h2>
+                        <p className="text-sm font-bold text-saBlue mb-6">Final Score: {score} EXP</p>
+
+                        <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 mb-6 text-left">
+                            <h3 className="text-xs font-black mb-3 text-center uppercase tracking-wider text-slate-400 border-b pb-2">Final Leaderboard</h3>
+                            <div className="space-y-2">
+                                {leaderboard.length === 0 ? (
+                                    <p className="text-center text-slate-400 text-xs italic">Wait for final scores...</p>
+                                ) : (
+                                    leaderboard.map((s, i) => (
+                                        <div key={s.student_id || i} className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between ${
+                                            i === 0 ? 'bg-amber-50 border-orange-200 text-saVividOrange' : 'bg-white border-slate-100 text-slate-700'
+                                        }`}>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${i === 0 ? 'bg-saVividOrange text-white' : 'bg-slate-200 text-slate-500'}`}>
+                                                    #{i + 1}
+                                                </div>
+                                                <span>{s.name}</span>
                                             </div>
-                                            <span className="font-semibold">{s.name}</span>
+                                            <span>{s.score} pt</span>
                                         </div>
-                                        <span className="font-bold text-saBlueLight">{s.score}</span>
-                                    </div>
-                                ))
-                            )}
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <Button onClick={onExit} size="lg" className="btn-3d-primary w-full">Exit Game</Button>
+                    <Button onClick={onExit} size="lg" className="w-full bg-saBlue hover:bg-saBlueDarkHover text-white font-bold h-11 rounded-xl shadow-md mt-4">Exit Game</Button>
                 </Card>
             </div>
         );
@@ -282,123 +300,204 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
 
     const question = session?.activity?.items?.[currentQuestionIndex];
 
-    if (!question) return <div className="text-white">Loading question...</div>;
+    if (!question) return <div className="p-12 text-center text-slate-500 font-bold">Loading active question...</div>;
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col overflow-hidden font-sans">
-            {/* Reuse the UI from QuizGameComponent roughly */}
-            <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
+        <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+            
+            {/* Background Shapes & Grid */}
+            <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+                <style>{`
+                  @keyframes float-slow {
+                    0%, 100% { transform: translateY(0px) rotate(0deg); }
+                    50% { transform: translateY(-25px) rotate(180deg); }
+                  }
+                  @keyframes float-medium {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-40px) rotate(-90deg) scale(1.08); }
+                  }
+                  @keyframes float-fast {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-18px) rotate(120deg) scale(0.92); }
+                  }
+                  .animate-float-slow { animation: float-slow 16s ease-in-out infinite; }
+                  .animate-float-medium { animation: float-medium 22s ease-in-out infinite; }
+                  .animate-float-fast { animation: float-fast 13s ease-in-out infinite; }
+                `}</style>
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+                <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+                <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+                <div className="absolute top-[30%] left-[50%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+
+                <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+                <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
+                <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 22 22 2 22" />
+                </svg>
             </div>
 
             {/* Header */}
-            <div className="p-4 flex justify-between items-center bg-black/20 backdrop-blur-sm border-b border-white/5">
+            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
                 <div className="flex items-center gap-4">
-                    <span className="bg-white/10 px-4 py-2 rounded-full font-bold">Q{currentQuestionIndex + 1}</span>
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full">
-                        {isMuted ? <VolumeX /> : <Volume2 />}
+                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
+                    <div className="h-6 w-px bg-white/25 hidden sm:block" />
+                    <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+                        Live Quiz
+                        <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
+                            Q{currentQuestionIndex + 1}
+                        </span>
+                    </h2>
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
                 </div>
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center bg-saVividOrange/10 px-4 py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
-                        <Star className="w-5 h-5 mr-2 fill-current" />
-                        <span className="font-bold text-lg">{score}</span>
+
+                <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
+                        <Star className="w-4 h-4 mr-2 fill-current" />
+                        <span>{score} EXP</span>
                     </div>
-                    <div className="flex items-center bg-saBlueLight/10 px-4 py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
-                        <Clock className="w-5 h-5 mr-2" />
-                        <span className={`font-bold text-lg ${timeLeft <= 5 ? 'text-red-400 animate-pulse' : ''}`}>{timeLeft}s</span>
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
+                        <Clock className="w-4 h-4 mr-2" />
+                        <span className={timeLeft <= 5 ? 'animate-pulse text-red-300' : ''}>{timeLeft}s</span>
                     </div>
-                    <Button variant="ghost" onClick={onExit}><X /></Button>
+                    <Button variant="ghost" onClick={onExit} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                        <X className="w-5 h-5" />
+                    </Button>
                 </div>
             </div>
 
-            {/* Waiting for Next Question State (after submit) */}
+            {/* Waiting/Overlay Results */}
             {isSubmitted && (
-                <div className="absolute inset-0 z-40 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center p-4 animate-in fade-in">
-                    {showResult ? (
-                        <div className="text-center space-y-8 mb-12">
-                            <div className={`text-6xl font-black uppercase tracking-widest ${isCorrect ? 'text-green-400' : 'text-red-500'} animate-bounce`}>
+                <div className="absolute inset-0 z-40 bg-white/85 backdrop-blur-xs flex flex-col items-center justify-center p-6 animate-in fade-in duration-200">
+                    {showResult && (
+                        <div className="text-center space-y-4 mb-8">
+                            <div className={`text-6xl font-black uppercase tracking-wider ${isCorrect ? 'text-green-500 animate-bounce' : 'text-red-500'}`}>
                                 {isCorrect ? 'Correct!' : 'Incorrect'}
                             </div>
-                            <div className="text-xl text-white/80">
+                            <div className="text-sm font-bold text-slate-500">
                                 Points +{isCorrect ? question.points || 10 : 0}
                             </div>
                         </div>
-                    ) : null}
-
-                    <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center max-w-sm w-full">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-saBlueLight mx-auto mb-4"></div>
-                        <h3 className="text-xl font-bold mb-2">Waiting for teacher...</h3>
-                        <p className="text-slate-400">Get ready for the next question!</p>
+                    )}
+                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center max-w-sm w-full shadow-xs">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-saBlue mx-auto mb-3"></div>
+                        <h3 className="text-base font-bold text-slate-800 mb-1">Waiting for teacher...</h3>
+                        <p className="text-xs text-slate-400 font-medium">Get ready for the next question!</p>
                     </div>
                 </div>
             )}
 
-            {/* Main Game Area */}
-            <div className="flex-1 overflow-hidden p-3 md:p-6 flex flex-col items-center justify-center min-h-0">
-                <div className="max-w-4xl w-full h-full flex flex-col gap-4 py-2">
-                    <div className="flex-[4] min-h-0 flex flex-col w-full">
-                        <Card className="gamified-card p-4 md:p-6 w-full h-full flex flex-col justify-center items-center overflow-hidden">
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+                    
+                    {/* Left Column: Instructions */}
+                    <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+                            <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Live Match</h3>
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
+                                You are playing live with other students! Read the question and submit your answer before time runs out to earn points.
+                            </p>
+                        </Card>
+                    </div>
+
+                    {/* Center Column: Question details */}
+                    <div className="lg:col-span-2 order-2 flex flex-col gap-5 items-stretch min-h-0">
+                        {/* Question Card */}
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col items-center justify-center min-h-[140px]">
                             {question.content.questionMedia && (
-                                <div className="mb-2 flex justify-center w-full max-w-full flex-1 min-h-0">
-                                    <img src={question.content.questionMedia} alt="Question" className="h-full w-auto max-w-full rounded-lg object-contain shadow-md drop-shadow-md" />
+                                <div className="mb-3 flex justify-center w-full max-h-[160px] overflow-hidden rounded-xl">
+                                    <img src={question.content.questionMedia} alt="Question Reference" className="h-full w-auto max-w-full object-contain rounded-lg shadow-sm" />
                                 </div>
                             )}
                             {question.content.question && (
-                                <h3 className="text-xl md:text-3xl font-extrabold leading-tight tracking-tight text-center shrink-0 line-clamp-3 w-full">
+                                <h3 className="text-base sm:text-xl font-extrabold text-slate-800 text-center leading-relaxed">
                                     {question.content.question}
                                 </h3>
                             )}
                         </Card>
-                    </div>
 
-                    <div className="flex-[5] min-h-0 grid grid-cols-1 md:grid-cols-2 grid-rows-4 md:grid-rows-2 gap-3 pb-2 w-full">
-                        {question.content.options.map((option: string, index: number) => {
-                            const isSelected = selectedAnswer === index;
-                            let statusClass = "btn-3d-neutral";
-                            if (isSelected) statusClass = "btn-3d-primary ring-4 ring-saBlueLight/30";
+                        {/* Options Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                            {question.content.options.map((option: string, index: number) => {
+                                const isSelected = selectedAnswer === index;
+                                let statusClass = "bg-white border-slate-200 text-slate-700 hover:bg-slate-50/60 hover:border-slate-350 hover:scale-[1.01]";
+                                if (isSelected) statusClass = "bg-blue-50 border-saBlue text-saBlue scale-[1.02] shadow-sm font-bold";
 
-                            return (
-                                <button
-                                    key={index}
-                                    onClick={() => handleAnswerSelect(index)}
-                                    disabled={isSubmitted}
-                                    className={`btn-3d group h-full w-full flex items-center p-3 md:p-5 text-left transition-all duration-300 overflow-hidden ${statusClass}`}
-                                >
-                                    <span className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/10 flex items-center justify-center mr-3 font-bold text-lg md:text-xl group-hover:bg-black/20 shrink-0">
-                                        {String.fromCharCode(65 + index)}
-                                    </span>
-                                    <div className="flex-1 min-w-0 h-full flex flex-col justify-center items-start">
-                                        {question.content.optionsMedia?.[index] && (
-                                            <div className="flex-1 min-h-0 w-full flex justify-start items-center mb-1">
-                                                <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="h-full w-auto max-w-full rounded object-contain shadow" />
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleAnswerSelect(index)}
+                                        disabled={isSubmitted}
+                                        className={`w-full min-h-[4rem] px-4 py-3 rounded-xl border transition-all duration-200 flex items-center gap-3 text-left ${statusClass}`}
+                                    >
+                                        <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
+                                          isSelected ? 'bg-saBlue text-white' : 'bg-slate-100 text-slate-500'
+                                        }`}>
+                                          {String.fromCharCode(65 + index)}
+                                        </span>
+                                        <div className="flex-1 min-w-0 flex flex-col">
+                                          {question.content.optionsMedia?.[index] && (
+                                            <div className="max-h-[60px] overflow-hidden mb-1 flex justify-start">
+                                              <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="h-full w-auto object-contain rounded" />
                                             </div>
-                                        )}
-                                        {option && <span className="text-base md:text-lg font-bold line-clamp-2 w-full">{option}</span>}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                                          )}
+                                          {option && <span className="text-sm font-semibold">{option}</span>}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Submit button */}
+                        {!isSubmitted && (
+                            <Button
+                                onClick={handleSubmit}
+                                disabled={selectedAnswer === null}
+                                className={`w-full py-4 text-sm font-black uppercase tracking-wider rounded-xl transition-all duration-300 ${
+                                  selectedAnswer !== null
+                                    ? 'bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-blue-500/20'
+                                    : 'opacity-50 cursor-not-allowed bg-slate-200 text-slate-400 border border-slate-300'
+                                }`}
+                            >
+                                Submit Answer
+                            </Button>
+                        )}
                     </div>
+
+                    {/* Right Column: Live Leaderboard */}
+                    <div className="lg:col-span-1 order-3 lg:order-3 flex flex-col self-stretch">
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex-1 flex flex-col">
+                            <h3 className="text-xs font-black mb-3 text-saVividOrange uppercase tracking-wider border-b border-slate-100 pb-2">Live Leaderboard</h3>
+                            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 flex-1">
+                                {leaderboard.length === 0 ? (
+                                    <p className="text-center text-slate-400 text-xs py-4 font-medium italic">No scores yet</p>
+                                ) : (
+                                    leaderboard.map((s, i) => (
+                                        <div key={s.student_id || i} className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between transition-all ${
+                                            i === 0 
+                                                ? 'bg-amber-50 border-orange-200 text-saVividOrange' 
+                                                : 'bg-slate-50 border-slate-150 text-slate-700'
+                                        }`}>
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
+                                                    i === 0 ? 'bg-saVividOrange text-white' : 'bg-slate-200 text-slate-500'
+                                                }`}>
+                                                    #{i + 1}
+                                                </span>
+                                                <span className="truncate max-w-[80px]">{s.name}</span>
+                                            </div>
+                                            <span>{s.score} pt</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </Card>
+                    </div>
+
                 </div>
             </div>
-
-            {/* Submit Button */}
-            {!isSubmitted && (
-                <div className="fixed bottom-0 left-0 right-0 p-6 bg-black/40 backdrop-blur-md border-t border-white/5 flex justify-center z-30">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={selectedAnswer === null}
-                        className={`btn-3d max-w-md w-full py-4 text-2xl font-black uppercase tracking-widest transition-all duration-300 ${selectedAnswer !== null
-                            ? 'btn-3d-primary animate-pulse'
-                            : 'opacity-50 cursor-not-allowed bg-gray-700'
-                            }`}
-                    >
-                        Submit
-                    </button>
-                </div>
-            )}
 
         </div>
     );

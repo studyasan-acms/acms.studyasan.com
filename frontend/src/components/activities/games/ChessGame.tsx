@@ -436,7 +436,57 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     return (
         <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
-            
+            {/* Background Shapes & Grid */}
+            <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+                <style>{`
+                  @keyframes float-slow {
+                    0%, 100% { transform: translateY(0px) rotate(0deg); }
+                    50% { transform: translateY(-25px) rotate(180deg); }
+                  }
+                  @keyframes float-medium {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-40px) rotate(-90deg) scale(1.08); }
+                  }
+                  @keyframes float-fast {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-18px) rotate(120deg) scale(0.92); }
+                  }
+                  .animate-float-slow {
+                    animation: float-slow 16s ease-in-out infinite;
+                  }
+                  .animate-float-medium {
+                    animation: float-medium 22s ease-in-out infinite;
+                  }
+                  .animate-float-fast {
+                    animation: float-fast 13s ease-in-out infinite;
+                  }
+                `}</style>
+
+                {/* Soft Grid Pattern */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+                
+                {/* Colorful Blurred Glowing Blobs */}
+                <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+                <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+                <div className="absolute top-[30%] left-[50%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+
+                {/* Floating Geometric Shapes */}
+                {/* Circles */}
+                <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+                <div className="absolute w-8 h-8 rounded-full border-2 border-blue-400/20 animate-float-fast" style={{ top: '55%', left: '4%' }} />
+                
+                {/* Squares */}
+                <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
+                <div className="absolute w-14 h-14 border-2 border-saVividOrange/15 rounded-xl animate-float-medium" style={{ top: '48%', left: '88%' }} />
+                
+                {/* Triangles */}
+                <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 22 22 2 22" />
+                </svg>
+                <svg className="absolute w-11 h-11 text-saBlue/15 animate-float-slow" style={{ top: '78%', right: '16%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 22 22 2 22" />
+                </svg>
+            </div>
             {/* Level Cleared Transition Overlay */}
             {showLevelUp && (
                 <div className="absolute inset-0 z-45 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -469,37 +519,37 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
             )}
 
             {/* Header */}
-            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-900 border-b border-slate-800 z-20 shadow-xs text-white">
+            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
                 <div className="flex items-center gap-4">
                     <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-                    <div className="h-6 w-px bg-slate-800 hidden sm:block" />
+                    <div className="h-6 w-px bg-white/25 hidden sm:block" />
                     {vsComputer ? (
-                        <span className="text-[10px] bg-saBlue/20 text-saBlueLight px-2 py-0.5 rounded-full border border-saBlue/30 font-bold uppercase tracking-wider">
+                        <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
                             Level {currentLevel}{totalLevels ? ` / ${totalLevels}` : ''}
                         </span>
                     ) : (
-                        <span className="text-[10px] bg-orange-500/10 text-saVividOrange px-2 py-0.5 rounded-full border border-orange-500/20 font-bold uppercase tracking-wider">
+                        <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
                             Pass & Play (vs Teacher)
                         </span>
                     )}
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-slate-400 hover:text-white rounded-full transition-colors">
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
                         {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                     </button>
                 </div>
 
                 <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="flex items-center bg-orange-500/10 px-4 py-2 rounded-xl text-saVividOrange border border-orange-500/20 font-bold text-sm sm:text-base">
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
                         <Star className="w-4 h-4 mr-2 fill-current" />
                         <span>{Math.round(score)} EXP</span>
                     </div>
-                    <div className="flex items-center bg-saBlue/15 px-4 py-2 rounded-xl text-saBlueLight border border-saBlue/20 font-bold text-sm sm:text-base font-mono">
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
                         <Clock className="w-4 h-4 mr-2" />
                         <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={resetGame} className="hover:bg-white/10 text-slate-400 hover:text-white p-2 rounded-xl transition-colors">
+                    <Button variant="ghost" onClick={resetGame} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
                         <RotateCcw className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/15 text-red-400 hover:text-red-500 p-2 rounded-xl transition-colors">
+                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
                         <X className="w-5 h-5" />
                     </Button>
                 </div>

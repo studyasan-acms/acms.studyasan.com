@@ -61,6 +61,17 @@ export default function StudentActivitiesPage() {
     fetchActivities();
   }, []);
 
+  useEffect(() => {
+    if (selectedActivity || activeLiveSession) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedActivity, activeLiveSession]);
+
   const fetchActivities = async () => {
     try {
       setLoading(true);

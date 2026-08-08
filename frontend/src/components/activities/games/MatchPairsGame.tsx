@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Trophy, Clock, Star, Volume2, VolumeX, HelpCircle } from 'lucide-react';
+import { X, Trophy, Clock, Star, Volume2, VolumeX, HelpCircle, CheckCircle } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import type { Activity } from '../../../types/activity';
@@ -131,9 +131,9 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
   const handleComplete = (finalScore: number) => {
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     setShowCelebration(true);
+    stopAll();
     playSound('game-over');
 
-    // Big celebration
     confetti({
       particleCount: 200,
       spread: 100,
@@ -147,13 +147,13 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
 
   if (showCelebration) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-        <Card className="gamified-card p-12 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
+        <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
+          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
           <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-          <h2 className="text-5xl font-black mb-4 relative z-10">Match Complete!</h2>
-          <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
-          <div className="flex justify-center gap-4">
+          <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Match Complete!</h2>
+          <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
+          <div className="flex justify-center gap-4 relative z-10">
             {[...Array(3)].map((_, i) => (
               <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
@@ -164,114 +164,194 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-auto">
-      {/* Background Effects */}
-      <div className="fixed top-0 left-0 w-full h-full -z-10 bg-[url('/grid.svg')] opacity-20" />
-      <div className="fixed top-[-20%] right-[-10%] w-[50%] h-[50%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-      <div className="fixed bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-saBlue/40 blur-[100px] rounded-full" />
+    <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+      {/* Background Shapes & Grid */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <style>{`
+          @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-25px) rotate(180deg); }
+          }
+          @keyframes float-medium {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            50% { transform: translateY(-40px) rotate(-90deg) scale(1.08); }
+          }
+          @keyframes float-fast {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            50% { transform: translateY(-18px) rotate(120deg) scale(0.92); }
+          }
+          .animate-float-slow {
+            animation: float-slow 16s ease-in-out infinite;
+          }
+          .animate-float-medium {
+            animation: float-medium 22s ease-in-out infinite;
+          }
+          .animate-float-fast {
+            animation: float-fast 13s ease-in-out infinite;
+          }
+        `}</style>
 
+        {/* Soft Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+        
+        {/* Colorful Blurred Glowing Blobs */}
+        <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+        <div className="absolute top-[30%] left-[50%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+
+        {/* Floating Geometric Shapes */}
+        {/* Circles */}
+        <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+        <div className="absolute w-8 h-8 rounded-full border-2 border-blue-400/20 animate-float-fast" style={{ top: '55%', left: '4%' }} />
+        
+        {/* Squares */}
+        <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
+        <div className="absolute w-14 h-14 border-2 border-saVividOrange/15 rounded-xl animate-float-medium" style={{ top: '48%', left: '88%' }} />
+        
+        {/* Triangles */}
+        <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 22 22 2 22" />
+        </svg>
+        <svg className="absolute w-11 h-11 text-saBlue/15 animate-float-slow" style={{ top: '78%', right: '16%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 22 22 2 22" />
+        </svg>
+      </div>
       {/* Header */}
-      <div className="p-3 md:p-6 flex flex-wrap justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
-        <div className="flex items-center gap-2 md:gap-6">
-          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
-            {activity.title}
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
+        <div className="flex items-center gap-4">
+          <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
+          <div className="h-6 w-px bg-white/25 hidden sm:block" />
+          <h2 className="text-lg font-black uppercase tracking-wider text-white">
+            Match Pairs
           </h2>
-          <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
-            {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
+          <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-8">
-          <div className="flex items-center bg-saVividOrange/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 shadow-[0_0_15px_rgba(236,162,9,0.28)]">
-            <Star className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3 fill-current animate-pulse" />
-            <span className="font-bold text-sm md:text-xl">{Math.round(score)}</span>
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
+            <Star className="w-4 h-4 mr-2 fill-current" />
+            <span>{Math.round(score)} EXP</span>
           </div>
-          <div className="flex items-center bg-saBlueLight/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
-            <Clock className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3" />
-            <span className="font-bold text-sm md:text-xl font-mono">{timeElapsed}s</span>
+          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
+            <Clock className="w-4 h-4 mr-2" />
+            <span>{timeElapsed}s</span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors p-1 md:p-2">
-            <X className="w-5 h-5 md:w-8 md:h-8" />
+          <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+            <X className="w-5 h-5" />
           </Button>
         </div>
       </div>
 
-      {/* Game Board */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 h-full">
-          {/* Left Column */}
-          <div className="space-y-2 md:space-y-4">
-            <h3 className="text-base md:text-xl font-black text-center text-saBlueLight uppercase tracking-widest mb-2 md:mb-6 border-b border-saBlueLight/30 pb-2">Terms</h3>
-            <div className="grid gap-2 md:gap-4">
-              {leftItems.map((pair, index) => {
-                const isSelected = selectedLeft === index;
-                const isMatched = matched.has(`L${index}`);
-
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleLeftClick(index)}
-                    disabled={isMatched}
-                    className={`btn-3d w-full min-h-[4rem] md:min-h-[5rem] p-2 md:p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-2 md:gap-4 group 
-                                    ${isMatched
-                        ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
-                        : isSelected
-                          ? 'btn-3d-primary scale-105 ring-4 ring-saBlueLight/30 z-10'
-                          : 'btn-3d-neutral hover:scale-102'}`}
-                  >
-                    {pair.imageLeft && (
-                      <img src={pair.imageLeft} alt="" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-lg bg-black/30" />
-                    )}
-                    <span className={`text-sm md:text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-slate-900'}`}>
-                      {pair.left}
-                    </span>
-                    {isMatched && <div className="ml-auto text-green-400"><Star className="w-4 h-4 md:w-5 md:h-5 fill-current" /></div>}
-                  </button>
-                );
-              })}
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+          
+          {/* Left Column: Instructions */}
+          <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+              <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
+                {activity.instructions || "Match each term on the left with its correct definition on the right. Select a term first, then click on its matching definition to pair them!"}
+              </p>
+            </Card>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-2 md:space-y-4">
-            <h3 className="text-base md:text-xl font-black text-center text-saVividOrange uppercase tracking-widest mb-2 md:mb-6 border-b border-saVividOrange/30 pb-2">Definitions</h3>
-            <div className="grid gap-2 md:gap-4">
-              {rightItems.map((pair, index) => {
-                const isSelected = selectedRight === index;
-                const isMatched = matched.has(`R${index}`);
-                const isVisible = selectedLeft !== null;
+          {/* Right Column: Game Board Columns */}
+          <div className="lg:col-span-3 order-2 flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 h-full items-start">
+            
+            {/* Left Column (Terms) */}
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+              <h3 className="text-sm font-black text-center text-saBlue uppercase tracking-wider border-b border-slate-100 pb-3">
+                Terms
+              </h3>
+              <div className="flex flex-col gap-3">
+                {leftItems.map((pair, index) => {
+                  const isSelected = selectedLeft === index;
+                  const isMatched = matched.has(`L${index}`);
 
-                return (
-                  <button
-                    key={index}
-                    onClick={() => handleRightClick(index)}
-                    disabled={isMatched || !isVisible}
-                    className={`btn-3d w-full min-h-[4rem] md:min-h-[5rem] p-2 md:p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-2 md:gap-4 group 
-                                    ${isMatched
-                        ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
-                        : isSelected
-                          ? 'btn-3d-primary scale-105 ring-4 ring-saVividOrange/30 z-10'
-                          : !isVisible
-                            ? 'bg-slate-800/50 border-slate-700 text-slate-500 cursor-not-allowed justify-center'
-                            : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-102 shadow-lg'}`}
-                  >
-                    {!isVisible && !isMatched ? (
-                      <HelpCircle className="w-6 h-6 md:w-8 md:h-8 text-slate-600 animate-pulse" />
-                    ) : (
-                      <>
-                        {pair.imageRight && (
-                          <img src={pair.imageRight} alt="" className="w-12 h-12 md:w-16 md:h-16 object-cover rounded-lg bg-black/30" />
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleLeftClick(index)}
+                      disabled={isMatched}
+                      className={`w-full min-h-[4rem] px-4 py-3 text-left rounded-xl transition-all duration-200 border flex items-center justify-between gap-3 group
+                        ${isMatched
+                          ? 'bg-emerald-50 border-emerald-250 text-emerald-700 cursor-not-allowed opacity-75'
+                          : isSelected
+                            ? 'bg-blue-50 border-saBlue text-saBlue scale-[1.02] shadow-sm font-bold'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-350 hover:bg-slate-50/60 hover:scale-[1.01]'}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {pair.imageLeft && (
+                          <img src={pair.imageLeft} alt="" className="w-12 h-12 object-cover rounded-lg bg-slate-100" />
                         )}
-                        <span className={`text-sm md:text-lg font-bold ${isMatched ? 'text-green-400 line-through' : 'text-slate-900'}`}>
-                          {pair.right}
+                        <span className={`text-sm font-bold ${isMatched ? 'text-emerald-700/80 line-through' : 'text-slate-700'}`}>
+                          {pair.left}
                         </span>
-                        {isMatched && <div className="ml-auto text-green-400"><Star className="w-4 h-4 md:w-5 md:h-5 fill-current" /></div>}
-                      </>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+                      </div>
+                      {isMatched && (
+                        <div className="text-emerald-600">
+                          <CheckCircle className="w-5 h-5 fill-current" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Right Column (Definitions) */}
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col gap-4">
+              <h3 className="text-sm font-black text-center text-saVividOrange uppercase tracking-wider border-b border-slate-100 pb-3">
+                Definitions
+              </h3>
+              <div className="flex flex-col gap-3">
+                {rightItems.map((pair, index) => {
+                  const isSelected = selectedRight === index;
+                  const isMatched = matched.has(`R${index}`);
+                  const isVisible = selectedLeft !== null;
+
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => handleRightClick(index)}
+                      disabled={isMatched || !isVisible}
+                      className={`w-full min-h-[4rem] px-4 py-3 text-left rounded-xl transition-all duration-200 border flex items-center justify-between gap-3 group
+                        ${isMatched
+                          ? 'bg-emerald-50 border-emerald-250 text-emerald-700 cursor-not-allowed opacity-75'
+                          : isSelected
+                            ? 'bg-orange-50 border-saVividOrange text-saVividOrange scale-[1.02] shadow-sm font-bold'
+                            : !isVisible
+                              ? 'bg-slate-50 border-slate-200 text-slate-400 cursor-not-allowed justify-center'
+                              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-350 hover:bg-slate-50/60 hover:scale-[1.01]'}`}
+                    >
+                      {!isVisible && !isMatched ? (
+                        <HelpCircle className="w-5 h-5 text-slate-300 animate-pulse" />
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-3">
+                            {pair.imageRight && (
+                              <img src={pair.imageRight} alt="" className="w-12 h-12 object-cover rounded-lg bg-slate-100" />
+                            )}
+                            <span className={`text-sm font-bold ${isMatched ? 'text-emerald-700/80 line-through' : 'text-slate-700'}`}>
+                              {pair.right}
+                            </span>
+                          </div>
+                          {isMatched && (
+                            <div className="text-emerald-600">
+                              <CheckCircle className="w-5 h-5 fill-current" />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
           </div>
         </div>
       </div>

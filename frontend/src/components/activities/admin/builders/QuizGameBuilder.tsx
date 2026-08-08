@@ -214,10 +214,10 @@ export default function QuizGameBuilder({ items, onItemsChange }: Props) {
                             className="w-5 h-5 text-green-600 focus:ring-green-500 cursor-pointer"
                           />
                         </div>
-                        <input
+                        <Input
                           type="text"
                           placeholder={`Option ${optionIndex + 1}`}
-                          className="flex-1 px-3 py-2 border rounded-lg bg-white"
+                          className="flex-1 bg-white"
                           value={option}
                           onChange={(e) =>
                             updateOption(activeIndex, optionIndex, e.target.value)

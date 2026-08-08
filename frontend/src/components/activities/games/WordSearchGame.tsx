@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Activity, WordSearchContent } from '../../../types/activity';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { activityAttemptAPI } from '../../../services/activity.service';
 import confetti from 'canvas-confetti';
-import { X, Trophy, Clock, Star, Volume2, VolumeX, Search } from 'lucide-react';
+import { X, Trophy, Clock, Star, Volume2, VolumeX, CheckCircle } from 'lucide-react';
 import { useSound } from '../../../hooks/useSound';
 
 interface Props {
@@ -286,7 +286,6 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
     stopAll();
     playSound('game-over');
 
-    // Big celebration
     confetti({
       particleCount: 200,
       spread: 100,
@@ -318,7 +317,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
 
   const isCellInFoundWord = (row: number, col: number): boolean => {
     const cell = grid[row][col];
-    if (!cell.isPartOfWord || cell.wordId === undefined) return false;
+    if (!cell || !cell.isPartOfWord || cell.wordId === undefined) return false;
 
     const word = words[cell.wordId];
     return word ? foundWords.has(word) : false;
@@ -326,13 +325,13 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
 
   if (showCelebration) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-        <Card className="gamified-card p-12 text-center relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
+        <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
+          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
           <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-          <h2 className="text-5xl font-black mb-4 relative z-10">Word Search Complete!</h2>
-          <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.round(score)}</p>
-          <div className="flex justify-center gap-4">
+          <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Word Search Complete!</h2>
+          <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
+          <div className="flex justify-center gap-4 relative z-10">
             {[...Array(3)].map((_, i) => (
               <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
             ))}
@@ -343,66 +342,126 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-auto">
-      {/* Background Effects */}
-      <div className="fixed top-0 left-0 w-full h-full -z-10">
-        <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
+    <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+      
+      {/* Background Shapes & Grid */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <style>{`
+          @keyframes float-slow {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-25px) rotate(180deg); }
+          }
+          @keyframes float-medium {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            50% { transform: translateY(-40px) rotate(-90deg) scale(1.08); }
+          }
+          @keyframes float-fast {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+            50% { transform: translateY(-18px) rotate(120deg) scale(0.92); }
+          }
+          .animate-float-slow {
+            animation: float-slow 16s ease-in-out infinite;
+          }
+          .animate-float-medium {
+            animation: float-medium 22s ease-in-out infinite;
+          }
+          .animate-float-fast {
+            animation: float-fast 13s ease-in-out infinite;
+          }
+        `}</style>
+
+        {/* Soft Grid Pattern */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+        
+        {/* Colorful Blurred Glowing Blobs */}
+        <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+        <div className="absolute top-[30%] left-[50%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+
+        {/* Floating Geometric Shapes */}
+        {/* Circles */}
+        <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+        <div className="absolute w-8 h-8 rounded-full border-2 border-blue-400/20 animate-float-fast" style={{ top: '55%', left: '4%' }} />
+        
+        {/* Squares */}
+        <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
+        <div className="absolute w-14 h-14 border-2 border-saVividOrange/15 rounded-xl animate-float-medium" style={{ top: '48%', left: '88%' }} />
+        
+        {/* Triangles */}
+        <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 22 22 2 22" />
+        </svg>
+        <svg className="absolute w-11 h-11 text-saBlue/15 animate-float-slow" style={{ top: '78%', right: '16%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="12 2 22 22 2 22" />
+        </svg>
       </div>
 
       {/* Header */}
-      <div className="p-3 md:p-6 flex flex-wrap justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
-        <div className="flex items-center gap-2 md:gap-6 flex-wrap">
-          <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
-            {activity.title}
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
+        <div className="flex items-center gap-4">
+          <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
+          <div className="h-6 w-px bg-white/25 hidden sm:block" />
+          <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+            Word Search
+            {activity.items && activity.items.length > 1 && (
+              <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
+                Grid {currentItem + 1} of {activity.items.length}
+              </span>
+            )}
           </h2>
-          {activity.items && activity.items.length > 1 && (
-            <div className="text-xs md:text-sm text-gray-400">
-              Grid {currentItem + 1} of {activity.items.length}
-            </div>
-          )}
-          <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
-            {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
+          <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-8">
-          <div className="flex items-center bg-saVividOrange/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 shadow-[0_0_15px_rgba(236,162,9,0.28)]">
-            <Star className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3 fill-current animate-pulse" />
-            <span className="font-bold text-sm md:text-xl">{Math.round(score)}</span>
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
+            <Star className="w-4 h-4 mr-2 fill-current" />
+            <span>{Math.round(score)} EXP</span>
           </div>
-          <div className="flex items-center bg-saBlueLight/10 px-2 md:px-6 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
-            <Clock className="w-4 h-4 md:w-6 md:h-6 mr-1 md:mr-3" />
-            <span className="font-bold text-sm md:text-xl font-mono">{timeElapsed}s</span>
+          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
+            <Clock className="w-4 h-4 mr-2" />
+            <span>{timeElapsed}s</span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors p-1 md:p-2">
-            <X className="w-5 h-5 md:w-8 md:h-8" />
+          <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+            <X className="w-5 h-5" />
           </Button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-1.5 w-full bg-white/5">
+      <div className="h-1.5 w-full bg-slate-200">
         <div
-          className="h-full bg-gradient-to-r from-saBlue via-saBlueLight to-saVividOrange transition-all duration-500 shadow-[0_0_10px_rgba(91,174,240,0.5)]"
+          className="h-full bg-saBlue transition-all duration-500"
           style={{ width: `${words.length > 0 ? (foundWords.size / words.length) * 100 : 0}%` }}
         />
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-3 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8 h-full">
-          {/* Word Search Grid */}
-          <div className="lg:col-span-2 flex flex-col">
-            <Card className="gamified-card p-3 md:p-6 flex-1 flex flex-col">
-              <div className="flex-1 flex items-center justify-center overflow-auto">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+          
+          {/* Left Column: Instructions */}
+          <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+              <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
+                {activity.instructions || "Find all hidden words in the grid. Click and drag across adjacent letters horizontally, vertically, or diagonally to select and match the words listed on the right!"}
+              </p>
+            </Card>
+          </div>
+
+          {/* Center Column: Word Search Grid */}
+          <div className="lg:col-span-2 order-2 flex flex-col items-center">
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs w-full flex flex-col">
+              <div className="flex-1 flex items-center justify-center overflow-auto py-2">
                 <div
                   className="inline-block"
                   onMouseUp={handleMouseUp}
                   onMouseLeave={handleMouseUp}
                 >
                   <div
-                    className="grid gap-0.5 md:gap-1"
+                    className="grid gap-1 md:gap-1.5"
                     style={{
                       gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
                     }}
@@ -412,16 +471,15 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
                         <div
                           key={`${rowIndex}-${colIndex}`}
                           className={`
-                            w-6 h-6 xs:w-7 xs:h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 flex items-center justify-center
-                            border-2 font-bold text-xs xs:text-sm sm:text-base md:text-lg cursor-pointer
-                            transition-all duration-200
-                            select-none rounded-lg
+                            w-7 h-7 xs:w-8 xs:h-8 sm:w-10 sm:h-10 md:w-11 md:h-11 flex items-center justify-center
+                            border font-bold text-xs xs:text-sm sm:text-base md:text-lg cursor-pointer
+                            transition-all duration-200 select-none rounded-xl
                             ${
                               isCellInFoundWord(rowIndex, colIndex)
-                                ? 'bg-green-500/20 border-green-400 text-green-300 shadow-[0_0_10px_rgba(34,197,94,0.3)]'
+                                ? 'bg-emerald-50 border-emerald-350 text-emerald-700 font-extrabold'
                                 : isCellSelected(rowIndex, colIndex)
-                                  ? 'bg-saBlueLight/20 border-saBlueLight text-saBlueLight shadow-[0_0_10px_rgba(91,174,240,0.3)]'
-                                  : 'bg-slate-800/50 border-slate-600 text-slate-200 hover:bg-slate-700/50 hover:border-slate-500'
+                                  ? 'bg-blue-50 border-saBlue text-saBlue font-extrabold scale-[1.02]'
+                                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-350 hover:scale-[1.01]'
                             }
                           `}
                           onMouseDown={() => handleMouseDown(rowIndex, colIndex)}
@@ -434,35 +492,43 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
                   </div>
                 </div>
               </div>
-              <p className="text-xs md:text-sm text-slate-400 mt-2 md:mt-4 text-center">
+              <p className="text-[10px] text-slate-400 mt-3 text-center font-bold uppercase tracking-wider">
                 Click and drag to select words
               </p>
             </Card>
           </div>
 
-          {/* Words List */}
-          <div className="flex flex-col">
-            <Card className="gamified-card p-3 md:p-6 flex-1">
-              <h3 className="text-base md:text-xl font-black mb-3 md:mb-6 text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">
+          {/* Right Column: Words List */}
+          <div className="lg:col-span-1 order-3 flex flex-col self-stretch">
+            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+              <h3 className="text-sm font-black text-center text-saBlue uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">
                 Find These Words
               </h3>
-              <div className="space-y-2 md:space-y-3 flex-1 overflow-y-auto">
-                {words.map((word, index) => (
-                  <div
-                    key={index}
-                    className={`p-2 md:p-4 rounded-xl transition-all duration-300 border ${
-                      foundWords.has(word)
-                        ? 'bg-green-500/20 text-green-300 border-green-500/50 line-through shadow-[0_0_10px_rgba(34,197,94,0.2)]'
-                        : 'bg-slate-800/50 text-slate-200 border-slate-600/50 hover:bg-slate-700/50'
-                    }`}
-                  >
-                    <p className="font-bold text-sm md:text-lg">{word}</p>
-                    {foundWords.has(word) && <div className="mt-1 md:mt-2 text-green-400 text-xs md:text-sm"><Star className="w-3 h-3 md:w-4 md:h-4 fill-current inline" /> Found!</div>}
-                  </div>
-                ))}
+              <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[280px] lg:max-h-[350px] pr-1">
+                {words.map((word, index) => {
+                  const isFound = foundWords.has(word);
+                  return (
+                    <div
+                      key={index}
+                      className={`p-3.5 rounded-xl transition-all duration-200 border flex items-center justify-between font-bold ${
+                        isFound
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 line-through opacity-75'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100/60'
+                      }`}
+                    >
+                      <span className="text-sm md:text-base">{word}</span>
+                      {isFound && (
+                        <div className="text-emerald-600">
+                          <CheckCircle className="w-5 h-5 fill-current" />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </Card>
           </div>
+
         </div>
       </div>
     </div>

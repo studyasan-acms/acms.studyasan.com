@@ -26,6 +26,20 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
     const [isMuted, setIsMuted] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
 
+    // Level progression & game settings from activity
+    const [currentLevel, setCurrentLevel] = useState(1);
+    const [showLevelUp, setShowLevelUp] = useState(false);
+    const [hintsUsed, setHintsUsed] = useState(0);
+    const [score, setScore] = useState(0);
+
+    const sudokuConfig = activity.items?.[0]?.content || {};
+    const isInfiniteLevels = sudokuConfig.isInfiniteLevels !== false;
+    const totalLevels = isInfiniteLevels ? null : (sudokuConfig.totalLevels || 5);
+    const pointsPerLevel = sudokuConfig.pointsPerLevel || 100;
+    const highlightErrors = sudokuConfig.highlightErrors !== false;
+    const allowHints = sudokuConfig.allowHints !== false;
+    const maxHints = allowHints ? (sudokuConfig.maxHints || 3) : null;
+
     const { playSound, stopSound, stopAll } = useSound();
 
     useEffect(() => {
@@ -42,15 +56,33 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         return () => stopAll();
     }, [isMuted]);
 
+    // Initial Sudoku loading for level 1
     useEffect(() => {
+        loadSudokuForLevel(currentLevel);
+    }, []);
+
+    // Get count of cells to remove based on active level (difficulty progression)
+    const getCellsToRemoveForLevel = (lvl: number): number => {
+        // Level 1: 25 cells removed (Very Easy)
+        // Level 2: 32 cells removed (Easy)
+        // Level 3: 40 cells removed (Medium)
+        // Level 4: 48 cells removed (Hard)
+        // Level 5+: 54 cells removed (Expert)
+        return Math.min(55, 25 + (lvl - 1) * 7);
+    };
+
+    const loadSudokuForLevel = (lvl: number) => {
         const newGrid = generateSudoku();
         const newSolution = JSON.parse(JSON.stringify(newGrid));
-        const puzzleGrid = removeCells(newGrid, 40); // Remove 40 cells for medium difficulty
+        const cellsToRemove = getCellsToRemoveForLevel(lvl);
+        const puzzleGrid = removeCells(newGrid, cellsToRemove);
 
         setGrid(puzzleGrid);
         setSolution(newSolution);
         setInitialGrid(JSON.parse(JSON.stringify(puzzleGrid)));
-    }, []);
+        setSelectedCell(null);
+        setHintsUsed(0);
+    };
 
     const generateSudoku = (): SudokuGrid => {
         const grid: SudokuGrid = Array(9).fill(null).map(() => Array(9).fill(null));
@@ -135,10 +167,9 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         const [row, col] = selectedCell;
         if (initialGrid[row][col] !== null) return;
 
-        // Only allow correct entries - validate against solution
-        if (solution[row][col] !== num) {
+        // If strict immediate error check is enabled, validate and reject wrong placements
+        if (highlightErrors && solution[row][col] !== num) {
             playSound('incorrect');
-            // Visual feedback that it's wrong, but don't place the number
             return;
         }
 
@@ -146,20 +177,83 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         newGrid[row][col] = num;
         setGrid(newGrid);
 
-        playSound('correct');
+        if (solution[row][col] === num) {
+            playSound('correct');
+            confetti({
+                particleCount: 15,
+                spread: 30,
+                origin: { y: 0.6 }
+            });
 
+            // Check if level is complete
+            if (isPuzzleComplete(newGrid)) {
+                const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
+                if (isFinalLevel) {
+                    handleComplete(score + pointsPerLevel);
+                } else {
+                    playSound('correct');
+                    setShowLevelUp(true);
+                }
+            }
+        } else {
+            playSound('incorrect');
+        }
+
+        submitResponse({ row, col, value: num }, solution[row][col] === num);
+    };
+
+    const handleRevealHint = () => {
+        if (!allowHints || (maxHints !== null && hintsUsed >= maxHints)) return;
+
+        // Find empty cells or cells with incorrect entries
+        const targetCells: [number, number][] = [];
+        for (let r = 0; r < 9; r++) {
+            for (let c = 0; c < 9; c++) {
+                if (initialGrid[r][c] === null && (grid[r][c] === null || grid[r][c] !== solution[r][c])) {
+                    targetCells.push([r, c]);
+                }
+            }
+        }
+
+        if (targetCells.length === 0) return;
+
+        // Pick random target cell
+        const [row, col] = targetCells[Math.floor(Math.random() * targetCells.length)];
+        const correctVal = solution[row][col];
+
+        const newGrid = grid.map(r => [...r]);
+        newGrid[row][col] = correctVal;
+        setGrid(newGrid);
+
+        // Make it permanent so student cannot modify or erase
+        const newInitial = initialGrid.map(r => [...r]);
+        newInitial[row][col] = correctVal;
+        setInitialGrid(newInitial);
+
+        setHintsUsed(prev => prev + 1);
+        playSound('correct');
         confetti({
             particleCount: 20,
             spread: 40,
             origin: { y: 0.6 }
         });
 
-        // Check if puzzle is complete
         if (isPuzzleComplete(newGrid)) {
-            handleComplete();
+            const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
+            if (isFinalLevel) {
+                handleComplete(score + pointsPerLevel);
+            } else {
+                playSound('correct');
+                setShowLevelUp(true);
+            }
         }
+    };
 
-        submitResponse({ row, col, value: num }, true);
+    const handleNextLevel = () => {
+        setCurrentLevel(prev => prev + 1);
+        setScore(prev => prev + pointsPerLevel);
+        loadSudokuForLevel(currentLevel + 1);
+        setShowLevelUp(false);
     };
 
     const handleErase = () => {
@@ -174,10 +268,10 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         playSound('click');
     };
 
-    const isPuzzleComplete = (grid: SudokuGrid): boolean => {
+    const isPuzzleComplete = (currentGrid: SudokuGrid): boolean => {
         for (let row = 0; row < 9; row++) {
             for (let col = 0; col < 9; col++) {
-                if (grid[row][col] === null || grid[row][col] !== solution[row][col]) {
+                if (currentGrid[row][col] === null || currentGrid[row][col] !== solution[row][col]) {
                     return false;
                 }
             }
@@ -190,15 +284,8 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         setSelectedCell(null);
     };
 
-    const handleComplete = () => {
+    const handleComplete = (finalScore: number) => {
         const timeTaken = Math.floor((Date.now() - startTime) / 1000);
-        
-        // Calculate score based on time taken
-        // Base score: 1000, reduced by time taken (max deduction 900)
-        // Faster completion = higher score
-        const timeBonus = Math.max(100, 1000 - timeTaken);
-        const finalScore = Math.round(timeBonus);
-        
         setShowCelebration(true);
         stopAll();
         playSound('game-over');
@@ -214,13 +301,13 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         }, 4000);
     };
 
-    const submitResponse = async (response: any, isCorrect: boolean) => {
+    const submitResponse = async (resp: any, isCorrect: boolean) => {
         if (!attemptId || !activity.items || !activity.items[0]) return;
         try {
             await activityAttemptAPI.submitResponse({
                 attempt_id: attemptId,
                 item_id: activity.items[0].id,
-                response,
+                response: resp,
                 is_correct: isCorrect,
             });
         } catch (error) {
@@ -230,14 +317,13 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
     if (showCelebration) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-                <Card className="gamified-card p-12 text-center relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
+                <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
+                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
                     <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-                    <h2 className="text-5xl font-black mb-4 relative z-10">Sudoku Solved!</h2>
-                    <p className="text-xl text-blue-200 mb-2 relative z-10">Time: {timeElapsed}s</p>
-                    <p className="text-3xl text-saBlueLight mb-8 font-bold relative z-10">Score: {Math.max(100, 1000 - timeElapsed)}</p>
-                    <div className="flex justify-center gap-4">
+                    <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Sudoku Solved!</h2>
+                    <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
+                    <div className="flex justify-center gap-4 relative z-10">
                         {[...Array(3)].map((_, i) => (
                             <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
                         ))}
@@ -248,123 +334,302 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
-            {/* Background Effects */}
-            <div className="absolute top-0 left-0 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
+        <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+            
+            {/* Background Shapes & Grid */}
+            <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+                <style>{`
+                  @keyframes float-slow {
+                    0%, 100% { transform: translateY(0px) rotate(0deg); }
+                    50% { transform: translateY(-25px) rotate(180deg); }
+                  }
+                  @keyframes float-medium {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-40px) rotate(-90deg) scale(1.08); }
+                  }
+                  @keyframes float-fast {
+                    0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); }
+                    50% { transform: translateY(-18px) rotate(120deg) scale(0.92); }
+                  }
+                  .animate-float-slow {
+                    animation: float-slow 16s ease-in-out infinite;
+                  }
+                  .animate-float-medium {
+                    animation: float-medium 22s ease-in-out infinite;
+                  }
+                  .animate-float-fast {
+                    animation: float-fast 13s ease-in-out infinite;
+                  }
+                `}</style>
+
+                {/* Soft Grid Pattern */}
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
+                
+                {/* Colorful Blurred Glowing Blobs */}
+                <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
+                <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
+                <div className="absolute top-[30%] left-[50%] w-[35%] h-[35%] rounded-full bg-blue-300/10 blur-[100px]" />
+
+                {/* Floating Geometric Shapes */}
+                {/* Circles */}
+                <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
+                <div className="absolute w-8 h-8 rounded-full border-2 border-blue-400/20 animate-float-fast" style={{ top: '55%', left: '4%' }} />
+                
+                {/* Squares */}
+                <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
+                <div className="absolute w-14 h-14 border-2 border-saVividOrange/15 rounded-xl animate-float-medium" style={{ top: '48%', left: '88%' }} />
+                
+                {/* Triangles */}
+                <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 22 22 2 22" />
+                </svg>
+                <svg className="absolute w-11 h-11 text-saBlue/15 animate-float-slow" style={{ top: '78%', right: '16%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polygon points="12 2 22 22 2 22" />
+                </svg>
             </div>
 
-            {/* Header */}
-            <div className="p-3 md:p-6 bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 md:gap-6">
-                        <h2 className="text-lg md:text-2xl font-black uppercase tracking-wider text-saVividOrange">
-                            Sudoku
-                        </h2>
-                        <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 md:p-2 hover:bg-white/10 rounded-full transition-colors">
-                            {isMuted ? <VolumeX className="w-4 h-4 md:w-6 md:h-6" /> : <Volume2 className="w-4 h-4 md:w-6 md:h-6" />}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center flex-wrap gap-2 md:gap-4">
-                        <div className="flex items-center bg-saBlueLight/10 px-2 md:px-4 py-1 md:py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
-                            <Clock className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2" />
-                            <span className="font-bold text-sm md:text-lg font-mono">{timeElapsed}s</span>
+            {/* Level Cleared Transition Overlay */}
+            {showLevelUp && (
+                <div className="absolute inset-0 z-45 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+                    <Card className="gamified-card p-10 text-center relative overflow-hidden max-w-sm mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5" />
+                        <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-5 animate-bounce relative z-10" />
+                        <h2 className="text-3xl font-black mb-1.5 relative z-10 text-slate-800">Level {currentLevel} Solved!</h2>
+                        
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6 relative z-10 space-y-2">
+                            <div className="flex justify-between items-center text-xs font-semibold">
+                                <span className="text-slate-505">Level Clear Bonus:</span>
+                                <span className="text-saVividOrange font-bold">+{pointsPerLevel} EXP</span>
+                            </div>
+                            <div className="h-px bg-slate-200/60" />
+                            <div className="flex justify-between items-center text-xs font-semibold">
+                                <span className="text-slate-550 font-bold">Total EXP:</span>
+                                <span className="text-saBlue font-bold">{Math.round(score + pointsPerLevel)} EXP</span>
+                            </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={resetPuzzle} className="hover:bg-saBlueLight/20 hover:text-saBlueLight transition-colors p-1.5 md:p-2">
-                            <RotateCcw className="w-4 h-4 md:w-6 md:h-6" />
+
+                        <Button 
+                            onClick={handleNextLevel} 
+                            className="w-full h-11 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold text-sm tracking-wide shadow-md shadow-blue-500/20 relative z-10"
+                        >
+                            Next Level (Level {currentLevel + 1})
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={onCancel} className="hover:bg-red-500/20 hover:text-red-400 transition-colors p-1.5 md:p-2">
-                            <X className="w-4 h-4 md:w-6 md:h-6" />
-                        </Button>
+                    </Card>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
+                <div className="flex items-center gap-4">
+                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
+                    <div className="h-6 w-px bg-white/25 hidden sm:block" />
+                    <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+                        Sudoku
+                        <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
+                            Level {currentLevel}{totalLevels ? ` / ${totalLevels}` : ''}
+                        </span>
+                    </h2>
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
+                        <Star className="w-4 h-4 mr-2 fill-current" />
+                        <span>{Math.round(score)} EXP</span>
                     </div>
+                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
+                        <Clock className="w-4 h-4 mr-2" />
+                        <span>{timeElapsed}s</span>
+                    </div>
+                    <Button variant="ghost" onClick={resetPuzzle} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                        <RotateCcw className="w-5 h-5" />
+                    </Button>
+                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                        <X className="w-5 h-5" />
+                    </Button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-8 relative z-10 w-full mx-auto flex flex-col items-center justify-start">
-                <div className="w-full max-w-5xl my-auto py-4 flex flex-col md:flex-row md:items-center md:justify-center gap-6">
-                    {/* Sudoku Grid */}
-                    <Card className="gamified-card p-4 sm:p-6 bg-slate-800/50 backdrop-blur-md border-slate-700 shrink-0">
-                        <div className="inline-block mx-auto">
-                            <div className="grid grid-cols-9 gap-0 border-4 border-saBlueLight rounded-lg overflow-hidden">
-                                {grid.map((row, rowIndex) => (
-                                    row.map((cell, colIndex) => {
-                                        const isInitial = initialGrid[rowIndex][colIndex] !== null;
-                                        const isSelected = selectedCell && selectedCell[0] === rowIndex && selectedCell[1] === colIndex;
-                                        const isInSameRow = selectedCell && selectedCell[0] === rowIndex;
-                                        const isInSameCol = selectedCell && selectedCell[1] === colIndex;
-                                        const isInSameBox = selectedCell &&
-                                            Math.floor(selectedCell[0] / 3) === Math.floor(rowIndex / 3) &&
-                                            Math.floor(selectedCell[1] / 3) === Math.floor(colIndex / 3);
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+                    
+                    {/* Left Column: Instructions & Hints */}
+                    <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch justify-between">
+                        {/* Instructions */}
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+                            <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
+                            <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
+                                {activity.instructions || "Fill the 9x9 grid so that every row, column, and 3x3 box contains all digits from 1 to 9 without repetition. Select an empty cell, then select a number from the keypad."}
+                            </p>
+                        </Card>
 
-                                        const thickBorderRight = (colIndex + 1) % 3 === 0 && colIndex !== 8;
-                                        const thickBorderBottom = (rowIndex + 1) % 3 === 0 && rowIndex !== 8;
+                        {/* Hints Control Card */}
+                        {allowHints && (
+                            <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                                <h3 className="text-xs font-black mb-3 text-saVividOrange uppercase tracking-wider">Hints Assistance</h3>
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="text-xs font-bold text-slate-500">Hints Used:</span>
+                                    <span className="text-sm font-extrabold text-slate-700">
+                                        {hintsUsed} / {maxHints || '∞'}
+                                    </span>
+                                </div>
+                                <Button 
+                                    onClick={handleRevealHint}
+                                    disabled={maxHints !== null && hintsUsed >= maxHints}
+                                    className="w-full bg-orange-50 hover:bg-orange-100 text-saVividOrange border border-orange-200 font-bold rounded-xl h-10 transition-all text-xs"
+                                >
+                                    Reveal Hint
+                                </Button>
+                            </Card>
+                        )}
+                    </div>
 
-                                        return (
-                                            <div
-                                                key={`${rowIndex}-${colIndex}`}
-                                                className={`
-                          w-8 h-8 xs:w-10 xs:h-10 sm:w-12 sm:h-12 flex items-center justify-center
-                          text-base xs:text-lg sm:text-xl font-bold cursor-pointer transition-all duration-200
-                          ${isInitial ? 'bg-slate-900 text-saBlueLight' : 'bg-slate-800 text-white'}
-                          ${isSelected ? 'bg-saBlue/50 ring-2 ring-saBlueLight ring-inset' : ''}
-                          ${!isSelected && (isInSameRow || isInSameCol || isInSameBox) ? 'bg-slate-700' : ''}
-                          ${thickBorderRight ? 'border-r-2 border-saBlueLight' : 'border-r border-slate-600'}
-                          ${thickBorderBottom ? 'border-b-2 border-saBlueLight' : 'border-b border-slate-600'}
-                          hover:bg-saBlueLight/30
-                        `}
-                                                onClick={() => handleCellClick(rowIndex, colIndex)}
-                                            >
-                                                {cell || ''}
-                                            </div>
-                                        );
-                                    })
-                                ))}
+                    {/* Center Column: Sudoku Grid */}
+                    <div className="lg:col-span-2 order-2 flex flex-col items-center">
+                        <div className="mb-3 text-center">
+                            <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 shadow-xs">
+                                <span className="w-3 h-3 rounded-full border border-slate-400 bg-saBlue" />
+                                <span className="text-xs font-bold text-slate-700">
+                                    SUDOKU PLAYBOARD
+                                </span>
                             </div>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
+                                Level {currentLevel} · Auto Generated Grid
+                            </p>
                         </div>
-                    </Card>
 
-                    {/* Number Pad */}
-                    <Card className="gamified-card p-4 sm:p-6 bg-slate-800/50 backdrop-blur-md border-slate-700 md:w-56 shrink-0">
-                        <div className="grid grid-cols-5 md:grid-cols-3 gap-2 sm:gap-3 mb-4">
-                            {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                        <Card className="p-3 flex items-center justify-center bg-white border border-slate-200 rounded-3xl shadow-sm">
+                            <div className="inline-block">
+                                <div className="grid grid-cols-9 gap-0 border-4 border-slate-800 rounded-2xl overflow-hidden shadow-lg select-none">
+                                    {grid.map((row, rowIndex) => (
+                                        row.map((cell, colIndex) => {
+                                            const isInitial = initialGrid[rowIndex][colIndex] !== null;
+                                            const isSelected = selectedCell && selectedCell[0] === rowIndex && selectedCell[1] === colIndex;
+                                            const isInSameRow = selectedCell && selectedCell[0] === rowIndex;
+                                            const isInSameCol = selectedCell && selectedCell[1] === colIndex;
+                                            const isInSameBox = selectedCell &&
+                                                Math.floor(selectedCell[0] / 3) === Math.floor(rowIndex / 3) &&
+                                                Math.floor(selectedCell[1] / 3) === Math.floor(colIndex / 3);
+
+                                            const thickBorderRight = (colIndex + 1) % 3 === 0 && colIndex !== 8;
+                                            const thickBorderBottom = (rowIndex + 1) % 3 === 0 && rowIndex !== 8;
+
+                                            // Determine custom cell colors
+                                            let cellBg = isInitial ? 'bg-slate-50/90' : 'bg-white';
+                                            let cellText = isInitial ? 'text-saBlue font-extrabold' : 'text-slate-800';
+
+                                            if (isSelected) {
+                                                cellBg = 'bg-blue-50';
+                                            } else if (!isSelected && (isInSameRow || isInSameCol || isInSameBox)) {
+                                                cellBg = 'bg-slate-50/50';
+                                            }
+
+                                            // Highlight wrong entries in red if they've written anything
+                                            const isWrong = cell !== null && cell !== solution[rowIndex][colIndex];
+                                            if (isWrong && highlightErrors) {
+                                                cellBg = 'bg-red-50/80';
+                                                cellText = 'text-red-600 font-bold';
+                                            }
+
+                                            return (
+                                                <div
+                                                    key={`${rowIndex}-${colIndex}`}
+                                                    className={`
+                                                      w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center
+                                                      text-sm sm:text-base md:text-lg cursor-pointer transition-all duration-150 select-none
+                                                      ${cellBg} ${cellText}
+                                                      ${isSelected ? 'ring-2 ring-saBlue ring-inset' : ''}
+                                                      ${thickBorderRight ? 'border-r-2 border-slate-700' : 'border-r border-slate-200'}
+                                                      ${thickBorderBottom ? 'border-b-2 border-slate-700' : 'border-b border-slate-200'}
+                                                      hover:bg-blue-50/40
+                                                    `}
+                                                    onClick={() => handleCellClick(rowIndex, colIndex)}
+                                                >
+                                                    {cell || ''}
+                                                </div>
+                                            );
+                                        })
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+
+                    {/* Right Column: Keypad & Level Tracker */}
+                    <div className="lg:col-span-1 order-3 lg:order-3 flex flex-col gap-4 self-stretch justify-between">
+                        {/* Number Pad Card */}
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+                            <div className="grid grid-cols-5 md:grid-cols-3 gap-2.5 mb-3">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                    <button
+                                        key={num}
+                                        onClick={() => handleNumberClick(num)}
+                                        disabled={!selectedCell}
+                                        className={`
+                                          aspect-square flex items-center justify-center rounded-xl font-extrabold text-lg sm:text-xl
+                                          transition-all duration-200 border
+                                          ${selectedCell
+                                              ? 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:scale-105 active:scale-95 cursor-pointer'
+                                              : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                                          }
+                                        `}
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
                                 <button
-                                    key={num}
-                                    onClick={() => handleNumberClick(num)}
+                                    onClick={handleErase}
                                     disabled={!selectedCell}
                                     className={`
-                    aspect-square flex items-center justify-center rounded-lg font-bold text-xl sm:text-2xl
-                    transition-all duration-200 border-2
-                    ${selectedCell
-                                            ? 'bg-saBlueLight/20 border-saBlueLight text-saBlueLight hover:bg-saBlueLight/30 cursor-pointer'
-                                            : 'bg-slate-800/50 border-slate-600 text-slate-500 cursor-not-allowed'
-                                        }
-                  `}
+                                      aspect-square flex items-center justify-center rounded-xl font-bold border
+                                      transition-all duration-200
+                                      ${selectedCell
+                                          ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:scale-105 active:scale-95 cursor-pointer'
+                                          : 'bg-slate-50 border-slate-100 text-slate-300 cursor-not-allowed'
+                                      }
+                                    `}
                                 >
-                                    {num}
+                                    <Eraser className="w-5 h-5" />
                                 </button>
-                            ))}
-                            <button
-                                onClick={handleErase}
-                                disabled={!selectedCell}
-                                className={`
-                  aspect-square flex items-center justify-center rounded-lg font-bold
-                  transition-all duration-200 border-2
-                  ${selectedCell
-                                        ? 'bg-red-500/20 border-red-400 text-red-300 hover:bg-red-500/30 cursor-pointer'
-                                        : 'bg-slate-800/50 border-slate-600 text-slate-500 cursor-not-allowed'
-                                    }
-                `}
-                            >
-                                <Eraser className="w-6 h-6" />
-                            </button>
-                        </div>
-                        <p className="text-xs sm:text-sm text-center text-gray-400">
-                            Select a cell, then choose a number
-                        </p>
-                    </Card>
+                            </div>
+                            <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-wider">
+                                Select a cell, then choose a number
+                            </p>
+                        </Card>
+
+                        {/* Level Tracker Card */}
+                        <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex-1 flex flex-col">
+                            <h3 className="text-xs font-black mb-3 text-saBlue uppercase tracking-wider">Level Progression</h3>
+                            <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1 flex-1">
+                                {[...Array(totalLevels || 5)].map((_, i) => {
+                                    const lvlNum = i + 1;
+                                    const isActive = lvlNum === currentLevel;
+                                    const isCleared = lvlNum < currentLevel;
+                                    return (
+                                        <div 
+                                            key={lvlNum} 
+                                            className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                                isActive 
+                                                    ? 'bg-blue-50 border-blue-200 text-saBlue' 
+                                                    : isCleared
+                                                    ? 'bg-slate-50 border-slate-150 text-slate-400 line-through'
+                                                    : 'bg-white border-slate-100 text-slate-400'
+                                            }`}
+                                        >
+                                            <span>Level {lvlNum}</span>
+                                            <span className="text-[10px] font-black uppercase">
+                                                {isActive ? 'Active' : isCleared ? 'Cleared' : 'Locked'}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Card>
+                    </div>
+
                 </div>
             </div>
         </div>
