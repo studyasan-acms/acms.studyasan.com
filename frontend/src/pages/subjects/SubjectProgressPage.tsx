@@ -1,12 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -15,25 +8,28 @@ import {
   Users,
   BookOpen,
   CheckCircle,
-  Clock,
-  ChevronRight,
   TrendingUp,
   Award,
-  Zap,
-  Sparkles,
   Loader2,
   AlertCircle,
-  GraduationCap,
   Mail,
-  Layers,
   Search,
-  Filter
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { progressService, subjectService, moduleService } from "@/services/api";
 import type { Subject, Module, StudentModuleProgress } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface StudentProgress {
   student_id: number;
@@ -56,12 +52,22 @@ export default function SubjectProgressPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "COMPLETED" | "IN_PROGRESS" | "NOT_STARTED">("ALL");
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
     if (subjectId) {
       loadData();
     }
   }, [subjectId]);
+
+  // Reset pagination on search or filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, pageSize]);
 
   const loadData = async () => {
     try {
@@ -88,34 +94,42 @@ export default function SubjectProgressPage() {
     }
   };
 
-  const filteredProgress = studentProgress.filter(
-    (sp) =>
+  const filteredProgress = studentProgress.filter((sp) => {
+    const matchesSearch =
       sp.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sp.student_email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      sp.student_email.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (!matchesSearch) return false;
+
+    if (statusFilter === "COMPLETED") {
+      return sp.completed_modules === sp.total_modules && sp.total_modules > 0;
+    } else if (statusFilter === "IN_PROGRESS") {
+      return sp.completed_modules < sp.total_modules && sp.average_progress > 0;
+    } else if (statusFilter === "NOT_STARTED") {
+      return sp.average_progress === 0;
+    }
+
+    return true;
+  });
+
+  // Calculate Pagination
+  const totalItems = filteredProgress.length;
+  const totalPages = Math.ceil(totalItems / pageSize) || 1;
+  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const startIndex = (validCurrentPage - 1) * pageSize;
+  const paginatedProgress = filteredProgress.slice(startIndex, startIndex + pageSize);
 
   const getStudentModuleProgress = (studentId: number, moduleId: number) => {
     const student = studentProgress.find((sp) => sp.student_id === studentId);
     return student?.modules.find((p) => p.module_id === moduleId);
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "COMPLETED":
-        return <CheckCircle className="w-3.5 h-3.5 text-green-500" />;
-      case "IN_PROGRESS":
-        return <Clock className="w-3.5 h-3.5 text-blue-500" />;
-      default:
-        return <BookOpen className="w-3.5 h-3.5 text-gray-300" />;
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-vh-screen space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-saBlue" />
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">
-          Aggregating Subject Analytics...
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-3">
+        <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
+          Loading Analytics...
         </p>
       </div>
     );
@@ -123,13 +137,18 @@ export default function SubjectProgressPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-6 py-20 max-w-2xl text-center">
-        <div className="w-20 h-20 bg-red-50 rounded-[32px] flex items-center justify-center mx-auto mb-8">
-          <AlertCircle className="w-10 h-10 text-red-600" />
+      <div className="max-w-md mx-auto my-12 p-6 bg-white border border-slate-200 rounded-2xl text-center space-y-4 shadow-sm">
+        <div className="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center mx-auto">
+          <AlertCircle className="w-6 h-6" />
         </div>
-        <h3 className="text-2xl font-black text-gray-900 tracking-tight">Analytics Error</h3>
-        <p className="text-gray-500 mt-2 mb-10">{error}</p>
-        <Button onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)} className="bg-saBlue h-14 px-10 rounded-2xl font-bold">
+        <div>
+          <h3 className="text-base font-extrabold text-slate-800">Analytics Error</h3>
+          <p className="text-xs text-slate-500 mt-1">{error}</p>
+        </div>
+        <Button
+          onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
+          className="bg-saBlue hover:bg-saBlueDarkHover h-9 px-4 rounded-xl text-xs font-bold"
+        >
           Return to Modules
         </Button>
       </div>
@@ -140,274 +159,322 @@ export default function SubjectProgressPage() {
     (sp) => sp.completed_modules === sp.total_modules && sp.total_modules > 0
   ).length;
 
+  const inProgressCount = studentProgress.filter(
+    (sp) => sp.completed_modules < sp.total_modules && sp.average_progress > 0
+  ).length;
+
   const averageSubjectProgress =
     studentProgress.length > 0
       ? Math.round(
-        studentProgress.reduce((sum, sp) => sum + sp.average_progress, 0) /
-        studentProgress.length
-      )
+          studentProgress.reduce((sum, sp) => sum + sp.average_progress, 0) /
+            studentProgress.length
+        )
       : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-32">
-      {/* PREMIUM HEADER SECTION */}
-      <div className="bg-slate-50 rounded-b-[32px] mb-8 shadow-sm border-b border-slate-100 relative overflow-hidden">
-        {/* Abstract Background Effects */}
-        <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-saBlue/10 rounded-full blur-[120px] animate-pulse duration-[5000ms]" />
-
-        <div className="max-w-7xl mx-auto px-6 pt-8 pb-10 relative z-10">
-          <Link
-            to={`/dashboard/subjects/${subjectId}/modules`}
-            className="group inline-flex items-center text-[10px] font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-6"
+    <div className="max-w-7xl mx-auto space-y-4 pb-12 px-3 sm:px-6">
+      {/* COMPACT TOP BAR & HEADER */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
+            className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 hover:text-saBlue hover:bg-saBlue/10 transition-all shrink-0"
+            title="Back to Modules"
           >
-            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Subject Control Hub
-          </Link>
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
 
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-saBlue/20 rounded-xl border border-saBlue/30 text-saBlue">
-                  <TrendingUp className="w-5 h-5" />
-                </div>
-                <Badge variant="outline" className="border-saBlue/30 text-saBlue text-[9px] uppercase font-bold tracking-[0.25em] px-3 py-1 bg-saBlue/5 rounded-full">
-                  Learning Analytics
-                </Badge>
-              </div>
-              <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-extrabold text-slate-900 truncate">
                 {subject?.name} Progress
-                <Sparkles className="w-6 h-6 text-saVividOrange inline-block ml-3 animate-pulse duration-1000" />
               </h1>
-              <p className="text-slate-500 text-sm font-medium max-w-xl leading-relaxed">
-                Comprehensive overview of student engagement, module completion rates, and overall academic performance metrics.
-              </p>
+              <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                Analytics
+              </Badge>
             </div>
+            <p className="text-xs text-slate-500 font-medium truncate">
+              Cohort tracking & module completion breakdown
+            </p>
+          </div>
+        </div>
 
-            <div className="flex items-center gap-6">
-              <div className="text-right">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Success Metric</p>
-                <div className="text-3xl font-black text-slate-900 leading-none tabular-nums">
-                  {averageSubjectProgress}<small className="text-sm text-saBlue ml-1">%</small>
-                </div>
-              </div>
-              <div className="h-10 w-px bg-slate-200 mx-1" />
-              <div className="text-right">
-                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Cohort Size</p>
-                <div className="text-3xl font-black text-slate-900 leading-none tabular-nums">
-                  {studentProgress.length}
-                </div>
-              </div>
+        {/* STAT BADGES */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 shrink-0">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/80">
+            <Users className="w-4 h-4 text-saBlue" />
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Students</p>
+              <p className="text-xs font-black text-slate-800 leading-none">{studentProgress.length}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-emerald-50/50 px-3 py-1.5 rounded-xl border border-emerald-100">
+            <Award className="w-4 h-4 text-emerald-600" />
+            <div>
+              <p className="text-[9px] font-bold text-emerald-600/70 uppercase tracking-wider">Completed</p>
+              <p className="text-xs font-black text-emerald-700 leading-none">{completedAllCount}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-100">
+            <TrendingUp className="w-4 h-4 text-saBlue" />
+            <div>
+              <p className="text-[9px] font-bold text-saBlue/70 uppercase tracking-wider">Avg Progress</p>
+              <p className="text-xs font-black text-saBlue leading-none">{averageSubjectProgress}%</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 bg-amber-50/50 px-3 py-1.5 rounded-xl border border-amber-100">
+            <BookOpen className="w-4 h-4 text-amber-600" />
+            <div>
+              <p className="text-[9px] font-bold text-amber-600/70 uppercase tracking-wider">Modules</p>
+              <p className="text-xs font-black text-amber-700 leading-none">{modules.length}</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6">
-        {studentProgress.length === 0 ? (
-          <div className="py-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Card className="border-2 border-dashed border-gray-100 bg-white rounded-[40px] overflow-hidden shadow-sm">
-              <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-24 h-24 bg-gray-50 rounded-3xl flex items-center justify-center mb-8 shadow-sm border border-gray-100">
-                  <Users className="w-12 h-12 text-gray-200" />
-                </div>
-                <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">Cohort Empty</h3>
-                <p className="text-gray-500 max-w-sm text-sm">
-                  No student enrollments or active learning sessions detected for this curriculum yet.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="space-y-12">
-            {/* SUMMARY CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                  <Users className="w-16 h-16 text-saBlue" />
-                </div>
-                <div className="p-2.5 bg-saBlue/10 rounded-xl text-saBlue inline-block mb-4">
-                  <Users className="w-5 h-5" />
-                </div>
-                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Enrollments</h4>
-                <p className="text-3xl font-black text-gray-900 tabular-nums">{studentProgress.length}</p>
-                <p className="text-[10px] font-bold text-saBlue mt-3 flex items-center gap-1">
-                  Active in Subject <ChevronRight className="w-3 h-3" />
-                </p>
-              </Card>
+      {/* FILTER & SEARCH TOOLBAR */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="relative w-full sm:w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Search student by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-xs rounded-xl border-slate-200 focus-visible:ring-saBlue"
+          />
+        </div>
 
-              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                  <Award className="w-16 h-16 text-green-500" />
-                </div>
-                <div className="p-2.5 bg-green-50 rounded-xl text-green-600 inline-block mb-4">
-                  <Award className="w-5 h-5" />
-                </div>
-                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Certifications Ready</h4>
-                <p className="text-3xl font-black text-gray-900 tabular-nums">{completedAllCount}</p>
-                <p className="text-[10px] font-bold text-green-600 mt-3 flex items-center gap-1">
-                  100% Completion <ChevronRight className="w-3 h-3" />
-                </p>
-              </Card>
-
-              <Card className="rounded-2xl border-none shadow-lg shadow-gray-200/50 p-6 overflow-hidden relative group transition-all hover:scale-[1.02]">
-                <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-                  <Zap className="w-16 h-16 text-saVividOrange" />
-                </div>
-                <div className="p-2.5 bg-saVividOrange/10 rounded-xl text-saVividOrange inline-block mb-4">
-                  <Zap className="w-5 h-5" />
-                </div>
-                <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Learning Momentum</h4>
-                <p className="text-3xl font-black text-gray-900 tabular-nums">{modules.length}</p>
-                <p className="text-[10px] font-bold text-saVividOrange mt-3 flex items-center gap-1">
-                  Total Active Modules <ChevronRight className="w-3 h-3" />
-                </p>
-              </Card>
-            </div>
-
-            {/* STUDENT ROSTER & SEARCH */}
-            <div className="space-y-8">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 px-2">
-                <div>
-                  <h3 className="text-xl font-black text-gray-900 tracking-tight">Roster Performance</h3>
-                  <p className="text-gray-500 text-xs font-medium">Detailed tracking for individual educational paths.</p>
-                </div>
-
-                <div className="flex items-center gap-3 w-full md:w-auto">
-                  <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                    <Input
-                      placeholder="Search Learner..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="h-10 rounded-xl border-none bg-white shadow-lg shadow-gray-200/50 pl-10 pr-4 text-xs font-bold focus:ring-4 focus:ring-saBlue/5"
-                    />
-                  </div>
-                  <Button variant="outline" className="h-10 w-10 rounded-xl border-none bg-white shadow-lg shadow-gray-200/50 hover:bg-gray-50">
-                    <Filter className="w-4 h-4 text-gray-400" />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="grid gap-10">
-                {filteredProgress.length === 0 ? (
-                  <div className="py-20 text-center bg-white rounded-[40px] shadow-xl shadow-gray-200/50">
-                    <Search className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">No matching results for "{searchTerm}"</p>
-                  </div>
-                ) : (
-                  filteredProgress.map((studentData) => {
-                    const overallProgress = studentData.average_progress;
-
-                    return (
-                      <Card
-                        key={studentData.student_id}
-                        className="rounded-[32px] border-none shadow-xl shadow-gray-200/60 overflow-hidden bg-white group hover:shadow-saBlue/5 transition-all duration-500"
-                      >
-                        <CardHeader className="p-6 md:p-8 border-b border-gray-50">
-                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                            <div className="flex items-center gap-5">
-                              <div className="w-16 h-16 bg-saBlue/5 rounded-2xl flex items-center justify-center border border-saBlue/10 text-saBlue transition-transform duration-500 group-hover:scale-105">
-                                <GraduationCap className="w-8 h-8" />
-                              </div>
-                              <div className="space-y-1.5">
-                                <h3 className="text-xl font-black text-gray-900 tracking-tight">{studentData.student_name}</h3>
-                                <div className="flex flex-wrap items-center gap-3">
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <Mail className="w-3 h-3" />
-                                    {studentData.student_email}
-                                  </div>
-                                  <div className="w-1 h-1 rounded-full bg-gray-200" />
-                                  <div className="flex items-center gap-1.5 text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                                    <Layers className="w-3 h-3" />
-                                    {studentData.completed_modules} of {studentData.total_modules} Complete
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-6 px-5 py-3 bg-gray-50 rounded-2xl border border-gray-100/50 shrink-0">
-                              <div className="text-right">
-                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Mastery Path</p>
-                                <div className="text-2xl font-black text-saBlue tabular-nums">{overallProgress}%</div>
-                              </div>
-                              <div className="w-px h-8 bg-gray-200" />
-                              <div className="p-2 bg-white rounded-xl shadow-sm text-saBlue group-hover:rotate-12 transition-transform">
-                                <TrendingUp className="w-4 h-4 font-black" />
-                              </div>
-                            </div>
-                          </div>
-                        </CardHeader>
-
-                        <CardContent className="p-6 md:p-8">
-                          <div className="mb-8">
-                            <div className="flex justify-between items-end mb-3 px-1">
-                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Learning Milestones</span>
-                              <span className="text-[10px] font-black text-saBlue bg-saBlue/5 px-3 py-1 rounded-full border border-saBlue/10 tabular-nums">
-                                Global Progress: {overallProgress}%
-                              </span>
-                            </div>
-                            <Progress value={overallProgress} className="h-4 bg-gray-50 rounded-xl overflow-hidden border-2 border-white shadow-inner">
-                              <div className="h-full bg-gradient-to-r from-saBlue to-blue-400 rounded-xl shadow-lg transition-all duration-1000" />
-                            </Progress>
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                            {modules.map((module) => {
-                              const prog = getStudentModuleProgress(studentData.student_id, module.module_id);
-                              const status = prog?.is_completed ? "COMPLETED" : (prog?.progress_percent ?? 0) > 0 ? "IN_PROGRESS" : "NOT_STARTED";
-
-                              return (
-                                <div
-                                  key={module.module_id}
-                                  className={cn(
-                                    "p-5 rounded-3xl border transition-all duration-300 flex flex-col justify-between min-h-[140px] group/item",
-                                    status === "COMPLETED"
-                                      ? "bg-green-50/30 border-green-100 hover:bg-green-50"
-                                      : status === "IN_PROGRESS"
-                                        ? "bg-saBlue/5 border-saBlue/10 hover:bg-saBlue/[0.08]"
-                                        : "bg-gray-50/50 border-gray-100 hover:bg-gray-50"
-                                  )}
-                                >
-                                  <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                      {getStatusIcon(status)}
-                                      <Badge variant="outline" className={cn(
-                                        "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 border-none",
-                                        status === "COMPLETED" ? "bg-green-100 text-green-700" :
-                                          status === "IN_PROGRESS" ? "bg-saBlue/10 text-saBlue" : "bg-gray-100 text-gray-400"
-                                      )}>
-                                        {status.replace("_", " ")}
-                                      </Badge>
-                                    </div>
-                                    <h4 className="text-[11px] font-black text-gray-800 uppercase tracking-widest line-clamp-2 leading-tight">
-                                      {module.title}
-                                    </h4>
-                                  </div>
-
-                                  <div className="mt-4 pt-3 border-t border-black/5 flex items-center justify-between">
-                                    <span className="text-[9px] font-bold tracking-tight text-gray-400 tabular-nums">
-                                      {prog?.progress_percent || 0}%
-                                    </span>
-                                    {prog?.completed_on && (
-                                      <span className="text-[8px] font-bold text-green-600/60 uppercase">
-                                        Done
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+          {(["ALL", "COMPLETED", "IN_PROGRESS", "NOT_STARTED"] as const).map((filter) => (
+            <Button
+              key={filter}
+              variant={statusFilter === filter ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setStatusFilter(filter)}
+              className={cn(
+                "h-8 px-3 rounded-xl text-xs font-bold shrink-0 transition-all",
+                statusFilter === filter
+                  ? "bg-saBlue text-white shadow-xs"
+                  : "text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              {filter === "ALL"
+                ? `All (${studentProgress.length})`
+                : filter === "COMPLETED"
+                ? `Completed (${completedAllCount})`
+                : filter === "IN_PROGRESS"
+                ? `In Progress (${inProgressCount})`
+                : `Not Started (${studentProgress.length - completedAllCount - inProgressCount})`}
+            </Button>
+          ))}
+        </div>
       </div>
+
+      {/* TABULAR COMPACT ROSTER LIST */}
+      {filteredProgress.length === 0 ? (
+        <div className="py-16 text-center bg-white border border-slate-200/80 rounded-2xl p-6">
+          <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-slate-800">No Student Records Found</h3>
+          <p className="text-xs text-slate-500 mt-1">
+            {searchTerm || statusFilter !== "ALL"
+              ? "Try adjusting your search query or status filter."
+              : "No students are currently enrolled in this subject."}
+          </p>
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[700px]">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-3 px-4 w-12 text-center">#</th>
+                  <th className="py-3 px-4">Student Details</th>
+                  <th className="py-3 px-4 w-48">Modules Completed</th>
+                  <th className="py-3 px-4 w-44">Overall Progress</th>
+                  <th className="py-3 px-4">Module Breakdown</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                {paginatedProgress.map((sp, index) => {
+                  const percent = Math.round(sp.average_progress || 0);
+
+                  return (
+                    <tr
+                      key={sp.student_id}
+                      className="hover:bg-slate-50/60 transition-colors"
+                    >
+                      {/* Index */}
+                      <td className="py-3.5 px-4 text-center font-bold text-slate-400 text-xs">
+                        {startIndex + index + 1}
+                      </td>
+
+                      {/* Student Info */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-saBlue/10 text-saBlue flex items-center justify-center font-bold text-xs shrink-0 border border-saBlue/20">
+                            {sp.student_name ? sp.student_name[0].toUpperCase() : "S"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs truncate">
+                              {sp.student_name}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate flex items-center gap-1">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              {sp.student_email}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Modules Count Badge */}
+                      <td className="py-3.5 px-4">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-bold text-xs px-2.5 py-0.5 rounded-lg border",
+                            sp.completed_modules === sp.total_modules && sp.total_modules > 0
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              : sp.completed_modules > 0
+                              ? "bg-saBlue/10 text-saBlue border-saBlue/20"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          )}
+                        >
+                          {sp.completed_modules} / {sp.total_modules} Modules
+                        </Badge>
+                      </td>
+
+                      {/* Progress Bar & Percent */}
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-1.5 w-36">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-slate-700">{percent}%</span>
+                            {percent === 100 && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                <CheckCircle2 className="w-3 h-3" /> Done
+                              </span>
+                            )}
+                          </div>
+                          <Progress
+                            value={percent}
+                            className="h-2 bg-slate-100 rounded-full"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Module Grid Pills */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {modules.map((m) => {
+                            const prog = getStudentModuleProgress(sp.student_id, m.module_id);
+                            const isDone = prog?.is_completed;
+                            const modPercent = prog?.progress_percent || 0;
+
+                            return (
+                              <div
+                                key={m.module_id}
+                                title={`${m.title}: ${isDone ? "Completed" : modPercent > 0 ? `${modPercent}% In Progress` : "Not Started"}`}
+                                className={cn(
+                                  "px-2 py-1 rounded-md text-[10px] font-bold border transition-all flex items-center gap-1",
+                                  isDone
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : modPercent > 0
+                                    ? "bg-saBlue/10 text-saBlue border-saBlue/20"
+                                    : "bg-slate-50 text-slate-400 border-slate-200/80"
+                                )}
+                              >
+                                {isDone ? (
+                                  <CheckCircle className="w-3 h-3 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-current shrink-0" />
+                                )}
+                                <span className="truncate max-w-[90px]">{m.title}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* VISIBLE PAGINATION FOOTER */}
+          <div className="bg-slate-50/80 px-4 py-3 border-t border-slate-200/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-semibold text-slate-600">
+            <div className="flex items-center gap-3">
+              <span>
+                Showing <strong className="text-slate-900">{startIndex + 1}</strong> to{" "}
+                <strong className="text-slate-900">{Math.min(startIndex + pageSize, totalItems)}</strong> of{" "}
+                <strong className="text-slate-900">{totalItems}</strong> students
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-slate-400">Per page:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(val) => setPageSize(Number(val))}
+                >
+                  <SelectTrigger className="h-7 w-16 text-xs font-bold rounded-lg border-slate-200 bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="25">25</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={validCurrentPage === 1}
+                className="h-8 px-2.5 rounded-lg border-slate-200 font-bold text-xs hover:bg-white disabled:opacity-40"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+              </Button>
+
+              <div className="flex items-center gap-1 px-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                  <Button
+                    key={pageNum}
+                    variant={pageNum === validCurrentPage ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={cn(
+                      "h-8 w-8 p-0 rounded-lg text-xs font-bold transition-all",
+                      pageNum === validCurrentPage
+                        ? "bg-saBlue text-white shadow-xs"
+                        : "text-slate-600 hover:bg-slate-200/60"
+                    )}
+                  >
+                    {pageNum}
+                  </Button>
+                ))}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                disabled={validCurrentPage === totalPages}
+                className="h-8 px-2.5 rounded-lg border-slate-200 font-bold text-xs hover:bg-white disabled:opacity-40"
+              >
+                Next <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

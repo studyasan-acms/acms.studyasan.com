@@ -1,12 +1,27 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Card,
   CardContent,
-  CardHeader,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Plus,
   Edit,
@@ -21,7 +36,14 @@ import {
   Sparkles,
   Loader2,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  Eye,
+  Search,
+  Filter,
+  X,
+  ArrowUpDown,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import { moduleService, subjectService, progressService } from "@/services/api";
 import type { Module, Subject, StudentModuleProgress } from "@/types";
@@ -32,19 +54,27 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 export default function SubjectModulesPage() {
-  usePageTitle("Subject Modules");
+  usePageTitle("Subject Curriculum Modules");
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
+
   const [subject, setSubject] = useState<Subject | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [progress, setProgress] = useState<StudentModuleProgress[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Search, Filter & Sort States
+  const [searchTerm, setSearchTerm] = useState("");
+  const [contentFilter, setContentFilter] = useState("all"); // 'all' | 'has_content' | 'no_content'
+  const [sortOption, setSortOption] = useState("order_asc"); // 'order_asc' | 'title_asc' | 'title_desc' | 'duration_desc' | 'duration_asc'
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   useEffect(() => {
     if (subjectId) {
@@ -60,7 +90,7 @@ export default function SubjectModulesPage() {
         moduleService.getModulesBySubject(parseInt(subjectId!)),
         user?.role === "STUDENT"
           ? progressService.getStudentProgress(user.id, parseInt(subjectId!))
-          : Promise.resolve({ success: true, data: [] as StudentModuleProgress[] })
+          : Promise.resolve({ success: true, data: [] as StudentModuleProgress[] }),
       ]);
 
       setSubject(subjectRes.data);
@@ -91,7 +121,7 @@ export default function SubjectModulesPage() {
 
     try {
       await moduleService.deleteModule(parseInt(subjectId!), moduleId);
-      await loadData(); // Reload to get fresh data
+      await loadData();
     } catch (err: any) {
       alert(err.response?.data?.message || "Failed to delete module");
     }
@@ -108,11 +138,43 @@ export default function SubjectModulesPage() {
     return moduleProgress?.is_completed || false;
   };
 
+  // Filter & Sort Logic
+  const filteredModules = [...modules]
+    .filter((m) => {
+      const matchSearch =
+        m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (m.description || "").toLowerCase().includes(searchTerm.toLowerCase());
+      if (!matchSearch) return false;
+
+      const contentCount = m.content?.length || 0;
+      if (contentFilter === "has_content") return contentCount > 0;
+      if (contentFilter === "no_content") return contentCount === 0;
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortOption === "order_asc") return a.order - b.order;
+      if (sortOption === "title_asc") return a.title.localeCompare(b.title);
+      if (sortOption === "title_desc") return b.title.localeCompare(a.title);
+      if (sortOption === "duration_desc") return b.estimated_time_minutes - a.estimated_time_minutes;
+      if (sortOption === "duration_asc") return a.estimated_time_minutes - b.estimated_time_minutes;
+      return a.order - b.order;
+    });
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setContentFilter("all");
+    setSortOption("order_asc");
+  };
+
+  const hasActiveFilters =
+    searchTerm || contentFilter !== "all" || sortOption !== "order_asc";
+
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-vh-screen space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-saBlue" />
-        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
           Loading Learning Modules...
         </p>
       </div>
@@ -121,17 +183,17 @@ export default function SubjectModulesPage() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-2xl">
-        <Card className="border-red-100 bg-red-50/50 rounded-3xl overflow-hidden shadow-sm">
-          <CardContent className="p-10 flex flex-col items-center text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mb-6">
-              <AlertCircle className="w-8 h-8 text-red-600" />
+      <div className="container mx-auto px-4 py-12 max-w-lg">
+        <Card className="border-red-100 bg-red-50/50 rounded-2xl overflow-hidden shadow-sm">
+          <CardContent className="p-8 flex flex-col items-center text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center mb-4">
+              <AlertCircle className="w-6 h-6 text-red-600" />
             </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">Oops! Something went wrong</h3>
-            <p className="text-sm text-gray-500 mb-8 max-w-xs">{error}</p>
+            <h3 className="text-base font-bold text-slate-800 mb-2">Error Loading Modules</h3>
+            <p className="text-xs text-slate-500 mb-6">{error}</p>
             <Button
               onClick={() => navigate("/dashboard/subjects")}
-              className="bg-saBlue hover:bg-saBlue/90 rounded-xl px-8 h-12 font-bold text-xs uppercase tracking-wider transition-all active:scale-95"
+              className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl px-6 h-9 font-bold text-xs uppercase"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Return to Subjects
@@ -143,248 +205,364 @@ export default function SubjectModulesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white pb-20">
-      {/* PREMIUM HEADER SECTION */}
-      <div className="relative overflow-hidden bg-slate-50 rounded-b-[32px] mb-8 shadow-sm border-b border-slate-100 group">
-        {/* Animated Background Elements */}
-        <div className="absolute top-[-10%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-[-10%] left-[-5%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
-
-        <div className="max-w-7xl mx-auto px-6 pt-8 pb-10 relative z-10">
-          {/* Breadcrumb / Back Button */}
-          <Button
-            variant="ghost"
-            onClick={() => navigate(`/dashboard/subjects/${subjectId}`)}
-            className="mb-6 text-slate-500 hover:text-saBlue hover:bg-saBlue/5 rounded-xl transition-all h-9 px-3 group/back"
+    <div className="space-y-5 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
+      {/* COMPACT BRAND HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3">
+          <Link
+            to={`/dashboard/subjects/${subjectId}`}
+            className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 hover:text-saBlue hover:bg-saBlue/10 transition-all shrink-0"
+            title="Back to Subject"
           >
-            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover/back:-translate-x-1 transition-transform" />
-            <span className="text-xs font-bold uppercase tracking-widest">Back to Subject</span>
-          </Button>
+            <ArrowLeft className="w-4 h-4" />
+          </Link>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 truncate">
+                {subject?.name}
+              </h1>
+              <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                {modules.length} {modules.length === 1 ? "Module" : "Modules"}
+              </Badge>
+            </div>
+            <p className="text-xs text-slate-500 font-medium truncate max-w-xl">
+              {isTeacher
+                ? "Structure and manage course modules, curriculum, and learning materials."
+                : "Study modules and track your progress in this course."}
+            </p>
+          </div>
+        </div>
 
-          <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6">
-            <div className="space-y-3 max-w-2xl">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-saBlue/20 rounded-xl border border-saBlue/30 text-saBlue animate-in zoom-in duration-500">
-                  <Layers className="w-5 h-5" />
-                </div>
-                <Badge variant="outline" className="border-saBlue/30 text-saBlue text-[9px] uppercase font-bold tracking-widest px-2 py-0.5 bg-saBlue/5 rounded-full">
-                  Learning Content
-                </Badge>
-              </div>
-              <div>
-                <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-1 flex items-center gap-3">
-                  {subject?.name}
-                  <Sparkles className="w-4 h-4 text-saVividOrange animate-pulse" />
-                </h1>
-                <p className="text-slate-500 text-xs font-medium leading-relaxed max-w-xl">
-                  {isTeacher
-                    ? "Structure and manage your course modules, curriculum, and educational resources."
-                    : "Access your learning materials, study modules, and track your educational journey."}
-                </p>
-              </div>
+        {isTeacher && (
+          <Button
+            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
+            className="h-9 px-4 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl text-xs font-bold shadow-sm shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Create Module
+          </Button>
+        )}
+      </div>
+
+      {/* SEARCH, SORT & MULTI-FILTER TOOLBAR */}
+      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search module title or summary..."
+              className="pl-10 h-10 border-slate-200/80 rounded-xl bg-slate-50/50 focus:bg-white text-sm focus:ring-saBlue focus:border-saBlue"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filters & Controls */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Content Filter */}
+            <div className="min-w-[130px]">
+              <Select value={contentFilter} onValueChange={setContentFilter}>
+                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectValue placeholder="All Content" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Modules</SelectItem>
+                  <SelectItem value="has_content">With Assets</SelectItem>
+                  <SelectItem value="no_content">Empty Modules</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
+            {/* Sort Selection */}
+            <div className="flex items-center gap-1.5 min-w-[170px]">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="order_asc">Module Sequence (1 → N)</SelectItem>
+                  <SelectItem value="title_asc">Title: A → Z</SelectItem>
+                  <SelectItem value="title_desc">Title: Z → A</SelectItem>
+                  <SelectItem value="duration_desc">Duration: High → Low</SelectItem>
+                  <SelectItem value="duration_asc">Duration: Low → High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all text-slate-600",
+                  viewMode === "list" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                )}
+                title="Tabular List View"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all text-slate-600",
+                  viewMode === "grid" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                )}
+                title="Grid Card View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Filters Bar */}
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs text-slate-500">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-700 flex items-center gap-1">
+                <Filter className="h-3 w-3 text-saBlue" /> Active Filters:
+              </span>
+              {searchTerm && (
+                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-[10px]">
+                  Search: "{searchTerm}"
+                </Badge>
+              )}
+              {contentFilter !== "all" && (
+                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
+                  Assets: {contentFilter === "has_content" ? "With Assets" : "Empty Only"}
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-6 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2 font-semibold"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* MODULES CONTENT DISPLAY */}
+      {!Array.isArray(filteredModules) || filteredModules.length === 0 ? (
+        <Card className="py-12 text-center bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+          <CardContent>
+            <div className="w-14 h-14 bg-saBlue/10 rounded-2xl flex items-center justify-center mx-auto mb-3 text-saBlue">
+              <BookOpen className="w-7 h-7" />
+            </div>
+            <h3 className="text-base font-bold text-slate-800 mb-1">No Modules Found</h3>
+            <p className="text-slate-500 text-xs max-w-md mx-auto mb-4">
+              {hasActiveFilters
+                ? "Try adjusting your search or filter options"
+                : "Create your first curriculum module to get started"}
+            </p>
             {isTeacher && (
               <Button
                 onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
-                className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-6 rounded-xl font-bold text-xs uppercase tracking-widest shadow-xl shadow-saBlue/20 transition-all active:scale-95 group/btn border border-saBlue/50"
+                className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl px-5 h-9 font-bold text-xs"
               >
-                <Plus className="w-4 h-4 mr-2 group-hover/btn:rotate-90 transition-transform duration-300" />
-                Create New Module
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Create Module
               </Button>
             )}
-          </div>
-        </div>
-      </div>
+          </CardContent>
+        </Card>
+      ) : viewMode === "list" ? (
+        /* COMPACT TABULAR LIST VIEW */
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
+          <Table>
+            <TableHeader className="bg-slate-50/80">
+              <TableRow className="border-b border-slate-100">
+                <TableHead className="font-bold text-slate-700 text-xs w-16 text-center">#</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs min-w-[220px]">Module Title</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs">Duration</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs">Resources</TableHead>
+                <TableHead className="font-bold text-slate-700 text-xs">Status</TableHead>
+                <TableHead className="text-right font-bold text-slate-700 text-xs pr-6 min-w-[140px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredModules.map((module, index) => {
+                const isCompleted = user?.role === "STUDENT" && isModuleCompleted(module.module_id);
+                const hasDescription = module.description && module.description.trim() !== module.title.trim();
 
-      <div className="max-w-7xl mx-auto px-6">
-        {/* MODULES LIST */}
-        {!Array.isArray(modules) || modules.length === 0 ? (
-          <div className="py-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Card className="border-2 border-dashed border-gray-100 bg-gray-50/50 rounded-[40px] overflow-hidden">
-              <CardContent className="flex flex-col items-center justify-center py-24 text-center">
-                <div className="w-24 h-24 bg-white rounded-3xl flex items-center justify-center mb-8 shadow-sm border border-gray-100 group">
-                  <BookOpen className="w-12 h-12 text-gray-200 group-hover:text-saBlue transition-colors duration-500" />
-                </div>
-                <h3 className="text-2xl font-black text-gray-800 mb-3 tracking-tight">No learning modules yet</h3>
-                <p className="text-gray-500 mb-10 max-w-sm text-sm">
-                  {isTeacher
-                    ? "Start building your curriculum by creating your first instructional module."
-                    : "Your teacher hasn't published any learning modules for this subject yet."}
-                </p>
-                {isTeacher && (
-                  <Button
-                    onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/create`)}
-                    className="h-10 px-8 rounded-xl bg-saBlue hover:bg-saBlue/90 font-bold text-xs uppercase tracking-widest shadow-lg shadow-saBlue/15"
+                return (
+                  <TableRow
+                    key={module.module_id}
+                    className="hover:bg-slate-50/80 border-b border-slate-100 transition-colors"
                   >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create First Module
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        ) : (
-          <div className="grid gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                Curriculum Structure · {modules.length} {modules.length === 1 ? 'Module' : 'Modules'}
-              </h2>
-            </div>
-
-            <div className="space-y-6">
-              {[...modules]
-                .sort((a, b) => a.order - b.order)
-                .map((module, index) => {
-                  const isCompleted = user?.role === "STUDENT" && isModuleCompleted(module.module_id);
-                  const moduleProgress = getModuleProgress(module.module_id);
-
-                  return (
-                    <Card
-                      key={module.module_id}
-                      className={cn(
-                        "group border transition-all duration-500 rounded-[24px] overflow-hidden",
-                        isCompleted
-                          ? "border-green-200 bg-green-50/30 hover:border-green-300 hover:shadow-xl hover:shadow-green-500/10"
-                          : "border-gray-100 hover:border-saBlue/20 hover:shadow-xl hover:shadow-saBlue/5"
+                    <TableCell className="text-center font-bold text-saBlue text-xs py-3">
+                      {(index + 1).toString().padStart(2, "0")}
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="font-bold text-slate-900 text-sm leading-snug">
+                        {module.title}
+                      </div>
+                      {hasDescription && (
+                        <p className="text-xs text-slate-400 line-clamp-1 max-w-xl">
+                          {module.description}
+                        </p>
                       )}
-                    >
-                      <CardContent className="p-0">
-                        <div className="flex flex-col md:flex-row items-stretch">
-                          {/* Module Order Indicator */}
-                          <div className={cn(
-                            "md:w-20 flex flex-row md:flex-col items-center justify-center p-3 md:p-4 border-b md:border-b-0 md:border-r border-gray-100 transition-colors duration-500 shrink-0",
-                            isCompleted
-                              ? "bg-green-100 group-hover:bg-green-200/50"
-                              : "bg-gray-50 group-hover:bg-saBlue/5"
-                          )}>
-                            <span className={cn(
-                              "text-[10px] font-black uppercase tracking-[0.2em] mb-0 md:mb-1 mr-3 md:mr-0 transition-colors",
-                              isCompleted
-                                ? "text-green-600 group-hover:text-green-700"
-                                : "text-gray-500 group-hover:text-saBlue/40"
-                            )}>Module</span>
-                            <span className={cn(
-                              "text-2xl font-black transition-all duration-500 tabular-nums leading-none",
-                              isCompleted
-                                ? "text-green-600 group-hover:text-green-700"
-                                : "text-gray-200 group-hover:text-saBlue"
-                            )}>
-                              {(index + 1).toString().padStart(2, '0')}
-                            </span>
-                          </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1 text-xs text-slate-600 font-medium">
+                        <Clock className="w-3.5 h-3.5 text-saBlue" />
+                        <span>{module.estimated_time_minutes} min</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      <div className="flex items-center gap-1 text-xs text-slate-600 font-medium">
+                        <FileText className="w-3.5 h-3.5 text-saVividOrange" />
+                        <span>{module.content?.length || 0} Assets</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="py-3">
+                      {isCompleted ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] font-bold px-2 py-0.5">
+                          <CheckCircle className="w-3 h-3 mr-1" /> Completed
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[10px] font-semibold px-2 py-0.5">
+                          Active
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right pr-6 py-3">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 px-2.5 text-xs text-saBlue hover:text-saBlueDarkHover hover:bg-saBlue/10 font-semibold rounded-lg"
+                          onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`)}
+                          title="Preview student study view"
+                        >
+                          <Eye className="w-3.5 h-3.5 mr-1" />
+                          Preview
+                        </Button>
 
-                          {/* Module Info */}
-                          <div className="flex-1 p-5 md:p-6 flex flex-col justify-between">
-                            <div>
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                  <h3 className={cn(
-                                    "text-lg font-black tracking-tight transition-colors duration-300",
-                                    isCompleted
-                                      ? "text-green-800 group-hover:text-green-900"
-                                      : "text-gray-800 group-hover:text-saBlue"
-                                  )}>
-                                    {module.title}
-                                  </h3>
-                                  {isCompleted && (
-                                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                                  )}
-                                </div>
-                                {isTeacher && (
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:bg-gray-50 rounded-lg">
-                                        <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="rounded-xl border-gray-100 p-1 min-w-[140px] shadow-lg">
-                                      <DropdownMenuItem
-                                        onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
-                                        className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-gray-600 focus:bg-saBlue/5 focus:text-saBlue cursor-pointer"
-                                      >
-                                        <Edit className="w-3.5 h-3.5 mr-2" />
-                                        Edit Details
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        onClick={() => handleDeleteModule(module.module_id)}
-                                        className="rounded-lg px-3 py-2 font-bold text-[10px] uppercase tracking-widest text-red-600 focus:bg-red-50 focus:text-red-700 cursor-pointer mt-1"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5 mr-2" />
-                                        Delete Module
-                                      </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                )}
-                              </div>
-                              <p className="text-gray-500 mb-6 max-w-3xl leading-relaxed text-xs">
-                                {module.description}
-                              </p>
-                            </div>
+                        {isTeacher && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2.5 text-xs text-saVividOrange hover:bg-saVividOrange/10 font-semibold rounded-lg"
+                            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
+                            title="Edit configuration"
+                          >
+                            <Edit className="w-3.5 h-3.5 mr-1" />
+                            Edit
+                          </Button>
+                        )}
 
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-gray-50">
-                              <div className="flex items-center gap-4">
-                                <div className={cn(
-                                  "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
-                                  isCompleted
-                                    ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
-                                    : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
-                                )}>
-                                  <Clock className="w-3.5 h-3.5 text-saBlue/60" />
-                                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{module.estimated_time_minutes} min</span>
-                                </div>
-                                <div className={cn(
-                                  "flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-500",
-                                  isCompleted
-                                    ? "bg-green-100 border-green-200 group-hover:bg-green-50 group-hover:border-green-300"
-                                    : "bg-gray-50 border-gray-100 group-hover:bg-white group-hover:border-saBlue/10"
-                                )}>
-                                  <FileText className="w-3.5 h-3.5 text-saBlue/60" />
-                                  <span className="text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                                    {module.content?.length || 0} Content
-                                  </span>
-                                </div>
-                                {isCompleted && user?.role === "STUDENT" && (
-                                  <div className="bg-green-100 border-green-200 px-3 py-1.5 rounded-xl border">
-                                    <span className="text-[10px] font-black text-green-700 uppercase tracking-widest flex items-center gap-1.5">
-                                      <CheckCircle className="w-3 h-3" />
-                                      Completed
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
+                        {isTeacher && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            onClick={() => handleDeleteModule(module.module_id)}
+                            title="Delete Module"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      ) : (
+        /* GRID CARD VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {filteredModules.map((module, index) => {
+            const isCompleted = user?.role === "STUDENT" && isModuleCompleted(module.module_id);
+            const hasDescription = module.description && module.description.trim() !== module.title.trim();
 
-                              <Button
-                                onClick={() => {
-                                  if (isTeacher) {
-                                    navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`);
-                                  } else {
-                                    navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`);
-                                  }
-                                }}
-                                className={cn(
-                                  "h-9 px-5 rounded-xl font-bold text-xs uppercase tracking-[0.15em] transition-all active:scale-95 group/btn-go",
-                                  isTeacher
-                                    ? "bg-gray-50 text-gray-700 hover:bg-saBlue hover:text-white border border-gray-100"
-                                    : isCompleted
-                                      ? "bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/20"
-                                      : "bg-saBlue hover:bg-saBlue/90 text-white shadow-lg shadow-saBlue/15"
-                                )}
-                              >
-                                {isTeacher ? "Manage" : isCompleted ? "Review" : "Start"}
-                                <ChevronRight className="w-3 h-3 ml-2 group-hover/btn-go:translate-x-1 transition-transform" />
-                              </Button>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-            </div>
-          </div>
-        )}
-      </div>
+            return (
+              <Card
+                key={module.module_id}
+                className="group hover:shadow-md transition-all duration-200 rounded-2xl overflow-hidden bg-white border border-slate-200/80 hover:border-saBlue/50 flex flex-col justify-between"
+              >
+                <CardContent className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <Badge className="bg-saBlue/10 text-saBlue border-0 text-[10px] font-bold">
+                        Module {(index + 1).toString().padStart(2, "0")}
+                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-slate-400 hover:text-saBlue rounded-lg"
+                          onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/study`)}
+                          title="Preview"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                        {isTeacher && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-saVividOrange rounded-lg"
+                            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${module.module_id}/edit`)}
+                            title="Edit"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                        {isTeacher && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-red-600 rounded-lg"
+                            onClick={() => handleDeleteModule(module.module_id)}
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-saBlue transition-colors line-clamp-1">
+                      {module.title}
+                    </h3>
+                    {hasDescription && (
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2 min-h-[32px]">
+                        {module.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100 font-medium">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-saBlue" />
+                      <span>{module.estimated_time_minutes} min</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <FileText className="w-3.5 h-3.5 text-saVividOrange" />
+                      <span>{module.content?.length || 0} Assets</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

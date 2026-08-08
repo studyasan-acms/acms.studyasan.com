@@ -3,7 +3,6 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -27,11 +26,9 @@ import {
   Files,
   Calendar,
   Layers,
-  Sparkles,
-  ChevronRight,
-  MoreHorizontal,
   Eye,
   ExternalLink,
+  X,
 } from "lucide-react";
 import { moduleService } from "@/services/api";
 import type { Module, ModuleContent, UpdateModuleData } from "@/types";
@@ -39,12 +36,6 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import ErrorModal from "@/components/ui/errorModal";
 import SuccessModal from "@/components/ui/successModal";
 import { cn, resolveImageUrl } from "@/lib/utils";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -148,8 +139,8 @@ export default function EditModulePage() {
         parseInt(moduleId!),
         files
       );
-      await loadModule(); // Reload to show new content
-      e.target.value = ""; // Reset file input
+      await loadModule();
+      e.target.value = "";
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to upload files");
     } finally {
@@ -167,9 +158,7 @@ export default function EditModulePage() {
       await moduleService.addTextContent(
         parseInt(subjectId!),
         parseInt(moduleId!),
-        {
-          text_content: textContent,
-        }
+        { text_content: textContent }
       );
       setTextContent("");
       await loadModule();
@@ -194,38 +183,17 @@ export default function EditModulePage() {
   };
 
   const getContentIcon = (type: string) => {
-    const iconClass = "w-5 h-5 transition-transform group-hover:scale-110 duration-300";
     switch (type) {
       case "text":
-        return (
-          <div className="p-2.5 bg-blue-50 rounded-xl text-blue-500">
-            <FileText className={iconClass} />
-          </div>
-        );
+        return <FileText className="w-4 h-4 text-saBlue" />;
       case "image":
-        return (
-          <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-500">
-            <ImageIcon className={iconClass} />
-          </div>
-        );
+        return <ImageIcon className="w-4 h-4 text-emerald-500" />;
       case "video":
-        return (
-          <div className="p-2.5 bg-purple-50 rounded-xl text-purple-500">
-            <Video className={iconClass} />
-          </div>
-        );
+        return <Video className="w-4 h-4 text-purple-500" />;
       case "pdf":
-        return (
-          <div className="p-2.5 bg-red-50 rounded-xl text-red-500">
-            <File className={iconClass} />
-          </div>
-        );
+        return <File className="w-4 h-4 text-red-500" />;
       default:
-        return (
-          <div className="p-2.5 bg-gray-50 rounded-xl text-gray-500">
-            <Files className={iconClass} />
-          </div>
-        );
+        return <Files className="w-4 h-4 text-slate-500" />;
     }
   };
 
@@ -238,9 +206,9 @@ export default function EditModulePage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-vh-screen space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-saBlue" />
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest animate-pulse">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest animate-pulse">
           Loading Module Content...
         </p>
       </div>
@@ -249,168 +217,163 @@ export default function EditModulePage() {
 
   if (!module) {
     return (
-      <div className="container mx-auto px-4 py-12 max-w-2xl text-center">
-        <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Trash2 className="w-8 h-8 text-gray-400" />
+      <div className="container mx-auto px-4 py-12 max-w-lg text-center">
+        <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-400">
+          <Trash2 className="w-7 h-7" />
         </div>
-        <h3 className="text-xl font-bold text-gray-800 mb-2">Module not found</h3>
-        <Button onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)} className="mt-4 rounded-xl">
-          Back to List
+        <h3 className="text-lg font-bold text-slate-800 mb-2">Module Not Found</h3>
+        <Button onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)} className="rounded-xl bg-saBlue text-white text-xs">
+          Back to Modules
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white pb-32">
-      {/* PREMIUM HEADER SECTION */}
-      <div className="relative overflow-hidden bg-slate-50 rounded-b-[32px] mb-8 shadow-sm border-b border-slate-100 group">
-        {/* Animated Background Elements */}
-        <div className="absolute top-[-20%] right-[-5%] w-[400px] h-[400px] bg-saBlue/10 rounded-full blur-[100px] animate-pulse duration-[4000ms]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[300px] h-[300px] bg-blue-600/5 rounded-full blur-[80px]" />
-
-        <div className="max-w-5xl mx-auto px-6 pt-8 pb-10 relative z-10">
+    <div className="space-y-5 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
+      {/* COMPACT BRAND HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+        <div className="flex items-center gap-3">
           <Link
             to={`/dashboard/subjects/${subjectId}/modules`}
-            className="group inline-flex items-center text-xs font-black text-slate-400 hover:text-saBlue uppercase tracking-widest transition-colors mb-6"
+            className="p-2 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-600 hover:text-saBlue hover:bg-saBlue/10 transition-all shrink-0"
+            title="Back to Modules"
           >
-            <ArrowLeft className="w-3.5 h-3.5 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Subject Modules
+            <ArrowLeft className="w-4 h-4" />
           </Link>
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-saBlue/10 rounded-xl text-saBlue animate-in zoom-in duration-500 shadow-sm border border-saBlue/5">
-                <Layers className="w-6 h-6" />
-              </div>
-              <div className="space-y-0.5">
-                <Badge variant="outline" className="border-saBlue/20 text-saBlue text-[9px] uppercase font-bold tracking-[0.2em] px-2 py-0.5 bg-saBlue/5 rounded-full mb-1">
-                  Asset Synchronization Active
-                </Badge>
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                  Edit: {module.title}
-                  <Sparkles className="w-4 h-4 text-saVividOrange animate-pulse" />
-                </h1>
-              </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg sm:text-xl font-extrabold text-slate-900 truncate">
+                Edit: {module.title}
+              </h1>
+              <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
+                Module #{module.order}
+              </Badge>
             </div>
-
+            <p className="text-xs text-slate-500 font-medium truncate max-w-xl">
+              {module.description || "Manage settings and instructional assets."}
+            </p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules/${moduleId}/study`)}
+            className="h-9 px-3.5 rounded-xl border-saBlue/30 bg-saBlue/5 text-xs font-semibold text-saBlue hover:bg-saBlue/10"
+          >
+            <Eye className="w-3.5 h-3.5 mr-1.5" />
+            Preview Module
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
+            className="h-9 px-3.5 rounded-xl border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={saving}
+            className="h-9 px-4 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl text-xs font-bold shadow-sm"
+          >
+            {saving ? (
+              <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...</>
+            ) : (
+              <><Save className="w-3.5 h-3.5 mr-1.5" /> Save Module</>
+            )}
+          </Button>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 space-y-10">
-        <div className="grid lg:grid-cols-1 gap-10">
-          {/* 1. MODULE SETTINGS CARD */}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <Card className="rounded-[24px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-              <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <FileText className="w-4 h-4 text-saBlue" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg font-bold tracking-tight">Module Configuration</CardTitle>
-                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-gray-400">Core Identity</CardDescription>
-                  </div>
+      {/* COMPACT TWO-COLUMN RESPONSIVE LAYOUT */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        {/* LEFT COLUMN: MODULE CONFIGURATION (4 Cols) */}
+        <div className="lg:col-span-5 space-y-5">
+          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 sm:p-5">
+            <CardHeader className="p-0 mb-4">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-saBlue" />
+                Module Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0 space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="title" className="text-xs font-bold text-slate-700">
+                  Module Title *
+                </Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="e.g. Introduction to Grammar"
+                  className="h-9 rounded-xl border-slate-200 focus:ring-saBlue text-xs font-medium"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="description" className="text-xs font-bold text-slate-700">
+                  Synopsis / Overview *
+                </Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Provide a concise summary of learning outcomes..."
+                  rows={4}
+                  className="rounded-xl border-slate-200 focus:ring-saBlue text-xs font-medium resize-none"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="estimated_time_minutes" className="text-xs font-bold text-slate-700">
+                  Duration (Minutes)
+                </Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Input
+                    id="estimated_time_minutes"
+                    type="number"
+                    min="0"
+                    value={formData.estimated_time_minutes}
+                    onChange={(e) => setFormData(prev => ({ ...prev, estimated_time_minutes: parseInt(e.target.value) || 0 }))}
+                    className="h-9 pl-9 rounded-xl border-slate-200 focus:ring-saBlue text-xs font-semibold"
+                  />
                 </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid gap-8">
-                  <div className="space-y-3">
-                    <Label htmlFor="title" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">
-                      Module Display Title <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="title"
-                      value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                      placeholder="Enter module title"
-                      className="h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all px-4 text-sm font-bold"
-                      required
-                    />
-                  </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="description" className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">
-                      Module Synopsis <span className="text-red-500">*</span>
-                    </Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Provide a comprehensive summary of this module..."
-                      rows={3}
-                      className="rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-4 text-sm font-medium leading-relaxed resize-none"
-                      required
-                    />
-                  </div>
+        {/* RIGHT COLUMN: INSTRUCTIONAL ASSETS & CONTENT (7 Cols) */}
+        <div className="lg:col-span-7 space-y-5">
+          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 sm:p-5">
+            <CardHeader className="p-0 mb-4 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Files className="w-4 h-4 text-saVividOrange" />
+                Instructional Resources & Assets
+              </CardTitle>
+              <Badge className="bg-slate-100 text-slate-700 border-0 text-[10px] font-bold">
+                {module.content?.length || 0} Items
+              </Badge>
+            </CardHeader>
 
-                  <div className="space-y-3">
-                    <Label htmlFor="estimated_time_minutes" className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">
-                      Completion Duration (Minutes)
-                    </Label>
-                    <div className="relative">
-                      <Clock className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-saBlue/50" />
-                      <Input
-                        id="estimated_time_minutes"
-                        type="number"
-                        min="0"
-                        value={formData.estimated_time_minutes}
-                        onChange={(e) => setFormData(prev => ({ ...prev, estimated_time_minutes: parseInt(e.target.value) || 0 }))}
-                        className="h-11 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all pl-12 pr-4 text-sm font-bold"
-                      />
-                    </div>
+            <CardContent className="p-0 space-y-5">
+              {/* UPLOAD & QUICK TEXT ROW */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Upload Button Box */}
+                <label className="flex flex-col items-center justify-center p-3.5 border-2 border-dashed border-slate-200 hover:border-saBlue bg-slate-50/50 hover:bg-saBlue/5 rounded-xl cursor-pointer transition-all">
+                  <div className="flex items-center gap-2 text-saBlue font-bold text-xs">
+                    {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                    <span>{uploading ? "Uploading..." : "Upload Files"}</span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-4 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate(`/dashboard/subjects/${subjectId}/modules`)}
-                className="flex-1 sm:flex-none sm:min-w-[160px] h-11 rounded-xl border-gray-200 font-bold text-[10px] uppercase tracking-widest hover:bg-gray-50 transition-all"
-              >
-                Discard Changes
-              </Button>
-              <Button
-                type="submit"
-                disabled={saving}
-                className="flex-1 sm:flex-none sm:min-w-[160px] h-11 bg-saBlue hover:bg-saBlue/90 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg shadow-saBlue/20 transition-all active:scale-95"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-                    Synchronizing...
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5 mr-3" />
-                    Save Configuration
-                  </>
-                )}
-              </Button>
-            </div>
-          </form>
-
-          {/* 2. CONTENT REPOSITORY CARD */}
-          <Card className="rounded-[24px] border-none shadow-xl shadow-gray-200/50 overflow-hidden">
-            <CardHeader className="bg-gray-50/50 border-b border-gray-100 p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 bg-white rounded-xl border border-gray-100 shadow-sm">
-                    <Files className="w-4 h-4 text-saBlue" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg font-bold tracking-tight">Instructional Assets</CardTitle>
-                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Content Management</CardDescription>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
+                  <p className="text-[10px] text-slate-400 mt-1 text-center">
+                    PDF, Documents, Video, Images
+                  </p>
                   <input
-                    id="file-upload"
                     type="file"
                     multiple
                     accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx"
@@ -418,161 +381,130 @@ export default function EditModulePage() {
                     className="hidden"
                     disabled={uploading}
                   />
-                  <Button
-                    onClick={() => document.getElementById("file-upload")?.click()}
-                    disabled={uploading}
-                    className="h-10 px-5 rounded-xl bg-gray-950 hover:bg-gray-900 font-bold text-xs uppercase tracking-widest shadow-lg shadow-gray-200/50 transition-all"
-                  >
-                    {uploading ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Upload className="w-3.5 h-3.5 mr-2" />}
-                    Upload Resources
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-8">
-              {/* Text Entry Section */}
-              <div className="space-y-4">
-                <Label htmlFor="text-content" className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1 flex items-center gap-2">
-                  <Plus className="w-3 h-3 text-saBlue" />
-                  Quick Module Text
-                </Label>
-                <div className="flex flex-col sm:flex-row gap-4">
+                </label>
+
+                {/* Add Quick Text Modal / Inline Toggle */}
+                <div className="p-3.5 border border-slate-200/80 rounded-xl bg-slate-50/50 space-y-2 flex flex-col justify-between">
+                  <Label htmlFor="quick-text" className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                    <Plus className="w-3.5 h-3.5 text-saVividOrange" /> Add Lecture Note / Text
+                  </Label>
                   <Textarea
-                    id="text-content"
+                    id="quick-text"
                     value={textContent}
                     onChange={(e) => setTextContent(e.target.value)}
-                    placeholder="Compose instructional text, lecture notes, or module summaries..."
+                    placeholder="Enter text or lecture notes..."
                     rows={2}
-                    className="flex-1 rounded-xl border-gray-100 bg-gray-50/30 focus:bg-white focus:ring-4 focus:ring-saBlue/5 transition-all p-4 text-sm font-medium resize-none min-h-[60px]"
+                    className="text-xs rounded-lg border-slate-200 bg-white resize-none"
                   />
                   <Button
+                    type="button"
                     onClick={handleAddTextContent}
                     disabled={!textContent.trim()}
-                    variant="outline"
-                    className="sm:w-28 h-auto sm:aspect-square flex flex-col items-center justify-center gap-2 rounded-xl border-saBlue/20 text-saBlue hover:bg-saBlue hover:text-white transition-all duration-500"
+                    className="h-7 text-[11px] font-bold bg-saVividOrange hover:bg-saVividOrange/90 text-white rounded-lg w-full"
                   >
-                    <Plus className="w-5 h-5" />
-                    <span className="text-[9px] font-black uppercase tracking-widest">Add Text</span>
+                    Add Text Item
                   </Button>
                 </div>
               </div>
 
-              {/* Assets List */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between mb-4 px-1">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">
-                    Deployed Content · {module.content?.length || 0} Items
-                  </h4>
-                </div>
+              {/* ASSETS LIST TABLE / ITEM ROW */}
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Module Assets ({module.content?.length || 0})
+                </h4>
 
-                <div className="grid gap-4">
-                  {module.content && module.content.length > 0 ? (
-                    module.content.map((content) => (
+                {module.content && module.content.length > 0 ? (
+                  <div className="divide-y divide-slate-100 rounded-xl border border-slate-200/80 overflow-hidden bg-white">
+                    {module.content.map((content) => (
                       <div
                         key={content.content_id}
-                        className="group flex flex-col md:flex-row items-stretch border border-gray-100 rounded-xl hover:border-saBlue/20 hover:bg-saBlue/[0.02] transition-all duration-300 overflow-hidden"
+                        className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50/80 transition-colors"
                       >
                         <div
+                          className="flex items-center gap-3 min-w-0 cursor-pointer flex-1"
                           onClick={() => handleViewContent(content)}
-                          className="flex-1 p-3 flex items-center gap-3 cursor-pointer"
-                          title="Click to view content"
                         >
-                          <div className="shrink-0">{getContentIcon(content.type)}</div>
-                          <div className="flex-1 min-w-0 pr-2">
-                            <h5 className="text-xs font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors flex items-center gap-1.5">
+                          <div className="p-2 rounded-lg bg-slate-100 shrink-0">
+                            {getContentIcon(content.type)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-slate-800 truncate hover:text-saBlue">
                               {content.type === "text"
-                                ? content.text_content?.substring(0, 80) + (content.text_content?.length! > 80 ? "..." : "")
-                                : (content.file_name || (content as any).filename || "Instructional Material")}
-                            </h5>
-                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                              <span className="text-[10px] font-black uppercase tracking-widest text-saBlue/50 bg-saBlue/5 px-2 py-0.5 rounded-full">
-                                {content.type}
-                              </span>
-                              {content.file_size && (
-                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 tracking-tight">
-                                  <Files className="w-3 h-3" />
-                                  {formatFileSize(content.file_size)}
-                                </span>
-                              )}
+                                ? content.text_content?.substring(0, 60) + (content.text_content?.length! > 60 ? "..." : "")
+                                : (content.file_name || (content as any).filename || "Instructional Document")}
+                            </p>
+                            <div className="flex items-center gap-2 text-[10px] text-slate-400 font-medium mt-0.5">
+                              <span className="uppercase font-bold text-saBlue">{content.type}</span>
+                              {content.file_size && <span>• {formatFileSize(content.file_size)}</span>}
                               {content.uploaded_at && (
-                                <span className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 tracking-tight">
-                                  <Calendar className="w-3 h-3" />
-                                  {new Date(content.uploaded_at).toLocaleDateString()}
-                                </span>
+                                <span>• {new Date(content.uploaded_at).toLocaleDateString()}</span>
                               )}
                             </div>
                           </div>
                         </div>
-                        <div className="md:w-28 border-t md:border-t-0 md:border-l border-gray-100 flex items-center justify-center gap-1 p-3 md:p-0 bg-gray-50/30 transition-colors">
+
+                        <div className="flex items-center gap-1 shrink-0">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleViewContent(content);
-                            }}
-                            className="h-8 w-8 text-gray-400 hover:text-saBlue hover:bg-saBlue/10 rounded-lg transition-all"
-                            title="View Content"
+                            onClick={() => handleViewContent(content)}
+                            className="h-8 w-8 text-slate-400 hover:text-saBlue hover:bg-saBlue/10 rounded-lg"
+                            title="View / Preview"
                           >
-                            {content.type === "text" ? <Eye className="w-4 h-4" /> : <ExternalLink className="w-4 h-4" />}
+                            {content.type === "text" ? <Eye className="w-3.5 h-3.5" /> : <ExternalLink className="w-3.5 h-3.5" />}
                           </Button>
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveContent(content.content_id);
-                            }}
-                            className="h-8 w-8 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            title="Delete Content"
+                            onClick={() => handleRemoveContent(content.content_id)}
+                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Remove Content"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-12 border-2 border-dashed border-gray-100 rounded-[24px] bg-gray-50/30">
-                      <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100">
-                        <Plus className="w-6 h-6 text-gray-200" />
-                      </div>
-                      <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No instructional assets detected</p>
-                      <p className="text-xs text-gray-500 mt-2">Upload files or compose text to populate this module.</p>
-                    </div>
-                  )}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                    <p className="text-xs font-bold text-slate-400">No resources uploaded yet</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Use file uploader or add quick text above</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* TEXT CONTENT PREVIEW DIALOG */}
       <Dialog open={selectedTextContent !== null} onOpenChange={(open) => { if (!open) setSelectedTextContent(null); }}>
-        <DialogContent className="max-w-2xl rounded-2xl p-6">
+        <DialogContent className="max-w-xl rounded-2xl p-5">
           <DialogHeader>
-            <DialogTitle className="text-base font-bold text-gray-900">Module Text Content</DialogTitle>
-            <DialogDescription className="text-xs text-gray-500">Instructional material preview</DialogDescription>
+            <DialogTitle className="text-base font-bold text-slate-900">Text Content Preview</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">Instructional material notes</DialogDescription>
           </DialogHeader>
-          <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 text-sm text-gray-800 leading-relaxed max-h-[60vh] overflow-y-auto whitespace-pre-wrap font-medium">
+          <div className="mt-2 p-4 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-800 leading-relaxed max-h-[50vh] overflow-y-auto whitespace-pre-wrap font-medium">
             {selectedTextContent}
           </div>
         </DialogContent>
       </Dialog>
 
+      {/* MODALS */}
       <ErrorModal
         open={!!error}
         onConfirm={() => setError("")}
-        title="Operation Interrupted"
+        title="Error"
         description={error}
       />
 
       <SuccessModal
         open={!!success}
         onConfirm={() => setSuccess("")}
-        title="Configuration Saved"
+        title="Saved"
         description={success}
         okText="Continue Editing"
       />

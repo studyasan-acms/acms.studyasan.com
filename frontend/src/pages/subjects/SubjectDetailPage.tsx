@@ -9,8 +9,8 @@ import {
   CardHeader,
 } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { subjectService, teacherService, studentService, moduleService } from "@/services/api";
-import type { Subject, Module } from "@/types";
+import { subjectService, teacherService, studentService } from "@/services/api";
+import type { Subject } from "@/types";
 import {
   ArrowLeft,
   Edit,
@@ -38,7 +38,6 @@ export default function SubjectDetailPage() {
   const isAdmin = user?.role === "ADMIN";
 
   const [subject, setSubject] = useState<Subject | null>(null);
-  const [modules, setModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [currentTeacherId, setCurrentTeacherId] = useState<number | null>(null);
   const [currentStudentId, setCurrentStudentId] = useState<number | null>(null);
@@ -113,12 +112,6 @@ export default function SubjectDetailPage() {
       }
 
       setSubject(subjectData);
-
-      // Fetch modules as fallback content
-      const modulesRes = await moduleService.getModulesBySubject(subjectId);
-      if (modulesRes.success) {
-        setModules(modulesRes.data);
-      }
     } catch (error) {
       console.error("Failed to fetch subject:", error);
       navigate("/dashboard/subjects");
@@ -363,21 +356,6 @@ export default function SubjectDetailPage() {
                         <h4 className="font-bold text-gray-700 mb-1">{unit.name}</h4>
                         <p className="text-xs text-gray-500 leading-relaxed">{unit.content}</p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : modules.length > 0 ? (
-                <div className="space-y-4">
-                  {modules.map((module, index) => (
-                    <div key={module.module_id} className="flex gap-4 p-4 rounded-2xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all group cursor-pointer" onClick={() => navigate(`/dashboard/subjects/${id}/student-modules`)}>
-                      <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-saBlue font-bold text-sm shadow-sm shrink-0 group-hover:bg-saBlue group-hover:text-white transition-colors">
-                        {index + 1}
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-700 mb-1">{module.title}</h4>
-                        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{module.description}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-saBlue transition-colors self-center" />
                     </div>
                   ))}
                 </div>
