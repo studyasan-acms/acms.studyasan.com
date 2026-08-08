@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -10,9 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
-import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
+import SearchablePaginatedSelect from "@/components/ui/searchablePaginatedSelect";
 import { studentService, boardService, classService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import type { Student, Board, Class } from "@/types";
@@ -25,9 +33,20 @@ import {
   ChevronRight,
   Users,
   Search,
+  UserCheck,
+  GraduationCap,
+  BookOpen,
+  ArrowUpDown,
+  LayoutGrid,
+  List,
+  Filter,
+  X,
+  Phone,
+  Mail,
 } from "lucide-react";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { cn } from "@/lib/utils";
 
 interface StudentQueryParams {
   page: number;
@@ -38,10 +57,12 @@ interface StudentQueryParams {
   gender?: string;
   user_id?: number;
   role?: string;
+  sort?: string;
+  order?: string;
 }
 
 export default function StudentsPage() {
-  usePageTitle("Students");
+  usePageTitle("Students Directory");
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === "ADMIN";
@@ -57,13 +78,16 @@ export default function StudentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
-  const limit = 10;
+  const limit = 12;
 
-  // Filters
+  // Filters & Sorting
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedClass, setSelectedClass] = useState<string>("");
-  const [selectedBoard, setSelectedBoard] = useState<string>("");
-  const [selectedGender, setSelectedGender] = useState<string>("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [selectedClass, setSelectedClass] = useState<string>("all");
+  const [selectedBoard, setSelectedBoard] = useState<string>("all");
+  const [selectedGender, setSelectedGender] = useState<string>("all");
+  const [sortOption, setSortOption] = useState<string>("name_asc");
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
 
   useEffect(() => {
     fetchBoards();
@@ -74,12 +98,27 @@ export default function StudentsPage() {
     setIsLoading(true);
     try {
       const params: StudentQueryParams = { page: currentPage, limit };
-      if (searchTerm) params.search = searchTerm;
-      if (selectedClass) params.class_id = parseInt(selectedClass);
-      if (selectedBoard) params.board_id = parseInt(selectedBoard);
-      if (selectedGender) params.gender = selectedGender;
+      if (debouncedSearchTerm.trim()) params.search = debouncedSearchTerm.trim();
+      if (selectedClass && selectedClass !== "all") params.class_id = parseInt(selectedClass);
+      if (selectedBoard && selectedBoard !== "all") params.board_id = parseInt(selectedBoard);
+      if (selectedGender && selectedGender !== "all") params.gender = selectedGender;
 
-      // For teachers, filter by their subjects
+      // Dynamic Sorting
+      if (sortOption === "name_asc") {
+        params.sort = "name";
+        params.order = "asc";
+      } else if (sortOption === "name_desc") {
+        params.sort = "name";
+        params.order = "desc";
+      } else if (sortOption === "newest") {
+        params.sort = "created_at";
+        params.order = "desc";
+      } else if (sortOption === "oldest") {
+        params.sort = "created_at";
+        params.order = "asc";
+      }
+
+      // For teachers, filter by their assigned subjects
       if (isTeacher && user?.id) {
         params.user_id = user.id;
         params.role = "TEACHER";
@@ -94,7 +133,20 @@ export default function StudentsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [currentPage, searchTerm, selectedClass, selectedBoard, selectedGender, isTeacher, user?.id, limit]);
+  }, [currentPage, debouncedSearchTerm, selectedClass, selectedBoard, selectedGender, sortOption, isTeacher, user?.id, limit]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm, selectedClass, selectedBoard, selectedGender, sortOption]);
 
   useEffect(() => {
     fetchStudents();
@@ -129,13 +181,6 @@ export default function StudentsPage() {
     }
   };
 
-  const handleSearch = (value: string) => {
-    setSearchTerm(value);
-    setCurrentPage(1);
-  };
-
-  const handleFilterChange = () => setCurrentPage(1);
-
   const getInitials = (name: string) =>
     name
       .split(" ")
@@ -144,149 +189,340 @@ export default function StudentsPage() {
       .toUpperCase()
       .slice(0, 2);
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedClass("all");
+    setSelectedBoard("all");
+    setSelectedGender("all");
+    setSortOption("name_asc");
+  };
+
+  const hasActiveFilters =
+    debouncedSearchTerm ||
+    selectedClass !== "all" ||
+    selectedBoard !== "all" ||
+    selectedGender !== "all" ||
+    sortOption !== "name_asc";
+
+  // Quick stats calculations
+  const maleCount = students.filter((s) => s.gender === "M").length;
+  const femaleCount = students.filter((s) => s.gender === "F").length;
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-800 tracking-tight">Students</h1>
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-0.5">
-            Directory & Management
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Students Directory</h1>
+            <Badge className="bg-saBlue/10 text-saBlue hover:bg-saBlue/15 font-semibold px-2.5 py-0.5 rounded-full text-xs border border-saBlue/20">
+              {total} Total Students
+            </Badge>
+          </div>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Manage student enrollments, academic levels, and contact details.
           </p>
         </div>
         {isAdmin && (
           <Button
-            className="bg-saBlue hover:bg-saBlue/90 text-white h-10 px-5 font-bold text-[10px] uppercase tracking-wider transition-all active:scale-95 shadow-sm rounded-xl"
+            className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl px-4 py-2 font-semibold transition-all"
             onClick={() => navigate("/dashboard/students/new")}
           >
-            <Plus className="mr-2 h-3.5 w-3.5" />
+            <Plus className="mr-2 h-4 w-4" />
             New Student
           </Button>
         )}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
-        {/* Search */}
-        <div className="relative flex-1 w-full md:w-auto min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search students..."
-            value={searchTerm}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
-          />
-        </div>
+      {/* BRAND UNIFIED STATS CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Students</p>
+              <h3 className="text-2xl font-black text-slate-900 mt-1">{total}</h3>
+            </div>
+            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
+              <Users className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">Enrolled in institution</p>
+        </Card>
 
-        {/* Dropdowns Container */}
-        <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
-          <SearchablePaginatedSelect
-            value={selectedClass || 'all'}
-            onValueChange={(value) => {
-              setSelectedClass(value === 'all' ? '' : value);
-              handleFilterChange();
-            }}
-            placeholder="All Classes"
-            searchPlaceholder="Search class..."
-            triggerClassName="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 min-w-[140px]"
-            options={[
-              { value: 'all', label: 'All Classes' },
-              ...classes.map((c) => ({ value: String(c.id), label: c.name })),
-            ]}
-          />
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saVividOrange/40 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Male Students</p>
+              <h3 className="text-2xl font-black text-saVividOrange mt-1">{maleCount}</h3>
+            </div>
+            <div className="h-10 w-10 bg-saVividOrange/10 rounded-xl flex items-center justify-center text-saVividOrange">
+              <UserCheck className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">Male student count</p>
+        </Card>
 
-          <select
-            value={selectedBoard}
-            onChange={(e) => {
-              setSelectedBoard(e.target.value);
-              handleFilterChange();
-            }}
-            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
-          >
-            <option value="">All Boards</option>
-            {boards.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Female Students</p>
+              <h3 className="text-2xl font-black text-saBlue mt-1">{femaleCount}</h3>
+            </div>
+            <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
+              <UserCheck className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">Female student count</p>
+        </Card>
 
-          <select
-            value={selectedGender}
-            onChange={(e) => {
-              setSelectedGender(e.target.value);
-              handleFilterChange();
-            }}
-            className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[100px]"
-          >
-            <option value="">Gender: All</option>
-            <option value="M">Male</option>
-            <option value="F">Female</option>
-            <option value="OTHER">Other</option>
-          </select>
-        </div>
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-slate-300 hover:shadow-md transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Academic Levels</p>
+              <h3 className="text-2xl font-black text-slate-800 mt-1">{classes.length}</h3>
+            </div>
+            <div className="h-10 w-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+              <GraduationCap className="h-5 w-5" />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400 mt-2">Active grade levels</p>
+        </Card>
       </div>
 
+      {/* SEARCH, SORTING & MULTI-FILTER TOOLBAR */}
+      <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
+        <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+          {/* Search Input */}
+          <div className="relative flex-1 min-w-[240px]">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search students by name, email or phone..."
+              className="pl-10 h-10 border-slate-200/80 rounded-xl bg-slate-50/50 focus:bg-white text-sm focus:ring-saBlue focus:border-saBlue"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Filters & Actions */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {/* Class Filter */}
+            <div className="min-w-[140px]">
+              <SearchablePaginatedSelect
+                value={selectedClass}
+                onValueChange={setSelectedClass}
+                placeholder="All Classes"
+                searchPlaceholder="Search class..."
+                triggerClassName="h-10 px-3 rounded-xl border-slate-200/80 bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue"
+                options={[
+                  { value: "all", label: "All Classes" },
+                  ...classes.map((c) => ({ value: String(c.id), label: c.name })),
+                ]}
+              />
+            </div>
+
+            {/* Board Filter */}
+            <div className="min-w-[130px]">
+              <Select value={selectedBoard} onValueChange={setSelectedBoard}>
+                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectValue placeholder="All Boards" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Boards</SelectItem>
+                  {boards.map((b) => (
+                    <SelectItem key={b.id} value={b.id.toString()}>
+                      {b.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Gender Filter */}
+            <div className="min-w-[120px]">
+              <Select value={selectedGender} onValueChange={setSelectedGender}>
+                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectValue placeholder="Gender: All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Gender: All</SelectItem>
+                  <SelectItem value="M">Male</SelectItem>
+                  <SelectItem value="F">Female</SelectItem>
+                  <SelectItem value="OTHER">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sort Selection */}
+            <div className="flex items-center gap-1.5 min-w-[170px]">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name_asc">Alphabetical: A → Z</SelectItem>
+                  <SelectItem value="name_desc">Alphabetical: Z → A</SelectItem>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all text-slate-600",
+                  viewMode === "list" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                )}
+                title="List View"
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "p-1.5 rounded-lg transition-all text-slate-600",
+                  viewMode === "grid" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                )}
+                title="Grid View"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Filters Bar */}
+        {hasActiveFilters && (
+          <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs text-slate-500">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-slate-700 flex items-center gap-1">
+                <Filter className="h-3 w-3 text-saBlue" /> Active Filters:
+              </span>
+              {debouncedSearchTerm && (
+                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-[10px]">
+                  Search: "{debouncedSearchTerm}"
+                </Badge>
+              )}
+              {selectedClass !== "all" && (
+                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
+                  Class: {classes.find((c) => c.id.toString() === selectedClass)?.name || selectedClass}
+                </Badge>
+              )}
+              {selectedBoard !== "all" && (
+                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
+                  Board: {boards.find((b) => b.id.toString() === selectedBoard)?.name || selectedBoard}
+                </Badge>
+              )}
+              {selectedGender !== "all" && (
+                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
+                  Gender: {selectedGender === "M" ? "Male" : selectedGender === "F" ? "Female" : "Other"}
+                </Badge>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-6 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2 font-semibold"
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
+      </Card>
+
+      {/* CONTENT DISPLAY */}
       {isLoading ? (
         <div className="py-20 flex flex-col items-center justify-center space-y-4">
-          <div className="w-10 h-10 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
-          <p className="text-gray-400 font-bold text-xs tracking-widest uppercase">Loading Students...</p>
+          <div className="w-12 h-12 border-4 border-saBlue/20 border-t-saBlue rounded-full animate-spin"></div>
+          <p className="text-slate-600 font-medium text-sm">Loading students...</p>
         </div>
       ) : students.length === 0 ? (
-        <div className="py-20 flex flex-col items-center text-center">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-            <Users className="w-8 h-8 text-gray-300" />
-          </div>
-          <h3 className="text-lg font-bold text-gray-600">No students found</h3>
-          <p className="text-gray-400 text-xs mt-1">Try adjusting your filters</p>
-        </div>
-      ) : (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm animate-in fade-in duration-500 overflow-hidden">
+        <Card className="py-16 text-center bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+          <CardContent>
+            <div className="w-16 h-16 bg-saBlue/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-saBlue">
+              <Users className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-800 mb-1">No Students Found</h3>
+            <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto mb-4">
+              {hasActiveFilters
+                ? "Try adjusting your search or filter criteria"
+                : "Add your first student to get started"}
+            </p>
+            {isAdmin && (
+              <Button onClick={() => navigate("/dashboard/students/new")} className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl text-xs font-bold">
+                <Plus className="mr-2 h-4 w-4" /> New Student
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      ) : viewMode === "list" ? (
+        /* LIST TABLE VIEW */
+        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50/50 hover:bg-gray-50/50 border-b-gray-100">
-                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider pl-6 min-w-[200px]">Student</TableHead>
-                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[150px] hidden md:table-cell">Class Info</TableHead>
-                  {!isTeacher && <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider min-w-[120px] hidden lg:table-cell">Phone</TableHead>}
-                  <TableHead className="font-bold text-gray-400 text-[10px] uppercase tracking-wider text-right pr-6 min-w-[100px]">Actions</TableHead>
+              <TableHeader className="bg-slate-50/80">
+                <TableRow className="border-b border-slate-100">
+                  <TableHead className="font-bold text-slate-700 text-xs pl-6 min-w-[220px]">Student</TableHead>
+                  <TableHead className="font-bold text-slate-700 text-xs min-w-[150px] hidden md:table-cell">Class & Board</TableHead>
+                  {!isTeacher && <TableHead className="font-bold text-slate-700 text-xs min-w-[130px] hidden lg:table-cell">Phone</TableHead>}
+                  <TableHead className="font-bold text-slate-700 text-xs text-right pr-6 min-w-[110px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {students.map((student) => (
-                  <TableRow key={student.id} className="hover:bg-blue-50/30 border-b-gray-50 transition-colors">
+                  <TableRow key={student.id} className="hover:bg-slate-50/70 border-b border-slate-100 transition-colors">
                     <TableCell className="pl-6 py-4">
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 ring-2 ring-gray-50">
-                          <AvatarImage src={student.user.profile_url} />
-                          <AvatarFallback className="bg-saVividOrange text-white text-xs">{getInitials(student.user.name)}</AvatarFallback>
+                        <Avatar className="h-9 w-9 ring-2 ring-slate-100">
+                          <AvatarImage src={student.user.profile_url} alt={student.user.name} />
+                          <AvatarFallback className="bg-saVividOrange text-white text-xs font-bold">{getInitials(student.user.name)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                          <span className="font-bold text-gray-800 text-sm leading-tight">{student.user.name}</span>
-                          {!isTeacher && <span className="text-[10px] text-gray-400">{student.user.email}</span>}
+                          <span className="font-bold text-slate-900 text-sm leading-tight">{student.user.name}</span>
+                          {!isTeacher && <span className="text-xs text-slate-400">{student.user.email}</span>}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       <div className="flex flex-col gap-1">
-                        <Badge variant="outline" className="w-fit text-[10px] border-blue-100 text-saBlue bg-blue-50/50">{student.class?.name || 'No Class'}</Badge>
-                        <span className="text-[10px] text-gray-400 ml-1">{student.board?.name}</span>
+                        <Badge variant="outline" className="w-fit text-[10px] font-bold border-saBlue/20 text-saBlue bg-saBlue/10 rounded-full px-2.5">
+                          {student.class?.name || "No Class"}
+                        </Badge>
+                        <span className="text-xs text-slate-400 ml-1">{student.board?.name}</span>
                       </div>
                     </TableCell>
                     {!isTeacher && (
                       <TableCell className="hidden lg:table-cell">
-                        <div className="text-xs text-gray-600 font-mono">{student.user.phone || '-'}</div>
+                        <div className="text-xs text-slate-700 font-mono flex items-center gap-1.5">
+                          <Phone className="h-3 w-3 text-slate-400" />
+                          {student.user.phone || "-"}
+                        </div>
                       </TableCell>
                     )}
                     <TableCell className="text-right pr-6">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-saBlue" onClick={() => navigate(`/dashboard/students/${student.id}`)}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-saBlue hover:bg-saBlue/10 rounded-lg" onClick={() => navigate(`/dashboard/students/${student.id}`)}>
                           <Eye className="w-4 h-4" />
                         </Button>
                         {isAdmin && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-saVividOrange" onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-saVividOrange hover:bg-saVividOrange/10 rounded-lg" onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}>
                             <Edit className="w-4 h-4" />
                           </Button>
                         )}
                         {isAdmin && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-red-500" onClick={() => setDeleteStudent(student)}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg" onClick={() => setDeleteStudent(student)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         )}
@@ -297,33 +533,102 @@ export default function StudentsPage() {
               </TableBody>
             </Table>
           </div>
+        </Card>
+      ) : (
+        /* GRID CARD VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full">
+          {students.map((student) => (
+            <Card
+              key={student.id}
+              className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200/80 hover:border-saBlue/50 cursor-pointer rounded-2xl flex flex-col justify-between"
+              onClick={() => navigate(`/dashboard/students/${student.id}`)}
+            >
+              {/* Header Gradient */}
+              <div className="h-20 bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400 relative p-4 flex items-start justify-between">
+                <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
+                  {student.class?.name || "Student"}
+                </Badge>
+                {isAdmin && (
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20 rounded-lg" onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}>
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-white/80 hover:text-red-200 hover:bg-white/20 rounded-lg" onClick={() => setDeleteStudent(student)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <CardContent className="p-5 pt-0 relative space-y-4 flex-1 flex flex-col justify-between">
+                <div className="flex items-end gap-3 -mt-8 mb-2">
+                  <Avatar className="h-16 w-16 ring-4 ring-white shadow-md">
+                    <AvatarImage src={student.user.profile_url} alt={student.user.name} />
+                    <AvatarFallback className="bg-saVividOrange text-white font-bold text-lg">
+                      {getInitials(student.user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="mb-1">
+                    <h3 className="text-base font-bold text-slate-900 leading-snug">{student.user.name}</h3>
+                    <p className="text-xs text-slate-400">{student.user.email}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-xs text-slate-600 pt-2 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Class:</span>
+                    <span className="font-semibold text-slate-700">{student.class?.name || "Unassigned"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Board:</span>
+                    <span className="font-semibold text-slate-700">{student.board?.name || "N/A"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Phone:</span>
+                    <span className="font-mono text-slate-700">{student.user.phone || "N/A"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400">Gender:</span>
+                    <span className="font-semibold text-slate-700">
+                      {student.gender === "M" ? "Male" : student.gender === "F" ? "Female" : student.gender || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
 
-      {/* Pagination Styled */}
+      {/* Pagination */}
       {students.length > 0 && (
-        <div className="flex items-center justify-between pt-4 border-t border-gray-100">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-            {Math.min(currentPage * limit, total)} of {total} Students
+        <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-slate-100 gap-3 sm:gap-0">
+          <p className="text-xs text-slate-500 font-medium">
+            Showing {Math.min(currentPage * limit, total)} of {total} Students
           </p>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => p - 1)}
-              className="h-8 text-xs font-medium rounded-lg"
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
             >
-              <ChevronLeft className="w-3 h-3 mr-1" /> Prev
+              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
             </Button>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl border border-slate-200/80 shadow-sm">
+              <span className="text-xs font-bold text-slate-700">
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
             <Button
               variant="outline"
               size="sm"
               disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(p => p + 1)}
-              className="h-8 text-xs font-medium rounded-lg"
+              onClick={() => setCurrentPage((p) => p + 1)}
+              className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
             >
-              Next <ChevronRight className="w-3 h-3 ml-1" />
+              Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         </div>

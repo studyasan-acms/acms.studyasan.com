@@ -12,6 +12,7 @@ import type {
   Board,
   Class,
   Teacher,
+  TeacherRole,
   Subject,
   CreateTeacherData,
   UpdateTeacherData,
@@ -419,6 +420,17 @@ export const teacherService = {
   },
 };
 
+export const teacherRoleService = {
+  getAll: async (): Promise<{ success: boolean; data: TeacherRole[] }> => {
+    const response = await api.get('/teacher-roles');
+    return response.data;
+  },
+  getById: async (id: number): Promise<{ success: boolean; data: TeacherRole }> => {
+    const response = await api.get(`/teacher-roles/${id}`);
+    return response.data;
+  },
+};
+
 export const subjectService = {
   getAll: async (params?: {
     page?: number;
@@ -429,6 +441,11 @@ export const subjectService = {
     is_course?: boolean;
     teacher_id?: number;
     student_id?: number;
+    user_id?: number;
+    role?: string;
+    sort?: string;
+    order?: 'asc' | 'desc';
+    letter?: string;
   }): Promise<PaginatedResponse<Subject>> => {
     const response = await api.get<PaginatedResponse<Subject>>('/subjects', {
       params,

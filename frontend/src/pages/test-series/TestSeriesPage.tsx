@@ -27,6 +27,14 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
 import { testSeriesService, currencyService } from "@/services/api";
 import type { TestSeries, Currency } from "@/types";
 import { useAuthStore } from "@/store/authStore";
@@ -45,6 +53,13 @@ import {
     Loader2,
     Save,
     IndianRupee,
+    ArrowUpDown,
+    LayoutGrid,
+    List,
+    Filter,
+    X,
+    Star,
+    Compass,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -52,6 +67,7 @@ import ConfirmModal from "@/components/ui/confirmationModal";
 import SuccessModal from "@/components/ui/successModal";
 import ErrorModal from "@/components/ui/errorModal";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function TestSeriesPage() {
     usePageTitle("Test Series");
@@ -63,6 +79,10 @@ export default function TestSeriesPage() {
     const [testSeriesList, setTestSeriesList] = useState<TestSeries[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all"); // 'all' | 'published' | 'draft'
+    const [sortOption, setSortOption] = useState("newest"); // 'newest' | 'oldest' | 'title_asc' | 'title_desc'
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
@@ -94,7 +114,7 @@ export default function TestSeriesPage() {
         setIsLoading(true);
         try {
             const params: any = { page: currentPage, limit };
-            if (searchTerm) params.search = searchTerm;
+            if (searchTerm.trim()) params.search = searchTerm.trim();
 
             const response = await testSeriesService.getAll(params);
             setTestSeriesList(response.data.data);
@@ -113,7 +133,7 @@ export default function TestSeriesPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, statusFilter, sortOption]);
 
     useEffect(() => {
         if (isAdmin) {
@@ -202,9 +222,30 @@ export default function TestSeriesPage() {
         }
     };
 
-    // Stats
-    const published = testSeriesList.filter((s) => s.is_published).length;
-    const drafts = testSeriesList.filter((s) => !s.is_published).length;
+    // Filter & Sort frontend logic
+    const filteredList = testSeriesList
+        .filter((s) => {
+            if (statusFilter === "published") return s.is_published;
+            if (statusFilter === "draft") return !s.is_published;
+            return true;
+        })
+        .sort((a, b) => {
+            if (sortOption === "title_asc") return a.title.localeCompare(b.title);
+            if (sortOption === "title_desc") return b.title.localeCompare(a.title);
+            if (sortOption === "oldest") return a.id - b.id;
+            return b.id - a.id; // newest default
+        });
+
+    const publishedCount = testSeriesList.filter((s) => s.is_published).length;
+    const draftCount = testSeriesList.filter((s) => !s.is_published).length;
+
+    const clearFilters = () => {
+        setSearchTerm("");
+        setStatusFilter("all");
+        setSortOption("newest");
+    };
+
+    const hasActiveFilters = searchTerm || statusFilter !== "all" || sortOption !== "newest";
 
     return (
         <div className="space-y-5">
@@ -212,7 +253,7 @@ export default function TestSeriesPage() {
             <ConfirmModal
                 open={deleteConfirmOpen}
                 title="Delete Test Series"
-                description={`Are you sure you want to delete "${deletingTitle}"? This action cannot be undone. All tests and enrollments in this series will also be affected.`}
+                description={`Are you sure you want to delete "${deletingTitle}"? This action cannot be undone.`}
                 onConfirm={handleDelete}
                 onClose={() => setDeleteConfirmOpen(false)}
                 confirmText="Delete"
@@ -235,9 +276,9 @@ export default function TestSeriesPage() {
 
             {/* Create / Edit Dialog */}
             <Dialog open={formOpen} onOpenChange={(open) => { setFormOpen(open); if (!open) resetForm(); }}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-lg rounded-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-lg font-bold text-gray-800">
+                        <DialogTitle className="text-lg font-bold text-slate-900">
                             {editingSeries ? "Edit Test Series" : "Create Test Series"}
                         </DialogTitle>
                         <DialogDescription>
@@ -248,30 +289,32 @@ export default function TestSeriesPage() {
                     </DialogHeader>
                     <form onSubmit={handleFormSubmit} className="space-y-4 pt-2">
                         <div className="space-y-1.5">
-                            <Label htmlFor="title">Title *</Label>
+                            <Label htmlFor="title" className="font-semibold text-xs text-slate-700">Title *</Label>
                             <Input
                                 id="title"
                                 name="title"
                                 value={formData.title}
                                 onChange={handleChange}
-                                placeholder="e.g. NEET 2024 Prep Series"
+                                placeholder="e.g. NEET 2026 Prep Series"
+                                className="rounded-xl border-slate-200 focus:ring-saBlue"
                                 required
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description" className="font-semibold text-xs text-slate-700">Description</Label>
                             <Textarea
                                 id="description"
                                 name="description"
                                 value={formData.description}
                                 onChange={handleChange}
                                 placeholder="Brief description of this test series"
+                                className="rounded-xl border-slate-200 focus:ring-saBlue"
                                 rows={3}
                             />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="price">Price</Label>
+                                <Label htmlFor="price" className="font-semibold text-xs text-slate-700">Price</Label>
                                 <Input
                                     id="price"
                                     name="price"
@@ -280,18 +323,19 @@ export default function TestSeriesPage() {
                                     onChange={handleChange}
                                     placeholder="0"
                                     min="0"
+                                    className="rounded-xl border-slate-200 focus:ring-saBlue"
                                 />
                             </div>
                             {isAdmin && (
                                 <div className="space-y-1.5">
-                                    <Label htmlFor="currency_id">Currency</Label>
+                                    <Label htmlFor="currency_id" className="font-semibold text-xs text-slate-700">Currency</Label>
                                     <Select
                                         value={formData.currency_id}
                                         onValueChange={(value) =>
                                             setFormData((prev) => ({ ...prev, currency_id: value }))
                                         }
                                     >
-                                        <SelectTrigger id="currency_id">
+                                        <SelectTrigger id="currency_id" className="rounded-xl border-slate-200">
                                             <SelectValue placeholder="Select" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -305,11 +349,11 @@ export default function TestSeriesPage() {
                                 </div>
                             )}
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
                             <div className="space-y-0.5">
-                                <Label htmlFor="is_published" className="font-medium">Publish</Label>
-                                <p className="text-xs text-muted-foreground">
-                                    Make visible to students
+                                <Label htmlFor="is_published" className="font-bold text-slate-800 text-sm">Publish Immediately</Label>
+                                <p className="text-xs text-slate-500">
+                                    Make this test series visible to enrolled students
                                 </p>
                             </div>
                             <Switch
@@ -321,10 +365,10 @@ export default function TestSeriesPage() {
                             />
                         </div>
                         <div className="flex justify-end gap-3 pt-2">
-                            <Button type="button" variant="outline" onClick={() => { setFormOpen(false); resetForm(); }}>
+                            <Button type="button" variant="outline" onClick={() => { setFormOpen(false); resetForm(); }} className="rounded-xl">
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={isSaving} className="bg-saBlue hover:bg-saBlueDarkHover text-white min-w-[100px]">
+                            <Button type="submit" disabled={isSaving} className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl min-w-[100px] font-semibold">
                                 {isSaving ? (
                                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
                                 ) : (
@@ -336,125 +380,263 @@ export default function TestSeriesPage() {
                 </DialogContent>
             </Dialog>
 
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Test Series</h2>
-                    <p className="text-muted-foreground text-sm">
-                        {isAdmin || isTeacher ? "Create and manage test series" : "Browse available test series"}
-                    </p>
-                </div>
-                {(isAdmin || isTeacher) && (
-                    <Button onClick={openCreateModal} className="bg-saBlue hover:bg-saBlueDarkHover text-white w-full sm:w-auto">
-                        <Plus className="mr-2 h-4 w-4" /> Create Test Series
-                    </Button>
-                )}
+            {/* BRAND UNIFIED STATS CARDS */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Test Series</p>
+                            <h3 className="text-2xl font-black text-slate-900 mt-1">{total}</h3>
+                        </div>
+                        <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
+                            <Library className="h-5 w-5" />
+                        </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2">Test series created in system</p>
+                </Card>
+
+                <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saVividOrange/40 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Published Series</p>
+                            <h3 className="text-2xl font-black text-saVividOrange mt-1">{publishedCount}</h3>
+                        </div>
+                        <div className="h-10 w-10 bg-saVividOrange/10 rounded-xl flex items-center justify-center text-saVividOrange">
+                            <CheckCircle className="h-5 w-5" />
+                        </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2">Visible to students</p>
+                </Card>
+
+                <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-slate-300 hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Draft Series</p>
+                            <h3 className="text-2xl font-black text-slate-700 mt-1">{draftCount}</h3>
+                        </div>
+                        <div className="h-10 w-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+                            <XCircle className="h-5 w-5" />
+                        </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-2">Work in progress</p>
+                </Card>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg hidden sm:flex">
-                        <Library className="h-5 w-5 text-saBlue" />
+            {/* SEARCH, SORTING & TOOLBAR */}
+            <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
+                <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+                    {/* Search Input */}
+                    <div className="relative flex-1 min-w-[240px]">
+                        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Search test series by title..."
+                            className="pl-10 h-10 border-slate-200/80 rounded-xl bg-slate-50/50 focus:bg-white text-sm focus:ring-saBlue focus:border-saBlue"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm("")}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                                <X className="h-3.5 w-3.5" />
+                            </button>
+                        )}
                     </div>
-                    <div>
-                        <p className="text-[10px] sm:text-xs text-gray-500">Total</p>
-                        <p className="text-lg sm:text-xl font-bold text-gray-800">{total}</p>
-                    </div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-green-50 rounded-lg hidden sm:flex">
-                        <CheckCircle className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] sm:text-xs text-gray-500">Published</p>
-                        <p className="text-lg sm:text-xl font-bold text-gray-800">{published}</p>
-                    </div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-3 sm:p-4 shadow-sm flex items-center gap-3">
-                    <div className="p-2 bg-orange-50 rounded-lg hidden sm:flex">
-                        <XCircle className="h-5 w-5 text-orange-500" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] sm:text-xs text-gray-500">Drafts</p>
-                        <p className="text-lg sm:text-xl font-bold text-gray-800">{drafts}</p>
-                    </div>
-                </div>
-            </div>
 
-            {/* Search */}
-            <div className="bg-white p-3 sm:p-4 rounded-xl shadow-sm border border-gray-100">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <Input
-                        placeholder="Search test series..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 h-10"
-                    />
-                </div>
-            </div>
+                    {/* Filters & Actions */}
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        {/* Status Filter */}
+                        <div className="min-w-[130px]">
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                                    <SelectValue placeholder="Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Status</SelectItem>
+                                    <SelectItem value="published">Published</SelectItem>
+                                    <SelectItem value="draft">Drafts</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
 
-            {/* Content */}
-            {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <div className="w-12 h-12 border-4 border-saBlue border-t-transparent rounded-full animate-spin" />
-                    <p className="text-gray-500 font-medium">Loading test series...</p>
+                        {/* Sort Option */}
+                        <div className="flex items-center gap-1.5 min-w-[170px]">
+                            <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <Select value={sortOption} onValueChange={setSortOption}>
+                                <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                                    <SelectValue placeholder="Sort By" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="newest">Newest First</SelectItem>
+                                    <SelectItem value="oldest">Oldest First</SelectItem>
+                                    <SelectItem value="title_asc">Title: A → Z</SelectItem>
+                                    <SelectItem value="title_desc">Title: Z → A</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        {/* View Mode Toggle */}
+                        <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+                            <button
+                                onClick={() => setViewMode("grid")}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-all text-slate-600",
+                                    viewMode === "grid" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                                )}
+                                title="Grid View"
+                            >
+                                <LayoutGrid className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={() => setViewMode("list")}
+                                className={cn(
+                                    "p-1.5 rounded-lg transition-all text-slate-600",
+                                    viewMode === "list" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                                )}
+                                title="List View"
+                            >
+                                <List className="h-4 w-4" />
+                            </button>
+                        </div>
+
+                        {/* Create Action */}
+                        {(isAdmin || isTeacher) && (
+                            <Button onClick={openCreateModal} className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 font-semibold px-4 shadow-sm">
+                                <Plus className="mr-1.5 h-4 w-4" /> Create Test Series
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            ) : testSeriesList.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 space-y-3 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <Library className="h-14 w-14 text-gray-300" />
-                    <p className="text-lg font-semibold text-gray-600">No test series found</p>
-                    <p className="text-sm text-gray-400">
-                        {searchTerm
-                            ? "Try a different search term"
-                            : isAdmin || isTeacher
-                                ? "Create your first test series to get started"
-                                : "Check back later for new test series"}
-                    </p>
-                    {(isAdmin || isTeacher) && !searchTerm && (
-                        <Button onClick={openCreateModal} className="mt-2 bg-saBlue hover:bg-saBlueDarkHover text-white">
-                            <Plus className="mr-2 h-4 w-4" /> Create Test Series
+
+                {/* Active Filters Bar */}
+                {hasActiveFilters && (
+                    <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs text-slate-500">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-700 flex items-center gap-1">
+                                <Filter className="h-3 w-3 text-saBlue" /> Active Filters:
+                            </span>
+                            {searchTerm && (
+                                <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200 text-[10px]">
+                                    Search: "{searchTerm}"
+                                </Badge>
+                            )}
+                            {statusFilter !== "all" && (
+                                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] font-bold">
+                                    Status: {statusFilter}
+                                </Badge>
+                            )}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={clearFilters}
+                            className="h-6 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2 font-semibold"
+                        >
+                            Clear Filters
                         </Button>
-                    )}
+                    </div>
+                )}
+            </Card>
+
+            {/* Content Display */}
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white rounded-2xl shadow-sm border border-slate-200/80">
+                    <div className="w-12 h-12 border-4 border-saBlue border-t-transparent rounded-full animate-spin" />
+                    <p className="text-slate-600 font-medium text-sm">Loading test series...</p>
                 </div>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {testSeriesList.map((series) => (
+            ) : filteredList.length === 0 ? (
+                <Card className="py-16 text-center bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+                    <CardContent>
+                        <div className="w-16 h-16 bg-saBlue/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-saBlue">
+                            <Library className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-800 mb-1">No Test Series Found</h3>
+                        <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto mb-4">
+                            {searchTerm || statusFilter !== "all"
+                                ? "Try adjusting your search or filter criteria"
+                                : "Create your first test series to get started"}
+                        </p>
+                        {(isAdmin || isTeacher) && (
+                            <Button onClick={openCreateModal} className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl text-xs font-bold">
+                                <Plus className="mr-2 h-4 w-4" /> Create Test Series
+                            </Button>
+                        )}
+                    </CardContent>
+                </Card>
+            ) : viewMode === "grid" ? (
+                /* GRID VIEW */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full">
+                    {filteredList.map((series) => (
                         <Card
                             key={series.id}
-                            className="group hover:shadow-md transition-all duration-200 border border-gray-100 rounded-xl overflow-hidden cursor-pointer"
+                            className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200/80 hover:border-saBlue/50 cursor-pointer rounded-2xl flex flex-col justify-between"
                             onClick={() => navigate(`/dashboard/test-series/${series.id}`)}
                         >
-                            {/* Status bar */}
-                            <div className={`h-1 ${series.is_published ? 'bg-green-500' : 'bg-orange-400'}`} />
+                            {/* Card Header with Brand Colors */}
+                            <div className={cn(
+                                "h-24 relative overflow-hidden p-4 flex flex-col justify-between transition-all",
+                                series.is_published
+                                    ? "bg-gradient-to-br from-saBlue via-saBlueLight to-blue-500"
+                                    : "bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800"
+                            )}>
+                                <div className="absolute inset-0 bg-black/10"></div>
 
-                            <CardContent className="p-4 sm:p-5">
-                                {/* Top row: title + actions */}
-                                <div className="flex items-start justify-between gap-2 mb-2">
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-base font-bold text-gray-800 truncate group-hover:text-saBlue transition-colors">
-                                            {series.title}
-                                        </h3>
-                                        <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">
-                                            {series.description || "No description"}
-                                        </p>
-                                    </div>
+                                {/* Top Status */}
+                                <div className="relative z-10 flex items-center justify-between">
+                                    <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] px-2 py-0.5 font-bold tracking-wider">
+                                        Test Series
+                                    </Badge>
+                                    <Badge className={cn(
+                                        "text-[10px] px-2 py-0.5 font-bold border-0 shadow-sm",
+                                        series.is_published ? "bg-saVividOrange text-white" : "bg-slate-200 text-slate-800"
+                                    )}>
+                                        {series.is_published ? "Published" : "Draft"}
+                                    </Badge>
+                                </div>
+
+                                {/* Title */}
+                                <div className="relative z-10">
+                                    <h3 className="text-lg font-bold text-white drop-shadow-md line-clamp-1">
+                                        {series.title}
+                                    </h3>
+                                </div>
+
+                                {/* Decorative circles */}
+                                <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full pointer-events-none"></div>
+                            </div>
+
+                            <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                                <p className="text-xs text-slate-500 line-clamp-2 min-h-[32px]">
+                                    {series.description || "No detailed description provided."}
+                                </p>
+
+                                {/* Tags & Price */}
+                                <div className="flex items-center justify-between pt-1">
+                                    {series.price !== undefined && series.price !== null ? (
+                                        <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
+                                            <IndianRupee className="h-3 w-3 mr-0.5" />{series.price}
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg">
+                                            Free
+                                        </Badge>
+                                    )}
 
                                     {(isAdmin || isTeacher) && (
                                         <div onClick={(e) => e.stopPropagation()}>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-400 hover:text-gray-600 shrink-0">
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-slate-600 rounded-lg">
                                                         <MoreVertical className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-44">
+                                                <DropdownMenuContent align="end" className="w-44 rounded-xl">
                                                     <DropdownMenuItem onClick={() => navigate(`/dashboard/test-series/${series.id}`)}>
-                                                        <Eye className="h-4 w-4 mr-2" /> View Details
+                                                        <Eye className="h-4 w-4 mr-2 text-saBlue" /> View Details
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => openEditModal(series)}>
-                                                        <Edit className="h-4 w-4 mr-2" /> Edit
+                                                        <Edit className="h-4 w-4 mr-2 text-saVividOrange" /> Edit
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     {isAdmin && (
@@ -471,47 +653,102 @@ export default function TestSeriesPage() {
                                     )}
                                 </div>
 
-                                {/* Tags */}
-                                <div className="flex items-center flex-wrap gap-2 mb-3">
-                                    <Badge className={`text-[11px] px-2 py-0.5 ${series.is_published ? 'bg-green-100 text-green-700 hover:bg-green-100' : 'bg-orange-100 text-orange-700 hover:bg-orange-100'}`}>
-                                        {series.is_published ? <><CheckCircle className="h-3 w-3 mr-1" /> Published</> : <><XCircle className="h-3 w-3 mr-1" /> Draft</>}
-                                    </Badge>
-                                    {series.price !== undefined && series.price !== null && (
-                                        <Badge className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-700 hover:bg-blue-50">
-                                            <IndianRupee className="h-3 w-3 mr-0.5" />{series.price}
-                                        </Badge>
-                                    )}
-                                </div>
-
                                 {/* Stats row */}
-                                <div className="flex items-center gap-4 text-xs text-gray-500 pt-3 border-t border-gray-100">
+                                <div className="flex items-center justify-between text-xs text-slate-500 pt-3 border-t border-slate-100 font-medium">
                                     <div className="flex items-center gap-1">
-                                        <FileText className="h-3.5 w-3.5" />
+                                        <FileText className="h-3.5 w-3.5 text-slate-400" />
                                         <span>{series._count?.tests || 0} Tests</span>
                                     </div>
                                     <div className="flex items-center gap-1">
-                                        <Users className="h-3.5 w-3.5" />
+                                        <Users className="h-3.5 w-3.5 text-slate-400" />
                                         <span>{series._count?.enrollments || 0} Enrolled</span>
                                     </div>
-                                    {(isAdmin || isTeacher) && (
-                                        <div className="flex items-center gap-1">
-                                            <Users className="h-3.5 w-3.5" />
-                                            <span>{series.teacher_junctions?.length || 0} Teachers</span>
-                                        </div>
-                                    )}
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
                 </div>
+            ) : (
+                /* LIST VIEW */
+                <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-slate-50/80">
+                            <TableRow>
+                                <TableHead className="font-bold text-slate-700">#</TableHead>
+                                <TableHead className="font-bold text-slate-700">Test Series Title</TableHead>
+                                <TableHead className="font-bold text-slate-700">Status</TableHead>
+                                <TableHead className="font-bold text-slate-700">Price</TableHead>
+                                <TableHead className="font-bold text-slate-700">Tests Count</TableHead>
+                                <TableHead className="font-bold text-slate-700">Enrollments</TableHead>
+                                <TableHead className="text-right font-bold text-slate-700">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredList.map((series, index) => (
+                                <TableRow
+                                    key={series.id}
+                                    className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                                    onClick={() => navigate(`/dashboard/test-series/${series.id}`)}
+                                >
+                                    <TableCell className="font-bold text-slate-400 text-xs">
+                                        {index + 1 + (currentPage - 1) * limit}
+                                    </TableCell>
+                                    <TableCell>
+                                        <div className="font-bold text-slate-900">{series.title}</div>
+                                        <div className="text-xs text-slate-400 line-clamp-1">{series.description}</div>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge className={cn(
+                                            "text-[10px] font-bold border-0",
+                                            series.is_published ? "bg-saVividOrange/15 text-saVividOrange" : "bg-slate-100 text-slate-600"
+                                        )}>
+                                            {series.is_published ? "Published" : "Draft"}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs font-semibold text-slate-700">
+                                        {series.price ? `₹${series.price}` : "Free"}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-slate-600 font-medium">
+                                        {series._count?.tests || 0}
+                                    </TableCell>
+                                    <TableCell className="text-xs text-slate-600 font-medium">
+                                        {series._count?.enrollments || 0}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 px-2 text-xs text-saBlue hover:text-saBlueDarkHover hover:bg-saBlue/10 font-semibold"
+                                                onClick={() => navigate(`/dashboard/test-series/${series.id}`)}
+                                            >
+                                                Details
+                                            </Button>
+                                            {isAdmin && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-8 w-8 p-0 text-slate-600 hover:text-red-600 hover:bg-red-50"
+                                                    onClick={() => confirmDelete(series.id, series.title)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </Card>
             )}
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                    <p className="text-sm text-gray-500">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                    <p className="text-xs text-slate-500 font-medium">
                         Showing {(currentPage - 1) * limit + 1} to{" "}
-                        {Math.min(currentPage * limit, total)} of {total}
+                        {Math.min(currentPage * limit, total)} of {total} series
                     </p>
                     <div className="flex gap-2">
                         <Button
@@ -519,6 +756,7 @@ export default function TestSeriesPage() {
                             size="sm"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
+                            className="rounded-xl text-xs"
                         >
                             Previous
                         </Button>
@@ -527,6 +765,7 @@ export default function TestSeriesPage() {
                             size="sm"
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
+                            className="rounded-xl text-xs"
                         >
                             Next
                         </Button>

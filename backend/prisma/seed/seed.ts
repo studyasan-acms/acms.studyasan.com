@@ -165,17 +165,43 @@ async function clearDatabase() {
 async function seedCurrencies() {
   console.log('💰 Seeding currencies...');
   
-  const fetchFn = globalThis.fetch ?? (await import('node-fetch').then((m: any) => m.default || m));
-  
-  const url = new URL('https://restcountries.com/v3.1/all');
-  url.searchParams.set('fields', 'currencies');
-  
-  const res = await fetchFn(url.toString());
-  if (!res.ok) {
-    console.log('⚠️  Failed to fetch currencies from API, using fallback...');
+  let currencies: { code: string; name: string; symbol: string }[] = [];
+
+  try {
+    const fetchFn = globalThis.fetch ?? (await import('node-fetch').then((m: any) => m.default || m));
     
-    // Fallback currencies
-    const fallbackCurrencies = [
+    const url = new URL('https://restcountries.com/v3.1/all');
+    url.searchParams.set('fields', 'currencies');
+    
+    const res = await fetchFn(url.toString());
+    if (res.ok) {
+      const raw = await res.json();
+      if (Array.isArray(raw)) {
+        const currencyMap: Record<string, { code: string; name: string; symbol: string }> = {};
+        
+        raw.forEach((country: any) => {
+          if (!country.currencies) return;
+          
+          Object.entries(country.currencies).forEach(([code, data]: [string, any]) => {
+            if (!currencyMap[code] && code.length === 3) {
+              currencyMap[code] = {
+                code: code.toUpperCase(),
+                name: data.name || code,
+                symbol: data.symbol || '',
+              };
+            }
+          });
+        });
+        currencies = Object.values(currencyMap).sort((a, b) => a.code.localeCompare(b.code));
+      }
+    }
+  } catch (err) {
+    console.log('⚠️ Failed to fetch currencies from API, using fallback list...');
+  }
+
+  if (currencies.length === 0) {
+    // Fallback comprehensive currency list
+    currencies = [
       { code: 'USD', name: 'United States Dollar', symbol: '$' },
       { code: 'EUR', name: 'Euro', symbol: '€' },
       { code: 'GBP', name: 'British Pound', symbol: '£' },
@@ -184,41 +210,24 @@ async function seedCurrencies() {
       { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
       { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
       { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$' },
+      { code: 'AED', name: 'United Arab Emirates Dirham', symbol: 'د.إ' },
+      { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+      { code: 'NZD', name: 'New Zealand Dollar', symbol: 'NZ$' },
+      { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+      { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+      { code: 'RUB', name: 'Russian Ruble', symbol: '₽' },
+      { code: 'BRL', name: 'Brazilian Real', symbol: 'R$' },
+      { code: 'KRW', name: 'South Korean Won', symbol: '₩' },
+      { code: 'MXN', name: 'Mexican Peso', symbol: '$' },
+      { code: 'SAR', name: 'Saudi Riyal', symbol: '﷼' },
     ];
-    
-    await prisma.currency.createMany({
-      data: fallbackCurrencies,
-      skipDuplicates: true,
-    });
-    
-    console.log(`✅ Seeded ${fallbackCurrencies.length} fallback currencies`);
-    return;
   }
-  
-  const raw = await res.json();
-  const currencyMap: Record<string, { code: string; name: string; symbol: string }> = {};
-  
-  raw.forEach((country: any) => {
-    if (!country.currencies) return;
-    
-    Object.entries(country.currencies).forEach(([code, data]: [string, any]) => {
-      if (!currencyMap[code]) {
-        currencyMap[code] = {
-          code: code.toUpperCase(),
-          name: data.name || code,
-          symbol: data.symbol || '',
-        };
-      }
-    });
-  });
-  
-  const currencies = Object.values(currencyMap).sort((a, b) => a.code.localeCompare(b.code));
-  
+
   await prisma.currency.createMany({
     data: currencies,
     skipDuplicates: true,
   });
-  
+
   console.log(`✅ Seeded ${currencies.length} currencies`);
 }
 
@@ -258,9 +267,13 @@ async function seedCountriesStatesAndCities() {
     }
   }
   
-  const uniqueStates = states.filter(
-    (v, i, a) => a.findIndex((t) => t.name === v.name && t.countryId === v.countryId) === i
-  );
+  const seenStates = new Set<string>();
+  const uniqueStates = states.filter((s) => {
+    const key = `${s.name}-${s.countryId}`;
+    if (seenStates.has(key)) return false;
+    seenStates.add(key);
+    return true;
+  });
   
   await prisma.state.createMany({
     data: uniqueStates,
@@ -292,9 +305,13 @@ async function seedCountriesStatesAndCities() {
     }
   }
   
-  const uniqueCities = cities.filter(
-    (v, i, a) => a.findIndex((t) => t.name === v.name && t.stateId === v.stateId) === i
-  );
+  const seenCities = new Set<string>();
+  const uniqueCities = cities.filter((ct) => {
+    const key = `${ct.name}-${ct.stateId}`;
+    if (seenCities.has(key)) return false;
+    seenCities.add(key);
+    return true;
+  });
   
   // Insert in batches for performance
   const batchSize = 1000;

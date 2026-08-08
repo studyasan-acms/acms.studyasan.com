@@ -189,6 +189,12 @@ export interface Board {
   updated_at: string;
 }
 
+export interface TeacherRole {
+  id: number;
+  name: string;
+  description?: string | null;
+}
+
 export interface Class {
   id: number;
   name: string;

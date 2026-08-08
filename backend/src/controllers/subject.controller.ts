@@ -13,14 +13,29 @@ export const getAllSubjects = async (req: Request, res: Response) => {
       req.query.limit as string
     );
 
-    const { search, class_id, board_id, is_course, teacher_id, student_id, user_id, role } = req.query;
+    const { search, class_id, board_id, is_course, teacher_id, student_id, user_id, role, sort, order, letter } = req.query;
 
     console.log('🔍 [GET_ALL_SUBJECTS] Query params:', req.query);
 
     const where: any = {};
 
+    if (letter) {
+      const l = (letter as string).trim().toUpperCase();
+      if (l.length === 1) {
+        where.name = { startsWith: l, mode: 'insensitive' };
+      }
+    }
+
     if (search) {
-      where.name = { contains: search as string, mode: 'insensitive' };
+      if (where.name) {
+        where.AND = [
+          { name: where.name },
+          { name: { contains: search as string, mode: 'insensitive' } }
+        ];
+        delete where.name;
+      } else {
+        where.name = { contains: search as string, mode: 'insensitive' };
+      }
     }
 
     if (class_id) where.class_id = parseInt(class_id as string);
@@ -103,6 +118,17 @@ export const getAllSubjects = async (req: Request, res: Response) => {
 
     console.log('🔍 [GET_ALL_SUBJECTS] Final where clause:', JSON.stringify(where, null, 2));
 
+    // Dynamic sorting
+    let orderBy: any = { created_at: 'desc' };
+    const sortStr = sort as string;
+    const orderStr = (order as string)?.toLowerCase();
+
+    if (sortStr === 'name') {
+      orderBy = { name: orderStr === 'desc' ? 'desc' : 'asc' };
+    } else if (sortStr === 'created_at') {
+      orderBy = { created_at: orderStr === 'asc' ? 'asc' : 'desc' };
+    }
+
     const [subjects, total] = await Promise.all([
       prisma.subject.findMany({
         where,
@@ -116,7 +142,7 @@ export const getAllSubjects = async (req: Request, res: Response) => {
             select: { enrollments: true, teacher_subject_junctions: true },
           },
         },
-        orderBy: { created_at: 'desc' },
+        orderBy,
       }),
       prisma.subject.count({ where }),
     ]);

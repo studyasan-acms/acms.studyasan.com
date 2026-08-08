@@ -115,7 +115,7 @@ export async function checkTeacherPermission(
         // if teacher has subjects permissions OR if they are assigned to teach that subject.
         if (!hasPermission && resource === 'subjects' && req.path.includes('/modules')) {
             const subjectIdMatch = req.path.match(/\/subjects\/(\d+)/);
-            const subjectId = subjectIdMatch ? parseInt(subjectIdMatch[1]) : null;
+            const subjectId = subjectIdMatch && subjectIdMatch[1] ? parseInt(subjectIdMatch[1]) : null;
 
             const teachesSubject = subjectId !== null && teacher.teacher_subject_junctions.some(
                 (tj) => tj.subject_id === subjectId
