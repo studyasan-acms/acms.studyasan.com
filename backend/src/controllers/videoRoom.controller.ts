@@ -178,16 +178,7 @@ async function checkRoomAccess(
       return { hasAccess: false, reason: 'You are not enrolled in this subject' };
     }
 
-    // If class-specific and student has a class_id assigned, check class match
-    if (classSession.class_id && student.class_id && student.class_id !== classSession.class_id) {
-      return { hasAccess: false, reason: 'This session is for a different class' };
-    }
-
-    // If board-specific and student has a board_id assigned, check board match
-    if (classSession.board_id && student.board_id && student.board_id !== classSession.board_id) {
-      return { hasAccess: false, reason: 'This session is for a different board' };
-    }
-
+    // If enrolled in the subject, student has access!
     return { hasAccess: true, isTeacher: false };
   }
 

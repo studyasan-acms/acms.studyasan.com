@@ -311,24 +311,8 @@ export default function ClassSessionsPage() {
     }
   };
 
-  const handleJoinSession = async (session: ClassSession) => {
-    const status = getSessionStatus(session);
-
-    if (session.mode === 'ONLINE' && status.canJoin) {
-      try {
-        await attendanceService.markJoinTime(session.id);
-      } catch (err) {
-        console.error('Failed to auto-record attendance:', err);
-      }
-
-      if (session.meeting_link) {
-        window.open(session.meeting_link, '_blank');
-      } else {
-        window.open(`/classroom/${session.id}`, '_blank');
-      }
-    } else {
-      navigate(`/dashboard/class-sessions/${session.id}`);
-    }
+  const handleJoinSession = (session: ClassSession) => {
+    navigate(`/dashboard/class-sessions/${session.id}`);
   };
 
   const clearFilters = () => {

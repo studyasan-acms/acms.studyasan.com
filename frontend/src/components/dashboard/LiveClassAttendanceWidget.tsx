@@ -46,27 +46,8 @@ export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: b
     }
   };
 
-  const handleJoinOrAttend = async (session: ClassSession) => {
-    const now = new Date();
-    const startTime = new Date(session.start_time);
-    const isLiveNow = now >= startTime;
-
-    if (session.mode === 'ONLINE' && isLiveNow) {
-      try {
-        await attendanceService.markJoinTime(session.id);
-        toast.success('Attendance recorded for live session!');
-      } catch (err) {
-        console.error('Auto-attendance error:', err);
-      }
-
-      if (session.meeting_link) {
-        window.open(session.meeting_link, '_blank');
-      } else {
-        window.open(`/classroom/${session.id}`, '_blank');
-      }
-    } else {
-      navigate(`/dashboard/class-sessions/${session.id}`);
-    }
+  const handleJoinOrAttend = (session: ClassSession) => {
+    navigate(`/dashboard/class-sessions/${session.id}`);
   };
 
   if (loading || sessions.length === 0) return null;
