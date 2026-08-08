@@ -124,8 +124,8 @@ export default function ClassSessionDetailPage() {
   };
 
   const handleJoin = () => {
-    // Navigate to integrated classroom instead of external meeting link
-    navigate(`/classroom/${session?.id}`);
+    // Open integrated classroom in a new tab
+    window.open(`/classroom/${session?.id}`, '_blank');
   };
 
   const handleDelete = async () => {

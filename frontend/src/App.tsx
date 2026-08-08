@@ -291,6 +291,7 @@ function App() {
           <Route path="class-sessions" element={<ClassSessionsPage />} />
           <Route path="class-sessions/create" element={<CreateClassSessionPage />} />
           <Route path="class-sessions/:id" element={<ClassSessionDetailPage />} />
+          <Route path="class-sessions/:sessionId/attendance" element={<ClassAttendancePage />} />
           <Route path="class-sessions/:id/edit" element={<CreateClassSessionPage />} />
 
           {/* Standalone Whiteboard Route */}

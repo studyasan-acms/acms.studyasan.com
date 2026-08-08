@@ -314,13 +314,18 @@ export default function ClassSessionsPage() {
   const handleJoinSession = async (session: ClassSession) => {
     const status = getSessionStatus(session);
 
-    if (session.mode === 'ONLINE' && session.meeting_link && status.canJoin) {
+    if (session.mode === 'ONLINE' && status.canJoin) {
       try {
         await attendanceService.markJoinTime(session.id);
       } catch (err) {
-        console.error('Failed to auto-record attendance for meeting link:', err);
+        console.error('Failed to auto-record attendance:', err);
       }
-      window.open(session.meeting_link, '_blank');
+
+      if (session.meeting_link) {
+        window.open(session.meeting_link, '_blank');
+      } else {
+        window.open(`/classroom/${session.id}`, '_blank');
+      }
     } else {
       navigate(`/dashboard/class-sessions/${session.id}`);
     }
@@ -407,10 +412,13 @@ export default function ClassSessionsPage() {
                 </div>
               </div>
               <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class Level</p>
-                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs mt-0.5">
-                  <Users className="w-3.5 h-3.5 text-saVividOrange" />
-                  <span>{session.class?.name || 'All Students'}</span>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class & Board</p>
+                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs mt-0.5 truncate">
+                  <Users className="w-3.5 h-3.5 text-saVividOrange shrink-0" />
+                  <span className="truncate">
+                    {session.class?.name || 'All Students'}
+                    {session.board?.name ? ` (${session.board.name})` : ''}
+                  </span>
                 </div>
               </div>
             </div>
@@ -603,13 +611,6 @@ export default function ClassSessionsPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            className="h-10 px-4 font-semibold text-xs border-slate-200 text-slate-700 hover:border-saBlue hover:text-saBlue rounded-xl"
-            onClick={() => navigate('/dashboard/attendance')}
-          >
-            Attendance
-          </Button>
           {canAddSession && (
             <Button
               className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl px-4 py-2 font-semibold transition-all"

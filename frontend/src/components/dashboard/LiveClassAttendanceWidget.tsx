@@ -51,15 +51,19 @@ export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: b
     const startTime = new Date(session.start_time);
     const isLiveNow = now >= startTime;
 
-    if (session.mode === 'ONLINE' && session.meeting_link && isLiveNow) {
+    if (session.mode === 'ONLINE' && isLiveNow) {
       try {
-        // Record attendance even if emergency link (Google Meet link) is used!
         await attendanceService.markJoinTime(session.id);
         toast.success('Attendance recorded for live session!');
       } catch (err) {
         console.error('Auto-attendance error:', err);
       }
-      window.open(session.meeting_link, '_blank');
+
+      if (session.meeting_link) {
+        window.open(session.meeting_link, '_blank');
+      } else {
+        window.open(`/classroom/${session.id}`, '_blank');
+      }
     } else {
       navigate(`/dashboard/class-sessions/${session.id}`);
     }
@@ -120,10 +124,17 @@ export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: b
                 <h4 className="text-xs font-black text-slate-900 line-clamp-1">
                   {session.subject?.name || 'Scheduled Class'}
                 </h4>
-                <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                  <UserCheck className="w-3 h-3 text-slate-400" />
-                  {session.teacher?.user?.name || 'Faculty Member'}
-                </p>
+                <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium mt-0.5">
+                  <span className="flex items-center gap-1">
+                    <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
+                    {session.teacher?.user?.name || 'Faculty Member'}
+                  </span>
+                  {(session.class?.name || session.board?.name) && (
+                    <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
+                      {session.class?.name || 'All'} {session.board?.name ? `(${session.board.name})` : ''}
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
