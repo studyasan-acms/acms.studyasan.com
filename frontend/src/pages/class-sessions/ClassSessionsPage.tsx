@@ -445,16 +445,14 @@ export default function ClassSessionsPage() {
               {status.canJoin ? 'Join Live Class' : 'View Details'}
             </Button>
 
-            {status.label !== 'Ended' && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 px-3 rounded-xl font-semibold text-xs border-slate-200 hover:bg-saBlue/10 hover:text-saBlue hover:border-saBlue/30"
-                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
-              >
-                Attendance
-              </Button>
-            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-3 rounded-xl font-semibold text-xs border-slate-200 hover:bg-saBlue/10 hover:text-saBlue hover:border-saBlue/30"
+              onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
+            >
+              Attendance
+            </Button>
 
             {canEditSession && (
               <Button
