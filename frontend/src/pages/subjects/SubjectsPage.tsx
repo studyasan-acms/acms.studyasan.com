@@ -268,76 +268,76 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
         !embedded && "max-w-7xl mx-auto px-4 sm:px-6 py-6"
       )}>
         {/* BRAND UNIFIED STATS CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saBlue/40 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Curriculums</p>
-                <h3 className="text-2xl font-black text-slate-900 mt-1">{total}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Curriculums</p>
+                <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{total}</h3>
               </div>
-              <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
-                <BookOpen className="h-5 w-5" />
+              <div className="h-8 w-8 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue">
+                <BookOpen className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Curriculums created in system</p>
+            <p className="text-[10px] text-slate-400 mt-1">Curriculums created in system</p>
           </Card>
 
-          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saVividOrange/40 hover:shadow-md transition-all">
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saVividOrange/40 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Full Courses</p>
-                <h3 className="text-2xl font-black text-saVividOrange mt-1">{courseCount}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Full Courses</p>
+                <h3 className="text-xl font-black text-saVividOrange leading-tight mt-0.5">{courseCount}</h3>
               </div>
-              <div className="h-10 w-10 bg-saVividOrange/10 rounded-xl flex items-center justify-center text-saVividOrange">
-                <Star className="h-5 w-5 fill-saVividOrange/20" />
+              <div className="h-8 w-8 bg-saVividOrange/10 rounded-lg flex items-center justify-center text-saVividOrange">
+                <Star className="h-4 w-4 fill-saVividOrange/20" />
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Full course offerings</p>
+            <p className="text-[10px] text-slate-400 mt-1">Full course offerings</p>
           </Card>
 
-          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-saBlue/40 hover:shadow-md transition-all">
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saBlue/40 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
-                <h3 className="text-2xl font-black text-saBlue mt-1">{standardSubjectCount}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Subjects</p>
+                <h3 className="text-xl font-black text-saBlue leading-tight mt-0.5">{standardSubjectCount}</h3>
               </div>
-              <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
-                <Layers className="h-5 w-5" />
+              <div className="h-8 w-8 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue">
+                <Layers className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Standard subjects</p>
+            <p className="text-[10px] text-slate-400 mt-1">Standard subjects</p>
           </Card>
 
-          <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-4 hover:border-slate-300 hover:shadow-md transition-all">
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-slate-300 transition-all">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Academic Levels</p>
-                <h3 className="text-2xl font-black text-slate-800 mt-1">{classesList.length}</h3>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Academic Levels</p>
+                <h3 className="text-xl font-black text-slate-800 leading-tight mt-0.5">{classesList.length}</h3>
               </div>
-              <div className="h-10 w-10 bg-slate-100 rounded-xl flex items-center justify-center text-slate-600">
-                <GraduationCap className="h-5 w-5" />
+              <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600">
+                <GraduationCap className="h-4 w-4" />
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 mt-2">Classes & Boards</p>
+            <p className="text-[10px] text-slate-400 mt-1">Classes & Boards</p>
           </Card>
         </div>
 
         {/* SEARCH, SORTING & FILTER TOOLBAR */}
-        <Card className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-3.5">
-          <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-2.5">
+          <div className="flex flex-col lg:flex-row gap-2 items-stretch lg:items-center justify-between">
             {/* Search Input */}
-            <div className="relative flex-1 min-w-[240px]">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
               <Input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search curriculum by name..."
-                className="pl-10 h-10 border-slate-200/80 rounded-xl bg-slate-50/50 focus:bg-white text-sm focus:ring-saBlue focus:border-saBlue"
+                className="pl-9 h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs focus:bg-white focus:ring-saBlue focus:border-saBlue"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -345,12 +345,12 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
             </div>
 
             {/* Filters & Sorting */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               {/* Sort Selection */}
-              <div className="flex items-center gap-1.5 min-w-[175px]">
-                <ArrowUpDown className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1 min-w-[150px]">
+                <ArrowUpDown className="h-3 w-3 text-slate-400 shrink-0" />
                 <Select value={sortOption} onValueChange={setSortOption}>
-                  <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium focus:ring-saBlue">
                     <SelectValue placeholder="Sort By" />
                   </SelectTrigger>
                   <SelectContent>
@@ -363,9 +363,9 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
               </div>
 
               {/* Class Filter */}
-              <div className="min-w-[130px]">
+              <div className="min-w-[115px]">
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium focus:ring-saBlue">
                     <SelectValue placeholder="All Classes" />
                   </SelectTrigger>
                   <SelectContent>
@@ -380,9 +380,9 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
               </div>
 
               {/* Board Filter */}
-              <div className="min-w-[130px]">
+              <div className="min-w-[115px]">
                 <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
-                  <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium focus:ring-saBlue">
                     <SelectValue placeholder="All Boards" />
                   </SelectTrigger>
                   <SelectContent>
@@ -397,9 +397,9 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
               </div>
 
               {/* Type Filter */}
-              <div className="min-w-[130px]">
+              <div className="min-w-[115px]">
                 <Select value={selectedType} onValueChange={setSelectedType}>
-                  <SelectTrigger className="h-10 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs sm:text-sm font-medium focus:ring-saBlue">
+                  <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium focus:ring-saBlue">
                     <SelectValue placeholder="All Types" />
                   </SelectTrigger>
                   <SelectContent>
@@ -411,26 +411,26 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
               </div>
 
               {/* View Mode Toggle */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80 shrink-0">
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
                 <button
                   onClick={() => setViewMode("grid")}
                   className={cn(
-                    "p-1.5 rounded-lg transition-all text-slate-600",
-                    viewMode === "grid" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                    "p-1 rounded-md transition-all text-slate-600",
+                    viewMode === "grid" ? "bg-white shadow-xs text-saBlue font-bold" : "hover:text-slate-900"
                   )}
                   title="Grid View"
                 >
-                  <LayoutGrid className="h-4 w-4" />
+                  <LayoutGrid className="h-3.5 w-3.5" />
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
                   className={cn(
-                    "p-1.5 rounded-lg transition-all text-slate-600",
-                    viewMode === "list" ? "bg-white shadow-sm text-saBlue font-bold" : "hover:text-slate-900"
+                    "p-1 rounded-md transition-all text-slate-600",
+                    viewMode === "list" ? "bg-white shadow-xs text-saBlue font-bold" : "hover:text-slate-900"
                   )}
                   title="List View"
                 >
-                  <List className="h-4 w-4" />
+                  <List className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
