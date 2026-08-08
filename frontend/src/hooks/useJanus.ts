@@ -26,6 +26,7 @@ interface UseJanusOptions {
     sessionId: number;
     displayName: string;
     isTeacher: boolean;
+    onKicked?: () => void;
 }
 
 interface UseJanusReturn {
@@ -74,7 +75,14 @@ interface UseJanusReturn {
     toggleWhiteboardAccess: (participantId: string | number) => void;
 }
 
-export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeacher: _isTeacher }: UseJanusOptions): UseJanusReturn {
+export function useJanus(options: UseJanusOptions): UseJanusReturn {
+    const { roomCode, displayName, isTeacher: _isTeacher, onKicked } = options;
+    const onKickedCallbackRef = useRef(onKicked);
+
+    useEffect(() => {
+        onKickedCallbackRef.current = onKicked;
+    }, [onKicked]);
+
     // Connection state
     const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
     const [error, setError] = useState<string | null>(null);
@@ -125,9 +133,6 @@ export function useJanus({ roomCode, sessionId: _sessionId, displayName, isTeach
 
     // Whiteboard message handler
     const whiteboardHandlerRef = useRef<((message: WhiteboardMessage) => void) | null>(null);
-
-    // Kicked callback ref (to call disconnect when kicked)
-    const onKickedCallbackRef = useRef<(() => void) | null>(null);
 
     // Janus client reference
     const janusClientRef = useRef<JanusClient | null>(null);

@@ -35,6 +35,7 @@ export function ClassroomPage() {
         sessionId: roomInfo?.sessionId || 0,
         displayName: user?.name || 'Guest',
         isTeacher: roomInfo?.isTeacher || false,
+        onKicked: () => handleLeave(),
     });
 
     // Fetch room info and validate access
@@ -93,8 +94,22 @@ export function ClassroomPage() {
     // Handle leave
     const handleLeave = async () => {
         hasLeftIntentionally.current = true; // Prevent auto-reconnect
-        await janus.disconnect();
-        navigate(-1);
+        try {
+            await janus.disconnect();
+        } catch (err) {
+            console.error('[ClassroomPage] Disconnect error:', err);
+        }
+        
+        // If opened as standalone tab/window, close tab; fallback to navigate/history back
+        if (window.history.length <= 1) {
+            window.close();
+        } else {
+            // Attempt to close tab, fallback to back/dashboard
+            window.close();
+            setTimeout(() => {
+                navigate('/dashboard/class-sessions');
+            }, 100);
+        }
     };
 
     // Loading state

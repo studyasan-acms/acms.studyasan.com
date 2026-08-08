@@ -90,7 +90,7 @@ export default function NotificationPanel({
       <div
         className={cn(
           "fixed top-16 right-0 bottom-0 w-full sm:w-96",
-          "bg-white shadow-xl border-l rounded-tl-2xl",
+          "bg-white shadow-xl border-l rounded-tl-2xl flex flex-col",
           "transform transition-transform duration-300 ease-in-out z-50",
           "will-change-transform",
           isOpen ? "translate-x-0" : "translate-x-full"
