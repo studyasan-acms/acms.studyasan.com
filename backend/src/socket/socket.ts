@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { Server as HttpServer } from 'http';
 import quizSocketHandler from './quizSocket.handler.js';
 import { chatSocketHandler } from './chatSocket.handler.js';
+import codeSocketHandler from './codeSocket.handler.js';
 
 let io: Server;
 
@@ -17,6 +18,7 @@ export const initSocket = (httpServer: HttpServer) => {
         console.log(`User connected: ${socket.id}`);
         quizSocketHandler(io, socket);
         chatSocketHandler(io, socket);
+        codeSocketHandler(io, socket);
 
         socket.on('disconnect', () => {
             console.log(`User disconnected: ${socket.id}`);

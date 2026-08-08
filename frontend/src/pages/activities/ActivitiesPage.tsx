@@ -20,6 +20,8 @@ import ChessGame from '../../components/activities/games/ChessGame.tsx';
 import HangmanGame from '../../components/activities/games/HangmanGame.tsx';
 import SudokuGame from '../../components/activities/games/SudokuGame.tsx';
 import AbacusGame from '../../components/activities/games/AbacusGame';
+import CodingIDEGame from '../../components/activities/games/CodingIDEGame.tsx';
+import CodingLeetcodeGame from '../../components/activities/games/CodingLeetcodeGame.tsx';
 import { toast } from 'sonner';
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { resolveImageUrl } from '@/lib/utils';
@@ -173,6 +175,8 @@ export default function ActivitiesPage() {
       HANGMAN: 'Hangman',
       SUDOKU: 'Sudoku',
       ABACUS: 'Abacus',
+      CODING_IDE: 'Coding IDE',
+      CODING_LEETCODE: 'Leetcode Challenge',
     };
     return labels[type];
   };
@@ -208,6 +212,10 @@ export default function ActivitiesPage() {
         return <SudokuGame {...gameProps} />;
       case 'ABACUS':
         return <AbacusGame {...gameProps} />;
+      case 'CODING_IDE':
+        return <CodingIDEGame {...gameProps} />;
+      case 'CODING_LEETCODE':
+        return <CodingLeetcodeGame {...gameProps} />;
       default:
         return (
           <div className="text-center py-12">

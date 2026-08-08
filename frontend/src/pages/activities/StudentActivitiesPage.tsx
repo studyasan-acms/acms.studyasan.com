@@ -42,6 +42,8 @@ import StudentLiveQuiz from '../../components/activities/games/StudentLiveQuiz.t
 import StudentLiveMatchPairs from '../../components/activities/games/StudentLiveMatchPairs.tsx';
 import StudentLiveWordSearch from '../../components/activities/games/StudentLiveWordSearch.tsx';
 import StudentLiveTrueFalse from '../../components/activities/games/StudentLiveTrueFalse.tsx';
+import CodingIDEGame from '../../components/activities/games/CodingIDEGame.tsx';
+import CodingLeetcodeGame from '../../components/activities/games/CodingLeetcodeGame.tsx';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 export default function StudentActivitiesPage() {
@@ -198,6 +200,10 @@ export default function StudentActivitiesPage() {
         return <SudokuGame {...gameProps} />;
       case 'ABACUS':
         return <AbacusGame {...gameProps} />;
+      case 'CODING_IDE':
+        return <CodingIDEGame {...gameProps} />;
+      case 'CODING_LEETCODE':
+        return <CodingLeetcodeGame {...gameProps} />;
       default:
         return (
           <div className="text-center py-12">

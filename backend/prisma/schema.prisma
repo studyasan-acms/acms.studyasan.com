@@ -708,6 +708,8 @@ enum ActivityType {
   HANGMAN // Hangman game
   SUDOKU // Sudoku game
   ABACUS // Abacus-based arithmetic practice
+  CODING_IDE // Real-time collaborative IDE
+  CODING_LEETCODE // Interactive programming challenges
 }
 
 // Activity Group - Collection of activities for organizing

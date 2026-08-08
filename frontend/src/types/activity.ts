@@ -13,7 +13,9 @@ export type ActivityType =
   | 'CHESS'
   | 'HANGMAN'
   | 'SUDOKU'
-  | 'ABACUS';
+  | 'ABACUS'
+  | 'CODING_IDE'
+  | 'CODING_LEETCODE';
 
 export type Difficulty = 'EASY' | 'MEDIUM' | 'HARD';
 

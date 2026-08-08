@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   X, Plus, Trash2, Sparkles, Loader2, ImagePlus,
   Link, Search, HelpCircle, ToggleLeft, ShieldAlert,
-  Layers, Shield, ClipboardList, BarChart2 
+  Layers, Shield, ClipboardList, BarChart2, Code2
 } from 'lucide-react';
 import { uploadService } from '../../../services/api';
 
@@ -15,6 +15,8 @@ const activityTypeCards = [
   { type: 'HANGMAN', label: 'Hangman', icon: ShieldAlert, description: 'Guess the hidden word letter by letter' },
   { type: 'SUDOKU', label: 'Sudoku', icon: Layers, description: 'Classic 9x9 board logic puzzle' },
   { type: 'ABACUS', label: 'Abacus Math', icon: BarChart2, description: 'Place-value abacus arithmetic practice' },
+  { type: 'CODING_IDE', label: 'Coding IDE', icon: Code2, description: 'Collaborative real-time coding editor' },
+  { type: 'CODING_LEETCODE', label: 'Leetcode Code', icon: Code2, description: 'Algorithmic code verification challenges' },
 ] as const;
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
@@ -40,6 +42,8 @@ import ChessBuilder from './builders/ChessBuilder.tsx';
 import HangmanBuilder from './builders/HangmanBuilder.tsx';
 import SudokuBuilder from './builders/SudokuBuilder.tsx';
 import AbacusBuilder from './builders/AbacusBuilder';
+import CodingIDEBuilder from './builders/CodingIDEBuilder.tsx';
+import CodingLeetcodeBuilder from './builders/CodingLeetcodeBuilder.tsx';
 
 interface Props {
   activity: Activity | null;
@@ -54,7 +58,6 @@ export default function ActivityForm({
   activityGroups,
   onSuccess,
   onCancel,
-  isStandalone = false,
 }: Props) {
   const [formData, setFormData] = useState<CreateActivityInput>({
     group_id: 0,
@@ -90,7 +93,9 @@ export default function ActivityForm({
       SUDOKU: 'Fill the 9x9 grid with numbers 1-9 so that each row, column, and 3x3 box contains all digits without repetition.',
       ABACUS: 'Solve arithmetic using an interactive abacus. Move beads by place value and submit the represented number.',
       CROSSWORD: 'Fill in the crossword puzzle by solving the clues. Click on a clue to highlight the corresponding word in the grid, then type your answer.',
-      PICTURE_REVEAL: 'Answer questions correctly to reveal parts of the hidden picture. Complete all questions to see the full image!'
+      PICTURE_REVEAL: 'Answer questions correctly to reveal parts of the hidden picture. Complete all questions to see the full image!',
+      CODING_IDE: 'Collaborate with your teacher in the shared editor. Choose your language, write code, and execute it to see stdout/stderr in the terminal console!',
+      CODING_LEETCODE: 'Solve the programming challenge in the editor. Run custom test inputs, or submit your solution to validate it against all preset test cases!'
     };
     return instructionsMap[activityType] || 'Complete the activity by following the on-screen instructions.';
   };
@@ -177,11 +182,51 @@ export default function ActivityForm({
           points: 10,
         }
       ];
+    } else if (newType === 'CODING_IDE') {
+      presetTitle = 'Collaborative Coding Sandbox';
+      presetDescription = 'Edit, run, and sync code in real time in a collaborative programming environment.';
+      presetItems = [
+        {
+          content: {
+            type: 'coding_ide',
+            description: 'Collaborative live IDE session for coding practice.',
+            defaultLanguage: 'python',
+            starterCode: '# Write code here\nprint("Hello World!")\n',
+          },
+          points: 100,
+        }
+      ];
+    } else if (newType === 'CODING_LEETCODE') {
+      presetTitle = 'Algorithmic Coding Challenge';
+      presetDescription = 'Solve a programming challenge and verify code correctness using compiler test cases.';
+      presetItems = [
+        {
+          content: {
+            type: 'coding_leetcode',
+            problemTitle: 'Sum of Two Numbers',
+            problemDescription: 'Create a program or function that takes standard inputs representing two integers, and prints their sum to stdout.\n\nInput format:\nLine 1: first integer\nLine 2: second integer',
+            defaultLanguage: 'python',
+            templates: {
+              python: 'a = int(input())\nb = int(input())\nprint(a + b)\n',
+              javascript: 'const fs = require("fs");\nconst input = fs.readFileSync(0, "utf-8").trim().split("\\n");\nconst a = parseInt(input[0]);\nconst b = parseInt(input[1]);\nconsole.log(a + b);\n',
+              java: 'import java.util.*;\npublic class Main {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        int a = sc.nextInt();\n        int b = sc.nextInt();\n        System.out.println(a + b);\n    }\n}\n',
+              cpp: '#include <iostream>\nusing namespace std;\nint main() {\n    int a, b;\n    if (cin >> a >> b) {\n        cout << a + b << endl;\n    }\n    return 0;\n}\n',
+            },
+            testCases: [
+              { input: '2\n3', expectedOutput: '5' },
+              { input: '10\n20', expectedOutput: '30' }
+            ],
+          },
+          points: 120,
+        }
+      ];
     } else {
       const isPredefined = 
         formData.title === 'Grandmaster Chess Challenge' || 
         formData.title === 'Sudoku Mind Puzzle' || 
-        formData.title === 'Interactive Abacus Math';
+        formData.title === 'Interactive Abacus Math' ||
+        formData.title === 'Collaborative Coding Sandbox' ||
+        formData.title === 'Algorithmic Coding Challenge';
       
       if (isPredefined) {
         presetTitle = '';
@@ -288,6 +333,10 @@ export default function ActivityForm({
         return <SudokuBuilder {...props} />;
       case 'ABACUS':
         return <AbacusBuilder {...props} />;
+      case 'CODING_IDE':
+        return <CodingIDEBuilder {...props} />;
+      case 'CODING_LEETCODE':
+        return <CodingLeetcodeBuilder {...props} />;
       default:
         return <div className="text-center py-8 text-gray-500">Builder for {formData.activity_type} is under construction</div>;
     }
