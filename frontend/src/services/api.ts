@@ -1584,6 +1584,10 @@ export const knowYourChildService = {
     const response = await api.patch(`/know-your-child/${id}/feedback`, { parent_feedback });
     return response.data;
   },
+  deleteReport: async (id: number): Promise<{ success: boolean; data: any }> => {
+    const response = await api.delete(`/know-your-child/${id}`);
+    return response.data;
+  },
 };
 
 export default api;

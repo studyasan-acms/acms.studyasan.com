@@ -58,7 +58,8 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -349,6 +350,20 @@ export default function StudentDetailPage() {
     } catch (error) {
       console.error("Failed to generate PDF:", error);
       toast.error("Failed to download PDF.");
+    }
+  };
+
+  const handleDeleteReport = async (reportId: number) => {
+    if (!window.confirm("Are you sure you want to delete this weekly report card?")) return;
+    try {
+      await knowYourChildService.deleteReport(reportId);
+      toast.success("Weekly report card deleted successfully!");
+      if (student) {
+        await fetchReports(student.id, reportsPage);
+      }
+    } catch (err: any) {
+      console.error("Failed to delete report:", err);
+      toast.error(err.response?.data?.error || "Failed to delete weekly report card.");
     }
   };
 
@@ -1006,6 +1021,17 @@ export default function StudentDetailPage() {
                               >
                                 <Download className="h-3.5 w-3.5" />
                               </Button>
+                              {(isTeacher || isAdmin) && (
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => handleDeleteReport(report.id)}
+                                  className="rounded-xl border-red-200 h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  title="Delete Report"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

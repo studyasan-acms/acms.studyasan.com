@@ -248,3 +248,47 @@ export const addParentFeedback = async (req: Request, res: Response) => {
     return sendError(res, error.message || 'Failed to submit parent feedback.', 500);
   }
 };
+
+// Delete weekly report - Teachers and Admins only
+export const deleteReport = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = (req as any).user;
+
+    if (!id) {
+      return sendError(res, 'Report ID is required.', 400);
+    }
+
+    const report = await prisma.knowYourChildReport.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        teacher: true
+      }
+    });
+
+    if (!report) {
+      return sendError(res, 'Weekly report card not found.', 404);
+    }
+
+    // Teachers can delete their own reports, Admins can delete any report
+    if (user.role === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: user.id }
+      });
+      if (!teacher || report.teacher_id !== teacher.id) {
+        return sendError(res, 'Access denied. You can only delete your own report cards.', 403);
+      }
+    } else if (user.role !== 'ADMIN') {
+      return sendError(res, 'Unauthorized to delete weekly report cards.', 403);
+    }
+
+    await prisma.knowYourChildReport.delete({
+      where: { id: parseInt(id) }
+    });
+
+    return sendSuccess(res, null, 'Weekly report card deleted successfully.');
+  } catch (error: any) {
+    console.error('Error deleting weekly report:', error);
+    return sendError(res, error.message || 'Failed to delete weekly report.', 500);
+  }
+};

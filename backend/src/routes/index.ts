@@ -752,5 +752,6 @@ router.use('/announcements', announcementRoutes);
 router.post('/know-your-child', authenticate, authorize('ADMIN', 'TEACHER'), knowYourChildController.createReport);
 router.get('/know-your-child/student/:studentId', authenticate, knowYourChildController.getStudentReports);
 router.patch('/know-your-child/:id/feedback', authenticate, knowYourChildController.addParentFeedback);
+router.delete('/know-your-child/:id', authenticate, authorize('ADMIN', 'TEACHER'), knowYourChildController.deleteReport);
 
 export default router;

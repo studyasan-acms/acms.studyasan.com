@@ -72,7 +72,6 @@ const navItems: NavItem[] = [
     href: "/dashboard/students",
     icon: Users,
     roles: ["ADMIN", "TEACHER"],
-    permission: { resource: "students", action: "view" },
   },
   {
     title: "Teachers",
