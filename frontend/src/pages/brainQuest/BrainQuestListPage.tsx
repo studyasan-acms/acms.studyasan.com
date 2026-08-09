@@ -57,7 +57,7 @@ export default function BrainQuestListPage() {
 
   const fetchSubjects = async () => {
     try {
-      const res = await subjectService.getAll({ limit: 100 });
+      const res = await subjectService.getAll({ limit: 1000 });
       setSubjects(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Failed to load subjects:", err);

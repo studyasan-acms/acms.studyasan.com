@@ -448,7 +448,7 @@ export const subjectService = {
     letter?: string;
   }): Promise<PaginatedResponse<Subject>> => {
     const response = await api.get<PaginatedResponse<Subject>>('/subjects', {
-      params,
+      params: { limit: 1000, ...params },
     });
     return response.data;
   },

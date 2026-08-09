@@ -111,7 +111,7 @@ export default function ClassSessionsPage() {
 
   const fetchSubjects = useCallback(async () => {
     try {
-      const response = await subjectService.getAll({ limit: 100 });
+      const response = await subjectService.getAll({ limit: 1000 });
       setSubjects(response.data.data);
     } catch (error) {
       console.error('Error fetching subjects:', error);

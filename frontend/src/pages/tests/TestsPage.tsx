@@ -64,7 +64,7 @@ export default function TestsPage() {
 
   const fetchSubjects = useCallback(async () => {
     try {
-      const params: any = {};
+      const params: any = { limit: 1000 };
       if (user?.id && user?.role) {
         params.user_id = user.id;
         params.role = user.role;

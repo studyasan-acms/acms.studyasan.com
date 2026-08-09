@@ -47,7 +47,7 @@ export default function MyResultsPage() {
 
   const fetchSubjects = async () => {
     try {
-      const params: any = {};
+      const params: any = { limit: 1000 };
       if (user?.role === 'STUDENT' && user?.id) {
         params.user_id = user.id;
         params.role = user.role;

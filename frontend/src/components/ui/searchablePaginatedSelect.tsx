@@ -29,7 +29,7 @@ export default function SearchablePaginatedSelect({
   placeholder = 'Select...',
   searchPlaceholder = 'Search...',
   emptyLabel = 'No options found',
-  pageSize = 10,
+  pageSize = 20,
   className,
   disabled = false,
   triggerClassName,
