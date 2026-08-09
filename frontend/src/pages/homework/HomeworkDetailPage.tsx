@@ -43,9 +43,11 @@ import {
   FileSearch,
   CheckCircle2,
   ClipboardCheck,
+  Eye,
 } from "lucide-react";
 import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import FilePreviewModal from "@/components/FilePreviewModal";
 
 interface Homework {
   id: number;
@@ -112,6 +114,8 @@ export default function HomeworkDetailPage() {
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState("");
 
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -383,11 +387,14 @@ export default function HomeworkDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => window.open(homework.document_url, '_blank')}
+                  onClick={() => {
+                    setPreviewUrl(homework.document_url);
+                    setPreviewTitle("Material File");
+                  }}
                   className="rounded-lg h-8 px-3 border-saBlue/30 text-saBlue font-bold text-xs hover:bg-saBlue hover:text-white transition-all"
                 >
-                  <Download className="h-3.5 w-3.5 mr-1.5" />
-                  Download
+                  <Eye className="h-3.5 w-3.5 mr-1.5" />
+                  Preview
                 </Button>
               </div>
             )}
@@ -433,17 +440,34 @@ export default function HomeworkDetailPage() {
                           const urls = JSON.parse(result.response_media_url);
                           if (Array.isArray(urls)) {
                             return urls.map((url, idx) => (
-                              <Button key={idx} variant="outline" size="sm" className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200" onClick={() => window.open(url, '_blank')}>
-                                <Download className="h-3.5 w-3.5 mr-2 text-saBlue" />
-                                Attachment {urls.length > 1 ? `(${idx + 1})` : ''}
+                              <Button
+                                key={idx}
+                                variant="outline"
+                                size="sm"
+                                className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200"
+                                onClick={() => {
+                                  setPreviewUrl(url);
+                                  setPreviewTitle(`Submission Attachment ${urls.length > 1 ? idx + 1 : ''}`);
+                                }}
+                              >
+                                <Eye className="h-3.5 w-3.5 mr-2 text-saBlue" />
+                                Preview Attachment {urls.length > 1 ? `(${idx + 1})` : ''}
                               </Button>
                             ));
                           }
                         } catch {
                           return (
-                            <Button variant="outline" size="sm" className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200" onClick={() => window.open(result.response_media_url, '_blank')}>
-                              <Download className="h-3.5 w-3.5 mr-2 text-saBlue" />
-                              Download Attachment
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-lg font-bold h-8 text-xs w-full justify-start border-slate-200"
+                              onClick={() => {
+                                setPreviewUrl(result.response_media_url);
+                                setPreviewTitle("Submission Attachment");
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-2 text-saBlue" />
+                              Preview Attachment
                             </Button>
                           );
                         }
@@ -578,15 +602,32 @@ export default function HomeworkDetailPage() {
                                     const urls = JSON.parse(res.response_media_url);
                                     if (Array.isArray(urls)) {
                                       return urls.map((url, idx) => (
-                                        <Button key={idx} variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50" onClick={() => window.open(url, '_blank')}>
-                                          <Download className="h-3 w-3 mr-1" /> Attachment {urls.length > 1 ? `#${idx + 1}` : ''}
+                                        <Button
+                                          key={idx}
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50"
+                                          onClick={() => {
+                                            setPreviewUrl(url);
+                                            setPreviewTitle(`${res.student.user.name}'s Attachment ${urls.length > 1 ? idx + 1 : ''}`);
+                                          }}
+                                        >
+                                          <Eye className="h-3 w-3 mr-1" /> Preview {urls.length > 1 ? `#${idx + 1}` : 'Attachment'}
                                         </Button>
                                       ));
                                     }
                                   } catch {
                                     return (
-                                      <Button variant="ghost" size="sm" className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50" onClick={() => window.open(res.response_media_url, '_blank')}>
-                                        <Download className="h-3 w-3 mr-1" /> File
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-6 px-1.5 text-[10px] text-saBlue font-bold hover:bg-sky-50"
+                                        onClick={() => {
+                                          setPreviewUrl(res.response_media_url);
+                                          setPreviewTitle(`${res.student.user.name}'s Attachment`);
+                                        }}
+                                      >
+                                        <Eye className="h-3 w-3 mr-1" /> Preview File
                                       </Button>
                                     );
                                   }
@@ -719,6 +760,13 @@ export default function HomeworkDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FilePreviewModal
+        isOpen={!!previewUrl}
+        onClose={() => setPreviewUrl(null)}
+        url={previewUrl || undefined}
+        title={previewTitle}
+      />
     </div>
   );
 }
