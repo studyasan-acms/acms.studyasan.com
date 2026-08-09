@@ -190,10 +190,15 @@ export default function StudentDetailPage() {
           const res = await teacherService.getAll({ user_id: user.id });
           const teacherRecord = res.data?.data?.[0];
           if (teacherRecord) {
-            const detailRes = await teacherService.getById(teacherRecord.id);
-            const teacherDetail = (detailRes as any).data?.data || (detailRes as any).data || detailRes;
-            const junctions = (teacherDetail as any)?.teacher_subject_junctions || (teacherRecord as any)?.teacher_subject_junctions || [];
-            const subjectsList = junctions.map((j: any) => j.subject || j).filter(Boolean);
+            const junctions = (teacherRecord as any)?.teacher_subject_junctions || [];
+            let subjectsList = junctions.map((j: any) => j.subject || j).filter(Boolean);
+            
+            if (subjectsList.length === 0) {
+              const detailRes = await teacherService.getById(teacherRecord.id);
+              const teacherDetail = (detailRes as any).data?.data || (detailRes as any).data || detailRes;
+              const detailJunctions = (teacherDetail as any)?.teacher_subject_junctions || [];
+              subjectsList = detailJunctions.map((j: any) => j.subject || j).filter(Boolean);
+            }
             setTeacherSubjects(subjectsList);
           }
         } catch (err) {
@@ -206,27 +211,16 @@ export default function StudentDetailPage() {
 
   // Compute available subjects for review based on student enrollments & teacher assignments
   const studentSubjects: any[] = (() => {
-    if (!student) return [];
+    if (!student || !Array.isArray(student.enrollments)) return [];
     const subjectsMap = new Map<number, any>();
     
-    // Direct subject enrollments
-    if (Array.isArray(student.enrollments)) {
-      student.enrollments.forEach((e: any) => {
-        if (e.type === "SUBJECT" && e.subject) {
-          subjectsMap.set(e.subject.id, e.subject);
-        }
-      });
-    }
-
-    // Class subjects if student is in a class
-    const studentClass = student?.class as any;
-    if (studentClass && Array.isArray(studentClass.class_subjects)) {
-      studentClass.class_subjects.forEach((cs: any) => {
-        if (cs.subject) {
-          subjectsMap.set(cs.subject.id, cs.subject);
-        }
-      });
-    }
+    student.enrollments.forEach((e: any) => {
+      if (e.subject) {
+        subjectsMap.set(e.subject.id, e.subject);
+      } else if (e.type === "SUBJECT" && e.subject_id) {
+        subjectsMap.set(e.subject_id, { id: e.subject_id, name: `Subject #${e.subject_id}` });
+      }
+    });
 
     return Array.from(subjectsMap.values());
   })();
@@ -236,7 +230,11 @@ export default function StudentDetailPage() {
   const availableSubjects: any[] = isUserAdmin
     ? studentSubjects
     : studentSubjects.filter((ss: any) =>
-        teacherSubjects.some((ts: any) => String(ts.id || ts.subject_id) === String(ss.id))
+        teacherSubjects.some((ts: any) => 
+          String(ts.id) === String(ss.id) || 
+          String(ts.subject_id) === String(ss.id) || 
+          String(ts.id) === String(ss.subject_id)
+        )
       );
 
   useEffect(() => {

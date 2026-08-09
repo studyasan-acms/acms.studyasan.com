@@ -70,6 +70,8 @@ export const getAllTeachers = async (req: Request, res: Response) => {
         const response = createPaginatedResponse([], 0, page, limit);
         return sendSuccess(res, response);
       }
+    } else if (user_id) {
+      where.user_id = parseInt(user_id as string);
     }
 
     const [teachers, total] = await Promise.all([
@@ -93,6 +95,11 @@ export const getAllTeachers = async (req: Request, res: Response) => {
               id: true,
               name: true,
               description: true,
+            },
+          },
+          teacher_subject_junctions: {
+            include: {
+              subject: true,
             },
           },
           address: {
