@@ -303,7 +303,7 @@ export default function ClassSessionDetailPage() {
                 <div>
                   <p className="font-medium text-gray-600">Teacher</p>
                   <p className="text-gray-600 text-sm">{session.teacher?.user?.name || 'Not assigned'}</p>
-                  {session.teacher?.user?.email && (
+                  {session.teacher?.user?.email && !isStudent && (
                     <p className="text-gray-400 text-xs">{session.teacher.user.email}</p>
                   )}
                 </div>
