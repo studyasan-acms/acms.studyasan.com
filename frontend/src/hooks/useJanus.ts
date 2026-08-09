@@ -6,7 +6,29 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { JanusClient, destroyJanusClient } from '@/services/janus';
+
+function createFallbackMediaStream(): MediaStream {
+    const stream = new MediaStream();
+    try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioContextClass) {
+            const ctx = new AudioContextClass();
+            const osc = ctx.createOscillator();
+            const dst = ctx.createMediaStreamDestination();
+            osc.connect(dst);
+            const silentTrack = dst.stream.getAudioTracks()[0];
+            if (silentTrack) {
+                silentTrack.enabled = false;
+                stream.addTrack(silentTrack);
+            }
+        }
+    } catch (e) {
+        console.warn('[useJanus] Could not create silent audio track:', e);
+    }
+    return stream;
+}
 import { useClassroomAPISync } from '@/hooks/useClassroomAPISync';
 import { useBackgroundProcessor } from '@/hooks/useBackgroundProcessor';
 import type {
@@ -204,14 +226,43 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
 
             console.log('[useJanus] Getting user media...');
 
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    facingMode: 'user',
-                },
-            });
+            let stream: MediaStream;
+            let mediaNotice: string | null = null;
+
+            try {
+                // Tier 1: Try getting both audio and video
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: true,
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user',
+                    },
+                });
+            } catch (err1) {
+                console.warn('[useJanus] Audio & video acquisition failed, trying audio-only...', err1);
+                try {
+                    // Tier 2: Try audio-only
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaNotice = 'Camera unavailable or access denied. Joining with microphone only.';
+                } catch (err2) {
+                    console.warn('[useJanus] Audio acquisition failed, trying video-only...', err2);
+                    try {
+                        // Tier 3: Try video-only
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                        mediaNotice = 'Microphone unavailable or access denied. Joining with camera only.';
+                    } catch (err3) {
+                        // Tier 4: Fall back to dummy stream so user can enter classroom anyway
+                        console.warn('[useJanus] No camera or mic available / permission denied. Entering classroom in listener mode...', err3);
+                        stream = createFallbackMediaStream();
+                        mediaNotice = 'No camera or microphone detected. Joined classroom in listener mode.';
+                    }
+                }
+            }
+
+            if (mediaNotice) {
+                toast.info(mediaNotice, { duration: 5000 });
+            }
 
             rawStreamRef.current = stream;
 
