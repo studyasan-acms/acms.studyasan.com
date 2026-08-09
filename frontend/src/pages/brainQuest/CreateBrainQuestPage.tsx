@@ -25,6 +25,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 import { subjectService, brainQuestService } from "@/services/api";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -37,6 +38,9 @@ export default function CreateBrainQuestPage() {
   const [subjectId, setSubjectId] = useState("");
   const [totalMarks, setTotalMarks] = useState("100");
   const [dueDate, setDueDate] = useState("");
+  const user = useAuthStore((state) => state.user);
+  const isTeacher = user?.role === "TEACHER" || (typeof user?.role === "object" && (user?.role as any)?.name === "TEACHER");
+
   const [pdfFile, setPdfFile] = useState<File | null>(null);
 
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -46,8 +50,19 @@ export default function CreateBrainQuestPage() {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const res = await subjectService.getAll();
-        setSubjects(res.data?.data || res.data || []);
+        const params: any = { limit: 100 };
+        if (isTeacher && user?.id) {
+          params.user_id = user.id;
+          params.role = "TEACHER";
+        }
+        let res = await subjectService.getAll(params);
+        let list = res.data?.data || res.data || [];
+
+        if (list.length === 0) {
+          res = await subjectService.getAll({ limit: 100 });
+          list = res.data?.data || res.data || [];
+        }
+        setSubjects(list);
       } catch (err) {
         console.error("Failed to load subjects:", err);
         toast.error("Failed to load subjects.");
@@ -56,7 +71,7 @@ export default function CreateBrainQuestPage() {
       }
     };
     fetchSubjects();
-  }, []);
+  }, [user, isTeacher]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -159,11 +174,16 @@ export default function CreateBrainQuestPage() {
                     <SelectValue placeholder={loadingSubjects ? "Loading subjects..." : "Select Subject"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {subjects.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        {s.name}
-                      </SelectItem>
-                    ))}
+                    {subjects.map((s: any) => {
+                      const className = s.class?.name ? ` [${s.class.name}]` : "";
+                      const boardName = s.board?.name ? ` [${s.board.name}]` : "";
+                      const label = `${s.name}${className}${boardName}`;
+                      return (
+                        <SelectItem key={s.id} value={s.id.toString()}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>

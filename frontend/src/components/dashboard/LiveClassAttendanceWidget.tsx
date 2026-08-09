@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Clock, ArrowUpRight, UserCheck, Calendar } from 'lucide-react';
-import { classSessionService, attendanceService } from '@/services/api';
+import { Video, Clock, ArrowUpRight, UserCheck, Calendar, Sparkles } from 'lucide-react';
+import { classSessionService } from '@/services/api';
 import type { ClassSession } from '@/types';
-import { toast } from 'sonner';
 
 export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: boolean }) {
   const navigate = useNavigate();
@@ -31,12 +30,17 @@ export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: b
       const allSessions: ClassSession[] = (res.data as any)?.data || res.data || [];
       const now = new Date();
 
-      // STRICT MANDATE: Attendance is ONLY available till the time of class.
-      // Disappears as soon as the class ends. Filter out ended classes completely!
+      // Attendance is ONLY available till the time of class.
+      // Disappears as soon as the class ends. Filter out ended classes!
       const activeOrUpcoming = allSessions.filter((s) => {
         const endTime = new Date(s.end_time);
         return now <= endTime;
       });
+
+      // Sort by start_time ascending so the SINGLE CLOSEST class is always at index 0
+      activeOrUpcoming.sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      );
 
       setSessions(activeOrUpcoming);
     } catch (err) {
@@ -52,98 +56,78 @@ export default function LiveClassAttendanceWidget({ isStudent }: { isStudent?: b
 
   if (loading || sessions.length === 0) return null;
 
+  // Show ONLY ONE class that is closest to upcoming (or currently live)
+  const closestSession = sessions[0];
+  const now = new Date();
+  const start = new Date(closestSession.start_time);
+  const end = new Date(closestSession.end_time);
+  const isLiveNow = now >= start && now <= end;
+
+  const timeFormatted = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateFormatted = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+
   return (
-    <Card className="rounded-2xl border border-saBlue/20 bg-gradient-to-r from-saBlue/5 via-white to-blue-50/40 p-4 shadow-sm">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-xl bg-saBlue text-white font-bold">
-            <Video className="w-4 h-4" />
+    <Card className="overflow-hidden rounded-3xl border border-blue-200/80 bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-indigo-900 text-white shadow-lg">
+      <div className="p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-5">
+        <div className="space-y-2.5 max-w-xl">
+          <div className="flex flex-wrap items-center gap-2">
+            {isLiveNow ? (
+              <Badge className="bg-red-500 text-white font-black text-xs px-3 py-1 rounded-xl animate-pulse flex items-center gap-1.5 shadow-md">
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+                LIVE CLASS NOW
+              </Badge>
+            ) : (
+              <Badge className="bg-[#eca209] text-white font-black text-xs px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-md">
+                <Clock className="w-3.5 h-3.5" />
+                UPCOMING CLASS
+              </Badge>
+            )}
+            <span className="text-xs text-blue-100 font-bold bg-white/10 px-2.5 py-0.5 rounded-lg backdrop-blur-xs">
+              {dateFormatted} at {timeFormatted}
+            </span>
           </div>
-          <div>
-            <h3 className="text-sm font-extrabold text-slate-900">
-              Live & Active Class Sessions
-            </h3>
-            <p className="text-[11px] font-medium text-slate-500">
-              Attendance active until class ends. Recorded automatically for Google Meet & live links.
-            </p>
+
+          <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white leading-snug">
+            {(closestSession as any).title || closestSession.subject?.name || 'Scheduled Live Session'}
+          </h3>
+
+          <div className="flex flex-wrap items-center gap-3 text-xs text-blue-100 font-medium">
+            <span className="flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-xl backdrop-blur-xs">
+              <UserCheck className="w-3.5 h-3.5 text-amber-300" />
+              Faculty: {closestSession.teacher?.user?.name || 'Assigned Teacher'}
+            </span>
+            {(closestSession.class?.name || closestSession.board?.name) && (
+              <span className="flex items-center gap-1 bg-white/15 px-2.5 py-1 rounded-xl backdrop-blur-xs font-bold text-amber-200">
+                {closestSession.class?.name || 'All Classes'} {closestSession.board?.name ? `[${closestSession.board.name}]` : ''}
+              </span>
+            )}
           </div>
         </div>
-        <Badge className="bg-emerald-500 text-white font-extrabold text-[10px] px-2.5 py-0.5 rounded-full animate-pulse">
-          Live Window Active
-        </Badge>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        {sessions.map((session) => {
-          const now = new Date();
-          const start = new Date(session.start_time);
-          const end = new Date(session.end_time);
-          const isLiveNow = now >= start && now <= end;
+        <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
+          <Button
+            size="lg"
+            onClick={() => handleJoinOrAttend(closestSession)}
+            className={`w-full sm:w-auto h-12 px-6 rounded-2xl font-extrabold text-sm shadow-lg transition-all ${
+              isLiveNow
+                ? 'bg-[#eca209] hover:bg-[#d49106] text-white shadow-amber-500/30'
+                : 'bg-white text-[#0276D3] hover:bg-blue-50 shadow-white/20'
+            }`}
+          >
+            <Video className="w-4 h-4 mr-2" />
+            {isLiveNow ? 'Join Live Class Now' : 'View Class Session'}
+            <ArrowUpRight className="w-4 h-4 ml-1.5" />
+          </Button>
 
-          return (
-            <div
-              key={session.id}
-              className="p-3.5 rounded-xl border border-slate-200/80 bg-white shadow-2xs flex flex-col justify-between space-y-2 hover:border-saBlue/40 transition-all"
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Badge
-                    variant="outline"
-                    className={`text-[9px] font-black uppercase px-2 py-0.5 border-none ${
-                      isLiveNow
-                        ? 'bg-emerald-100 text-emerald-700 animate-pulse'
-                        : 'bg-saBlue/10 text-saBlue'
-                    }`}
-                  >
-                    {isLiveNow ? 'Live Now' : 'Starts Soon'}
-                  </Badge>
-                  <span className="text-[10px] font-bold text-slate-400">
-                    Until {new Date(session.end_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                </div>
-
-                <h4 className="text-xs font-black text-slate-900 line-clamp-1">
-                  {session.subject?.name || 'Scheduled Class'}
-                </h4>
-                <div className="flex items-center justify-between text-[11px] text-slate-500 font-medium mt-0.5">
-                  <span className="flex items-center gap-1">
-                    <UserCheck className="w-3 h-3 text-slate-400 shrink-0" />
-                    {session.teacher?.user?.name || 'Faculty Member'}
-                  </span>
-                  {(session.class?.name || session.board?.name) && (
-                    <span className="text-[10px] font-bold bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">
-                      {session.class?.name || 'All'} {session.board?.name ? `(${session.board.name})` : ''}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                <Button
-                  size="sm"
-                  onClick={() => handleJoinOrAttend(session)}
-                  className={`flex-1 h-8 rounded-lg font-bold text-xs ${
-                    isLiveNow
-                      ? 'bg-saBlue hover:bg-saBlueDarkHover text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {isLiveNow ? (session.meeting_link ? 'Join Google Meet & Record' : 'Join Live Class') : 'View Session'}
-                  <ArrowUpRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
-                  className="h-8 px-2.5 rounded-lg text-[11px] font-bold border-slate-200 text-slate-600 hover:text-saBlue hover:bg-saBlue/10"
-                >
-                  Attendance Log
-                </Button>
-              </div>
-            </div>
-          );
-        })}
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={() => navigate(`/dashboard/class-sessions/${closestSession.id}/attendance`)}
+            className="w-full sm:w-auto h-12 px-4 rounded-2xl text-xs font-bold border-white/30 text-white hover:bg-white/10 backdrop-blur-xs"
+          >
+            Attendance Log
+          </Button>
+        </div>
       </div>
     </Card>
   );

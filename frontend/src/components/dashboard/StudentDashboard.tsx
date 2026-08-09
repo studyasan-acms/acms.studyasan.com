@@ -631,37 +631,52 @@ export default function StudentDashboard() {
             {analytics && performanceData ? (
                 <div className="space-y-6">
                     {/* Period Selector */}
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Performance Overview</h2>
-                        <div className="flex gap-2">
-                            <Button
-                                size="sm"
-                                variant={performancePeriod === 'daily' ? 'default' : 'outline'}
-                                onClick={() => setPerformancePeriod('daily')}
-                            >
-                                Daily
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant={performancePeriod === 'weekly' ? 'default' : 'outline'}
-                                onClick={() => setPerformancePeriod('weekly')}
-                            >
-                                Weekly
-                            </Button>
-                            <Button
-                                size="sm"
-                                variant={performancePeriod === 'monthly' ? 'default' : 'outline'}
-                                onClick={() => setPerformancePeriod('monthly')}
-                            >
-                                Monthly
-                            </Button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Performance Overview</h2>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/80">
+                                <Button
+                                    size="sm"
+                                    onClick={() => setPerformancePeriod('daily')}
+                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
+                                        performancePeriod === 'daily'
+                                            ? 'bg-[#0276D3] text-white shadow-sm'
+                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                                    }`}
+                                >
+                                    Daily
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => setPerformancePeriod('weekly')}
+                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
+                                        performancePeriod === 'weekly'
+                                            ? 'bg-[#0276D3] text-white shadow-sm'
+                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                                    }`}
+                                >
+                                    Weekly
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    onClick={() => setPerformancePeriod('monthly')}
+                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
+                                        performancePeriod === 'monthly'
+                                            ? 'bg-[#0276D3] text-white shadow-sm'
+                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                                    }`}
+                                >
+                                    Monthly
+                                </Button>
+                            </div>
+
                             <Button
                                 size="sm"
                                 variant="outline"
                                 onClick={handleExportPDF}
-                                className="gap-2 ml-2"
+                                className="h-10 px-4 rounded-2xl text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-50 flex items-center gap-2"
                             >
-                                <Download className="h-4 w-4" />
+                                <Download className="h-4 w-4 text-[#0276D3]" />
                                 Export PDF
                             </Button>
                         </div>
@@ -669,18 +684,18 @@ export default function StudentDashboard() {
 
                     {/* Dynamic Stats Cards - Scroll Horizontally */}
                     <div className="relative">
-                        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scroll-smooth" style={{
+                        <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth" style={{
                             scrollbarWidth: 'thin',
-                            scrollbarColor: 'rgba(59, 130, 246, 0.3) transparent'
+                            scrollbarColor: 'rgba(2, 118, 211, 0.3) transparent'
                         }}>
                             {performanceData[performancePeriod]?.map((item: any, idx: number) => (
-                                <div key={idx} className="flex-shrink-0 w-72 snap-start">
+                                <div key={idx} className="flex-shrink-0 w-64 sm:w-72 snap-start">
                                     <StatCard
                                         title={item.label}
                                         value={`${item.score}%`}
                                         icon={TrendingUp}
                                         description={`Score: ${item.score}/${item.total}`}
-                                        className="bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-800"
+                                        className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#0276D3]/40 transition-all p-5"
                                     />
                                 </div>
                             ))}
@@ -689,43 +704,43 @@ export default function StudentDashboard() {
 
                     {/* Summary Stats */}
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-indigo-50 to-indigo-100 border border-indigo-200">
-                            <p className="text-xs text-indigo-600 font-semibold uppercase">Modules Studied</p>
-                            <p className="text-2xl font-bold text-indigo-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#0276D3]/30 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Modules Studied</p>
+                            <p className="text-2xl font-black text-[#0276D3] mt-1">
                                 {analytics?.modules?.completed || 0}
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200">
-                            <p className="text-xs text-orange-600 font-semibold uppercase">Classes Taken</p>
-                            <p className="text-2xl font-bold text-orange-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#eca209]/40 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Classes Taken</p>
+                            <p className="text-2xl font-black text-[#eca209] mt-1">
                                 {analytics?.classes?.attended || 0}
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200">
-                            <p className="text-xs text-blue-600 font-semibold uppercase">Average Score</p>
-                            <p className="text-2xl font-bold text-blue-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#0276D3]/30 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Average Score</p>
+                            <p className="text-2xl font-black text-[#0276D3] mt-1">
                                 {performanceData[performancePeriod]?.length > 0 
                                     ? (performanceData[performancePeriod].reduce((sum: number, d: any) => sum + (d.score || 0), 0) / performanceData[performancePeriod].length || 0).toFixed(0)
                                     : 0}%
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-green-50 to-green-100 border border-green-200">
-                            <p className="text-xs text-green-600 font-semibold uppercase">Highest Score</p>
-                            <p className="text-2xl font-bold text-green-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-300 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Highest Score</p>
+                            <p className="text-2xl font-black text-emerald-600 mt-1">
                                 {performanceData[performancePeriod]?.length > 0 
                                     ? Math.max(...performanceData[performancePeriod].map((d: any) => d.score))
                                     : 0}%
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-200">
-                            <p className="text-xs text-amber-600 font-semibold uppercase">Attempts</p>
-                            <p className="text-2xl font-bold text-amber-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#eca209]/40 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Attempts</p>
+                            <p className="text-2xl font-black text-[#eca209] mt-1">
                                 {performanceData[performancePeriod]?.length || 0}
                             </p>
                         </div>
-                        <div className="p-4 rounded-lg bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                            <p className="text-xs text-purple-600 font-semibold uppercase">Lowest Score</p>
-                            <p className="text-2xl font-bold text-purple-700 mt-1">
+                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
+                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Lowest Score</p>
+                            <p className="text-2xl font-black text-slate-700 mt-1">
                                 {performanceData[performancePeriod]?.length > 0 
                                     ? Math.min(...performanceData[performancePeriod].map((d: any) => d.score))
                                     : 0}%

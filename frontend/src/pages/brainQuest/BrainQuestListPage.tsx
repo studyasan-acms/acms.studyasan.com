@@ -57,7 +57,7 @@ export default function BrainQuestListPage() {
 
   const fetchSubjects = async () => {
     try {
-      const res = await subjectService.getAll();
+      const res = await subjectService.getAll({ limit: 100 });
       setSubjects(res.data?.data || res.data || []);
     } catch (err) {
       console.error("Failed to load subjects:", err);
@@ -174,11 +174,16 @@ export default function BrainQuestListPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
-              {subjects.map((s: any) => (
-                <SelectItem key={s.id} value={s.id.toString()}>
-                  {s.name}
-                </SelectItem>
-              ))}
+              {subjects.map((s: any) => {
+                const className = s.class?.name ? ` [${s.class.name}]` : "";
+                const boardName = s.board?.name ? ` [${s.board.name}]` : "";
+                const label = `${s.name}${className}${boardName}`;
+                return (
+                  <SelectItem key={s.id} value={s.id.toString()}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         </div>
