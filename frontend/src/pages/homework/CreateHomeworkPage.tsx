@@ -421,7 +421,7 @@ export default function CreateHomeworkPage() {
                   <input
                     id="document"
                     type="file"
-                    accept=".pdf,.doc,.docx,.txt"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
                     onChange={handleFileChange}
                     className="hidden"
                   />

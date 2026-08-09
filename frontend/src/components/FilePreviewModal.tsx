@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   FileText,
   FileCode,
+  FileSpreadsheet,
   Image as ImageIcon,
   Video as VideoIcon,
   Music,
@@ -25,7 +26,7 @@ interface FilePreviewModalProps {
   title?: string;
 }
 
-type FileType = "pdf" | "word" | "image" | "video" | "audio" | "unknown";
+type FileType = "pdf" | "word" | "excel" | "image" | "video" | "audio" | "unknown";
 
 function getFileType(url: string): FileType {
   if (!url) return "unknown";
@@ -36,6 +37,9 @@ function getFileType(url: string): FileType {
   }
   if (cleanUrl.endsWith(".doc") || cleanUrl.endsWith(".docx")) {
     return "word";
+  }
+  if (cleanUrl.endsWith(".xls") || cleanUrl.endsWith(".xlsx") || cleanUrl.endsWith(".csv")) {
+    return "excel";
   }
   if (
     cleanUrl.endsWith(".png") ||
@@ -79,6 +83,8 @@ function getFileIcon(type: FileType) {
       return <FileText className="h-5 w-5 text-red-500" />;
     case "word":
       return <FileCode className="h-5 w-5 text-blue-600" />;
+    case "excel":
+      return <FileSpreadsheet className="h-5 w-5 text-emerald-600" />;
     case "image":
       return <ImageIcon className="h-5 w-5 text-emerald-500" />;
     case "video":
@@ -96,6 +102,8 @@ function getFileTypeLabel(type: FileType): string {
       return "PDF Document";
     case "word":
       return "Word Document";
+    case "excel":
+      return "Excel Spreadsheet";
     case "image":
       return "Image";
     case "video":
@@ -363,6 +371,42 @@ export default function FilePreviewModal({
                   <p className="text-xs text-slate-500 mt-2 leading-relaxed">
                     Microsoft Office Document Viewer requires a publicly accessible URL
                     to load and render Word documents. Since you are in a local
+                    development environment, please download the file directly.
+                  </p>
+                  <Button
+                    onClick={handleDownload}
+                    className="mt-5 bg-saBlue hover:bg-sky-700 text-white font-bold rounded-lg text-xs h-9 px-4 flex items-center gap-1.5"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download to View
+                  </Button>
+                </div>
+              ) : (
+                <iframe
+                  src={`https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(
+                    resolvedUrl
+                  )}`}
+                  className="w-full h-full border-0"
+                  title={fileName}
+                />
+              )}
+            </div>
+          )}
+
+          {/* EXCEL DOCS */}
+          {fileType === "excel" && (
+            <div className="w-full h-[65vh] flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              {isLocalhost() ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
+                  <div className="h-12 w-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-4">
+                    <AlertCircle className="h-6 w-6" />
+                  </div>
+                  <h3 className="font-bold text-slate-800 text-base">
+                    Localhost Preview Restricted
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                    Microsoft Office Document Viewer requires a publicly accessible URL
+                    to load and render Excel spreadsheets. Since you are in a local
                     development environment, please download the file directly.
                   </p>
                   <Button
