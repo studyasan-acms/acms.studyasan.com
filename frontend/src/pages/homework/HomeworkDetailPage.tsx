@@ -114,7 +114,7 @@ export default function HomeworkDetailPage() {
   const [selectedResponseId, setSelectedResponseId] = useState<number | null>(null);
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackFiles, setFeedbackFiles] = useState<File[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null | undefined>(null);
   const [previewTitle, setPreviewTitle] = useState("");
 
   const isAdmin = user?.role === 'ADMIN';
