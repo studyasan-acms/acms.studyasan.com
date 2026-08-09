@@ -42,7 +42,7 @@ import {
   Home,
   Droplet,
   Globe,
-  Map,
+  Map as MapIcon,
   Hash,
   Receipt,
   Plus,
@@ -184,14 +184,16 @@ export default function StudentDetailPage() {
   // Fetch teacher subjects if user is a teacher
   useEffect(() => {
     const fetchTeacherData = async () => {
-      if (user?.role === "TEACHER") {
+      const isTeacherUser = user?.role === "TEACHER" || (typeof user?.role === "object" && (user?.role as any)?.name === "TEACHER");
+      if (isTeacherUser && user?.id) {
         try {
           const res = await teacherService.getAll({ user_id: user.id });
-          const teacherRecord = res.data.data[0];
+          const teacherRecord = res.data?.data?.[0];
           if (teacherRecord) {
             const detailRes = await teacherService.getById(teacherRecord.id);
-            const teacherDetail = (detailRes as any).data || detailRes;
-            const subjectsList = (teacherDetail.teacher_subject_junctions || []).map((j: any) => j.subject).filter(Boolean);
+            const teacherDetail = (detailRes as any).data?.data || (detailRes as any).data || detailRes;
+            const junctions = (teacherDetail as any)?.teacher_subject_junctions || (teacherRecord as any)?.teacher_subject_junctions || [];
+            const subjectsList = junctions.map((j: any) => j.subject || j).filter(Boolean);
             setTeacherSubjects(subjectsList);
           }
         } catch (err) {
@@ -203,16 +205,38 @@ export default function StudentDetailPage() {
   }, [user]);
 
   // Compute available subjects for review based on student enrollments & teacher assignments
-  const studentSubjects = student?.enrollments
-    ? student.enrollments
-        .filter((e: any) => e.type === "SUBJECT" && e.subject)
-        .map((e: any) => e.subject)
-    : [];
+  const studentSubjects: any[] = (() => {
+    if (!student) return [];
+    const subjectsMap = new Map<number, any>();
+    
+    // Direct subject enrollments
+    if (Array.isArray(student.enrollments)) {
+      student.enrollments.forEach((e: any) => {
+        if (e.type === "SUBJECT" && e.subject) {
+          subjectsMap.set(e.subject.id, e.subject);
+        }
+      });
+    }
 
-  const availableSubjects = isAdmin
+    // Class subjects if student is in a class
+    const studentClass = student?.class as any;
+    if (studentClass && Array.isArray(studentClass.class_subjects)) {
+      studentClass.class_subjects.forEach((cs: any) => {
+        if (cs.subject) {
+          subjectsMap.set(cs.subject.id, cs.subject);
+        }
+      });
+    }
+
+    return Array.from(subjectsMap.values());
+  })();
+
+  const isUserAdmin = isAdmin || user?.role === "ADMIN" || (typeof user?.role === "object" && (user?.role as any)?.name === "ADMIN");
+
+  const availableSubjects: any[] = isUserAdmin
     ? studentSubjects
     : studentSubjects.filter((ss: any) =>
-        teacherSubjects.some((ts: any) => ts.id === ss.id)
+        teacherSubjects.some((ts: any) => String(ts.id || ts.subject_id) === String(ss.id))
       );
 
   useEffect(() => {
@@ -238,14 +262,8 @@ export default function StudentDetailPage() {
       setTeacherComment("");
       
       // Select first available subject by default
-      const filtered = isAdmin
-        ? studentSubjects
-        : studentSubjects.filter((ss: any) =>
-            teacherSubjects.some((ts: any) => ts.id === ss.id)
-          );
-          
-      if (filtered.length > 0) {
-        setSelectedReportSubjectId(filtered[0].id);
+      if (availableSubjects.length > 0) {
+        setSelectedReportSubjectId((availableSubjects[0] as any).id);
       } else {
         setSelectedReportSubjectId(null);
       }
