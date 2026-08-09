@@ -125,6 +125,7 @@ import CurriculumPage from '@/pages/admin/CurriculumPage';
 import RoleManagementPage from '@/pages/admin/RoleManagementPage';
 import CouponManagementPage from '@/pages/admin/CouponManagementPage';
 import AnnouncementsPage from '@/pages/announcements/AnnouncementsPage';
+import KnowYourChildPage from '@/pages/KnowYourChildPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -241,6 +242,7 @@ function App() {
           <Route path="students/new" element={<CreateStudentPage />} />
           <Route path="students/:id" element={<StudentDetailPage />} />
           <Route path="students/:id/edit" element={<EditStudentPage />} />
+          <Route path="know-your-child" element={<KnowYourChildPage />} />
 
           {/* Teacher Routes */}
           <Route path="teachers" element={<TeachersPage />} />

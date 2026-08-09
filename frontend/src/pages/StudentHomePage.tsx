@@ -510,7 +510,7 @@ export default function StudentHomePage() {
             {/* Quick Navigation */}
             <div className="space-y-3">
                 <p className="text-xs md:text-sm font-semibold text-gray-600 uppercase tracking-wider px-1">Quick Access</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-4">
                     <QuickNavCard
                         to="/dashboard/subjects"
                         icon={BookOpen}
@@ -531,6 +531,13 @@ export default function StudentHomePage() {
                         label="Test Series"
                         description="Practice & improve"
                         gradient="from-amber-500 to-orange-500"
+                    />
+                    <QuickNavCard
+                        to="/dashboard/know-your-child"
+                        icon={GraduationCap}
+                        label="Know Your Child"
+                        description="Weekly reports & feedback"
+                        gradient="from-teal-500 to-emerald-500"
                     />
                     <QuickNavCard
                         to="/dashboard/profile"

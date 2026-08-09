@@ -118,6 +118,12 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
   {
+    title: "Know Your Child",
+    href: "/dashboard/know-your-child",
+    icon: GraduationCap,
+    roles: ["STUDENT"],
+  },
+  {
     title: "Jobs & Internships",
     href: "/dashboard/jobs",
     icon: Briefcase,

@@ -14,10 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { studentService, subjectService, testSeriesService } from "@/services/api";
+import { studentService, subjectService, testSeriesService, knowYourChildService, teacherService } from "@/services/api";
 import { activityEnrollmentAPI, activityGroupAPI } from "@/services/activity.service";
 import { useAuthStore } from "@/store/authStore";
 import type { Student } from "@/types";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   ArrowLeft,
   Edit,
@@ -39,14 +48,28 @@ import {
   Plus,
   FileText,
   CreditCard,
-  CalendarDays
+  CalendarDays,
+  Check,
+  X,
+  GraduationCap,
+  Download,
+  Search,
+  Eye,
+  Filter,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles
 } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import InvoiceModal from "@/components/InvoiceModal";
 import IDCardModal from "@/components/students/IDCardModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
+import { cn } from "@/lib/utils";
 
 export default function StudentDetailPage() {
   usePageTitle("Student Details");
@@ -87,11 +110,238 @@ export default function StudentDetailPage() {
     }
   }, [id]);
 
+  const [reports, setReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportsPage, setReportsPage] = useState(1);
+  const [reportsTotalPages, setReportsTotalPages] = useState(1);
+  const [reportsTotal, setReportsTotal] = useState(0);
+
+  // Reports Filter States
+  const [reportsSubjectFilter, setReportsSubjectFilter] = useState("all");
+  const [reportsMonthFilter, setReportsMonthFilter] = useState("all");
+  const [reportsStatusFilter, setReportsStatusFilter] = useState("all");
+  const [reportsSearchTerm, setReportsSearchTerm] = useState("");
+
+  const fetchReports = async (
+    studentId: number,
+    pageNum = 1,
+    subjId = reportsSubjectFilter,
+    month = reportsMonthFilter,
+    status = reportsStatusFilter,
+    search = reportsSearchTerm
+  ) => {
+    try {
+      setLoadingReports(true);
+      const params: any = { page: pageNum, limit: 10 };
+      if (subjId !== "all") params.subject_id = parseInt(subjId);
+      if (month !== "all") params.month = month;
+      if (status !== "all") params.feedback_status = status;
+      if (search.trim()) params.search = search.trim();
+
+      const res = await knowYourChildService.getStudentReports(studentId, params);
+      setReports(res.data.data);
+      setReportsPage(res.data.pagination.page);
+      setReportsTotalPages(res.data.pagination.totalPages);
+      setReportsTotal(res.data.pagination.total);
+    } catch (err) {
+      console.error("Failed to fetch student reports:", err);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  const handleClearReportsFilters = (studentId: number) => {
+    setReportsSubjectFilter("all");
+    setReportsMonthFilter("all");
+    setReportsStatusFilter("all");
+    setReportsSearchTerm("");
+    fetchReports(studentId, 1, "all", "all", "all", "");
+  };
+
+  const hasActiveReportsFilters =
+    reportsSubjectFilter !== "all" ||
+    reportsMonthFilter !== "all" ||
+    reportsStatusFilter !== "all" ||
+    reportsSearchTerm.trim() !== "";
+
+  // Weekly reports creation & preview state
+  const [showReportCreateModal, setShowReportCreateModal] = useState(false);
+  const [selectedPreviewReport, setSelectedPreviewReport] = useState<any>(null);
+  
+  // Create Report form state
+  const [reportMonth, setReportMonth] = useState("AUGUST");
+  const [weekStartDate, setWeekStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [weekEndDate, setWeekEndDate] = useState(format(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"));
+  const [ratings, setRatings] = useState<{ subject: string; rating: string }[]>([]);
+  const [newTraitName, setNewTraitName] = useState("");
+  const [teacherComment, setTeacherComment] = useState("");
+  const [submittingReport, setSubmittingReport] = useState(false);
+
+  // Subject selection for report
+  const [selectedReportSubjectId, setSelectedReportSubjectId] = useState<number | null>(null);
+  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
+
+  // Fetch teacher subjects if user is a teacher
+  useEffect(() => {
+    const fetchTeacherData = async () => {
+      if (user?.role === "TEACHER") {
+        try {
+          const res = await teacherService.getAll({ user_id: user.id });
+          const teacherRecord = res.data.data[0];
+          if (teacherRecord) {
+            const detailRes = await teacherService.getById(teacherRecord.id);
+            const teacherDetail = (detailRes as any).data || detailRes;
+            const subjectsList = (teacherDetail.teacher_subject_junctions || []).map((j: any) => j.subject).filter(Boolean);
+            setTeacherSubjects(subjectsList);
+          }
+        } catch (err) {
+          console.error("Failed to load teacher subjects:", err);
+        }
+      }
+    };
+    fetchTeacherData();
+  }, [user]);
+
+  // Compute available subjects for review based on student enrollments & teacher assignments
+  const studentSubjects = student?.enrollments
+    ? student.enrollments
+        .filter((e: any) => e.type === "SUBJECT" && e.subject)
+        .map((e: any) => e.subject)
+    : [];
+
+  const availableSubjects = isAdmin
+    ? studentSubjects
+    : studentSubjects.filter((ss: any) =>
+        teacherSubjects.some((ts: any) => ts.id === ss.id)
+      );
+
+  useEffect(() => {
+    if (showReportCreateModal && student) {
+      // 8 soft traits/constraints requested
+      const softConstraints = [
+        "Attention",
+        "Behaviour",
+        "Understanding",
+        "Reading",
+        "Speaking",
+        "Homework",
+        "Discipline",
+        "Participation"
+      ];
+      
+      const defaultRatings = softConstraints.map((trait: string) => ({
+        subject: trait,
+        rating: "GOOD"
+      }));
+      
+      setRatings(defaultRatings);
+      setTeacherComment("");
+      
+      // Select first available subject by default
+      const filtered = isAdmin
+        ? studentSubjects
+        : studentSubjects.filter((ss: any) =>
+            teacherSubjects.some((ts: any) => ts.id === ss.id)
+          );
+          
+      if (filtered.length > 0) {
+        setSelectedReportSubjectId(filtered[0].id);
+      } else {
+        setSelectedReportSubjectId(null);
+      }
+      
+      // Set default month
+      const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+      const currentMonthIndex = new Date().getMonth();
+      setReportMonth(months[currentMonthIndex]);
+    }
+  }, [showReportCreateModal, student, teacherSubjects]);
+
+  const handleRatingChange = (index: number, rating: string) => {
+    const updated = [...ratings];
+    updated[index].rating = rating;
+    setRatings(updated);
+  };
+
+  const handleAddCustomTrait = () => {
+    if (!newTraitName.trim()) return;
+    if (ratings.some(r => r.subject.toLowerCase() === newTraitName.trim().toLowerCase())) {
+      toast.error("This subject or trait already exists in the list.");
+      return;
+    }
+    setRatings([...ratings, { subject: newTraitName.trim(), rating: "GOOD" }]);
+    setNewTraitName("");
+  };
+
+  const handleRemoveTrait = (index: number) => {
+    const updated = [...ratings];
+    updated.splice(index, 1);
+    setRatings(updated);
+  };
+
+  const handleCreateReport = async () => {
+    if (!student) return;
+    if (!selectedReportSubjectId) {
+      toast.error("Please select a subject to submit the weekly review.");
+      return;
+    }
+    try {
+      setSubmittingReport(true);
+      await knowYourChildService.createReport({
+        student_id: student.id,
+        subject_id: selectedReportSubjectId,
+        month: reportMonth,
+        week_start_date: weekStartDate,
+        week_end_date: weekEndDate,
+        ratings: ratings,
+        teacher_comment: teacherComment
+      });
+      toast.success("Weekly report card created successfully!");
+      setShowReportCreateModal(false);
+      await fetchReports(student.id, 1); // Refresh reports list and reset to page 1
+    } catch (err: any) {
+      console.error("Failed to create report:", err);
+      toast.error(err.response?.data?.error || "Failed to create weekly report.");
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    const element = document.getElementById("weekly-report-card-print");
+    if (!element) return;
+    
+    try {
+      toast.info("Generating PDF...");
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: "#f0f4ff"
+      });
+      const imgData = canvas.toDataURL("image/png");
+      
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: [canvas.width / 2, canvas.height / 2]
+      });
+      
+      pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+      pdf.save(`Weekly_Report_${student?.user?.name || "Student"}_${selectedPreviewReport?.month || "Month"}.pdf`);
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      toast.error("Failed to download PDF.");
+    }
+  };
+
   const fetchStudent = async (studentId: number) => {
     setIsLoading(true);
     try {
       const response = await studentService.getById(studentId);
       setStudent(response.data);
+      await fetchReports(studentId, 1);
     } catch (error) {
       console.error("Failed to fetch student:", error);
     } finally {
@@ -515,6 +765,270 @@ export default function StudentDetailPage() {
         )}
       </div>
 
+      {/* KNOW YOUR CHILD (WEEKLY REPORTS) - REPORT HISTORY LOG */}
+      <div className="px-2">
+        <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow bg-white">
+          <CardContent className="p-6 md:p-8 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-saBlue/10 to-blue-100/50 rounded-xl text-saBlue">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-800 text-xl tracking-tight">Report History Log</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">View and download all weekly performance cards</p>
+                </div>
+              </div>
+              
+              {(isTeacher || isAdmin) && (
+                <Button
+                  onClick={() => setShowReportCreateModal(true)}
+                  className="bg-saBlue hover:bg-saBlue/90 text-white font-bold rounded-xl h-10 px-4 flex items-center gap-1.5 shadow-md shadow-saBlue/10 self-start sm:self-auto"
+                >
+                  <Plus className="h-4 w-4" /> Submit Weekly Review
+                </Button>
+              )}
+            </div>
+
+            {/* FILTERS BAR */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              {/* Search Bar */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  type="text"
+                  placeholder="Search teacher, remarks..."
+                  value={reportsSearchTerm}
+                  onChange={(e) => {
+                    setReportsSearchTerm(e.target.value);
+                    fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, reportsStatusFilter, e.target.value);
+                  }}
+                  className="pl-9 h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white"
+                />
+              </div>
+
+              {/* Subject Filter */}
+              <Select
+                value={reportsSubjectFilter}
+                onValueChange={(val) => {
+                  setReportsSubjectFilter(val);
+                  fetchReports(student.id, 1, val, reportsMonthFilter, reportsStatusFilter, reportsSearchTerm);
+                }}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
+                  <SelectValue placeholder="All Subjects" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subjects</SelectItem>
+                  {studentSubjects.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Month Filter */}
+              <Select
+                value={reportsMonthFilter}
+                onValueChange={(val) => {
+                  setReportsMonthFilter(val);
+                  fetchReports(student.id, 1, reportsSubjectFilter, val, reportsStatusFilter, reportsSearchTerm);
+                }}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
+                  <SelectValue placeholder="All Months" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Months</SelectItem>
+                  {["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"].map((m) => (
+                    <SelectItem key={m} value={m}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Feedback Reply Status Filter */}
+              <Select
+                value={reportsStatusFilter}
+                onValueChange={(val) => {
+                  setReportsStatusFilter(val);
+                  fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, val, reportsSearchTerm);
+                }}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
+                  <SelectValue placeholder="All Feedback Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveReportsFilters && (
+              <div className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleClearReportsFilters(student.id)}
+                  className="h-8 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl flex items-center gap-1 font-bold"
+                >
+                  <X className="h-3.5 w-3.5" /> Clear All Filters
+                </Button>
+              </div>
+            )}
+
+            {loadingReports ? (
+              <div className="flex items-center justify-center py-10">
+                <Loader2 className="h-8 w-8 animate-spin text-saBlue" />
+              </div>
+            ) : reports.length === 0 ? (
+              <div className="text-center py-10 text-gray-400 text-sm bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                No weekly reports matching your filter criteria.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-white">
+                  <Table>
+                    <TableHeader className="bg-slate-50/80">
+                      <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5">Month</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5">Week Duration</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5">Subject</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5">Teacher In-charge</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5">Feedback Reply</TableHead>
+                        <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-600 py-3.5 text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-slate-100">
+                      {reports.map((report) => (
+                        <TableRow
+                          key={report.id}
+                          className="hover:bg-slate-50/70 transition-colors"
+                        >
+                          <TableCell className="py-3.5 font-bold uppercase text-xs">
+                            <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-600 font-extrabold px-2.5 py-0.5 rounded-lg">
+                              {report.month}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="py-3.5 font-semibold text-slate-700 text-xs">
+                            Week of {format(new Date(report.week_start_date), "MMM d")}
+                          </TableCell>
+
+                          <TableCell className="py-3.5 text-xs">
+                            {report.subject ? (
+                              <Badge variant="secondary" className="bg-blue-50 border-blue-200 text-blue-700 font-bold px-2.5 py-0.5 rounded-lg">
+                                {report.subject.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-400 italic">General</span>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="py-3.5 text-slate-700 font-medium text-xs">
+                            {report.teacher?.user?.name || "Teacher"}
+                          </TableCell>
+
+                          <TableCell className="py-3.5 text-xs">
+                            {report.parent_feedback ? (
+                              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                Submitted
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                Pending
+                              </Badge>
+                            )}
+                          </TableCell>
+
+                          <TableCell className="py-3.5 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedPreviewReport(report)}
+                                className="rounded-xl px-3.5 h-8 text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-saBlue transition-all shadow-sm"
+                              >
+                                <Eye className="w-3.5 h-3.5 mr-1" /> View Card
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={async () => {
+                                  setSelectedPreviewReport(report);
+                                  setTimeout(async () => {
+                                    const element = document.getElementById("weekly-report-card-print");
+                                    if (element) {
+                                      try {
+                                        toast.info("Generating PDF...");
+                                        const canvas = await html2canvas(element, {
+                                          scale: 2,
+                                          useCORS: true,
+                                          logging: false,
+                                          backgroundColor: "#f0f4ff"
+                                        });
+                                        const imgData = canvas.toDataURL("image/png");
+                                        const pdf = new jsPDF({
+                                          orientation: "portrait",
+                                          unit: "px",
+                                          format: [canvas.width / 2, canvas.height / 2]
+                                        });
+                                        pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+                                        pdf.save(`Weekly_Report_${student?.user?.name || "Student"}_${report.month}.pdf`);
+                                        toast.success("PDF downloaded successfully!");
+                                      } catch (err) {
+                                        console.error("PDF error:", err);
+                                        toast.error("Failed to download PDF.");
+                                      }
+                                    }
+                                  }, 300);
+                                }}
+                                className="rounded-xl border-slate-200 h-8 w-8 text-slate-500 hover:text-saBlue hover:bg-blue-50"
+                                title="Download PDF"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {reportsTotalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-4">
+                    <p className="text-xs text-slate-500 font-medium">
+                      Showing page <span className="font-bold text-slate-700">{reportsPage}</span> of <span className="font-bold text-slate-700">{reportsTotalPages}</span> ({reportsTotal} reviews)
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        className="h-8 px-3 rounded-lg text-xs"
+                        disabled={reportsPage <= 1 || loadingReports}
+                        onClick={() => fetchReports(student.id, reportsPage - 1)}
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-8 px-3 rounded-lg text-xs"
+                        disabled={reportsPage >= reportsTotalPages || loadingReports}
+                        onClick={() => fetchReports(student.id, reportsPage + 1)}
+                      >
+                        Next <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* ACCOUNT TIMELINE */}
       <div className="px-2">
         <div className="bg-blue-50/30 rounded-2xl p-4 border border-blue-100/50 flex flex-wrap gap-6 items-center justify-center text-center">
@@ -622,6 +1136,342 @@ export default function StudentDetailPage() {
               <div className="grid grid-cols-2 gap-3 mt-8">
                 <Button variant="ghost" onClick={() => setShowActivityGroupModal(false)} className="rounded-xl h-12 text-gray-500 hover:text-gray-700 hover:bg-gray-100">Cancel</Button>
                 <Button onClick={handleEnrollActivityGroup} disabled={!selectedActivityGroupId || loadingActivityGroups} className="rounded-xl h-12 bg-saBlue hover:bg-saBlue/90 shadow-md shadow-saBlue/20">Enroll Now</Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CREATE WEEKLY REPORT DIALOG MODAL */}
+      {showReportCreateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200" onClick={() => setShowReportCreateModal(false)}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden relative border border-gray-100 my-8" onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Submit Weekly Performance Review</h3>
+                <p className="text-slate-400 text-xs mt-0.5">Evaluate subjects and traits for {student?.user?.name}</p>
+              </div>
+              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => setShowReportCreateModal(false)}>
+                <X className="h-4 w-4 text-slate-400" />
+              </Button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-6">
+              {/* Subject, Month and week inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Subject</Label>
+                  {availableSubjects.length === 0 ? (
+                    <div className="text-xs text-red-500 font-bold bg-red-50 border border-red-100 p-2.5 rounded-xl">
+                      No assigned enrolled subjects found.
+                    </div>
+                  ) : (
+                    <Select
+                      value={selectedReportSubjectId?.toString() || ""}
+                      onValueChange={(val) => setSelectedReportSubjectId(parseInt(val))}
+                    >
+                      <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/50">
+                        <SelectValue placeholder="Select Subject" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableSubjects.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Report Month</Label>
+                  <Select value={reportMonth} onValueChange={setReportMonth}>
+                    <SelectTrigger className="h-10 rounded-xl border-slate-200 bg-slate-50/50">
+                      <SelectValue placeholder="Select Month" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"].map(m => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Week Start Date</Label>
+                  <input
+                    type="date"
+                    value={weekStartDate}
+                    onChange={(e) => setWeekStartDate(e.target.value)}
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:border-saBlue"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Week End Date</Label>
+                  <input
+                    type="date"
+                    value={weekEndDate}
+                    onChange={(e) => setWeekEndDate(e.target.value)}
+                    className="w-full h-10 px-3 text-sm rounded-xl border border-slate-200 bg-slate-50/50 outline-none focus:border-saBlue"
+                  />
+                </div>
+              </div>
+
+              {/* Subject ratings */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h4 className="text-xs font-black uppercase text-slate-500 tracking-wider">Evaluations & Ratings</h4>
+                  <span className="text-[10px] text-slate-400">Choose rating for each subject</span>
+                </div>
+                
+                <div className="space-y-2.5">
+                  {ratings.map((rating, idx) => (
+                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl gap-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          type="button"
+                          onClick={() => handleRemoveTrait(idx)}
+                          className="h-6 w-6 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full"
+                          title="Remove trait"
+                        >
+                          <X className="h-3.5 h-3.5" />
+                        </Button>
+                        <span className="text-sm font-bold text-slate-700">{rating.subject}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {["AVERAGE", "SATISFACTORY", "GOOD", "VERY_GOOD"].map((val) => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => handleRatingChange(idx, val)}
+                            className={`px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all ${
+                              rating.rating === val
+                                ? val === "VERY_GOOD" ? "bg-green-500 border-green-500 text-white"
+                                  : val === "GOOD" ? "bg-blue-500 border-blue-500 text-white"
+                                  : val === "SATISFACTORY" ? "bg-orange-500 border-orange-500 text-white"
+                                  : "bg-red-500 border-red-500 text-white"
+                                : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100/50"
+                            }`}
+                          >
+                            {val.replace('_', ' ')}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Add Custom Trait */}
+              <div className="bg-slate-50/50 p-4 border border-slate-100 rounded-2xl space-y-3">
+                <span className="text-xs font-bold uppercase text-slate-500 tracking-wider block">Add Custom Subject or Trait</span>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTraitName}
+                    onChange={(e) => setNewTraitName(e.target.value)}
+                    placeholder="E.g., Hindi, Olympiad, Reading, Speaking..."
+                    className="flex-1 h-10 px-3 text-sm rounded-xl border border-slate-200 bg-white outline-none focus:border-saBlue"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleAddCustomTrait}
+                    className="bg-slate-800 text-white font-bold px-4 h-10 rounded-xl hover:bg-slate-700"
+                  >
+                    Add Trait
+                  </Button>
+                </div>
+              </div>
+
+              {/* Teacher Comment */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold uppercase text-slate-500 tracking-wider">Teacher's Note / Remarks</Label>
+                <textarea
+                  rows={3}
+                  value={teacherComment}
+                  onChange={(e) => setTeacherComment(e.target.value)}
+                  placeholder="Write feedback remarks for the week..."
+                  className="w-full rounded-2xl border-slate-200 focus:border-saBlue bg-slate-50/50 p-4 text-sm outline-none transition-colors border focus:ring-1 focus:ring-saBlue"
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-slate-100 grid grid-cols-2 gap-3 bg-slate-50">
+              <Button variant="ghost" onClick={() => setShowReportCreateModal(false)} className="rounded-xl h-11 text-slate-500 hover:text-slate-700 hover:bg-gray-100">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreateReport}
+                disabled={submittingReport || ratings.length === 0 || availableSubjects.length === 0}
+                className="rounded-xl h-11 bg-saBlue hover:bg-saBlue/90 shadow-md shadow-saBlue/20 text-white font-bold"
+              >
+                {submittingReport ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2 inline" />
+                ) : null}
+                Publish Report Card
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PREVIEW REPORT CARD DIALOG MODAL */}
+      {selectedPreviewReport && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto" 
+          onClick={() => setSelectedPreviewReport(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 max-w-md w-full relative animate-in zoom-in-95 duration-200 max-h-[96vh] flex flex-col" 
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setSelectedPreviewReport(null)}
+              className="absolute top-3 right-3 bg-black/20 hover:bg-black/40 text-white p-1.5 rounded-full z-20 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+
+            {/* Modal Content Scrollable Container */}
+            <div className="p-3 sm:p-4 space-y-3 overflow-y-auto max-h-[92vh]">
+              {/* Action Bar */}
+              <div className="flex justify-between items-center bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-100">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Evaluation Card</span>
+                <Button
+                  onClick={handleDownloadPDF}
+                  className="bg-[#002fbe] hover:bg-[#002fbe]/90 text-white font-bold rounded-xl h-8 px-3 flex items-center gap-1 text-[11px] shadow-xs"
+                >
+                  <Download className="h-3.5 w-3.5" /> Download PDF Card
+                </Button>
+              </div>
+
+              {/* PRINT CONTAINER */}
+              <div id="weekly-report-card-print" className="bg-[#f0f4ff] p-3 sm:p-3.5 rounded-2xl font-sans">
+                <div className="bg-white rounded-2xl overflow-hidden shadow-md border border-slate-100 max-w-sm mx-auto">
+                  {/* 1. Top Blue Bar */}
+                  <div className="bg-[#002fbe] px-3.5 py-1.5 flex items-center justify-between">
+                    <div className="flex items-center h-5">
+                      <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-4 w-auto object-contain" />
+                    </div>
+                    <span className="text-white font-bold text-[8px] tracking-wider">www.studyasan.com</span>
+                  </div>
+
+                  {/* 2. Main Header Block: Orange */}
+                  <div className="bg-[#f06418] px-3.5 py-2.5 flex items-center justify-between border-b border-white/10">
+                    <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-wider leading-none">WEEKLY REPORT</h2>
+                    <div className="flex items-center justify-center bg-[#f06418] border border-white/20 p-0.5 rounded-lg w-9 h-9 shadow-inner shrink-0">
+                      <img src="/studyasan-logo-lady.png" alt="StudyAsan Lady Logo" className="w-7 h-7 object-contain" />
+                    </div>
+                  </div>
+
+                  {/* 3. Meta Details Section */}
+                  <div className="p-3 space-y-2.5">
+                    <div className="grid grid-cols-3 gap-1.5 text-[9px] font-bold">
+                      <div className="space-y-0.5">
+                        <span className="text-slate-500 block uppercase tracking-wide text-[8px]">Student:</span>
+                        <div className="bg-[#1e1e4f] text-white py-1 px-1.5 rounded-md text-center shadow-inner truncate font-extrabold uppercase text-[9px]">
+                          {student?.user?.name}
+                        </div>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <span className="text-slate-500 block uppercase tracking-wide text-[8px]">Class:</span>
+                        <div className="bg-[#1e1e4f] text-white py-1 px-1.5 rounded-md text-center shadow-inner font-extrabold uppercase text-[9px]">
+                          {student?.class?.name || "N/A"}
+                        </div>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <span className="text-slate-500 block uppercase tracking-wide text-[8px]">Month:</span>
+                        <div className="bg-[#1e1e4f] text-white py-1 px-1.5 rounded-md text-center shadow-inner font-extrabold uppercase text-[9px]">
+                          {selectedPreviewReport.month}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4. Subheader */}
+                    <div className="flex items-center gap-1.5 border-b border-slate-200 pb-1.5 pt-0.5 text-[#002fbe]">
+                      <Sparkles className="w-4 h-4 text-[#002fbe] shrink-0" />
+                      <span className="text-xs font-black uppercase tracking-wider text-[#002fbe]">REPORT</span>
+                    </div>
+
+                    {/* 5. Rating Table */}
+                    <div className="border border-slate-200 rounded-lg overflow-hidden shadow-xs">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="bg-[#f06418] text-white">
+                            <th className="py-2 px-2 text-left text-[9px] sm:text-[10px] font-black uppercase tracking-wider border-r border-orange-600/10 w-[30%] align-middle">Subject</th>
+                            <th className="py-2 px-1 text-center text-[8px] sm:text-[9px] font-black uppercase tracking-wider border-r border-orange-600/10 align-middle">Average</th>
+                            <th className="py-2 px-1 text-center text-[8px] sm:text-[9px] font-black uppercase tracking-wider border-r border-orange-600/10 align-middle">Satisfactory</th>
+                            <th className="py-2 px-1 text-center text-[8px] sm:text-[9px] font-black uppercase tracking-wider border-r border-orange-600/10 align-middle">Good</th>
+                            <th className="py-2 px-1 text-center text-[8px] sm:text-[9px] font-black uppercase tracking-wider align-middle">Very Good</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200">
+                          {(() => {
+                            const ratingsList = Array.isArray(selectedPreviewReport.ratings) 
+                              ? selectedPreviewReport.ratings 
+                              : JSON.parse(selectedPreviewReport.ratings || "[]");
+
+                            return ratingsList.map((item: any, idx: number) => (
+                              <tr key={idx} className="hover:bg-slate-50/50 transition-colors h-7">
+                                <td className="py-1 px-2 text-[9px] sm:text-[10px] font-bold text-slate-700 border-r border-slate-200 bg-slate-50/20 align-middle">{item.subject}</td>
+                                <td className="py-0.5 px-1 text-center border-r border-slate-200 align-middle">
+                                  {item.rating === "AVERAGE" && (
+                                    <div className="flex items-center justify-center w-full h-full">
+                                      <span style={{ color: '#dc2626', fontSize: '15px', fontWeight: '900', lineHeight: '1' }}>✔</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-0.5 px-1 text-center border-r border-slate-200 align-middle">
+                                  {item.rating === "SATISFACTORY" && (
+                                    <div className="flex items-center justify-center w-full h-full">
+                                      <span style={{ color: '#dc2626', fontSize: '15px', fontWeight: '900', lineHeight: '1' }}>✔</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-0.5 px-1 text-center border-r border-slate-200 align-middle">
+                                  {item.rating === "GOOD" && (
+                                    <div className="flex items-center justify-center w-full h-full">
+                                      <span style={{ color: '#dc2626', fontSize: '15px', fontWeight: '900', lineHeight: '1' }}>✔</span>
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="py-0.5 px-1 text-center align-middle">
+                                  {item.rating === "VERY_GOOD" && (
+                                    <div className="flex items-center justify-center w-full h-full">
+                                      <span style={{ color: '#dc2626', fontSize: '15px', fontWeight: '900', lineHeight: '1' }}>✔</span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ));
+                          })()}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* 6. Teacher Note Box */}
+                    {selectedPreviewReport.teacher_comment && (
+                      <div className="flex gap-2 items-center bg-[#002fbe] rounded-xl p-2 text-white border border-[#002fbe]/10 shadow-xs relative overflow-hidden">
+                        <div className="w-8 h-8 rounded-full border-2 border-amber-400 bg-[#f06418] flex items-center justify-center shrink-0 overflow-hidden shadow-xs">
+                          <img src="/studyasan-logo-lady.png" alt="StudyAsan Lady Logo" className="w-6 h-6 object-contain" />
+                        </div>
+                        <div className="space-y-0.5 z-10 pr-1">
+                          <p className="text-white text-[9px] sm:text-[10px] leading-snug font-semibold">
+                            {selectedPreviewReport.teacher_comment}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

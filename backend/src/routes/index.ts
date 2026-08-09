@@ -36,6 +36,7 @@ import * as pushNotificationController from '../controllers/pushNotification.con
 import * as teacherRoleController from '../controllers/teacherRole.controller.js';
 import * as uploadController from '../controllers/upload.controller.js';
 import * as jobController from '../controllers/job.controller.js';
+import * as knowYourChildController from '../controllers/knowYourChild.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -746,5 +747,10 @@ router.patch('/jobs/applications/:id/review', authenticate, authorize('ADMIN'), 
 
 // ================== ANNOUNCEMENT ROUTES ==================
 router.use('/announcements', announcementRoutes);
+
+// ================== KNOW YOUR CHILD ROUTES ==================
+router.post('/know-your-child', authenticate, authorize('ADMIN', 'TEACHER'), knowYourChildController.createReport);
+router.get('/know-your-child/student/:studentId', authenticate, knowYourChildController.getStudentReports);
+router.patch('/know-your-child/:id/feedback', authenticate, knowYourChildController.addParentFeedback);
 
 export default router;

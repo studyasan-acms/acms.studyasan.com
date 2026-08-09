@@ -129,6 +129,7 @@ model Student {
   homework_assignments HomeworkAssignment[]
   homework_responses   HomeworkResponse[]
   job_applications     JobApplication[]
+  know_your_child_reports KnowYourChildReport[]
 
   @@map("students")
 }
@@ -161,6 +162,7 @@ model Subject {
   student_progress          StudentModuleProgress[]
   tests                     Test[]
   homework                  Homework[]
+  know_your_child_reports   KnowYourChildReport[]
 
   @@map("subjects")
 }
@@ -254,6 +256,7 @@ model Teacher {
   activity_group_junctions  ActivityGroupTeacherJunction[]
   test_series_junctions     TestSeriesTeacherJunction[]
   created_homework          Homework[]
+  know_your_child_reports   KnowYourChildReport[]
 
   @@map("teachers")
 }
@@ -1135,4 +1138,25 @@ model Announcement {
   creator        User     @relation("AnnouncementCreator", fields: [created_by], references: [id], onDelete: Cascade)
 
   @@map("announcements")
+}
+
+model KnowYourChildReport {
+  id               Int      @id @default(autoincrement())
+  student_id       Int
+  teacher_id       Int
+  subject_id       Int?
+  month            String   // e.g., "JULY"
+  week_start_date  DateTime
+  week_end_date    DateTime
+  ratings          Json     // Evaluated subjects/traits e.g. [{"subject": "Maths", "rating": "VERY_GOOD"}]
+  teacher_comment  String?  @db.Text
+  parent_feedback  String?  @db.Text
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  student          Student  @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  teacher          Teacher  @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  subject          Subject? @relation(fields: [subject_id], references: [id], onDelete: SetNull)
+
+  @@map("know_your_child_reports")
 }

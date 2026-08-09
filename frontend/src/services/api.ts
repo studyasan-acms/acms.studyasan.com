@@ -1552,5 +1552,39 @@ export const announcementService = {
   }
 };
 
+export const knowYourChildService = {
+  getStudentReports: async (
+    studentId: number,
+    params?: {
+      page?: number;
+      limit?: number;
+      subject_id?: number;
+      month?: string;
+      week_start_date?: string;
+      feedback_status?: string;
+      search?: string;
+    }
+  ): Promise<PaginatedResponse<any>> => {
+    const response = await api.get<PaginatedResponse<any>>(`/know-your-child/student/${studentId}`, { params });
+    return response.data;
+  },
+  createReport: async (data: {
+    student_id: number;
+    subject_id?: number;
+    month: string;
+    week_start_date: string;
+    week_end_date: string;
+    ratings: any[];
+    teacher_comment?: string;
+  }): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post('/know-your-child', data);
+    return response.data;
+  },
+  addParentFeedback: async (id: number, parent_feedback: string): Promise<{ success: boolean; data: any }> => {
+    const response = await api.patch(`/know-your-child/${id}/feedback`, { parent_feedback });
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };
