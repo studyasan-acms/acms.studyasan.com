@@ -293,33 +293,33 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
             <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-saBlue/40 blur-[100px] rounded-full" />
 
             {/* Header */}
-            <div className="p-4 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
-                <div className="flex items-center gap-4">
-                    <span className="font-bold text-lg text-saVividOrange">Live Match</span>
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 rounded-full">
-                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            <div className="p-3 sm:p-4 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <span className="font-bold text-sm sm:text-lg text-saVividOrange whitespace-nowrap">Live Match</span>
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full">
+                        {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-saVividOrange/10 px-4 py-2 rounded-full text-saVividOrange border border-saVividOrange/25">
-                        <Star className="w-5 h-5 mr-2 fill-current" />
-                        <span className="font-bold">{Math.round(score)}</span>
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center bg-saVividOrange/10 px-2.5 sm:px-4 py-1 sm:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 text-xs sm:text-sm font-bold">
+                        <Star className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1 sm:mr-2 fill-current" />
+                        <span>{Math.round(score)}</span>
                     </div>
-                    <div className="flex items-center bg-saBlueLight/10 px-4 py-2 rounded-full text-saBlueLight border border-saBlueLight/20">
-                        <Clock className="w-5 h-5 mr-2" />
-                        <span className="font-mono">{timeElapsed}s</span>
+                    <div className="flex items-center bg-saBlueLight/10 px-2.5 sm:px-4 py-1 sm:py-2 rounded-full text-saBlueLight border border-saBlueLight/20 text-xs sm:text-sm font-bold font-mono">
+                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                        <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={onExit}><X /></Button>
+                    <Button variant="ghost" size="sm" onClick={onExit} className="p-1.5 sm:p-2"><X className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
                 </div>
             </div>
 
             {/* Game Grid */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-                <div className="flex-1 grid grid-cols-2 gap-6 md:gap-12 h-full">
+            <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
+                <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-4 md:gap-8 lg:gap-12 h-full">
                     {/* Left */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">Terms</h3>
-                        <div className="grid gap-4">
+                    <div className="space-y-2 sm:space-y-4">
+                        <h3 className="text-xs sm:text-lg font-bold text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">Terms</h3>
+                        <div className="grid gap-2 sm:gap-4">
                             {leftItems.map((pair, index) => {
                                 const isSelected = selectedLeft === index;
                                 const isMatched = matched.has(`L${index}`);
@@ -328,24 +328,24 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         key={index}
                                         onClick={() => handleLeftClick(index)}
                                         disabled={isMatched}
-                                        className={`btn-3d w-full min-h-[4rem] p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-4 group 
+                                        className={`btn-3d w-full min-h-[3rem] sm:min-h-[4rem] p-2 sm:p-4 text-left rounded-lg sm:rounded-xl transition-all duration-300 flex items-center gap-1.5 sm:gap-4 group 
                                         ${isMatched
                                                 ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-105 ring-4 ring-saBlueLight/30 z-10'
-                                                    : 'btn-3d-neutral hover:scale-102'}`}
+                                                    ? 'btn-3d-primary scale-[1.01] ring-2 sm:ring-4 ring-saBlueLight/30 z-10'
+                                                    : 'btn-3d-neutral hover:scale-[1.01]'}`}
                                     >
-                                        {pair.imageLeft && <img src={pair.imageLeft} alt="" className="w-12 h-12 object-cover rounded bg-black/30" />}
-                                        <span className={`font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.left}</span>
+                                        {pair.imageLeft && <img src={pair.imageLeft} alt="" className="w-7 h-7 sm:w-12 sm:h-12 object-cover rounded bg-black/30 shrink-0" />}
+                                        <span className={`text-xs sm:text-base font-bold break-words leading-tight ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.left}</span>
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
                     {/* Right */}
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold text-center text-saVividOrange uppercase tracking-widest border-b border-saVividOrange/30 pb-2">Definitions</h3>
-                        <div className="grid gap-4">
+                    <div className="space-y-2 sm:space-y-4">
+                        <h3 className="text-xs sm:text-lg font-bold text-center text-saVividOrange uppercase tracking-widest border-b border-saVividOrange/30 pb-2">Definitions</h3>
+                        <div className="grid gap-2 sm:gap-4">
                             {rightItems.map((pair, index) => {
                                 const isSelected = selectedRight === index;
                                 const isMatched = matched.has(`R${index}`);
@@ -355,22 +355,22 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         key={index}
                                         onClick={() => handleRightClick(index)}
                                         disabled={isMatched || !isVisible}
-                                        className={`btn-3d w-full min-h-[4rem] p-4 text-left rounded-xl transition-all duration-300 flex items-center gap-4 group 
+                                        className={`btn-3d w-full min-h-[3rem] sm:min-h-[4rem] p-2 sm:p-4 text-left rounded-lg sm:rounded-xl transition-all duration-300 flex items-center gap-1.5 sm:gap-4 group 
                                         ${isMatched
                                                 ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-105 ring-4 ring-saVividOrange/30 z-10'
+                                                    ? 'btn-3d-primary scale-[1.01] ring-2 sm:ring-4 ring-saVividOrange/30 z-10'
                                                     : !isVisible
                                                         ? 'bg-slate-800/50 border-slate-700 text-slate-500 cursor-not-allowed'
-                                                        : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-102 shadow-lg'}`}
+                                                        : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-[1.01] shadow-lg'}`}
                                     >
                                         {isVisible ? (
                                             <>
-                                                {pair.imageRight && <img src={pair.imageRight} alt="" className="w-12 h-12 object-cover rounded bg-black/30" />}
-                                                <span className={`font-bold ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.right}</span>
+                                                {pair.imageRight && <img src={pair.imageRight} alt="" className="w-7 h-7 sm:w-12 sm:h-12 object-cover rounded bg-black/30 shrink-0" />}
+                                                <span className={`text-xs sm:text-base font-bold break-words leading-tight ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.right}</span>
                                             </>
                                         ) : (
-                                            <div className="w-full flex justify-center"><span className="text-xl font-bold text-slate-600">?</span></div>
+                                            <div className="w-full flex justify-center"><span className="text-base sm:text-xl font-bold text-slate-600">?</span></div>
                                         )}
                                     </button>
                                 );
