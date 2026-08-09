@@ -38,6 +38,7 @@ import * as uploadController from '../controllers/upload.controller.js';
 import * as jobController from '../controllers/job.controller.js';
 import * as knowYourChildController from '../controllers/knowYourChild.controller.js';
 import * as brainQuestController from '../controllers/brainQuest.controller.js';
+import * as agencyController from '../controllers/agency.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -766,5 +767,27 @@ router.post('/brain-quest/submission/:submissionId/grade', authenticate, authori
 
 // ================== FILE PROXY ROUTE ==================
 router.get('/upload/proxy-file', uploadController.proxyFile);
+
+// ================== REFERRAL / AGENCY ROUTES ==================
+router.post('/referral/validate-code', agencyController.validateReferralCode);
+
+// Agency Auth & Portal
+router.post('/agency/login', agencyController.agencyLogin);
+router.get('/agency/profile', authenticate, agencyController.getAgencyProfile);
+router.get('/agency/dashboard', authenticate, agencyController.getAgencyDashboard);
+router.get('/agency/students', authenticate, agencyController.getAgencyStudents);
+router.post('/agency/students', authenticate, agencyController.createStudentByAgency);
+router.get('/agency/earnings', authenticate, agencyController.getAgencyEarnings);
+router.post('/agency/payout-request', authenticate, agencyController.requestPayout);
+router.get('/agency/payouts', authenticate, agencyController.getAgencyPayouts);
+
+// Admin Agency Management
+router.post('/admin/agencies', authenticate, authorize('ADMIN'), agencyController.createAgency);
+router.get('/admin/agencies', authenticate, authorize('ADMIN'), agencyController.getAllAgencies);
+router.get('/admin/agencies/:id', authenticate, authorize('ADMIN'), agencyController.getAgencyById);
+router.put('/admin/agencies/:id', authenticate, authorize('ADMIN'), agencyController.updateAgency);
+router.delete('/admin/agencies/:id', authenticate, authorize('ADMIN'), agencyController.deleteAgency);
+router.get('/admin/agency-payouts', authenticate, authorize('ADMIN'), agencyController.getAgencyPayouts);
+router.patch('/admin/agency-payouts/:payoutId', authenticate, authorize('ADMIN'), agencyController.handlePayoutRequest);
 
 export default router;

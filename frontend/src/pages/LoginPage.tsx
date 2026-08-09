@@ -233,6 +233,12 @@ export default function LoginPage() {
                   Sign up
                 </Link>
               </p>
+              <p className="text-sm text-center text-gray-600">
+                Login As {" "}
+                <Link to="/agency/login" className="text-[#0076CE] hover:text-[#0055a3] hover:underline">
+                  Agency
+                </Link>
+              </p>
             </CardFooter>
           </form>
         </Card>

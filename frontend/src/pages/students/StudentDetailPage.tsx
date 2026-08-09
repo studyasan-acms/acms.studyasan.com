@@ -121,6 +121,8 @@ export default function StudentDetailPage() {
   const [reportsSubjectFilter, setReportsSubjectFilter] = useState("all");
   const [reportsMonthFilter, setReportsMonthFilter] = useState("all");
   const [reportsStatusFilter, setReportsStatusFilter] = useState("all");
+  const [reportsWeekFilter, setReportsWeekFilter] = useState("all");
+  const [allWeeks, setAllWeeks] = useState<string[]>([]);
   const [reportsSearchTerm, setReportsSearchTerm] = useState("");
 
   const fetchReports = async (
@@ -129,6 +131,7 @@ export default function StudentDetailPage() {
     subjId = reportsSubjectFilter,
     month = reportsMonthFilter,
     status = reportsStatusFilter,
+    weekStartDate = reportsWeekFilter,
     search = reportsSearchTerm
   ) => {
     try {
@@ -137,6 +140,7 @@ export default function StudentDetailPage() {
       if (subjId !== "all") params.subject_id = parseInt(subjId);
       if (month !== "all") params.month = month;
       if (status !== "all") params.feedback_status = status;
+      if (weekStartDate !== "all") params.week_start_date = weekStartDate;
       if (search.trim()) params.search = search.trim();
 
       const res = await knowYourChildService.getStudentReports(studentId, params);
@@ -144,6 +148,14 @@ export default function StudentDetailPage() {
       setReportsPage(res.data.pagination.page);
       setReportsTotalPages(res.data.pagination.totalPages);
       setReportsTotal(res.data.pagination.total);
+
+      // Populate weeks list if empty
+      if (allWeeks.length === 0) {
+        const allRes = await knowYourChildService.getStudentReports(studentId, { limit: 100 });
+        const uniqueWeeks = Array.from(new Set(allRes.data.data.map((r: any) => r.week_start_date))) as string[];
+        uniqueWeeks.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        setAllWeeks(uniqueWeeks);
+      }
     } catch (err) {
       console.error("Failed to fetch student reports:", err);
     } finally {
@@ -155,14 +167,16 @@ export default function StudentDetailPage() {
     setReportsSubjectFilter("all");
     setReportsMonthFilter("all");
     setReportsStatusFilter("all");
+    setReportsWeekFilter("all");
     setReportsSearchTerm("");
-    fetchReports(studentId, 1, "all", "all", "all", "");
+    fetchReports(studentId, 1, "all", "all", "all", "all", "");
   };
 
   const hasActiveReportsFilters =
     reportsSubjectFilter !== "all" ||
     reportsMonthFilter !== "all" ||
     reportsStatusFilter !== "all" ||
+    reportsWeekFilter !== "all" ||
     reportsSearchTerm.trim() !== "";
 
   // Weekly reports creation & preview state
@@ -822,7 +836,7 @@ export default function StudentDetailPage() {
             </div>
 
             {/* FILTERS BAR */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-2">
               {/* Search Bar */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -832,7 +846,7 @@ export default function StudentDetailPage() {
                   value={reportsSearchTerm}
                   onChange={(e) => {
                     setReportsSearchTerm(e.target.value);
-                    fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, reportsStatusFilter, e.target.value);
+                    fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, reportsStatusFilter, reportsWeekFilter, e.target.value);
                   }}
                   className="pl-9 h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white"
                 />
@@ -843,7 +857,7 @@ export default function StudentDetailPage() {
                 value={reportsSubjectFilter}
                 onValueChange={(val) => {
                   setReportsSubjectFilter(val);
-                  fetchReports(student.id, 1, val, reportsMonthFilter, reportsStatusFilter, reportsSearchTerm);
+                  fetchReports(student.id, 1, val, reportsMonthFilter, reportsStatusFilter, reportsWeekFilter, reportsSearchTerm);
                 }}
               >
                 <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
@@ -862,7 +876,7 @@ export default function StudentDetailPage() {
                 value={reportsMonthFilter}
                 onValueChange={(val) => {
                   setReportsMonthFilter(val);
-                  fetchReports(student.id, 1, reportsSubjectFilter, val, reportsStatusFilter, reportsSearchTerm);
+                  fetchReports(student.id, 1, reportsSubjectFilter, val, reportsStatusFilter, reportsWeekFilter, reportsSearchTerm);
                 }}
               >
                 <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
@@ -876,12 +890,33 @@ export default function StudentDetailPage() {
                 </SelectContent>
               </Select>
 
+              {/* Week Filter */}
+              <Select
+                value={reportsWeekFilter}
+                onValueChange={(val) => {
+                  setReportsWeekFilter(val);
+                  fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, reportsStatusFilter, val, reportsSearchTerm);
+                }}
+              >
+                <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
+                  <SelectValue placeholder="All Weeks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Weeks</SelectItem>
+                  {allWeeks.map((week) => (
+                    <SelectItem key={week} value={week}>
+                      Week of {format(new Date(week), "MMM d, yyyy")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               {/* Feedback Reply Status Filter */}
               <Select
                 value={reportsStatusFilter}
                 onValueChange={(val) => {
                   setReportsStatusFilter(val);
-                  fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, val, reportsSearchTerm);
+                  fetchReports(student.id, 1, reportsSubjectFilter, reportsMonthFilter, val, reportsWeekFilter, reportsSearchTerm);
                 }}
               >
                 <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">

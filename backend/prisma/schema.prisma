@@ -45,6 +45,7 @@ model User {
   reset_otp_hash          String? // Hashed OTP for password reset
   reset_otp_expires_at    DateTime? // OTP expiry timestamp
   fcm_token               String? // Firebase Cloud Messaging token for push notifications
+  reference_code          String? // Reference code used during signup
   created_at              DateTime                 @default(now())
   updated_at              DateTime                 @updatedAt
   student                 Student?
@@ -94,6 +95,7 @@ model OtpVerification {
   name       String // Store user's name temporarily
   phone      String // Store user's phone temporarily
   password   String // Store hashed password temporarily
+  reference_code String? // Optional referral code
   expires_at DateTime
   verified   Boolean  @default(false)
   created_at DateTime @default(now())
@@ -113,12 +115,15 @@ model Student {
   gender               Gender?
   school               String?
   blood_group          BloodGroup?
+  reference_code       String?
+  agency_id            Int?
   address              StudentAddress?
   created_at           DateTime                @default(now())
   updated_at           DateTime                @updatedAt
   user                 User                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
   class                Class?                  @relation(fields: [class_id], references: [id])
   board                Board?                  @relation(fields: [board_id], references: [id])
+  agency               Agency?                 @relation("AgencyStudents", fields: [agency_id], references: [id], onDelete: SetNull)
   enrollments          Enrollment[]
   module_progress      StudentModuleProgress[]
   test_attempts        TestAttempt[]
@@ -132,6 +137,7 @@ model Student {
   job_applications     JobApplication[]
   know_your_child_reports KnowYourChildReport[]
   brain_quest_submissions BrainQuestSubmission[]
+  referral_earnings    ReferralEarning[]
 
   @@map("students")
 }
@@ -215,9 +221,10 @@ model Payment {
   amount        Float
   is_paid       Boolean        @default(false)
   paid_date     DateTime?
-  created_at    DateTime       @default(now())
-  updated_at    DateTime       @updatedAt
-  enrollment    Enrollment     @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+  enrollment        Enrollment        @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
+  referral_earnings ReferralEarning[]
 
   @@map("enrollment_payments")
 }
@@ -1208,3 +1215,82 @@ model BrainQuestSubmission {
   @@unique([brain_quest_id, student_id])
   @@map("brain_quest_submissions")
 }
+
+// ================= REFERRAL / AGENCY SYSTEM =================
+
+model Agency {
+  id               Int               @id @default(autoincrement())
+  name             String
+  email            String            @unique
+  phone            String
+  password         String            // Hashed password for agency login
+  referral_code    String            @unique
+  commission_type  CommissionType    @default(PERCENTAGE)
+  commission_rate  Float             @default(10) // e.g. 10% or Rs 500 fixed per payment
+  min_payout_limit Float             @default(1000) // Minimum threshold for reimbursement
+  total_earnings   Float             @default(0) // Accumulated total commission
+  paid_earnings    Float             @default(0) // Total reimbursed/paid amount
+  points_balance   Float             @default(0) // Redeemable balance
+  is_active        Boolean           @default(true)
+  created_at       DateTime          @default(now())
+  updated_at       DateTime          @updatedAt
+
+  students         Student[]         @relation("AgencyStudents")
+  earnings         ReferralEarning[]
+  payouts          ReferralPayout[]
+
+  @@map("agencies")
+}
+
+enum CommissionType {
+  PERCENTAGE
+  FIXED
+}
+
+model ReferralEarning {
+  id                Int                   @id @default(autoincrement())
+  agency_id         Int
+  student_id        Int
+  payment_id        Int?
+  amount_paid       Float                 // Fee amount paid by student
+  commission_amount Float                 // Calculated commission earned
+  status            ReferralEarningStatus @default(EARNED)
+  notes             String?
+  created_at        DateTime              @default(now())
+
+  agency            Agency                @relation(fields: [agency_id], references: [id], onDelete: Cascade)
+  student           Student               @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  payment           Payment?              @relation(fields: [payment_id], references: [id], onDelete: SetNull)
+
+  @@map("referral_earnings")
+}
+
+enum ReferralEarningStatus {
+  EARNED
+  REIMBURSED
+  CANCELLED
+}
+
+model ReferralPayout {
+  id              Int          @id @default(autoincrement())
+  agency_id       Int
+  amount          Float
+  status          PayoutStatus @default(PENDING)
+  payout_method   String?      // e.g. Bank Transfer, UPI
+  account_details String?
+  notes           String?
+  requested_at    DateTime     @default(now())
+  processed_at    DateTime?
+
+  agency          Agency       @relation(fields: [agency_id], references: [id], onDelete: Cascade)
+
+  @@map("referral_payouts")
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+

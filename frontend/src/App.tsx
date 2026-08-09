@@ -129,6 +129,9 @@ import DeletionRequestsPage from '@/pages/admin/DeletionRequestsPage';
 import CurriculumPage from '@/pages/admin/CurriculumPage';
 import RoleManagementPage from '@/pages/admin/RoleManagementPage';
 import CouponManagementPage from '@/pages/admin/CouponManagementPage';
+import { AdminAgenciesPage } from '@/pages/admin/AdminAgenciesPage';
+import { AgencyLoginPage } from '@/pages/agency/AgencyLoginPage';
+import { AgencyDashboardPage } from '@/pages/agency/AgencyDashboardPage';
 import AnnouncementsPage from '@/pages/announcements/AnnouncementsPage';
 import KnowYourChildPage from '@/pages/KnowYourChildPage';
 
@@ -230,6 +233,10 @@ function App() {
             </PublicRoute>
           }
         />
+
+        {/* Agency Portal Routes */}
+        <Route path="/agency/login" element={<AgencyLoginPage />} />
+        <Route path="/agency/dashboard" element={<AgencyDashboardPage />} />
 
         {/* Protected Routes */}
         <Route
@@ -352,6 +359,9 @@ function App() {
 
           {/* Admin Coupon Management Route */}
           <Route path="admin/coupons" element={<CouponManagementPage />} />
+
+          {/* Admin Agencies & Referrers Route */}
+          <Route path="admin/agencies" element={<AdminAgenciesPage />} />
 
           {/* Analytics Routes */}
           <Route path="analytics" element={<StudentAnalyticsPage />} />

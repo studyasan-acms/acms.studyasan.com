@@ -35,6 +35,7 @@ export default function RegisterPage() {
     phone: "",
     password: "",
     confirmPassword: "",
+    reference_code: "",
   });
 
   // OTP state
@@ -80,6 +81,14 @@ export default function RegisterPage() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('code') || params.get('reference_code');
+    if (ref) {
+      setFormData(prev => ({ ...prev, reference_code: ref.toUpperCase() }));
+    }
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (formData.password) {
         validatePasswordDebounced(formData.password);
@@ -118,6 +127,7 @@ export default function RegisterPage() {
         email: formData.email.toLowerCase(),
         phone: formData.phone,
         password: formData.password,
+        reference_code: formData.reference_code ? formData.reference_code.toUpperCase() : undefined,
       };
 
       await authService.requestOtp(registerData);
@@ -494,6 +504,24 @@ export default function RegisterPage() {
                       <Check className="h-3 w-3" /> Passwords match
                     </p>
                   )}
+                </div>
+
+                {/* Referral Code (Optional) */}
+                <div className="space-y-2">
+                  <Label htmlFor="reference_code" className="text-gray-700 text-sm flex items-center justify-between">
+                    <span>Referral Code</span>
+                    <span className="text-xs text-gray-400 font-normal">Optional</span>
+                  </Label>
+                  <Input
+                    id="reference_code"
+                    name="reference_code"
+                    type="text"
+                    placeholder="e.g. AGENCY100"
+                    value={formData.reference_code}
+                    onChange={handleChange}
+                    disabled={isLoading}
+                    className="h-11 rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE] uppercase font-mono"
+                  />
                 </div>
               </CardContent>
 

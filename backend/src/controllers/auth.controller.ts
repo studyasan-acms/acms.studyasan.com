@@ -17,8 +17,9 @@ const generateOTP = (): string => {
 // Request OTP for registration
 export const requestOTP = async (req: Request, res: Response) => {
   try {
-    let { name, email, phone, password } = req.body;
+    let { name, email, phone, password, reference_code, referral_code } = req.body;
     if (email) email = email.toLowerCase();
+    const refCode = reference_code || referral_code || null;
 
     // Validate required fields
     if (!name || !email || !phone || !password) {
@@ -65,6 +66,7 @@ export const requestOTP = async (req: Request, res: Response) => {
         phone,
         password: hashedPassword,
         otp_hash: hashedOTP,
+        reference_code: refCode,
         expires_at: expiresAt,
       },
     });
@@ -135,6 +137,17 @@ export const verifyOTP = async (req: Request, res: Response) => {
       return sendError(res, 'An account with this email already exists', 400);
     }
 
+    // Check for referring agency
+    let agencyId: number | null = null;
+    if (otpRecord.reference_code) {
+      const agency = await prisma.agency.findUnique({
+        where: { referral_code: otpRecord.reference_code.trim().toUpperCase() }
+      });
+      if (agency && agency.is_active) {
+        agencyId = agency.id;
+      }
+    }
+
     // Create the user
     const user = await prisma.user.create({
       data: {
@@ -143,6 +156,7 @@ export const verifyOTP = async (req: Request, res: Response) => {
         phone: otpRecord.phone,
         password: otpRecord.password,
         role: 'STUDENT',
+        reference_code: otpRecord.reference_code || null,
       },
       select: {
         id: true,
@@ -153,10 +167,12 @@ export const verifyOTP = async (req: Request, res: Response) => {
       },
     });
 
-    // Create student record
+    // Create student record linked to referring agency
     await prisma.student.create({
       data: {
         user_id: user.id,
+        reference_code: otpRecord.reference_code || null,
+        agency_id: agencyId,
       },
     });
 

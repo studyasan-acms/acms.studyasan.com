@@ -24,6 +24,7 @@ import {
   FolderOpen,
   Play,
   DollarSign,
+  Building2,
   TrendingUp,
   Settings,
   Shield,
@@ -166,6 +167,12 @@ const navItems: NavItem[] = [
     title: "Coupons",
     href: "/dashboard/admin/coupons",
     icon: DollarSign,
+    roles: ["ADMIN"],
+  },
+  {
+    title: "Agencies & Referrers",
+    href: "/dashboard/admin/agencies",
+    icon: Building2,
     roles: ["ADMIN"],
   },
   {

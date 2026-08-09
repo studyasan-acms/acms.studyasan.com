@@ -4,6 +4,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { NotificationProcessorService } from '../services/notificationProcessor.service.js';
 import { sendNotificationAllChannels } from '../services/notification.service.js';
+import { processReferralCommissionForPayment } from './agency.controller.js';
 
 const prisma = new PrismaClient();
 
@@ -213,6 +214,9 @@ export const markPaymentAsPaid = async (req: Request, res: Response) => {
         },
       },
     });
+
+    // Calculate & issue commission to referring agency (if applicable)
+    processReferralCommissionForPayment(updatedPayment.id).catch(console.error);
 
     // Cancel corresponding pending notification
     let itemName = 'Unknown Item';

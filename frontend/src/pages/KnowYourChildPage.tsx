@@ -67,6 +67,8 @@ export default function KnowYourChildPage() {
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState("all");
   const [selectedMonthFilter, setSelectedMonthFilter] = useState("all");
   const [selectedStatusFilter, setSelectedStatusFilter] = useState("all");
+  const [selectedWeekFilter, setSelectedWeekFilter] = useState("all");
+  const [allWeeks, setAllWeeks] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
@@ -80,6 +82,7 @@ export default function KnowYourChildPage() {
     subjectId = selectedSubjectFilter,
     month = selectedMonthFilter,
     status = selectedStatusFilter,
+    weekStartDate = selectedWeekFilter,
     search = searchTerm
   ) => {
     try {
@@ -99,6 +102,7 @@ export default function KnowYourChildPage() {
       if (subjectId !== "all") params.subject_id = parseInt(subjectId);
       if (month !== "all") params.month = month;
       if (status !== "all") params.feedback_status = status;
+      if (weekStartDate !== "all") params.week_start_date = weekStartDate;
       if (search.trim()) params.search = search.trim();
 
       // Fetch weekly reports with filters
@@ -108,6 +112,14 @@ export default function KnowYourChildPage() {
       setReportsPage(reportsRes.data.pagination.page);
       setReportsTotalPages(reportsRes.data.pagination.totalPages);
       setReportsTotal(reportsRes.data.pagination.total);
+      
+      // Populate weeks list if empty
+      if (allWeeks.length === 0) {
+        const allRes = await knowYourChildService.getStudentReports(studentData.id, { limit: 100 });
+        const uniqueWeeks = Array.from(new Set(allRes.data.data.map((r: any) => r.week_start_date))) as string[];
+        uniqueWeeks.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+        setAllWeeks(uniqueWeeks);
+      }
       
       setSelectedReport(null);
       setFeedbackText("");
@@ -127,14 +139,16 @@ export default function KnowYourChildPage() {
     setSelectedSubjectFilter("all");
     setSelectedMonthFilter("all");
     setSelectedStatusFilter("all");
+    setSelectedWeekFilter("all");
     setSearchTerm("");
-    fetchStudentData(1, "all", "all", "all", "");
+    fetchStudentData(1, "all", "all", "all", "all", "");
   };
 
   const hasActiveFilters =
     selectedSubjectFilter !== "all" ||
     selectedMonthFilter !== "all" ||
     selectedStatusFilter !== "all" ||
+    selectedWeekFilter !== "all" ||
     searchTerm.trim() !== "";
 
   const handleSelectReport = (report: any) => {
@@ -269,7 +283,7 @@ export default function KnowYourChildPage() {
               </div>
 
               {/* FILTERS BAR */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-2">
                 {/* Search Bar */}
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -279,7 +293,7 @@ export default function KnowYourChildPage() {
                     value={searchTerm}
                     onChange={(e) => {
                       setSearchTerm(e.target.value);
-                      fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, e.target.value);
+                      fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, selectedWeekFilter, e.target.value);
                     }}
                     className="pl-9 h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white"
                   />
@@ -290,7 +304,7 @@ export default function KnowYourChildPage() {
                   value={selectedSubjectFilter}
                   onValueChange={(val) => {
                     setSelectedSubjectFilter(val);
-                    fetchStudentData(1, val, selectedMonthFilter, selectedStatusFilter, searchTerm);
+                    fetchStudentData(1, val, selectedMonthFilter, selectedStatusFilter, selectedWeekFilter, searchTerm);
                   }}
                 >
                   <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
@@ -309,7 +323,7 @@ export default function KnowYourChildPage() {
                   value={selectedMonthFilter}
                   onValueChange={(val) => {
                     setSelectedMonthFilter(val);
-                    fetchStudentData(1, selectedSubjectFilter, val, selectedStatusFilter, searchTerm);
+                    fetchStudentData(1, selectedSubjectFilter, val, selectedStatusFilter, selectedWeekFilter, searchTerm);
                   }}
                 >
                   <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
@@ -323,12 +337,33 @@ export default function KnowYourChildPage() {
                   </SelectContent>
                 </Select>
 
+                {/* Week Filter */}
+                <Select
+                  value={selectedWeekFilter}
+                  onValueChange={(val) => {
+                    setSelectedWeekFilter(val);
+                    fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, val, searchTerm);
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
+                    <SelectValue placeholder="All Weeks" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Weeks</SelectItem>
+                    {allWeeks.map((week) => (
+                      <SelectItem key={week} value={week}>
+                        Week of {format(new Date(week), "MMM d, yyyy")}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
                 {/* Feedback Reply Status Filter */}
                 <Select
                   value={selectedStatusFilter}
                   onValueChange={(val) => {
                     setSelectedStatusFilter(val);
-                    fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, val, searchTerm);
+                    fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, val, selectedWeekFilter, searchTerm);
                   }}
                 >
                   <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
