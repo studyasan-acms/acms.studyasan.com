@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { analyticsService, homeService, announcementService, boardService } from '@/services/api';
+import api from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import HomeItemCard from '@/components/home/HomeItemCard';
@@ -38,7 +39,8 @@ import {
     Calendar,
     Megaphone,
     Grid3x3,
-    BookMarked
+    BookMarked,
+    PartyPopper
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,11 +74,80 @@ interface StudentAnalytics {
 }
 
 // Slider Component from StudentHomePage
-const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
+const SectionBoardFilter = ({ 
+    boards, 
+    selectedBoard, 
+    onSelectBoard 
+}: { 
+    boards: Array<{ id: string; name: string; count: number }>;
+    selectedBoard: string;
+    onSelectBoard: (board: string) => void;
+}) => {
+    if (boards.length === 0) return null;
+    
+    return (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1 flex-wrap">
+            <button
+                onClick={() => onSelectBoard('ALL')}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${
+                    selectedBoard === 'ALL'
+                        ? 'bg-saBlue text-white shadow-xs'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+                All Boards
+            </button>
+            {boards.slice(0, 4).map((board) => (
+                <button
+                    key={board.id}
+                    onClick={() => onSelectBoard(board.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                        selectedBoard === board.id
+                            ? 'bg-saBlue text-white shadow-xs'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                    <BookMarked className="h-3.5 w-3.5" />
+                    {board.name}
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                        selectedBoard === board.id
+                            ? 'bg-white/30 text-white'
+                            : 'bg-slate-200 text-slate-500'
+                    }`}>
+                        {board.count}
+                    </span>
+                </button>
+            ))}
+            {boards.length > 4 && (
+                <Select value={selectedBoard} onValueChange={onSelectBoard}>
+                    <SelectTrigger className="w-fit h-8 rounded-full border-none bg-slate-100 hover:bg-slate-200 text-xs font-bold px-3">
+                        <SelectValue placeholder="More" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {boards.slice(4).map((board) => (
+                            <SelectItem key={board.id} value={board.id}>
+                                <span className="flex items-center gap-2 text-xs font-bold">
+                                    {board.name}
+                                    <span className="text-[10px] text-slate-400">({board.count})</span>
+                                </span>
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+        </div>
+    );
+};
+
+// Slider Component from StudentHomePage
+const ItemSlider = ({ title, items, icon: Icon, onItemClick, boards, selectedBoard, onSelectBoard }: {
     title: string;
     items: any[];
     icon: React.ElementType;
     onItemClick: (item: any) => void;
+    boards?: Array<{ id: string; name: string; count: number }>;
+    selectedBoard?: string;
+    onSelectBoard?: (board: string) => void;
 }) => {
     const scrollLeft = () => {
         const container = document.getElementById(`slider-${title.replace(/\s+/g, '-')}`);
@@ -100,15 +171,26 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
 
     return (
         <div className="space-y-4 md:space-y-5">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-5 w-5 text-primary" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                <div className="flex items-center space-x-3 shrink-0">
+                    <div className="p-2 rounded-xl bg-blue-50 text-[#0276D3]">
+                        <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-800">{title}</h3>
+                    <h3 className="text-xl font-extrabold text-slate-800">{title}</h3>
                 </div>
+
+                {boards && selectedBoard && onSelectBoard && boards.length > 0 && (
+                    <div className="flex-1 sm:ml-6 flex items-center justify-start overflow-x-auto">
+                        <SectionBoardFilter
+                            boards={boards}
+                            selectedBoard={selectedBoard}
+                            onSelectBoard={onSelectBoard}
+                        />
+                    </div>
+                )}
+
                 {items.length > 2 && (
-                    <div className="flex space-x-2">
+                    <div className="flex space-x-2 shrink-0 self-end sm:self-auto">
                         <Button
                             variant="outline"
                             size="sm"
@@ -132,10 +214,10 @@ const ItemSlider = ({ title, items, icon: Icon, onItemClick }: {
             {/* Horizontal Slider for all screen sizes */}
             <div
                 id={`slider-${title.replace(/\s+/g, '-')}`}
-                className="flex space-x-3 md:space-x-4 overflow-x-auto pb-2 snap-x snap-mandatory scroll-smooth"
+                className="flex space-x-4 md:space-x-5 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth"
                 style={{ 
                     scrollbarWidth: 'thin',
-                    scrollbarColor: 'rgba(59, 130, 246, 0.3) transparent'
+                    scrollbarColor: 'rgba(2, 118, 211, 0.3) transparent'
                 }}
             >
                 {items.length === 0 ? (
@@ -181,7 +263,30 @@ export default function StudentDashboard() {
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [isBirthday, setIsBirthday] = useState(false);
+    const [studentName, setStudentName] = useState<string>('');
     const navigate = useNavigate();
+
+    // Local board filter states for separate categories
+    const [selectedCourseBoard, setSelectedCourseBoard] = useState<string>('ALL');
+    const [selectedSubjectBoard, setSelectedSubjectBoard] = useState<string>('ALL');
+    const [selectedActivityBoard, setSelectedActivityBoard] = useState<string>('ALL');
+    const [selectedTestSeriesBoard, setSelectedTestSeriesBoard] = useState<string>('ALL');
+
+    const getBoardsForCategory = (type: string) => {
+        const boardMap = new Map<string, number>();
+        items.forEach((item: any) => {
+            if (item.type === type && item.board && typeof item.board === 'string') {
+                const boardName = item.board;
+                boardMap.set(boardName, (boardMap.get(boardName) || 0) + 1);
+            }
+        });
+        return Array.from(boardMap.entries()).map(([name, count]) => ({
+            id: name,
+            name: name,
+            count: count
+        }));
+    };
 
     useEffect(() => {
         fetchAnalytics();
@@ -189,7 +294,25 @@ export default function StudentDashboard() {
         fetchHomeItems();
         fetchBoards();
         fetchAnnouncements();
+        checkBirthday();
     }, []);
+
+    const checkBirthday = async () => {
+        try {
+            const response = await api.get('/profile');
+            const userData = response.data?.data;
+            setStudentName(userData?.name || '');
+            const dob: string | null | undefined = userData?.student?.date_of_birth;
+            if (!dob) return;
+            const today = new Date();
+            const birth = new Date(dob);
+            if (birth.getDate() === today.getDate() && birth.getMonth() === today.getMonth()) {
+                setIsBirthday(true);
+            }
+        } catch {
+            // silently fail
+        }
+    };
 
     useEffect(() => {
         // Update board counts whenever items change
@@ -522,19 +645,6 @@ export default function StudentDashboard() {
     const filterItems = () => {
         let filtered = items;
 
-        // Filter by board (only for SUBJECT type items - courses don't have boards)
-        if (selectedBoard !== 'ALL' && selectedBoard !== '') {
-            filtered = filtered.filter((item) => {
-                // Only filter subjects by board
-                if (item.type === 'SUBJECT') {
-                    // board is a string like "CBSE", not an object
-                    return item.board === selectedBoard;
-                }
-                // Show non-subject items (courses, activities, test series) regardless of board selection
-                return true;
-            });
-        }
-
         // Filter by type
         if (filterType !== 'ALL' && filterType !== '') {
             filtered = filtered.filter((item) => item.type === filterType);
@@ -582,6 +692,40 @@ export default function StudentDashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+
+            {/* 🎂 Birthday Banner */}
+            {isBirthday && (
+                <div
+                    className="relative overflow-hidden rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
+                    style={{
+                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #eca209 100%)',
+                        boxShadow: '0 8px 32px rgba(2, 118, 211, 0.35)'
+                    }}
+                >
+                    {/* Decorative blobs */}
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#eca209' }} />
+                    <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: '#ffffff' }} />
+
+                    {/* Icon */}
+                    <div className="relative shrink-0 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
+                        <span className="text-4xl select-none">🎂</span>
+                    </div>
+
+                    {/* Text */}
+                    <div className="relative flex-1 text-center sm:text-left">
+                        <p className="text-white/80 text-sm font-semibold tracking-widest uppercase mb-0.5">Today is your special day!</p>
+                        <h2 className="text-white text-2xl md:text-3xl font-extrabold tracking-tight">
+                            Happy Birthday{studentName ? `, ${studentName.split(' ')[0]}` : ''}! 🎉
+                        </h2>
+                        <p className="text-white/75 text-sm mt-1">Wishing you a wonderful day full of joy and success. Keep learning and growing! 🌟</p>
+                    </div>
+
+                    {/* Party icon */}
+                    <div className="relative shrink-0 hidden sm:flex items-center justify-center">
+                        <PartyPopper className="h-10 w-10 text-white/70" />
+                    </div>
+                </div>
+            )}
 
             {/* Announcements Section */}
             {announcements.length > 0 && (
@@ -816,73 +960,6 @@ export default function StudentDashboard() {
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        {/* Board Tabs Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Grid3x3 className="h-5 w-5 text-saBlue" />
-                                    <h3 className="text-lg font-semibold text-gray-800">Filter by Board</h3>
-                                </div>
-                            </div>
-
-                            {/* Board Tabs and Dropdown */}
-                            <div className="flex items-center gap-3 overflow-x-auto pb-2 flex-wrap">
-                                {/* All Board Tab */}
-                                <button
-                                    onClick={() => setSelectedBoard('ALL')}
-                                    className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap ${
-                                        selectedBoard === 'ALL'
-                                            ? 'bg-saBlue text-white shadow-md'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    }`}
-                                >
-                                    All Boards
-                                </button>
-
-                                {/* Top 4-5 Boards as Tabs */}
-                                {boardsList.slice(0, 4).map((board) => (
-                                    <button
-                                        key={board.id}
-                                        onClick={() => setSelectedBoard(board.id)}
-                                        className={`px-4 py-2 rounded-full font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
-                                            selectedBoard === board.id
-                                                ? 'bg-saBlue text-white shadow-md'
-                                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                        }`}
-                                    >
-                                        <BookMarked className="h-4 w-4" />
-                                        {board.name}
-                                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-                                            selectedBoard === board.id
-                                                ? 'bg-white/30 text-white'
-                                                : 'bg-gray-300/50 text-gray-700'
-                                        }`}>
-                                            {board.count}
-                                        </span>
-                                    </button>
-                                ))}
-
-                                {/* Remaining Boards in Dropdown */}
-                                {boardsList.length > 4 && (
-                                    <Select value={selectedBoard} onValueChange={setSelectedBoard}>
-                                        <SelectTrigger className="w-fit h-10 rounded-full border-gray-300 bg-gray-100 hover:bg-gray-200 whitespace-nowrap px-4">
-                                            <SelectValue placeholder="More Boards" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {boardsList.slice(4).map((board) => (
-                                                <SelectItem key={board.id} value={board.id}>
-                                                    <span className="flex items-center gap-2">
-                                                        {board.name}
-                                                        <span className="text-xs text-gray-500">({board.count})</span>
-                                                    </span>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            </div>
-                        </div>
-
                         {/* Content Sections */}
                         {filteredItems.length === 0 ? (
                             <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
@@ -891,14 +968,17 @@ export default function StudentDashboard() {
                                 <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or search query</p>
                             </div>
                         ) : (
-                            <div className="space-y-10">
+                            <div className="space-y-12">
                                 {/* Courses Section */}
                                 {filteredItems.some(item => item.type === 'COURSE') && (
                                     <ItemSlider
                                         title="Courses"
-                                        items={filteredItems.filter(item => item.type === 'COURSE')}
+                                        items={filteredItems.filter(item => item.type === 'COURSE').filter(item => selectedCourseBoard === 'ALL' || item.board === selectedCourseBoard)}
                                         icon={BookOpen}
                                         onItemClick={handleItemClick}
+                                        boards={getBoardsForCategory('COURSE')}
+                                        selectedBoard={selectedCourseBoard}
+                                        onSelectBoard={setSelectedCourseBoard}
                                     />
                                 )}
 
@@ -906,9 +986,12 @@ export default function StudentDashboard() {
                                 {filteredItems.some(item => item.type === 'SUBJECT') && (
                                     <ItemSlider
                                         title="Subjects"
-                                        items={filteredItems.filter(item => item.type === 'SUBJECT')}
+                                        items={filteredItems.filter(item => item.type === 'SUBJECT').filter(item => selectedSubjectBoard === 'ALL' || item.board === selectedSubjectBoard)}
                                         icon={GraduationCap}
                                         onItemClick={handleItemClick}
+                                        boards={getBoardsForCategory('SUBJECT')}
+                                        selectedBoard={selectedSubjectBoard}
+                                        onSelectBoard={setSelectedSubjectBoard}
                                     />
                                 )}
 
@@ -916,9 +999,12 @@ export default function StudentDashboard() {
                                 {filteredItems.some(item => item.type === 'ACTIVITY_GROUP') && (
                                     <ItemSlider
                                         title="Activity Groups"
-                                        items={filteredItems.filter(item => item.type === 'ACTIVITY_GROUP')}
+                                        items={filteredItems.filter(item => item.type === 'ACTIVITY_GROUP').filter(item => selectedActivityBoard === 'ALL' || item.board === selectedActivityBoard)}
                                         icon={Activity}
                                         onItemClick={handleItemClick}
+                                        boards={getBoardsForCategory('ACTIVITY_GROUP')}
+                                        selectedBoard={selectedActivityBoard}
+                                        onSelectBoard={setSelectedActivityBoard}
                                     />
                                 )}
 
@@ -926,9 +1012,12 @@ export default function StudentDashboard() {
                                 {filteredItems.some(item => item.type === 'TEST_SERIES') && (
                                     <ItemSlider
                                         title="Test Series"
-                                        items={filteredItems.filter(item => item.type === 'TEST_SERIES')}
+                                        items={filteredItems.filter(item => item.type === 'TEST_SERIES').filter(item => selectedTestSeriesBoard === 'ALL' || item.board === selectedTestSeriesBoard)}
                                         icon={Trophy}
                                         onItemClick={handleItemClick}
+                                        boards={getBoardsForCategory('TEST_SERIES')}
+                                        selectedBoard={selectedTestSeriesBoard}
+                                        onSelectBoard={setSelectedTestSeriesBoard}
                                     />
                                 )}
                             </div>

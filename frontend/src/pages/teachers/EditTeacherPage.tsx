@@ -746,7 +746,7 @@ export default function EditTeacherPage() {
               </div>
 
               <div className="space-y-2">
-                <FormLabel icon={Briefcase}>Teacher Role</FormLabel>
+                <FormLabel icon={Briefcase}>Role</FormLabel>
                 <Select
                   value={formData.roleId?.toString() || 'none'}
                   onValueChange={(value) => handleChange('roleId', value === 'none' ? null : parseInt(value))}

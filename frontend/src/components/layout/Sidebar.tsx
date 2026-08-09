@@ -100,12 +100,6 @@ const navItems: NavItem[] = [
     roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
   {
-    title: "Brain Quest",
-    href: "/dashboard/brain-quest",
-    icon: Puzzle,
-    roles: ["ADMIN", "TEACHER", "STUDENT"],
-  },
-  {
     title: "Activities",
     href: "/dashboard/activities",
     icon: Gamepad2,
