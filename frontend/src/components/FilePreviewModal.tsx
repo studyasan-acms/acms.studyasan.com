@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,9 @@ function getFileType(url: string): FileType {
     cleanUrl.endsWith(".gif") ||
     cleanUrl.endsWith(".svg") ||
     cleanUrl.endsWith(".webp") ||
-    cleanUrl.endsWith(".bmp")
+    cleanUrl.endsWith(".bmp") ||
+    cleanUrl.endsWith(".heic") ||
+    cleanUrl.endsWith(".heif")
   ) {
     return "image";
   }
@@ -115,6 +117,73 @@ export default function FilePreviewModal({
 
   const resolvedUrl = resolveImageUrl(url) || "";
   const fileType = getFileType(resolvedUrl);
+
+  const [heicUrl, setHeicUrl] = useState<string | null>(null);
+  const [loadingHeic, setLoadingHeic] = useState(false);
+  const [heicError, setHeicError] = useState<string | null>(null);
+
+  const isHeic = resolvedUrl.split("?")[0].toLowerCase().endsWith(".heic") || 
+                 resolvedUrl.split("?")[0].toLowerCase().endsWith(".heif");
+
+  useEffect(() => {
+    if (!isOpen || !url || !isHeic) {
+      setHeicUrl(null);
+      setHeicError(null);
+      setLoadingHeic(false);
+      return;
+    }
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    const convertHeic = async () => {
+      try {
+        setLoadingHeic(true);
+        setHeicError(null);
+
+        // Fetch HEIC file as blob
+        const response = await fetch(resolvedUrl);
+        if (!response.ok) throw new Error("Failed to fetch HEIC file");
+        const blob = await response.blob();
+
+        if (!active) return;
+
+        // Convert HEIC blob to JPEG blob using dynamic import
+        const heic2anyModule = await import("heic2any");
+        const convertFn = heic2anyModule.default || heic2anyModule;
+        
+        const conversionResult = await convertFn({
+          blob,
+          toType: "image/jpeg",
+          quality: 0.7
+        });
+
+        if (!active) return;
+
+        const convertedBlob = Array.isArray(conversionResult) ? conversionResult[0] : conversionResult;
+        objectUrl = URL.createObjectURL(convertedBlob);
+        setHeicUrl(objectUrl);
+      } catch (err: any) {
+        console.error("HEIC conversion failed:", err);
+        if (active) {
+          setHeicError(err?.message || "Failed to convert HEIC image");
+        }
+      } finally {
+        if (active) {
+          setLoadingHeic(false);
+        }
+      }
+    };
+
+    convertHeic();
+
+    return () => {
+      active = false;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [isOpen, url, resolvedUrl, isHeic]);
 
   // Extract filename from URL
   const getFileName = () => {
@@ -199,12 +268,44 @@ export default function FilePreviewModal({
         <div className="flex-1 overflow-y-auto p-5 bg-slate-50/30 flex items-center justify-center min-h-[300px]">
           {/* IMAGE */}
           {fileType === "image" && (
-            <div className="relative max-w-full max-h-[70vh] flex items-center justify-center bg-white rounded-xl border border-slate-200/50 p-2 shadow-sm animate-fade-in">
-              <img
-                src={resolvedUrl}
-                alt={fileName}
-                className="max-w-full max-h-[65vh] object-contain rounded-lg"
-              />
+            <div className="relative max-w-full max-h-[70vh] flex items-center justify-center bg-white rounded-xl border border-slate-200/50 p-2 shadow-sm animate-fade-in w-full">
+              {isHeic ? (
+                loadingHeic ? (
+                  <div className="flex flex-col items-center justify-center py-12 px-6 gap-3 text-slate-500">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-saBlue"></div>
+                    <p className="text-xs font-semibold">Converting HEIC image for preview...</p>
+                  </div>
+                ) : heicError ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-center max-w-sm py-12 gap-3">
+                    <AlertCircle className="h-10 w-10 text-red-500" />
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">Cannot preview HEIC</h4>
+                      <p className="text-xs text-slate-500 mt-1">
+                        We were unable to convert this HEIC image on the fly. You can download it directly instead.
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleDownload}
+                      className="bg-saBlue hover:bg-sky-700 text-white font-bold rounded-lg text-xs h-9 px-4 flex items-center gap-1.5 mt-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download Image
+                    </Button>
+                  </div>
+                ) : heicUrl ? (
+                  <img
+                    src={heicUrl}
+                    alt={fileName}
+                    className="max-w-full max-h-[65vh] object-contain rounded-lg"
+                  />
+                ) : null
+              ) : (
+                <img
+                  src={resolvedUrl}
+                  alt={fileName}
+                  className="max-w-full max-h-[65vh] object-contain rounded-lg"
+                />
+              )}
             </div>
           )}
 
