@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { JanusClient, destroyJanusClient } from '@/services/janus';
+import type { FloatingReaction } from '@/components/classroom/ReactionOverlay';
 
 function createFallbackMediaStream(): MediaStream {
     const stream = new MediaStream();
@@ -100,15 +101,14 @@ interface UseJanusReturn {
     toggleScreenShare: () => Promise<void>;
     setMainParticipant: (id: string | number | null) => void;
 
+    // Reactions & Hand Raise
+    reactions: FloatingReaction[];
+    toggleHandRaise: () => void;
+    sendReaction: (emoji: string) => void;
+
     // Whiteboard
     sendWhiteboardMessage: (message: WhiteboardMessage) => void;
     setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
-
-    // Chat
-    chatMessages: ChatMessage[];
-    sendChatMessage: (text: string) => void;
-    isChatOpen: boolean;
-    toggleChat: () => void;
 
     // Background
     isBackgroundActive: boolean;
@@ -141,6 +141,7 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         isScreenSharing: false,
         isWhiteboardActive: false,
         hasWhiteboardAccess: _isTeacher,
+        isHandRaised: false,
     });
 
     // Update whiteboard access if teacher role updates after mount
@@ -150,6 +151,21 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             hasWhiteboardAccess: _isTeacher,
         }));
     }, [_isTeacher]);
+
+    // Floating reactions state
+    const [reactions, setReactions] = useState<FloatingReaction[]>([]);
+
+    const addFloatingReaction = useCallback((emoji: string, senderName: string) => {
+        const id = `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+        const xPercent = 15 + Math.random() * 70;
+        const newReaction: FloatingReaction = { id, emoji, senderName, xPercent };
+
+        setReactions(prev => [...prev, newReaction]);
+
+        setTimeout(() => {
+            setReactions(prev => prev.filter(r => r.id !== id));
+        }, 3600);
+    }, []);
 
     // Join sound ref
     const joinSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -165,9 +181,6 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     // Main view state
     const [mainParticipantId, setMainParticipantId] = useState<string | number | null>(null);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
-
-    // Chat state
-    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Local stream reference
     const localStreamRef = useRef<MediaStream | null>(null);
@@ -205,14 +218,6 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         // Persist via API for late-joiners
         apiSync.sendWhiteboardMessage(message);
     }, [apiSync]);
-
-    const sendChatMessage = useCallback((text: string) => {
-        apiSync.sendChatMessage(text);
-    }, [apiSync]);
-
-    const toggleChat = useCallback(() => {
-        setIsChatOpen(prev => !prev);
-    }, []);
 
     const disconnect = useCallback(async () => {
         console.log('[useJanus] Disconnecting...');
@@ -367,6 +372,35 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     if (message.type === 'whiteboard' && message.whiteboard) {
                         console.log('[useJanus] ✏️ Received remote whiteboard stroke via data channel:', message.whiteboard);
                         whiteboardHandlerRef.current?.(message.whiteboard);
+                    }
+
+                    // Handle raise-hand message
+                    if (message.type === 'raise-hand' && message.participantId) {
+                        const targetId = message.participantId;
+                        const isHandRaised = !!message.isHandRaised;
+                        const name = message.displayName || 'Participant';
+
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            for (const [id, p] of next.entries()) {
+                                if (String(id) === String(targetId)) {
+                                    next.set(id, { ...p, isHandRaised });
+                                    break;
+                                }
+                            }
+                            return next;
+                        });
+
+                        if (isHandRaised) {
+                            toast.info(`✋ ${name} raised hand!`, { duration: 4000 });
+                            addFloatingReaction('✋', name);
+                        }
+                    }
+
+                    // Handle reaction message
+                    if (message.type === 'reaction' && message.emoji) {
+                        const name = message.displayName || 'Participant';
+                        addFloatingReaction(message.emoji, name);
                     }
 
                     // Handle kick message - disconnect if we are the target
@@ -599,6 +633,34 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         });
     }, []);
 
+    const toggleHandRaise = useCallback(() => {
+        setLocalUser(prev => {
+            const newHandState = !prev.isHandRaised;
+            const myId = janusClientRef.current?.getMyId();
+            janusClientRef.current?.sendData({
+                type: 'raise-hand',
+                isHandRaised: newHandState,
+                participantId: myId ?? undefined,
+                displayName: prev.displayName,
+            });
+            if (newHandState) {
+                addFloatingReaction('✋', `${prev.displayName} (You)`);
+            }
+            return { ...prev, isHandRaised: newHandState };
+        });
+    }, [addFloatingReaction]);
+
+    const sendReaction = useCallback((emoji: string) => {
+        const myId = janusClientRef.current?.getMyId();
+        janusClientRef.current?.sendData({
+            type: 'reaction',
+            emoji,
+            participantId: myId ?? undefined,
+            displayName: localUser.displayName,
+        });
+        addFloatingReaction(emoji, `${localUser.displayName} (You)`);
+    }, [localUser.displayName, addFloatingReaction]);
+
     // Set up the kicked callback to disconnect
     useEffect(() => {
         onKickedCallbackRef.current = () => {
@@ -629,12 +691,11 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         toggleCamera,
         toggleScreenShare,
         setMainParticipant: setMainParticipantId,
+        reactions,
+        toggleHandRaise,
+        sendReaction,
         sendWhiteboardMessage,
         setWhiteboardMessageHandler,
-        chatMessages: apiSync.chatMessages,
-        sendChatMessage,
-        isChatOpen,
-        toggleChat,
         isBackgroundActive: backgroundProcessor.isBackgroundActive,
         toggleBackground: backgroundProcessor.toggleBackground,
         muteParticipant,

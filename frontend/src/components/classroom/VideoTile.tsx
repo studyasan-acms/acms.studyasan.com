@@ -118,6 +118,13 @@ export function VideoTile({
                     </div>
                 )}
 
+                {/* Hand Raised Badge */}
+                {participant.isHandRaised && (
+                    <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-amber-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg border border-amber-300/40 animate-bounce">
+                        <span>✋ Hand Raised</span>
+                    </div>
+                )}
+
                 {/* Bottom overlay with name and status */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 md:p-3">
                     <div className="flex items-center justify-between">

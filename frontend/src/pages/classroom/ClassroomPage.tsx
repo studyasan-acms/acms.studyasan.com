@@ -208,6 +208,9 @@ export function ClassroomPage() {
                 isScreenSharing={janus.isScreenSharing}
                 isBackgroundActive={janus.isBackgroundActive}
                 onToggleBackground={janus.toggleBackground}
+                reactions={janus.reactions}
+                onToggleHandRaise={janus.toggleHandRaise}
+                onSendReaction={janus.sendReaction}
                 isTeacher={roomInfo?.isTeacher || false}
                 onMuteParticipant={janus.muteParticipant}
                 onKickParticipant={janus.kickParticipant}
@@ -219,8 +222,6 @@ export function ClassroomPage() {
                 onSetMainParticipant={janus.setMainParticipant}
                 sendWhiteboardMessage={janus.sendWhiteboardMessage}
                 setWhiteboardMessageHandler={janus.setWhiteboardMessageHandler}
-                chatMessages={janus.chatMessages}
-                onSendChatMessage={janus.sendChatMessage}
             />
         </div>
     );

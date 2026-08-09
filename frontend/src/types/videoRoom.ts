@@ -46,6 +46,7 @@ export interface Participant {
     isScreenSharing: boolean;
     isSpeaking: boolean;
     hasWhiteboardAccess?: boolean;
+    isHandRaised?: boolean;
 }
 
 /**
@@ -58,6 +59,7 @@ export interface LocalUserState {
     isScreenSharing: boolean;
     isWhiteboardActive: boolean;
     hasWhiteboardAccess?: boolean;
+    isHandRaised?: boolean;
 }
 
 /**
@@ -158,7 +160,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction';
 
 /**
  * Generic DataChannel message
@@ -167,11 +169,14 @@ export interface DataChannelMessage {
     type: DataChannelMessageType;
     chat?: ChatMessage;
     whiteboard?: WhiteboardMessage;
-    // Teacher control properties
+    // Control & status properties
     participantId?: string | number;
+    displayName?: string;
     muted?: boolean;
     videoOff?: boolean;
     whiteboardAccess?: boolean;
+    isHandRaised?: boolean;
+    emoji?: string;
 }
 
 // ============ Room Types ============

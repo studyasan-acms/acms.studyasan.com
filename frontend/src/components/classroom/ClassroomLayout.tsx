@@ -8,8 +8,9 @@ import React, { useState } from 'react';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { Whiteboard } from './Whiteboard';
-import { Chat } from './Chat';
-import type { Participant, ChatMessage, WhiteboardMessage, LocalUserState } from '@/types/videoRoom';
+import { ReactionOverlay } from './ReactionOverlay';
+import type { FloatingReaction } from './ReactionOverlay';
+import type { Participant, WhiteboardMessage, LocalUserState } from '@/types/videoRoom';
 
 interface ClassroomLayoutProps {
     // Connection
@@ -31,6 +32,11 @@ interface ClassroomLayoutProps {
     isBackgroundActive: boolean;
     onToggleBackground: () => void;
 
+    // Reactions & Hand Raise
+    reactions: FloatingReaction[];
+    onToggleHandRaise: () => void;
+    onSendReaction: (emoji: string) => void;
+
     // Teacher controls
     isTeacher: boolean;
     onMuteParticipant?: (participantId: string | number) => void;
@@ -47,10 +53,6 @@ interface ClassroomLayoutProps {
     // Whiteboard
     sendWhiteboardMessage: (message: WhiteboardMessage) => void;
     setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
-
-    // Chat
-    chatMessages: ChatMessage[];
-    onSendChatMessage: (text: string) => void;
 }
 
 export function ClassroomLayout({
@@ -63,6 +65,9 @@ export function ClassroomLayout({
     isScreenSharing,
     isBackgroundActive,
     onToggleBackground,
+    reactions,
+    onToggleHandRaise,
+    onSendReaction,
     isTeacher,
     onMuteParticipant,
     onKickParticipant,
@@ -74,11 +79,8 @@ export function ClassroomLayout({
     onSetMainParticipant,
     sendWhiteboardMessage,
     setWhiteboardMessageHandler,
-    chatMessages,
-    onSendChatMessage,
 }: ClassroomLayoutProps) {
     const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
-    const [isChatOpen, setIsChatOpen] = useState(false);
 
     // Build participant list including local user
     const localParticipant: Participant = {
@@ -91,6 +93,7 @@ export function ClassroomLayout({
         isScreenSharing: localUser.isScreenSharing,
         isSpeaking: false,
         hasWhiteboardAccess: localUser.hasWhiteboardAccess,
+        isHandRaised: localUser.isHandRaised,
     };
 
     const allParticipants = [localParticipant, ...Array.from(participants.values())];
@@ -121,6 +124,9 @@ export function ClassroomLayout({
                     <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
                 </div>
             </header>
+
+            {/* Floating Reactions Animated Overlay */}
+            <ReactionOverlay reactions={reactions} />
 
             {/* Main content area */}
             <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-slate-900">
@@ -201,27 +207,19 @@ export function ClassroomLayout({
                     isVideoOff={localUser.isVideoOff}
                     isScreenSharing={isScreenSharing}
                     isWhiteboardActive={isWhiteboardActive}
-                    isChatOpen={isChatOpen}
+                    isHandRaised={localUser.isHandRaised ?? false}
                     isBackgroundActive={isBackgroundActive}
                     isConnected={isConnected}
                     onToggleMic={onToggleMic}
                     onToggleCamera={onToggleCamera}
                     onToggleScreenShare={onToggleScreenShare}
                     onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
-                    onToggleChat={() => setIsChatOpen(!isChatOpen)}
+                    onToggleHandRaise={onToggleHandRaise}
+                    onSendReaction={onSendReaction}
                     onToggleBackground={onToggleBackground}
                     onLeave={onLeave}
                 />
             </div>
-
-            {/* Chat panel */}
-            <Chat
-                isOpen={isChatOpen}
-                onClose={() => setIsChatOpen(false)}
-                messages={chatMessages}
-                onSendMessage={onSendChatMessage}
-                currentUserName={localUser.displayName}
-            />
         </div>
     );
 }
