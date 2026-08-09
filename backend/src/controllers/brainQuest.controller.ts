@@ -158,7 +158,7 @@ export const getAllBrainQuests = async (req: Request, res: Response) => {
 // 3. Get Brain Quest details by ID
 export const getBrainQuestById = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const user = (req as any).user;
 
     let studentRecord = null;
@@ -209,7 +209,7 @@ export const getBrainQuestById = async (req: Request, res: Response) => {
 // 4. Update Brain Quest test paper
 export const updateBrainQuest = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { title, description, subject_id, total_marks, due_date, document_url: body_doc_url } = req.body;
     const user = (req as any).user;
 
@@ -269,7 +269,7 @@ export const updateBrainQuest = async (req: Request, res: Response) => {
 // 5. Delete Brain Quest test paper
 export const deleteBrainQuest = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const user = (req as any).user;
 
     const existing = await (prisma as any).brainQuest.findUnique({
@@ -304,7 +304,7 @@ export const deleteBrainQuest = async (req: Request, res: Response) => {
 // 6. Submit student answer sheet for Brain Quest (Student only)
 export const submitBrainQuest = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params; // brain_quest_id
+    const id = req.params.id as string; // brain_quest_id
     const { remarks, submission_file_url: body_file_url } = req.body;
     const user = (req as any).user;
 
@@ -395,7 +395,7 @@ export const submitBrainQuest = async (req: Request, res: Response) => {
 // 7. Grade student Brain Quest submission (Teachers & Admins)
 export const gradeBrainQuestSubmission = async (req: Request, res: Response) => {
   try {
-    const { submissionId } = req.params;
+    const submissionId = req.params.submissionId as string;
     const { marks_obtained, feedback } = req.body;
     const user = (req as any).user;
 
