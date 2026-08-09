@@ -141,7 +141,9 @@ export default function HomeworkPage() {
           homeworkData = homeworkData.map((item: any) => ({
             ...item.homework,
             response: item.response,
-            student: item.student
+            student: item.student,
+            // Provide a safe fallback so non-student code paths that access _count don't crash
+            _count: item.homework?._count ?? { responses: 0, assignments: 0 },
           }));
         }
 
@@ -416,7 +418,7 @@ export default function HomeworkPage() {
                 {filteredHomework.map((item) => {
                   const isFinished = isStudent ? !!item.response?.is_checked : (item._count.responses === item._count.assignments && item._count.assignments > 0);
                   const isLate = !isFinished && item.due_date && new Date(item.due_date) < new Date();
-                  const submissionPercent = Math.round((item._count.responses / (item._count.assignments || 1)) * 100);
+                  const submissionPercent = Math.round(((item._count?.responses ?? 0) / (item._count?.assignments || 1)) * 100);
 
                   return (
                     <tr
