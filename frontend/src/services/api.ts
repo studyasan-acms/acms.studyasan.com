@@ -1590,5 +1590,47 @@ export const knowYourChildService = {
   },
 };
 
+export const brainQuestService = {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    subject_id?: number;
+    search?: string;
+  }): Promise<PaginatedResponse<any>> => {
+    const response = await api.get<PaginatedResponse<any>>('/brain-quest', { params });
+    return response.data;
+  },
+  getById: async (id: number): Promise<{ success: boolean; data: any }> => {
+    const response = await api.get(`/brain-quest/${id}`);
+    return response.data;
+  },
+  create: async (formData: FormData): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post('/brain-quest', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  update: async (id: number, formData: FormData): Promise<{ success: boolean; data: any }> => {
+    const response = await api.put(`/brain-quest/${id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  delete: async (id: number): Promise<{ success: boolean; data: any }> => {
+    const response = await api.delete(`/brain-quest/${id}`);
+    return response.data;
+  },
+  submitAnswer: async (id: number, formData: FormData): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post(`/brain-quest/${id}/submit`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+  gradeSubmission: async (submissionId: number, data: { marks_obtained?: number; feedback?: string }): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post(`/brain-quest/submission/${submissionId}/grade`, data);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };

@@ -107,6 +107,11 @@ import HomeworkPage from '@/pages/homework/HomeworkPage';
 import CreateHomeworkPage from '@/pages/homework/CreateHomeworkPage';
 import HomeworkDetailPage from '@/pages/homework/HomeworkDetailPage';
 
+// Brain Quest imports
+import BrainQuestListPage from '@/pages/brainQuest/BrainQuestListPage';
+import CreateBrainQuestPage from '@/pages/brainQuest/CreateBrainQuestPage';
+import BrainQuestDetailPage from '@/pages/brainQuest/BrainQuestDetailPage';
+
 // Job imports
 import JobsPage from '@/pages/jobs/JobsPage';
 import JobFormPage from '@/pages/jobs/JobFormPage';
@@ -317,6 +322,12 @@ function App() {
           <Route path="homework/create" element={<CreateHomeworkPage />} />
           <Route path="homework/:id" element={<HomeworkDetailPage />} />
           <Route path="homework/:id/edit" element={<CreateHomeworkPage />} />
+
+          {/* Brain Quest Routes */}
+          <Route path="brain-quest" element={<BrainQuestListPage />} />
+          <Route path="brain-quest/create" element={<CreateBrainQuestPage />} />
+          <Route path="brain-quest/:id" element={<BrainQuestDetailPage />} />
+          <Route path="brain-quest/:id/edit" element={<CreateBrainQuestPage />} />
 
           {/* Job/Internship Routes */}
           <Route path="jobs" element={<JobsPage />} />

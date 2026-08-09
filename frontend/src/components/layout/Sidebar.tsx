@@ -31,6 +31,7 @@ import {
   PenTool,
   Bell,
   Search,
+  Puzzle,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -96,6 +97,12 @@ const navItems: NavItem[] = [
     title: "Tests",
     href: "/tests",
     icon: FileText,
+    roles: ["ADMIN", "TEACHER", "STUDENT"],
+  },
+  {
+    title: "Brain Quest",
+    href: "/dashboard/brain-quest",
+    icon: Puzzle,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
   },
   {

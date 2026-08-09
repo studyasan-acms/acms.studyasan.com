@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import axios from 'axios';
 import { uploadToS3 } from '../utils/s3.js';
 
 /**
@@ -12,9 +13,7 @@ export const uploadFile = async (req: Request, res: Response): Promise<void> => 
             return;
         }
 
-        // Allow caller to specify a folder via query param, default to 'uploads'
         const folder = (req.query.folder as string) || 'uploads';
-
         const result = await uploadToS3(req.file, folder);
 
         res.status(200).json({
@@ -28,5 +27,32 @@ export const uploadFile = async (req: Request, res: Response): Promise<void> => 
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({ success: false, message: 'Failed to upload file' });
+    }
+};
+
+/**
+ * File proxy endpoint to prevent CORS restrictions when loading S3 assets in client canvas/PDF workers.
+ */
+export const proxyFile = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const fileUrl = req.query.url as string;
+        if (!fileUrl) {
+            res.status(400).json({ success: false, message: 'URL query parameter is required' });
+            return;
+        }
+
+        const response = await axios.get(fileUrl, {
+            responseType: 'arraybuffer',
+            timeout: 20000,
+        });
+
+        const contentType = response.headers['content-type'] || 'application/pdf';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        res.send(Buffer.from(response.data));
+    } catch (error: any) {
+        console.error('Proxy file error:', error?.message || error);
+        res.status(500).json({ success: false, message: 'Failed to proxy file' });
     }
 };

@@ -62,6 +62,7 @@ model User {
   created_activities      Activity[]               @relation("ActivityCreator")
   quiz_sessions_hosted    QuizSession[]
   checked_homework        HomeworkResponse[]       @relation("HomeworkChecker")
+  graded_brain_quests     BrainQuestSubmission[]   @relation("BrainQuestGrader")
   room_chat_messages      RoomChatMessage[]
   announcements           Announcement[]           @relation("AnnouncementCreator")
 
@@ -130,6 +131,7 @@ model Student {
   homework_responses   HomeworkResponse[]
   job_applications     JobApplication[]
   know_your_child_reports KnowYourChildReport[]
+  brain_quest_submissions BrainQuestSubmission[]
 
   @@map("students")
 }
@@ -163,6 +165,7 @@ model Subject {
   tests                     Test[]
   homework                  Homework[]
   know_your_child_reports   KnowYourChildReport[]
+  brain_quests              BrainQuest[]
 
   @@map("subjects")
 }
@@ -257,6 +260,7 @@ model Teacher {
   test_series_junctions     TestSeriesTeacherJunction[]
   created_homework          Homework[]
   know_your_child_reports   KnowYourChildReport[]
+  brain_quests              BrainQuest[]
 
   @@map("teachers")
 }
@@ -1159,4 +1163,47 @@ model KnowYourChildReport {
   subject          Subject? @relation(fields: [subject_id], references: [id], onDelete: SetNull)
 
   @@map("know_your_child_reports")
+}
+
+model BrainQuest {
+  id              Int                    @id @default(autoincrement())
+  title           String
+  description     String?                @db.Text
+  subject_id      Int
+  teacher_id      Int
+  target_class_id Int?
+  document_url    String                 // PDF of test paper uploaded by teacher
+  document_type   String?                @default("pdf")
+  total_marks     Float?                 @default(100)
+  due_date        DateTime?
+  created_at      DateTime               @default(now())
+  updated_at      DateTime               @updatedAt
+
+  subject         Subject                @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  teacher         Teacher                @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  submissions     BrainQuestSubmission[]
+
+  @@map("brain_quests")
+}
+
+model BrainQuestSubmission {
+  id                  Int       @id @default(autoincrement())
+  brain_quest_id      Int
+  student_id          Int
+  submission_file_url String    // Student answer file (jpg/jpeg/png/doc/pdf)
+  submission_file_type String?  // File extension e.g. pdf, image, doc
+  remarks             String?   @db.Text
+  submitted_at        DateTime  @default(now())
+  is_graded           Boolean   @default(false)
+  marks_obtained      Float?
+  feedback            String?   @db.Text
+  graded_by           Int?
+  graded_at           DateTime?
+
+  brain_quest BrainQuest @relation(fields: [brain_quest_id], references: [id], onDelete: Cascade)
+  student     Student    @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  grader      User?      @relation("BrainQuestGrader", fields: [graded_by], references: [id])
+
+  @@unique([brain_quest_id, student_id])
+  @@map("brain_quest_submissions")
 }

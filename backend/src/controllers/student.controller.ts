@@ -78,6 +78,8 @@ export const getAllStudents = async (req: AuthRequest, res: Response) => {
         }
       }
       // If hasStudentsViewPermission is true, don't add any filtering - show all students
+      } else if (user_id) {
+        where.user_id = parseInt(user_id as string);
       }
 
       // Determine whether the requester (from JWT) is a teacher and whether they should see emails

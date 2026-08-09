@@ -37,6 +37,7 @@ import * as teacherRoleController from '../controllers/teacherRole.controller.js
 import * as uploadController from '../controllers/upload.controller.js';
 import * as jobController from '../controllers/job.controller.js';
 import * as knowYourChildController from '../controllers/knowYourChild.controller.js';
+import * as brainQuestController from '../controllers/brainQuest.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -753,5 +754,17 @@ router.post('/know-your-child', authenticate, authorize('ADMIN', 'TEACHER'), kno
 router.get('/know-your-child/student/:studentId', authenticate, knowYourChildController.getStudentReports);
 router.patch('/know-your-child/:id/feedback', authenticate, knowYourChildController.addParentFeedback);
 router.delete('/know-your-child/:id', authenticate, authorize('ADMIN', 'TEACHER'), knowYourChildController.deleteReport);
+
+// ================== BRAIN QUEST ROUTES ==================
+router.post('/brain-quest', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('document'), brainQuestController.createBrainQuest);
+router.get('/brain-quest', authenticate, brainQuestController.getAllBrainQuests);
+router.get('/brain-quest/:id', authenticate, brainQuestController.getBrainQuestById);
+router.put('/brain-quest/:id', authenticate, authorize('ADMIN', 'TEACHER'), upload.single('document'), brainQuestController.updateBrainQuest);
+router.delete('/brain-quest/:id', authenticate, authorize('ADMIN', 'TEACHER'), brainQuestController.deleteBrainQuest);
+router.post('/brain-quest/:id/submit', authenticate, authorize('STUDENT'), upload.single('submission'), brainQuestController.submitBrainQuest);
+router.post('/brain-quest/submission/:submissionId/grade', authenticate, authorize('ADMIN', 'TEACHER'), brainQuestController.gradeBrainQuestSubmission);
+
+// ================== FILE PROXY ROUTE ==================
+router.get('/upload/proxy-file', uploadController.proxyFile);
 
 export default router;

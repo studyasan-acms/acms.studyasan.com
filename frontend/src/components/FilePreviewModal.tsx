@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,6 +127,10 @@ export default function FilePreviewModal({
   const resolvedUrl = resolveImageUrl(url) || "";
   const fileType = getFileType(resolvedUrl);
 
+  const proxyUrl = resolvedUrl.startsWith("http") && resolvedUrl.includes("s3.amazonaws.com")
+    ? `/api/upload/proxy-file?url=${encodeURIComponent(resolvedUrl)}`
+    : resolvedUrl;
+
   const [heicUrl, setHeicUrl] = useState<string | null>(null);
   const [loadingHeic, setLoadingHeic] = useState(false);
   const [heicError, setHeicError] = useState<string | null>(null);
@@ -242,6 +247,9 @@ export default function FilePreviewModal({
               <DialogTitle className="text-sm font-bold text-slate-800 truncate leading-snug">
                 {fileName}
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                Preview attachment {fileName}
+              </DialogDescription>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">
                 {getFileTypeLabel(fileType)}
               </p>
@@ -350,7 +358,7 @@ export default function FilePreviewModal({
           {fileType === "pdf" && (
             <div className="w-full h-[65vh] bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
               <iframe
-                src={`${resolvedUrl}#toolbar=1`}
+                src={`${proxyUrl}#toolbar=1`}
                 className="w-full h-full border-0"
                 title={fileName}
               />
