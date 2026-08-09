@@ -54,6 +54,7 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
             qualification: true,
             gender: true,
             experience: true,
+            date_of_birth: true,
             address: {
               include: {
                 country: true,
@@ -236,6 +237,7 @@ export const updateTeacherDetails = async (req: AuthRequest, res: Response) => {
       qualification,
       gender,
       experience,
+      date_of_birth,
       address,
     } = req.body;
 
@@ -260,6 +262,7 @@ export const updateTeacherDetails = async (req: AuthRequest, res: Response) => {
     if (qualification) updateData.qualification = qualification;
     if (gender) updateData.gender = gender;
     if (experience) updateData.experience = experience;
+    if (date_of_birth) updateData.date_of_birth = new Date(date_of_birth);
 
     const updatedTeacher = await prisma.teacher.update({
       where: { id: user.teacher.id },

@@ -9,7 +9,8 @@ export const getPaginationParams = (page?: string, limit?: string): PaginationPa
   const limitNum = parseInt(limit || '10', 10);
   
   const validPage = pageNum > 0 ? pageNum : 1;
-  const validLimit = limitNum > 0 && limitNum <= 100 ? limitNum : 10;
+  // Allow up to 1000 for dropdown/select use-cases; default 10
+  const validLimit = limitNum > 0 && limitNum <= 1000 ? limitNum : 10;
   
   return {
     page: validPage,

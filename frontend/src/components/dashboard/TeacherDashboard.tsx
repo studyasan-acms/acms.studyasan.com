@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { analyticsService, announcementService, subjectService } from '@/services/api';
+import api from '@/services/api';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -10,7 +11,8 @@ import {
     BookOpen,
     TrendingUp,
     Award,
-    Megaphone
+    Megaphone,
+    PartyPopper
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +46,8 @@ export default function TeacherDashboard() {
     const [selectedSubject, setSelectedSubject] = useState<string>('all');
     const [loading, setLoading] = useState(true);
     const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [isBirthday, setIsBirthday] = useState(false);
+    const [teacherName, setTeacherName] = useState<string>('');
     const token = useAuthStore((state) => state.token);
     const navigate = useNavigate();
 
@@ -51,7 +55,25 @@ export default function TeacherDashboard() {
         fetchSubjects();
         fetchStudentsAnalytics();
         fetchAnnouncements();
+        checkBirthday();
     }, []);
+
+    const checkBirthday = async () => {
+        try {
+            const response = await api.get('/profile');
+            const userData = response.data?.data;
+            setTeacherName(userData?.name || '');
+            const dob: string | null | undefined = userData?.teacher?.date_of_birth;
+            if (!dob) return;
+            const today = new Date();
+            const birth = new Date(dob);
+            if (birth.getDate() === today.getDate() && birth.getMonth() === today.getMonth()) {
+                setIsBirthday(true);
+            }
+        } catch {
+            // silently fail
+        }
+    };
 
     useEffect(() => {
         if (selectedSubject !== 'all') {
@@ -130,6 +152,34 @@ export default function TeacherDashboard() {
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
+            {/* 🎂 Birthday Banner */}
+            {isBirthday && (
+                <div
+                    className="relative overflow-hidden rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
+                    style={{
+                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #eca209 100%)',
+                        boxShadow: '0 8px 32px rgba(2, 118, 211, 0.35)'
+                    }}
+                >
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#eca209' }} />
+                    <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: '#ffffff' }} />
+                    <div className="relative shrink-0 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
+                        <span className="text-4xl select-none">🎂</span>
+                    </div>
+                    <div className="relative flex-1 text-center sm:text-left">
+                        <p className="text-white/80 text-sm font-semibold tracking-widest uppercase mb-0.5">Today is your special day!</p>
+                        <h2 className="text-white text-2xl md:text-3xl font-extrabold tracking-tight">
+                            Happy Birthday{teacherName ? `, ${teacherName.split(' ')[0]}` : ''}! 🎉
+                        </h2>
+                        <p className="text-white/75 text-sm mt-1">Wishing you an amazing day. Thank you for inspiring our students every day! 🌟</p>
+                    </div>
+                    <div className="relative shrink-0 hidden sm:flex items-center justify-center">
+                        <PartyPopper className="h-10 w-10 text-white/70" />
+                    </div>
+                </div>
+            )}
+
             {/* Announcements Section */}
             {announcements.length > 0 && (
                 <div className="space-y-4">

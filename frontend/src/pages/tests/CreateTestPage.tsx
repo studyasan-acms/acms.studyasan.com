@@ -173,7 +173,7 @@ export default function CreateTestPage() {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const params: Record<string, any> = {};
+        const params: Record<string, any> = { limit: 1000 };
         if (user?.role) {
           if (user.role === "TEACHER" || user.role === "STUDENT") {
             params.user_id = user.id;

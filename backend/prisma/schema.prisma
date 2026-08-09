@@ -248,6 +248,7 @@ model Teacher {
   qualification             String?
   gender                    Gender?
   blood_group               BloodGroup?
+  date_of_birth             DateTime?
   experience                String?
   address                   TeacherAddress?
   created_at                DateTime                       @default(now())
