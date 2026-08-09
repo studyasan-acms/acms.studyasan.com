@@ -154,9 +154,12 @@ export function ClassroomPage() {
                     <p className="text-slate-600 mb-6">
                         {janus.error || 'Could not establish a connection to the classroom. Please check your camera/microphone permissions and try again.'}
                     </p>
-                    <div className="flex gap-3 justify-center">
+                    <div className="flex flex-wrap gap-3 justify-center">
                         <Button onClick={() => navigate(-1)} variant="outline">
                             Go Back
+                        </Button>
+                        <Button onClick={() => janus.connect(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            Join Classroom Anyway
                         </Button>
                         {emergencyMeetLink && (
                             <Button

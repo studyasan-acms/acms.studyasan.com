@@ -11,6 +11,8 @@ import { JanusClient, destroyJanusClient } from '@/services/janus';
 
 function createFallbackMediaStream(): MediaStream {
     const stream = new MediaStream();
+    
+    // 1. Silent Audio Track
     try {
         const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
@@ -27,6 +29,27 @@ function createFallbackMediaStream(): MediaStream {
     } catch (e) {
         console.warn('[useJanus] Could not create silent audio track:', e);
     }
+
+    // 2. Canvas-based Dummy Video Track (black 320x240)
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 320;
+        canvas.height = 240;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 320, 240);
+        }
+        const canvasStream = canvas.captureStream(1);
+        const videoTrack = canvasStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = false;
+            stream.addTrack(videoTrack);
+        }
+    } catch (e) {
+        console.warn('[useJanus] Could not create fallback video track:', e);
+    }
+
     return stream;
 }
 import { useClassroomAPISync } from '@/hooks/useClassroomAPISync';
@@ -70,7 +93,7 @@ interface UseJanusReturn {
     isScreenSharing: boolean;
 
     // Actions
-    connect: () => Promise<void>;
+    connect: (forceFallback?: boolean) => Promise<void>;
     disconnect: () => Promise<void>;
     toggleMic: () => void;
     toggleCamera: () => void;
@@ -214,7 +237,7 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         destroyJanusClient();
     }, []);
 
-    const connect = useCallback(async () => {
+    const connect = useCallback(async (forceFallback = false) => {
         if (janusClientRef.current) {
             console.log('[useJanus] Already connected or connecting');
             return;
@@ -224,38 +247,43 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             setError(null);
             setConnectionState('connecting');
 
-            console.log('[useJanus] Getting user media...');
-
             let stream: MediaStream;
             let mediaNotice: string | null = null;
 
-            try {
-                // Tier 1: Try getting both audio and video
-                stream = await navigator.mediaDevices.getUserMedia({
-                    audio: true,
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        facingMode: 'user',
-                    },
-                });
-            } catch (err1) {
-                console.warn('[useJanus] Audio & video acquisition failed, trying audio-only...', err1);
+            if (forceFallback) {
+                console.warn('[useJanus] Force fallback requested. Entering classroom in listener mode...');
+                stream = createFallbackMediaStream();
+                mediaNotice = 'Joined classroom in listener mode without camera/microphone.';
+            } else {
+                console.log('[useJanus] Getting user media...');
                 try {
-                    // Tier 2: Try audio-only
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaNotice = 'Camera unavailable or access denied. Joining with microphone only.';
-                } catch (err2) {
-                    console.warn('[useJanus] Audio acquisition failed, trying video-only...', err2);
+                    // Tier 1: Try getting both audio and video
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        audio: true,
+                        video: {
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 },
+                            facingMode: 'user',
+                        },
+                    });
+                } catch (err1) {
+                    console.warn('[useJanus] Audio & video acquisition failed, trying audio-only...', err1);
                     try {
-                        // Tier 3: Try video-only
-                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                        mediaNotice = 'Microphone unavailable or access denied. Joining with camera only.';
-                    } catch (err3) {
-                        // Tier 4: Fall back to dummy stream so user can enter classroom anyway
-                        console.warn('[useJanus] No camera or mic available / permission denied. Entering classroom in listener mode...', err3);
-                        stream = createFallbackMediaStream();
-                        mediaNotice = 'No camera or microphone detected. Joined classroom in listener mode.';
+                        // Tier 2: Try audio-only
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                        mediaNotice = 'Camera unavailable or access denied. Joining with microphone only.';
+                    } catch (err2) {
+                        console.warn('[useJanus] Audio acquisition failed, trying video-only...', err2);
+                        try {
+                            // Tier 3: Try video-only
+                            stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                            mediaNotice = 'Microphone unavailable or access denied. Joining with camera only.';
+                        } catch (err3) {
+                            // Tier 4: Fall back to dummy stream so user can enter classroom anyway
+                            console.warn('[useJanus] No camera or mic available / permission denied. Entering classroom in listener mode...', err3);
+                            stream = createFallbackMediaStream();
+                            mediaNotice = 'No camera or microphone detected. Joined classroom in listener mode.';
+                        }
                     }
                 }
             }
