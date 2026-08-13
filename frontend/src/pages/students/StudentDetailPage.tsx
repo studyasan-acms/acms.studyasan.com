@@ -59,7 +59,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
-  Trash2
+  Trash2,
+  MessageSquare
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -182,6 +183,7 @@ export default function StudentDetailPage() {
   // Weekly reports creation & preview state
   const [showReportCreateModal, setShowReportCreateModal] = useState(false);
   const [selectedPreviewReport, setSelectedPreviewReport] = useState<any>(null);
+  const [viewFeedbackReport, setViewFeedbackReport] = useState<any>(null);
   
   // Create Report form state
   const [reportMonth, setReportMonth] = useState("AUGUST");
@@ -996,17 +998,24 @@ export default function StudentDetailPage() {
                           </TableCell>
 
                           <TableCell className="py-3.5 text-xs">
-                            {report.parent_feedback ? (
-                              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                Submitted
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit">
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
-                                Pending
-                              </Badge>
-                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewFeedbackReport(report)}
+                              className="cursor-pointer group text-left"
+                              title="Click to view parent feedback"
+                            >
+                              {report.parent_feedback ? (
+                                <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit group-hover:bg-emerald-100 transition-colors">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                  Submitted
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 w-fit group-hover:bg-amber-100 transition-colors">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                  Pending
+                                </Badge>
+                              )}
+                            </button>
                           </TableCell>
 
                           <TableCell className="py-3.5 text-center">
@@ -1018,6 +1027,20 @@ export default function StudentDetailPage() {
                                 className="rounded-xl px-3.5 h-8 text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-saBlue transition-all shadow-sm"
                               >
                                 <Eye className="w-3.5 h-3.5 mr-1" /> View Card
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setViewFeedbackReport(report)}
+                                className={cn(
+                                  "rounded-xl px-2.5 h-8 text-xs font-bold transition-all shadow-xs",
+                                  report.parent_feedback
+                                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+                                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                                )}
+                                title="View Parent Feedback"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5 mr-1 text-saBlue" /> Feedback
                               </Button>
                               <Button
                                 variant="outline"
@@ -1547,9 +1570,114 @@ export default function StudentDetailPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* 7. Parent's Feedback Box */}
+                    {selectedPreviewReport.parent_feedback && (
+                      <div className="flex gap-2 items-start bg-emerald-50 rounded-xl p-2.5 text-slate-800 border border-emerald-200 shadow-xs relative overflow-hidden">
+                        <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center shrink-0 text-white font-bold text-xs mt-0.5">
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="space-y-0.5 z-10 pr-1">
+                          <span className="text-[9px] font-extrabold uppercase text-emerald-800 tracking-wider block">Parent's Feedback</span>
+                          <p className="text-slate-700 text-[9px] sm:text-[10px] leading-snug font-medium">
+                            "{selectedPreviewReport.parent_feedback}"
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW PARENT FEEDBACK MODAL DIALOG */}
+      {viewFeedbackReport && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setViewFeedbackReport(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden relative animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">Parent's Feedback & Response</h3>
+                  <p className="text-xs text-slate-400">
+                    Week of {format(new Date(viewFeedbackReport.week_start_date), "MMM d, yyyy")}
+                  </p>
+                </div>
+              </div>
+              <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => setViewFeedbackReport(null)}>
+                <X className="h-4 w-4 text-slate-500" />
+              </Button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Report Meta Pill */}
+              <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-600 font-extrabold">{viewFeedbackReport.month}</Badge>
+                  {viewFeedbackReport.subject && (
+                    <Badge variant="secondary" className="bg-blue-50 border-blue-200 text-blue-700 font-bold">{viewFeedbackReport.subject.name}</Badge>
+                  )}
+                </div>
+                <span className="text-slate-500 font-semibold">Student: {student?.user?.name}</span>
+              </div>
+
+              {/* Feedback Content */}
+              {viewFeedbackReport.parent_feedback ? (
+                <div className="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/70 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                      Parent's Response
+                    </span>
+                    <Badge variant="outline" className="bg-emerald-100 border-emerald-300 text-emerald-800 font-bold text-[10px]">
+                      Submitted
+                    </Badge>
+                  </div>
+                  <p className="text-slate-800 text-sm font-medium leading-relaxed italic bg-white/60 p-3 rounded-xl border border-emerald-100">
+                    "{viewFeedbackReport.parent_feedback}"
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-amber-50/70 rounded-2xl p-5 border border-amber-200/70 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto">
+                    <MessageSquare className="h-5 w-5" />
+                  </div>
+                  <h4 className="font-bold text-amber-900 text-sm">Feedback Pending</h4>
+                  <p className="text-xs text-amber-700 max-w-xs mx-auto">
+                    The parent has not submitted feedback for this weekly performance report yet.
+                  </p>
+                </div>
+              )}
+
+              {/* Teacher Comment context */}
+              {viewFeedbackReport.teacher_comment && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider">Teacher's Note</span>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-600">
+                    {viewFeedbackReport.teacher_comment}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+              <Button onClick={() => setViewFeedbackReport(null)} className="bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl h-10 px-5 text-xs">
+                Close
+              </Button>
             </div>
           </div>
         </div>

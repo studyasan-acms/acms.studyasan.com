@@ -734,6 +734,21 @@ export default function KnowYourChildPage() {
                             </div>
                           </div>
                         )}
+
+                        {/* Parent's Feedback Box */}
+                        {selectedReport.parent_feedback && (
+                          <div className="flex gap-2 items-start bg-emerald-50 rounded-xl p-2.5 text-slate-800 border border-emerald-200 shadow-xs relative overflow-hidden">
+                            <div className="w-7 h-7 rounded-full bg-emerald-600 flex items-center justify-center shrink-0 text-white font-bold text-xs mt-0.5">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="space-y-0.5 z-10 pr-1">
+                              <span className="text-[9px] font-extrabold uppercase text-emerald-800 tracking-wider block">Parent's Feedback</span>
+                              <p className="text-slate-700 text-[9px] sm:text-[10px] leading-snug font-medium">
+                                "{selectedReport.parent_feedback}"
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
