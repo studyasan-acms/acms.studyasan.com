@@ -26,6 +26,7 @@ export const PEN_THICKNESS_PRESETS = [
 interface UseWhiteboardOptions {
     canvasRef: React.RefObject<HTMLCanvasElement | null>;
     sendMessage: (message: WhiteboardMessage) => void;
+    initialStrokes?: Stroke[] | null;
 }
 
 interface UseWhiteboardReturn {
@@ -48,6 +49,9 @@ interface UseWhiteboardReturn {
     addTextStroke: (text: string, position: Point) => void;
     addImageStroke: (imageUrl: string, position: Point) => void;
     deleteSelected: () => void;
+    getStrokes: () => Stroke[];
+    loadStrokes: (loadedStrokes: Stroke[]) => void;
+    exportImage: () => string | null;
 }
 
 function generateStrokeId(): string {
@@ -73,7 +77,7 @@ function interpolateColor(color1: string, color2: string, fraction: number): str
     return `rgb(${r}, ${g}, ${b})`;
 }
 
-export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions): UseWhiteboardReturn {
+export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhiteboardOptions): UseWhiteboardReturn {
     const [currentTool, setCurrentTool] = useState<DrawingTool>('pen');
     const [currentColor, setCurrentColor] = useState('#0ea5e9');
     const [currentSize, setCurrentSize] = useState(4);
@@ -760,6 +764,45 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         }
     }, []);
 
+    const getStrokes = useCallback((): Stroke[] => {
+        return Array.from(strokes.current.values());
+    }, []);
+
+    const loadStrokes = useCallback((loadedStrokes: Stroke[]) => {
+        strokes.current.clear();
+        if (Array.isArray(loadedStrokes)) {
+            loadedStrokes.forEach((stroke) => {
+                if (stroke && stroke.id) {
+                    strokes.current.set(stroke.id, stroke);
+                }
+            });
+        }
+        redrawCanvas();
+    }, [redrawCanvas]);
+
+    const exportImage = useCallback((): string | null => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        try {
+            return canvas.toDataURL('image/png');
+        } catch {
+            return null;
+        }
+    }, [canvasRef]);
+
+    // Initialize from initialStrokes
+    useEffect(() => {
+        if (initialStrokes && Array.isArray(initialStrokes)) {
+            strokes.current.clear();
+            initialStrokes.forEach((stroke) => {
+                if (stroke && stroke.id) {
+                    strokes.current.set(stroke.id, stroke);
+                }
+            });
+            setTimeout(redrawCanvas, 50);
+        }
+    }, [initialStrokes, redrawCanvas]);
+
     return {
         currentTool,
         currentColor,
@@ -780,5 +823,8 @@ export function useWhiteboard({ canvasRef, sendMessage }: UseWhiteboardOptions):
         addTextStroke,
         addImageStroke,
         deleteSelected,
+        getStrokes,
+        loadStrokes,
+        exportImage,
     };
 }

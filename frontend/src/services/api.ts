@@ -66,6 +66,10 @@ import type {
   TestSeriesTeacherJunction,
   TestSeriesEnrollment,
   ActivityGroupEnrollment,
+  SavedWhiteboard,
+  CreateWhiteboardData,
+  UpdateWhiteboardData,
+  WhiteboardsResponse,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -965,8 +969,12 @@ export const chatService = {
     return response.data;
   },
 
-  // Send a message
-  sendMessage: async (chatId: number, data: SendMessageData, file?: File): Promise<{ success: boolean; data: Message }> => {
+  // Send a message (with optional single or multiple file uploads)
+  sendMessage: async (
+    chatId: number,
+    data: SendMessageData,
+    file?: File | File[] | null
+  ): Promise<{ success: boolean; data: Message | Message[] }> => {
     const formData = new FormData();
 
     if (data.content) {
@@ -978,7 +986,14 @@ export const chatService = {
     }
 
     if (file) {
-      formData.append('file', file);
+      if (Array.isArray(file)) {
+        file.forEach((f) => {
+          formData.append('files', f);
+        });
+      } else {
+        formData.append('file', file);
+        formData.append('files', file);
+      }
     }
 
     const response = await api.post(`/chats/${chatId}/messages`, formData, {
@@ -1007,6 +1022,11 @@ export const chatService = {
     return response.data;
   },
 
+  // Delete a message in a chat
+  deleteMessage: async (chatId: number, messageId: number): Promise<{ success: boolean; message: string; data: { messageId: number; chatId: number } }> => {
+    const response = await api.delete(`/chats/${chatId}/messages/${messageId}`);
+    return response.data;
+  },
 };
 
 // Location Service
@@ -1632,5 +1652,39 @@ export const brainQuestService = {
   },
 };
 
+// ================== WHITEBOARD SERVICE ==================
+export const whiteboardService = {
+  getAll: async (params?: {
+    subject_id?: number;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<WhiteboardsResponse> => {
+    const response = await api.get<WhiteboardsResponse>('/whiteboards', { params });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<{ success: boolean; data: SavedWhiteboard; message: string }> => {
+    const response = await api.get<{ success: boolean; data: SavedWhiteboard; message: string }>(`/whiteboards/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateWhiteboardData): Promise<{ success: boolean; data: SavedWhiteboard; message: string }> => {
+    const response = await api.post<{ success: boolean; data: SavedWhiteboard; message: string }>('/whiteboards', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateWhiteboardData): Promise<{ success: boolean; data: SavedWhiteboard; message: string }> => {
+    const response = await api.put<{ success: boolean; data: SavedWhiteboard; message: string }>(`/whiteboards/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete<{ success: boolean; message: string }>(`/whiteboards/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };
+

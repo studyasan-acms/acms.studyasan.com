@@ -310,6 +310,7 @@ function App() {
 
           {/* Standalone Whiteboard Route */}
           <Route path="whiteboard" element={<WhiteboardPage />} />
+          <Route path="whiteboard/:id" element={<WhiteboardPage />} />
 
           {/* Test Series Routes */}
           <Route path="test-series" element={<TestSeriesPage />} />

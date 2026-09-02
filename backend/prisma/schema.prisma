@@ -66,6 +66,7 @@ model User {
   graded_brain_quests     BrainQuestSubmission[]   @relation("BrainQuestGrader")
   room_chat_messages      RoomChatMessage[]
   announcements           Announcement[]           @relation("AnnouncementCreator")
+  saved_whiteboards       SavedWhiteboard[]
 
   @@map("user")
 }
@@ -172,6 +173,7 @@ model Subject {
   homework                  Homework[]
   know_your_child_reports   KnowYourChildReport[]
   brain_quests              BrainQuest[]
+  saved_whiteboards         SavedWhiteboard[]
 
   @@map("subjects")
 }
@@ -1292,5 +1294,21 @@ enum PayoutStatus {
   APPROVED
   REJECTED
   PAID
+}
+
+model SavedWhiteboard {
+  id          Int       @id @default(autoincrement())
+  title       String
+  subject_id  Int?
+  user_id     Int
+  strokes     Json      @default("[]")
+  thumbnail   String?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  subject     Subject?  @relation(fields: [subject_id], references: [id], onDelete: SetNull)
+  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("saved_whiteboards")
 }
 

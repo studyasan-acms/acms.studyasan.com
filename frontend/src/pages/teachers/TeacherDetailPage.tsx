@@ -512,18 +512,43 @@ export default function TeacherDetailPage() {
                 </div>
                 <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
                   {teacher.teacher_subject_junctions?.length ? (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col gap-2">
                       {teacher.teacher_subject_junctions.map((junction) => (
-                        <div key={junction.id} className="group relative">
-                          <Badge variant="secondary" className="bg-white border-gray-200 text-gray-700 shadow-sm pr-6">
-                            {junction.subject.name}
-                            {junction.subject.class && <span className="text-[10px] text-gray-400 ml-1">({junction.subject.class.name})</span>}
-                          </Badge>
+                        <div
+                          key={junction.id}
+                          className="group relative flex items-center justify-between p-2.5 bg-white border border-gray-200/80 rounded-xl shadow-2xs hover:border-saBlue/40 transition-all"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-bold text-gray-800 truncate">
+                              {junction.subject.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                              {junction.subject.class ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-blue-50/80 text-blue-700 border-blue-200/60 font-medium">
+                                  {junction.subject.class.name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-50 text-gray-400 border-gray-200">
+                                  No Class
+                                </Badge>
+                              )}
+                              {junction.subject.board ? (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-purple-50/80 text-purple-700 border-purple-200/60 font-medium">
+                                  {junction.subject.board.name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-50 text-gray-400 border-gray-200">
+                                  No Board
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                           <button
                             onClick={() => { setDeleteJunctionId(junction.id); setShowDeleteModal(true); }}
-                            className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity"
+                            className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all ml-2 shrink-0"
+                            title="Remove Subject"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       ))}
@@ -615,7 +640,7 @@ export default function TeacherDetailPage() {
       {/* Modal - Assign Subject */}
       {showAssignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Assign Subject</h2>
 
             <div className="space-y-4">
@@ -650,7 +675,7 @@ export default function TeacherDetailPage() {
       {/* Modal - Assign Test Series */}
       {showTestSeriesModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Assign Test Series</h2>
 
             <div className="space-y-4">
@@ -685,7 +710,7 @@ export default function TeacherDetailPage() {
       {/* Modal - Assign Activity Group */}
       {showActivityGroupModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4">Assign Activity Group</h2>
 
             <div className="space-y-4">

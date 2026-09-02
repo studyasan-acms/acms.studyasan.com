@@ -41,7 +41,7 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in">
+      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in max-h-[90vh] overflow-y-auto">
 
         {/* Lottie Animation */}
         {lottieSrc && (

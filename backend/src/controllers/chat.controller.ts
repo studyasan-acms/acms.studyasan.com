@@ -170,6 +170,7 @@ export const startChat = async (req: AuthRequest, res: Response) => {
                   id: true,
                   name: true,
                   email: true,
+                  role: true,
                 },
               },
             },
@@ -196,6 +197,7 @@ export const startChat = async (req: AuthRequest, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                role: true,
               },
             },
           },
@@ -219,87 +221,175 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Chat ID is required', 400);
     }
 
+    const parsedChatId = parseInt(chatId);
+    if (isNaN(parsedChatId)) {
+      return sendError(res, 'Valid Chat ID is required', 400);
+    }
+
     const { content, messageType = 'TEXT' } = req.body;
     const userId = (req as any).user!.id;
     const userRole = (req as any).user!.role;
-    const file = req.file; // Assuming multer is used for file upload
 
-    // Verify user is participant in the chat
-    const participant = await prisma.chatParticipant.findUnique({
-      where: {
-        chat_id_user_id: {
-          chat_id: parseInt(chatId),
-          user_id: userId,
-        },
-      },
+    const chat = await prisma.chat.findUnique({
+      where: { id: parsedChatId },
     });
 
-    if (!participant) {
-      return sendError(res, 'You are not a participant in this chat', 403);
+    if (!chat) {
+      return sendError(res, 'Chat not found', 404);
     }
 
-    const chatPermission = await canUserSendInChat(parseInt(chatId), userId, userRole);
+    // Verify user is participant in the chat (Admins can send in any chat)
+    if (userRole !== 'ADMIN') {
+      const participant = await prisma.chatParticipant.findUnique({
+        where: {
+          chat_id_user_id: {
+            chat_id: parsedChatId,
+            user_id: userId,
+          },
+        },
+      });
+
+      if (!participant) {
+        return sendError(res, 'You are not a participant in this chat', 403);
+      }
+    }
+
+    const chatPermission = await canUserSendInChat(parsedChatId, userId, userRole);
     if (!chatPermission.allowed) {
       return sendError(res, chatPermission.reason || 'You can no longer send messages in this chat.', 403);
     }
 
-    let attachmentUrl: string | undefined;
-    let finalMessageType = messageType as MessageType;
+    const rawFiles = (req.files as Express.Multer.File[]) || [];
+    const singleFile = req.file;
+    const filesToProcess: Express.Multer.File[] = [];
 
-    // Handle file upload
-    if (file) {
-      try {
-        const uploadResult = await uploadToS3(file, 'chat-attachments');
-        attachmentUrl = uploadResult.url;
-        finalMessageType = getMessageTypeFromFile(file.originalname);
-      } catch (uploadError) {
-        console.error('Error uploading file:', uploadError);
-        return sendError(res, 'Failed to upload file', 500);
+    if (rawFiles && Array.isArray(rawFiles) && rawFiles.length > 0) {
+      const seen = new Set<string>();
+      for (const f of rawFiles) {
+        const key = `${f.originalname}_${f.size}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          filesToProcess.push(f);
+        }
       }
-    }
-
-    // Create message
-    const message = await prisma.message.create({
-      data: {
-        chat_id: parseInt(chatId),
-        sender_id: userId,
-        content: content || null,
-        message_type: finalMessageType,
-        attachment_url: attachmentUrl || null,
-      },
-      include: {
-        sender: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    try {
-      const io = getIo();
-      io.to(`chat_${chatId}`).emit('receive_message', message);
-    } catch (error) {
-      console.error('Socket error:', error);
+    } else if (singleFile) {
+      filesToProcess.push(singleFile);
     }
 
     const chatParticipants = await prisma.chatParticipant.findMany({
-      where: { chat_id: parseInt(chatId) },
+      where: { chat_id: parsedChatId },
       select: { user_id: true },
     });
+    const io = getIo();
 
-    scheduleUnreadMessageNotifications({
-      messageId: message.id,
-      senderId: userId,
-      senderName: message.sender.name,
-      content: message.content,
-      messageType: message.message_type,
-      recipientIds: chatParticipants.map((participantItem) => participantItem.user_id),
-    });
+    // If no files, create regular text message
+    if (filesToProcess.length === 0) {
+      const message = await prisma.message.create({
+        data: {
+          chat_id: parsedChatId,
+          sender_id: userId,
+          content: content || null,
+          message_type: (messageType as MessageType) || 'TEXT',
+          attachment_url: null,
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
 
-    return sendSuccess(res, message, 'Message sent successfully', 201);
+      try {
+        io.to(`chat_${chatId}`).emit('receive_message', message);
+      } catch (error) {
+        console.error('Socket error:', error);
+      }
+
+      scheduleUnreadMessageNotifications({
+        messageId: message.id,
+        senderId: userId,
+        senderName: message.sender.name,
+        content: message.content,
+        messageType: message.message_type,
+        recipientIds: chatParticipants.map((participantItem) => participantItem.user_id),
+      });
+
+      return sendSuccess(res, message, 'Message sent successfully', 201);
+    }
+
+    // Process all file uploads
+    let uploadResults: { file: Express.Multer.File; url: string; messageType: MessageType }[] = [];
+    try {
+      uploadResults = await Promise.all(
+        filesToProcess.map(async (f) => {
+          const uploadResult = await uploadToS3(f, 'chat-attachments');
+          return {
+            file: f,
+            url: uploadResult.url,
+            messageType: getMessageTypeFromFile(f.originalname),
+          };
+        })
+      );
+    } catch (uploadError) {
+      console.error('Error uploading file(s):', uploadError);
+      return sendError(res, 'Failed to upload attachments', 500);
+    }
+
+    const createdMessages: any[] = [];
+
+    for (let i = 0; i < uploadResults.length; i++) {
+      const item = uploadResults[i];
+      if (!item) continue;
+      // Attach text content to the first message if provided
+      const msgContent = i === 0 ? (content || null) : null;
+
+      const createdMsg = await prisma.message.create({
+        data: {
+          chat_id: parsedChatId,
+          sender_id: userId,
+          content: msgContent,
+          message_type: item.messageType,
+          attachment_url: item.url,
+        },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+        },
+      });
+
+      createdMessages.push(createdMsg);
+
+      try {
+        io.to(`chat_${chatId}`).emit('receive_message', createdMsg);
+      } catch (error) {
+        console.error('Socket error:', error);
+      }
+
+      scheduleUnreadMessageNotifications({
+        messageId: createdMsg.id,
+        senderId: userId,
+        senderName: createdMsg.sender.name,
+        content: createdMsg.content,
+        messageType: createdMsg.message_type,
+        recipientIds: chatParticipants.map((participantItem) => participantItem.user_id),
+      });
+    }
+
+    return sendSuccess(
+      res,
+      createdMessages.length === 1 ? createdMessages[0] : createdMessages[createdMessages.length - 1],
+      'Message(s) sent successfully',
+      201
+    );
   } catch (error) {
     console.error('Error sending message:', error);
     return sendError(res, 'Failed to send message');
@@ -397,6 +487,7 @@ export const getUserChats = async (req: AuthRequest, res: Response) => {
                 id: true,
                 name: true,
                 email: true,
+                role: true,
               },
             },
           },
@@ -483,6 +574,60 @@ export const getAllChats = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error fetching all chats:', error);
     return sendError(res, 'Failed to fetch all chats');
+  }
+};
+
+// Delete a message in a chat
+export const deleteMessage = async (req: AuthRequest, res: Response) => {
+  try {
+    const { chatId, messageId } = req.params;
+    const userId = (req as any).user!.id;
+    const userRole = (req as any).user!.role;
+
+    if (!messageId) {
+      return sendError(res, 'Message ID is required', 400);
+    }
+
+    const parsedMessageId = parseInt(messageId);
+    if (isNaN(parsedMessageId)) {
+      return sendError(res, 'Valid Message ID is required', 400);
+    }
+
+    const message = await prisma.message.findUnique({
+      where: { id: parsedMessageId },
+    });
+
+    if (!message) {
+      return sendError(res, 'Message not found', 404);
+    }
+
+    if (chatId && message.chat_id !== parseInt(chatId)) {
+      return sendError(res, 'Message does not belong to this chat', 400);
+    }
+
+    // Admins can delete any message. Senders can delete their own messages.
+    if (userRole !== 'ADMIN' && message.sender_id !== userId) {
+      return sendError(res, 'You are not authorized to delete this message', 403);
+    }
+
+    await prisma.message.delete({
+      where: { id: parsedMessageId },
+    });
+
+    try {
+      const io = getIo();
+      io.to(`chat_${message.chat_id}`).emit('message_deleted', {
+        messageId: message.id,
+        chatId: message.chat_id,
+      });
+    } catch (socketError) {
+      console.error('Socket error on message deletion:', socketError);
+    }
+
+    return sendSuccess(res, { messageId: message.id, chatId: message.chat_id }, 'Message deleted successfully');
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    return sendError(res, 'Failed to delete message');
   }
 };
 

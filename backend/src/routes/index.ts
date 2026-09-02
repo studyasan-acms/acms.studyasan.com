@@ -39,6 +39,7 @@ import * as jobController from '../controllers/job.controller.js';
 import * as knowYourChildController from '../controllers/knowYourChild.controller.js';
 import * as brainQuestController from '../controllers/brainQuest.controller.js';
 import * as agencyController from '../controllers/agency.controller.js';
+import * as whiteboardController from '../controllers/whiteboard.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -395,8 +396,8 @@ router.post('/test-attempts/:attemptId/grade', authenticate, authorizeStrict('AD
 // Start a new chat
 router.post('/chats', authenticate, chatController.startChat);
 
-// Send a message (with optional file upload)
-router.post('/chats/:chatId/messages', authenticate, upload.single('file'), chatController.sendMessage);
+// Send a message (with optional multiple file uploads)
+router.post('/chats/:chatId/messages', authenticate, upload.any(), chatController.sendMessage);
 
 // Get messages for a chat
 router.get('/chats/:chatId/messages', authenticate, chatController.getChatMessages);
@@ -406,6 +407,10 @@ router.get('/chats', authenticate, chatController.getUserChats);
 
 // Get all chats (Admin only)
 router.get('/admin/chats', authenticate, authorize('ADMIN'), chatController.getAllChats);
+
+// Delete a message in a chat
+router.delete('/chats/:chatId/messages/:messageId', authenticate, chatController.deleteMessage);
+router.delete('/chats/messages/:messageId', authenticate, chatController.deleteMessage);
 
 
 // ================== LOCATION ROUTES ==================
@@ -678,10 +683,17 @@ router.get('/video-rooms/:janusRoomId/access', authenticate, videoRoomController
 router.get('/video-rooms/:janusRoomId/chat', authenticate, videoRoomController.getChatMessages);
 router.post('/video-rooms/:janusRoomId/chat', authenticate, videoRoomController.sendChatMessage);
 
-// Whiteboard endpoints
+// Whiteboard endpoints (Live classroom)
 router.get('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.getWhiteboardStrokes);
 router.post('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.addWhiteboardStroke);
 router.delete('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.clearWhiteboard);
+
+// Saved Whiteboards (Admin & Teacher)
+router.get('/whiteboards', authenticate, authorizeStrict('ADMIN', 'TEACHER'), whiteboardController.getSavedWhiteboards);
+router.get('/whiteboards/:id', authenticate, authorizeStrict('ADMIN', 'TEACHER'), whiteboardController.getSavedWhiteboardById);
+router.post('/whiteboards', authenticate, authorizeStrict('ADMIN', 'TEACHER'), whiteboardController.createSavedWhiteboard);
+router.put('/whiteboards/:id', authenticate, authorizeStrict('ADMIN', 'TEACHER'), whiteboardController.updateSavedWhiteboard);
+router.delete('/whiteboards/:id', authenticate, authorizeStrict('ADMIN', 'TEACHER'), whiteboardController.deleteSavedWhiteboard);
 
 // Teacher admin actions
 router.post('/video-rooms/:janusRoomId/participants/:participantId/mute', authenticate, videoRoomController.muteParticipant);

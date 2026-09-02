@@ -1162,7 +1162,7 @@ export default function StudentDetailPage() {
       {/* Subject Enrollment Modal */}
       {showSubjectModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowSubjectModal(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto relative border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-1">Enroll in Subject</h3>
               <p className="text-gray-400 text-sm mb-6">Select a subject to add to this student's learning path.</p>
@@ -1191,7 +1191,7 @@ export default function StudentDetailPage() {
       {/* Test Series Modal */}
       {showTestSeriesModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowTestSeriesModal(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto relative border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-1">Enroll in Test Series</h3>
               <p className="text-gray-400 text-sm mb-6">Assign a test series evaluation.</p>
@@ -1218,7 +1218,7 @@ export default function StudentDetailPage() {
       {/* Activity Group Modal */}
       {showActivityGroupModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setShowActivityGroupModal(false)}>
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative border border-gray-100" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto relative border border-gray-100" onClick={e => e.stopPropagation()}>
             <div className="p-6">
               <h3 className="text-xl font-bold text-gray-800 mb-1">Join Activity Group</h3>
               <p className="text-gray-400 text-sm mb-6">Enroll the student in an activity group.</p>
@@ -1600,7 +1600,7 @@ export default function StudentDetailPage() {
           onClick={() => setViewFeedbackReport(null)}
         >
           <div 
-            className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden relative animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-lg w-full overflow-hidden max-h-[90vh] overflow-y-auto relative animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

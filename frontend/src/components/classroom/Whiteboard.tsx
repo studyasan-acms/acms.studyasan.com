@@ -25,6 +25,9 @@ import {
     Shapes,
     ChevronDown,
     Palette,
+    Save,
+    Download,
+    Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWhiteboard, PEN_THICKNESS_RANGE, PEN_THICKNESS_PRESETS } from '@/hooks/useWhiteboard';
@@ -36,6 +39,9 @@ interface WhiteboardProps {
     sendMessage: (message: WhiteboardMessage) => void;
     onRemoteMessage?: (handler: (message: WhiteboardMessage) => void) => void;
     canEdit?: boolean;
+    initialStrokes?: any;
+    onSave?: (strokes: any[], thumbnail?: string) => void;
+    isSaving?: boolean;
 }
 
 const COLORS = [
@@ -65,6 +71,9 @@ export function Whiteboard({
     sendMessage,
     onRemoteMessage,
     canEdit = true,
+    initialStrokes,
+    onSave,
+    isSaving = false,
 }: WhiteboardProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -93,7 +102,10 @@ export function Whiteboard({
         addImageStroke,
         deleteSelected,
         selectedStrokeId,
-    } = useWhiteboard({ canvasRef, sendMessage });
+        getStrokes,
+        loadStrokes,
+        exportImage,
+    } = useWhiteboard({ canvasRef, sendMessage, initialStrokes });
 
     const [textInput, setTextInput] = useState('');
     const [textPosition, setTextPosition] = useState<{ x: number; y: number } | null>(null);
@@ -515,6 +527,49 @@ export function Whiteboard({
                         >
                             <X className="w-3.5 h-3.5 mr-1" />
                             Delete
+                        </Button>
+                    )}
+
+                    {/* Export Image button */}
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            const dataUrl = exportImage();
+                            if (dataUrl) {
+                                const link = document.createElement('a');
+                                link.download = `whiteboard-${Date.now()}.png`;
+                                link.href = dataUrl;
+                                link.click();
+                            }
+                        }}
+                        className="text-slate-600 hover:bg-slate-100 h-7 px-2 text-xs font-medium"
+                        title="Download as Image"
+                    >
+                        <Download className="w-3.5 h-3.5 mr-1" />
+                        Export
+                    </Button>
+
+                    {/* Save Whiteboard button */}
+                    {onSave && (
+                        <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => {
+                                const currentStrokes = getStrokes();
+                                const thumb = exportImage() || undefined;
+                                onSave(currentStrokes, thumb);
+                            }}
+                            disabled={isSaving}
+                            className="bg-saBlue hover:bg-saBlue/90 text-white h-7 px-3 text-xs font-semibold shadow-sm"
+                            title="Save Whiteboard"
+                        >
+                            {isSaving ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                            ) : (
+                                <Save className="w-3.5 h-3.5 mr-1" />
+                            )}
+                            {isSaving ? 'Saving...' : 'Save'}
                         </Button>
                     )}
                 </div>

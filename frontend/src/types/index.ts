@@ -261,6 +261,7 @@ export interface Teacher {
       id: number;
       name: string;
       class: { id: number; name: string } | null;
+      board: { id: number; name: string } | null;
     };
   }[];
   test_series_junctions?: {
@@ -1118,5 +1119,57 @@ export interface ApplyJobData {
 export interface ReviewApplicationData {
   status: ApplicationStatus;
   feedback?: string;
+}
+
+// ================== SAVED WHITEBOARD TYPES ==================
+export interface SavedWhiteboard {
+  id: number;
+  title: string;
+  subject_id: number | null;
+  user_id: number;
+  strokes: any;
+  thumbnail: string | null;
+  created_at: string;
+  updated_at: string;
+  subject?: {
+    id: number;
+    name: string;
+    class?: { id: number; name: string } | null;
+    board?: { id: number; name: string } | null;
+  } | null;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+  };
+}
+
+export interface CreateWhiteboardData {
+  title: string;
+  subject_id?: number | null;
+  strokes?: any;
+  thumbnail?: string | null;
+}
+
+export interface UpdateWhiteboardData {
+  title?: string;
+  subject_id?: number | null;
+  strokes?: any;
+  thumbnail?: string | null;
+}
+
+export interface WhiteboardsResponse {
+  success: boolean;
+  message: string;
+  data: {
+    whiteboards: SavedWhiteboard[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  };
 }
 

@@ -99,7 +99,12 @@ export const getAllTeachers = async (req: Request, res: Response) => {
           },
           teacher_subject_junctions: {
             include: {
-              subject: true,
+              subject: {
+                include: {
+                  class: true,
+                  board: true,
+                },
+              },
             },
           },
           address: {
@@ -119,12 +124,14 @@ export const getAllTeachers = async (req: Request, res: Response) => {
     ]);
 
     const response = createPaginatedResponse(teachers, total, page, limit);
-    sendSuccess(res, response);
-  } catch (error: any) {
-    sendError(res, error.message, 500);
+    return sendSuccess(res, response);
+  } catch (error) {
+    console.error('Error in getAllTeachers:', error);
+    return sendError(res, 'Internal server error');
   }
 };
 
+// Get a single teacher by ID
 export const getTeacherById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -150,7 +157,12 @@ export const getTeacherById = async (req: Request, res: Response) => {
         },
         teacher_subject_junctions: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                class: true,
+                board: true,
+              },
+            },
           },
         },
         test_series_junctions: {
