@@ -90,8 +90,10 @@ const getInitials = (name: string) =>
 
 export default function Header({
   toggleSidebar,
+  sidebarCollapsed = false,
 }: {
   toggleSidebar: () => void;
+  sidebarCollapsed?: boolean;
 }) {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -139,14 +141,11 @@ export default function Header({
   return (
     <>
       <header
-        className="sticky top-0 z-40 h-16 flex-shrink-0 flex items-center"
-        style={{
-          background: "linear-gradient(180deg, #0276D3 0%, #025AA3 100%)",
-          borderBottom: "1px solid rgba(255,255,255,0.12)",
-          boxShadow: "0 1px 8px 0 rgba(2,86,163,0.18)",
-        }}
+        className={`sticky top-0 z-40 h-16 flex-shrink-0 flex items-center transition-all duration-300 ease-in-out bg-saBlue border-b border-white/10 ${
+          sidebarCollapsed ? "lg:pl-14" : "lg:pl-56"
+        }`}
       >
-        <div className="flex items-center w-full h-full px-3 sm:px-4 gap-2">
+        <div className="flex items-center w-full h-full px-3 sm:px-5 gap-2">
 
           {/* ── LEFT: Hamburger (mobile) + Logo (mobile) */}
           <div className="flex items-center gap-2 lg:hidden">
@@ -167,17 +166,8 @@ export default function Header({
             />
           </div>
 
-          {/* ── CENTER / DESKTOP LEFT: Page title breadcrumb */}
-          <div className="hidden lg:flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-white/60 text-sm font-medium">StudyAsan</span>
-            <ChevronRight className="h-3.5 w-3.5 text-white/30 flex-shrink-0" />
-            <span className="text-white text-sm font-semibold truncate">
-              {pageLabel}
-            </span>
-          </div>
-
-          {/* Mobile: flex spacer */}
-          <div className="flex-1 lg:hidden" />
+          {/* Spacer */}
+          <div className="flex-1" />
 
           {/* ── RIGHT: Action icons */}
           <div className="flex items-center gap-0.5 sm:gap-1">

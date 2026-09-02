@@ -17,11 +17,18 @@ import {
   FileText,
   RefreshCw,
   Users,
-  BookOpen,
+  RotateCcw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuthStore } from '@/store/authStore';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -44,21 +51,21 @@ function getDisplayStatus(inv: Invoice): 'PAID' | 'PENDING' | 'OVERDUE' {
 function StatusBadge({ status }: { status: 'PAID' | 'PENDING' | 'OVERDUE' | string }) {
   if (status === 'PAID')
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
-        <CheckCircle2 size={11} />
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-saBlue/10 text-saBlue border border-saBlue/20">
+        <CheckCircle2 size={10} />
         Paid
       </span>
     );
   if (status === 'OVERDUE')
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700">
-        <AlertTriangle size={11} />
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-600 border border-rose-200">
+        <AlertTriangle size={10} />
         Overdue
       </span>
     );
   return (
-    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">
-      <Clock size={11} />
+    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/30">
+      <Clock size={10} />
       Pending
     </span>
   );
@@ -81,6 +88,7 @@ const EnrollmentsInvoicesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'pending' | 'overdue'>('all');
+  const [sortOption, setSortOption] = useState<string>('created_desc');
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -123,9 +131,55 @@ const EnrollmentsInvoicesPage: React.FC = () => {
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
 
+  const handleSortOptionChange = (value: string) => {
+    setSortOption(value);
+    switch (value) {
+      case 'created_desc':
+        setSortBy('created_at');
+        setSortOrder('desc');
+        break;
+      case 'created_asc':
+        setSortBy('created_at');
+        setSortOrder('asc');
+        break;
+      case 'due_asc':
+        setSortBy('due_date');
+        setSortOrder('asc');
+        break;
+      case 'due_desc':
+        setSortBy('due_date');
+        setSortOrder('desc');
+        break;
+      case 'amount_desc':
+        setSortBy('total_amount');
+        setSortOrder('desc');
+        break;
+      case 'amount_asc':
+        setSortBy('total_amount');
+        setSortOrder('asc');
+        break;
+      case 'student_asc':
+        setSortBy('student');
+        setSortOrder('asc');
+        break;
+      default:
+        setSortBy('created_at');
+        setSortOrder('desc');
+    }
+    setCurrentPage(1);
+  };
+
   const handleSort = (col: string) => {
-    if (sortBy === col) setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-    else { setSortBy(col); setSortOrder('desc'); }
+    if (sortBy === col) {
+      const newOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+      setSortOrder(newOrder);
+      setSortOption(`${col}_${newOrder}`);
+    } else {
+      setSortBy(col);
+      setSortOrder('desc');
+      setSortOption(`${col}_desc`);
+    }
+    setCurrentPage(1);
   };
 
   const handleMarkStatus = async (inv: Invoice, newStatus: 'PAID' | 'PENDING') => {
@@ -167,88 +221,122 @@ const EnrollmentsInvoicesPage: React.FC = () => {
     }
   };
 
+  const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all' || sortOption !== 'created_desc';
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    handleSortOptionChange('created_desc');
+  };
+
   const SortIcon = ({ col }: { col: string }) => (
-    <ArrowUpDown size={12} className={`inline ml-1 ${sortBy === col ? 'text-[#0276D3]' : 'text-gray-300'}`} />
+    <ArrowUpDown size={12} className={`inline ml-1 ${sortBy === col ? 'text-saBlue' : 'text-slate-300'}`} />
   );
 
-  const FILTER_PILLS = [
-    { label: 'All', value: 'all' as const },
-    { label: 'Paid', value: 'paid' as const },
-    { label: 'Pending', value: 'pending' as const },
-    { label: 'Overdue', value: 'overdue' as const },
-  ];
+  const getSortOptionLabel = () => {
+    switch (sortOption) {
+      case 'created_desc': return 'Recently Issued';
+      case 'created_asc': return 'Oldest Issued';
+      case 'due_asc': return 'Due Date (Earliest First)';
+      case 'due_desc': return 'Due Date (Latest First)';
+      case 'amount_desc': return 'Amount (High → Low)';
+      case 'amount_asc': return 'Amount (Low → High)';
+      case 'student_asc': return 'Student (A → Z)';
+      default: return 'Default';
+    }
+  };
 
   return (
-    <div className="p-6 max-w-screen-xl mx-auto space-y-6">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12">
       {/* Page Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Enrollments & Invoices</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage student enrollments and their billing invoices</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Enrollments & Invoices</h1>
+          <p className="text-slate-500 text-xs sm:text-sm">Manage student course enrollments, subscription items, and generated billing invoices.</p>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[
-          {
-            label: 'Total Invoiced',
-            value: `₹${stats.totalInvoiced.toLocaleString('en-IN')}`,
-            icon: <FileText size={18} className="text-[#0276D3]" />,
-            bg: 'bg-blue-50',
-          },
-          {
-            label: 'Collected Revenue',
-            value: `₹${stats.totalPaid.toLocaleString('en-IN')}`,
-            icon: <TrendingUp size={18} className="text-emerald-600" />,
-            bg: 'bg-emerald-50',
-          },
-          {
-            label: 'Pending Dues',
-            value: `₹${stats.totalPending.toLocaleString('en-IN')}`,
-            icon: <Clock size={18} className="text-amber-600" />,
-            bg: 'bg-amber-50',
-          },
-          {
-            label: 'Overdue Amount',
-            value: `₹${stats.totalOverdue.toLocaleString('en-IN')}`,
-            icon: <AlertTriangle size={18} className="text-red-500" />,
-            bg: 'bg-red-50',
-          },
-        ].map((card) => (
-          <Card key={card.label} className="border border-gray-200 shadow-none">
-            <CardContent className="p-4">
-              <div className={`w-9 h-9 rounded-xl ${card.bg} flex items-center justify-center mb-3`}>
-                {card.icon}
-              </div>
-              <div className="text-2xl font-bold text-gray-900">{card.value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{card.label}</div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* KPI Cards Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saBlue/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Invoiced</p>
+              <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">₹{stats.totalInvoiced.toLocaleString('en-IN')}</h3>
+            </div>
+            <div className="h-8 w-8 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+              <FileText className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Total revenue invoiced</p>
+        </Card>
+
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saBlue/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Collected Revenue</p>
+              <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">₹{stats.totalPaid.toLocaleString('en-IN')}</h3>
+            </div>
+            <div className="h-8 w-8 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Successfully cleared payments</p>
+        </Card>
+
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saVividOrange/40 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Dues</p>
+              <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">₹{stats.totalPending.toLocaleString('en-IN')}</h3>
+            </div>
+            <div className="h-8 w-8 bg-saVividOrange/10 rounded-lg flex items-center justify-center text-saVividOrange shrink-0">
+              <Clock className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Awaiting settlement</p>
+        </Card>
+
+        <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-slate-300 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue Amount</p>
+              <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">₹{stats.totalOverdue.toLocaleString('en-IN')}</h3>
+            </div>
+            <div className="h-8 w-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 shrink-0">
+              <AlertTriangle className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-[10px] text-slate-400 mt-1">Past scheduled due date</p>
+        </Card>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-0">
-          {[
-            { id: 'enrollments', label: 'Enrollments', icon: <Users size={15} /> },
-            { id: 'invoices', label: 'Invoices', icon: <FileText size={15} /> },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? 'border-[#0276D3] text-[#0276D3]'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      {/* Pill-Style Tabs */}
+      <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+        <div className="p-1 bg-slate-100/80 rounded-xl inline-flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab('enrollments')}
+            className={`rounded-lg px-3.5 py-1.5 transition-all flex items-center gap-1.5 text-xs font-bold ${
+              activeTab === 'enrollments'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            Enrollments
+          </button>
+          <button
+            onClick={() => setActiveTab('invoices')}
+            className={`rounded-lg px-3.5 py-1.5 transition-all flex items-center gap-1.5 text-xs font-bold ${
+              activeTab === 'invoices'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            Invoices
+          </button>
+        </div>
       </div>
 
       {/* Tab Content */}
@@ -257,91 +345,137 @@ const EnrollmentsInvoicesPage: React.FC = () => {
       )}
 
       {activeTab === 'invoices' && (
-        <div>
-          {/* Invoice Toolbar */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-5">
-            <div className="relative flex-1">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by student, invoice number, item..."
-                className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-[#0276D3] focus:ring-2 focus:ring-blue-100"
-              />
-            </div>
-            {/* Filter pills */}
-            <div className="flex items-center gap-1.5 bg-gray-100 rounded-xl p-1">
-              {FILTER_PILLS.map((f) => (
-                <button
-                  key={f.value}
-                  onClick={() => setStatusFilter(f.value)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                    statusFilter === f.value
-                      ? 'bg-white text-[#0276D3] shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {f.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={fetchInvoices} className="h-10">
-                <RefreshCw size={14} />
-              </Button>
-              {isAdmin && (
+        <div className="space-y-4">
+          {/* Invoice Search, Sort & Filter Toolbar */}
+          <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3">
+            <div className="flex flex-col lg:flex-row gap-2.5 items-stretch lg:items-center justify-between">
+              {/* Search Input */}
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by student, invoice number, item..."
+                  className="pl-9 h-9 text-xs rounded-lg border-slate-200 bg-slate-50/60 focus:bg-white"
+                />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Sort Dropdown */}
+                <Select value={sortOption} onValueChange={handleSortOptionChange}>
+                  <SelectTrigger className="h-9 w-44 bg-slate-50 border-slate-200 rounded-lg text-xs font-semibold text-slate-700">
+                    <SelectValue placeholder="Sort By" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="created_desc">Recently Issued</SelectItem>
+                    <SelectItem value="created_asc">Oldest Issued</SelectItem>
+                    <SelectItem value="due_asc">Due Date: Earliest First</SelectItem>
+                    <SelectItem value="due_desc">Due Date: Latest First</SelectItem>
+                    <SelectItem value="amount_desc">Amount (High → Low)</SelectItem>
+                    <SelectItem value="amount_asc">Amount (Low → High)</SelectItem>
+                    <SelectItem value="student_asc">Student (A → Z)</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Status Filter */}
+                <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+                  <SelectTrigger className="h-9 w-32 bg-slate-50 border-slate-200 rounded-lg text-xs font-semibold text-slate-700">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="paid">Paid</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="overdue">Overdue</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearFilters}
+                    className="h-9 px-2.5 text-xs font-bold text-slate-500 hover:text-slate-900 rounded-lg"
+                  >
+                    <RotateCcw className="h-3 w-3 mr-1" />
+                    Clear
+                  </Button>
+                )}
+
                 <Button
+                  variant="outline"
                   size="sm"
-                  onClick={() => { setEditingInvoice(null); setCreateEditModalOpen(true); }}
-                  className="h-10 bg-[#0276D3] hover:bg-blue-700 text-white gap-2"
+                  onClick={fetchInvoices}
+                  className="h-9 px-2.5 rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
+                  title="Refresh"
                 >
-                  <Plus size={14} />
-                  New Invoice
+                  <RefreshCw size={13} className={loading ? 'animate-spin text-saBlue' : ''} />
                 </Button>
-              )}
+
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => { setEditingInvoice(null); setCreateEditModalOpen(true); }}
+                    className="h-9 bg-saBlue hover:bg-saBlueDarkHover text-white gap-1.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-xs px-4"
+                  >
+                    <Plus size={14} />
+                    New Invoice
+                  </Button>
+                )}
+              </div>
             </div>
+          </Card>
+
+          {/* Section Counter Header */}
+          <div className="flex items-center justify-between text-xs px-1 text-slate-500">
+            <span className="font-bold uppercase tracking-wider text-[11px] text-slate-400">
+              Showing {invoices.length} of {totalRecords} Invoices
+            </span>
+            <span className="text-slate-400 text-[11px] font-medium hidden sm:inline">
+              Sorted by: {getSortOptionLabel()}
+            </span>
           </div>
 
           {/* Invoice Table */}
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-xs overflow-hidden">
             <Table>
               <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('invoice_number')}>
+                <TableRow className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <TableHead className="cursor-pointer select-none py-3 px-4" onClick={() => handleSort('invoice_number')}>
                     Invoice # <SortIcon col="invoice_number" />
                   </TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('student')}>
+                  <TableHead className="cursor-pointer select-none py-3 px-4" onClick={() => handleSort('student')}>
                     Student <SortIcon col="student" />
                   </TableHead>
-                  <TableHead>Items</TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('total_amount')}>
+                  <TableHead className="py-3 px-4">Items</TableHead>
+                  <TableHead className="cursor-pointer select-none py-3 px-4" onClick={() => handleSort('total_amount')}>
                     Amount <SortIcon col="total_amount" />
                   </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort('due_date')}>
+                  <TableHead className="py-3 px-4">Status</TableHead>
+                  <TableHead className="cursor-pointer select-none py-3 px-4" onClick={() => handleSort('due_date')}>
                     Due Date <SortIcon col="due_date" />
                   </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right py-3 px-4">Actions</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody>
+              <TableBody className="text-xs">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRow key={i}>
                       {Array.from({ length: 7 }).map((_, j) => (
-                        <TableCell key={j}>
-                          <div className="h-4 bg-gray-100 rounded animate-pulse" />
+                        <TableCell key={j} className="py-3 px-4">
+                          <div className="h-4 bg-slate-100 rounded animate-pulse" />
                         </TableCell>
                       ))}
                     </TableRow>
                   ))
                 ) : invoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-12 text-gray-400">
+                    <TableCell colSpan={7} className="text-center py-16 text-slate-400">
                       <div className="flex flex-col items-center gap-2">
-                        <FileText size={32} className="text-gray-200" />
-                        <p className="font-medium">No invoices found</p>
-                        <p className="text-sm">Create invoices from the Enrollments tab or create a new one above</p>
+                        <FileText size={32} className="text-slate-300" />
+                        <p className="font-bold text-slate-700 text-sm">No invoices found</p>
+                        <p className="text-xs text-slate-500">Create invoices from the Enrollments tab or use the button above.</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -349,77 +483,78 @@ const EnrollmentsInvoicesPage: React.FC = () => {
                   invoices.map((inv) => {
                     const displayStatus = getDisplayStatus(inv);
                     return (
-                      <TableRow key={inv.id} className="hover:bg-gray-50/80 transition-colors">
-                        <TableCell>
-                          <span className="font-mono text-sm font-semibold text-[#0276D3]">
+                      <TableRow key={inv.id} className="hover:bg-slate-50/70 transition-colors">
+                        <TableCell className="py-3 px-4">
+                          <span className="font-mono text-xs font-bold text-saBlue">
                             {inv.invoice_number}
                           </span>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-[#0276D3] flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                        <TableCell className="py-3 px-4">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-saBlue/10 text-saBlue flex items-center justify-center font-bold text-xs flex-shrink-0">
                               {inv.student?.user?.name?.charAt(0)?.toUpperCase() || '?'}
                             </div>
                             <div>
-                              <div className="font-medium text-gray-900 text-sm">{inv.student?.user?.name}</div>
-                              <div className="text-xs text-gray-400">{inv.student?.user?.email}</div>
+                              <div className="font-bold text-slate-900">{inv.student?.user?.name}</div>
+                              <div className="text-[11px] text-slate-400">{inv.student?.user?.email}</div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3 px-4">
                           <div className="space-y-0.5 max-w-48">
-                            {(inv.items || []).slice(0, 2).map((item, idx) => (
-                              <div key={idx} className="text-xs text-gray-600 truncate">{item.item_name}</div>
-                            ))}
-                            {(inv.items || []).length > 2 && (
-                              <div className="text-xs text-gray-400">+{inv.items.length - 2} more</div>
+                            {inv.items?.length ? (
+                              inv.items.map((item, idx) => (
+                                <div key={idx} className="font-medium text-slate-800 truncate">
+                                  {item.item_name}
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-slate-400 font-normal">—</span>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3 px-4">
                           <div>
-                            <div className="font-bold text-gray-900">
+                            <div className="font-black text-slate-900">
                               ₹{(inv.total_amount || 0).toLocaleString('en-IN')}
                             </div>
                             {inv.discount_amount > 0 && (
-                              <div className="text-xs text-gray-400">
-                                -{inv.discount_amount.toLocaleString('en-IN')} disc.
+                              <div className="text-[10px] text-slate-400">
+                                -₹{inv.discount_amount.toLocaleString('en-IN')} disc.
                               </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3 px-4">
                           <StatusBadge status={displayStatus} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3 px-4">
                           <div>
-                            <div className={`text-sm font-medium ${displayStatus === 'OVERDUE' ? 'text-red-600' : 'text-gray-700'}`}>
+                            <div className={`font-semibold ${displayStatus === 'OVERDUE' ? 'text-rose-600' : 'text-slate-700'}`}>
                               {new Date(inv.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                             </div>
                             {inv.paid_date && (
-                              <div className="text-xs text-emerald-600">
+                              <div className="text-[10px] text-emerald-600 font-medium">
                                 Paid {new Date(inv.paid_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                               </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-right py-3 px-4">
                           <div className="flex items-center justify-end gap-1">
-                            {/* View */}
                             <button
                               onClick={() => { setViewingInvoice(inv); setDetailModalOpen(true); }}
                               title="View"
-                              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-[#0276D3] transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-saBlue/10 text-slate-400 hover:text-saBlue transition-colors"
                             >
                               <Eye size={15} />
                             </button>
-                            {/* Toggle status */}
                             {displayStatus !== 'PAID' ? (
                               <button
                                 onClick={() => handleMarkStatus(inv, 'PAID')}
                                 disabled={actionLoadingId === inv.id}
                                 title="Mark as Paid"
-                                className="p-1.5 rounded-lg hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-colors disabled:opacity-40"
+                                className="p-1.5 rounded-lg hover:bg-saBlue/10 text-slate-400 hover:text-saBlue transition-colors disabled:opacity-40"
                               >
                                 <CheckCircle2 size={15} />
                               </button>
@@ -428,36 +563,33 @@ const EnrollmentsInvoicesPage: React.FC = () => {
                                 onClick={() => handleMarkStatus(inv, 'PENDING')}
                                 disabled={actionLoadingId === inv.id}
                                 title="Mark as Pending"
-                                className="p-1.5 rounded-lg hover:bg-amber-50 text-gray-400 hover:text-amber-600 transition-colors disabled:opacity-40"
+                                className="p-1.5 rounded-lg hover:bg-saOrangeSubtle text-slate-400 hover:text-saVividOrange transition-colors disabled:opacity-40"
                               >
                                 <Clock size={15} />
                               </button>
                             )}
-                            {/* Send email */}
                             <button
                               onClick={() => handleSendEmail(inv)}
                               disabled={actionLoadingId === inv.id}
                               title="Send Email"
-                              className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-[#0276D3] transition-colors disabled:opacity-40"
+                              className="p-1.5 rounded-lg hover:bg-saBlue/10 text-slate-400 hover:text-saBlue transition-colors disabled:opacity-40"
                             >
                               <Mail size={15} />
                             </button>
-                            {/* Edit */}
                             {isAdmin && (
                               <button
                                 onClick={() => { setEditingInvoice(inv); setCreateEditModalOpen(true); }}
                                 title="Edit"
-                                className="p-1.5 rounded-lg hover:bg-blue-50 text-gray-400 hover:text-[#0276D3] transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-saBlue/10 text-slate-400 hover:text-saBlue transition-colors"
                               >
                                 <Edit2 size={15} />
                               </button>
                             )}
-                            {/* Delete */}
                             {isAdmin && (
                               <button
                                 onClick={() => { setDeletingInvoice(inv); setDeleteModalOpen(true); }}
                                 title="Delete"
-                                className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-colors"
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -472,44 +604,53 @@ const EnrollmentsInvoicesPage: React.FC = () => {
             </Table>
           </div>
 
-          {/* Pagination */}
+          {/* Pagination Bar */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <span className="text-sm text-gray-500">
-                Showing {(currentPage - 1) * limit + 1}–{Math.min(currentPage * limit, totalRecords)} of {totalRecords}
-              </span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+              <p className="text-xs font-medium text-slate-500">
+                Showing Page <span className="font-bold text-slate-800">{currentPage}</span> of <span className="font-bold text-slate-800">{totalPages}</span> ({totalRecords} total invoices)
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 rounded-lg text-xs font-bold border-slate-200 disabled:opacity-40"
                   disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 >
-                  <ChevronLeft size={14} />
-                </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const page = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
-                  if (page > totalPages) return null;
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'bg-[#0276D3] text-white'
-                          : 'border border-gray-200 hover:bg-gray-50 text-gray-600'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  Previous
+                </Button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                  .map((p, idx, arr) => {
+                    const prev = arr[idx - 1];
+                    const showEllipsis = prev && p - prev > 1;
+                    return (
+                      <React.Fragment key={p}>
+                        {showEllipsis && <span className="px-1 text-slate-400 text-xs">...</span>}
+                        <button
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`h-8 w-8 rounded-lg text-xs font-bold transition-all ${
+                            currentPage === p
+                              ? 'bg-saBlue text-white shadow-xs'
+                              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 rounded-lg text-xs font-bold border-slate-200 disabled:opacity-40"
                   disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 >
-                  <ChevronRight size={14} />
-                </button>
+                  Next
+                </Button>
               </div>
             </div>
           )}

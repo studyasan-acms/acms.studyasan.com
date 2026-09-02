@@ -70,12 +70,12 @@ export default function CurriculumPage() {
     }
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-4 max-w-7xl mx-auto">
             <div className="flex flex-col gap-0.5">
-                <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-900">
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
                     Curriculum Management
                 </h1>
-                <p className="text-slate-500 text-xs font-medium">
+                <p className="text-slate-500 text-xs sm:text-sm">
                     Manage your educational offerings, including subjects, classes, boards, and test series.
                 </p>
             </div>

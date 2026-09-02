@@ -386,29 +386,22 @@ export default function WhiteboardPage() {
   // VIEW 2: SAVED WHITEBOARDS TABLE
   // ==========================================
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className="p-2.5 rounded-2xl bg-saBlue/10 text-saBlue">
-              <PenTool className="w-6 h-6" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Saved Whiteboards</h1>
-              <p className="text-sm text-slate-500">
-                Create, view and manage your whiteboard drawings
-              </p>
-            </div>
-          </div>
+        <div className="space-y-0.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Saved Whiteboards</h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Create, view and manage your whiteboard drawings
+          </p>
         </div>
 
         <Button
           onClick={openCreateModal}
-          className="bg-saBlue hover:bg-saBlue/90 text-white rounded-xl shadow-md shadow-saBlue/20 h-11 px-5 font-semibold gap-2"
+          className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl shadow-xs h-10 px-5 font-bold text-xs uppercase tracking-wider gap-2 transition-all active:scale-95"
         >
           <Plus className="w-4 h-4" />
-          Create New Whiteboard
+          Create Whiteboard
         </Button>
       </div>
 

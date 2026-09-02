@@ -40,8 +40,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header — fixed at top, full width */}
-      <Header toggleSidebar={() => setMobileSidebarOpen(true)} />
+      {/* Header — fixed at top, dynamically offset for sidebar on desktop */}
+      <Header
+        toggleSidebar={() => setMobileSidebarOpen(true)}
+        sidebarCollapsed={sidebarCollapsed}
+      />
 
       <div className="flex">
         {/* Sidebar */}

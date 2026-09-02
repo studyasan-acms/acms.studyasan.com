@@ -26,6 +26,7 @@ import type { ClassSession, Subject, Teacher } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -579,63 +580,55 @@ export default function ClassSessionsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
+    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-2 sm:px-4">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Class Schedule & Sessions</h1>
-            <Badge className="bg-saBlue/10 text-saBlue hover:bg-saBlue/15 font-semibold px-2.5 py-0.5 rounded-full text-xs border border-saBlue/20">
-              {allCurrentSessions.length} Scheduled
-            </Badge>
-          </div>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            {isStudent ? 'Track your upcoming live classes and past recordings.' : 'Manage online & offline timetable and attendance.'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {canAddSession && (
+      <UnifiedPageHeader
+        title="Class Schedule & Sessions"
+        subtitle={isStudent ? 'Track your upcoming live classes and past recordings.' : 'Manage online & offline timetable and attendance.'}
+        icon={Video}
+        badge={`${allCurrentSessions.length} Scheduled`}
+        actions={
+          canAddSession && (
             <Button
-              className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl px-4 py-2 font-semibold transition-all"
+              className="bg-gradient-to-r from-saBlue to-[#025AA3] hover:from-[#025AA3] hover:to-saBlue text-white shadow-md shadow-saBlue/20 rounded-xl h-10 sm:h-11 px-5 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2"
               onClick={() => navigate('/dashboard/class-sessions/create')}
             >
-              <Plus className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4" />
               New Class
             </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
-      {/* COMPACT STATS STRIP */}
-      <div className="grid grid-cols-4 gap-2">
-        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
-            <Calendar className="h-3.5 w-3.5" />
+      {/* COMPACT STATS STRIP WITH BLUE & ORANGE COCKTAIL */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saBlue/40 transition-all">
+          <div className="h-9 w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
+            <Calendar className="h-4.5 w-4.5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Total</p>
-            <p className="text-sm font-black text-slate-900 leading-tight">{allCurrentSessions.length}</p>
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
-            <Radio className="h-3.5 w-3.5 animate-pulse" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Live</p>
-            <p className="text-sm font-black text-saBlue leading-tight">{liveCount}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Total</p>
+            <p className="text-base sm:text-lg font-black text-slate-900 leading-tight mt-0.5">{allCurrentSessions.length}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="h-7 w-7 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
-            <Video className="h-3.5 w-3.5" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saVividOrange/40 transition-all">
+          <div className="h-9 w-9 bg-saVividOrange/15 rounded-xl flex items-center justify-center text-saVividOrange shrink-0">
+            <Radio className="h-4.5 w-4.5 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Online</p>
-            <p className="text-sm font-black text-saBlue leading-tight">{onlineCount}</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Live Now</p>
+            <p className="text-base sm:text-lg font-black text-saVividOrange leading-tight mt-0.5">{liveCount}</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saBlue/40 transition-all">
+          <div className="h-9 w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
+            <Video className="h-4.5 w-4.5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Online</p>
+            <p className="text-base sm:text-lg font-black text-saBlue leading-tight mt-0.5">{onlineCount}</p>
           </div>
         </div>
 

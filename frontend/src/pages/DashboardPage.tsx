@@ -3,6 +3,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
 import StudentDashboardPage from "@/pages/StudentDashboardPage";
+import UnifiedPageHeader from "@/components/ui/UnifiedPageHeader";
 import PageHeader from "@/components/ui/PageHeader";
 import { LayoutDashboard } from "lucide-react";
 
@@ -20,12 +21,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
+      <UnifiedPageHeader
         title="Dashboard"
         subtitle={`Welcome back, ${user?.name}!`}
         icon={LayoutDashboard}
-        iconColor="bg-saBlueSubtle"
-        iconTextColor="text-saBlue"
+        badge={user?.role || "PORTAL"}
       />
 
       {isAdmin && <AdminDashboard />}

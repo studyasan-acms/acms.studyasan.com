@@ -238,12 +238,12 @@ export default function ActivitiesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-10 max-w-7xl space-y-8">
+    <div className="max-w-7xl mx-auto space-y-5 pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">Activities</h1>
-          <p className="text-xs text-slate-500 font-medium mt-1">Manage game content, host live sessions, and track results.</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-0.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Activities</h1>
+          <p className="text-xs sm:text-sm text-slate-500">Manage game content, host live sessions, and track results.</p>
         </div>
         <div className="flex items-center gap-3 w-full sm:w-auto shrink-0 justify-end">
           {/* View Toggle Group */}
@@ -276,7 +276,7 @@ export default function ActivitiesPage() {
 
           <Button 
             onClick={handleCreate} 
-            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-4 font-bold shadow-md shadow-blue-500/10 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xs"
           >
             <Plus className="w-4 h-4" />
             Create Activity

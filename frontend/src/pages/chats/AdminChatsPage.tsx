@@ -475,26 +475,21 @@ export default function AdminChatsPage() {
   const totalMessagesCount = chats.reduce((sum, chat) => sum + (chat._count?.messages || 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12">
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-saBlue/10 text-saBlue">
-            <MessageSquare className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Academic & Support Chats</h1>
-            <p className="text-sm text-slate-500">
-              Monitor, view and send messages directly between students and teachers
-            </p>
-          </div>
+        <div className="space-y-0.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Academic & Support Chats</h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Monitor, view and send messages directly between students and teachers
+          </p>
         </div>
 
         <Button
           variant="outline"
           onClick={fetchAllChats}
           disabled={loading}
-          className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 gap-2 h-10 self-start sm:self-auto"
+          className="rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 gap-2 h-10 px-4 font-bold text-xs uppercase tracking-wider self-start sm:self-auto"
         >
           <RefreshCw className={cn("w-4 h-4", loading ? "animate-spin text-saBlue" : "")} />
           <span>Refresh</span>
@@ -502,34 +497,34 @@ export default function AdminChatsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3.5 bg-blue-50 text-blue-600 rounded-2xl">
-            <MessageCircle className="w-6 h-6" />
-          </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Conversations</p>
-            <p className="text-2xl font-black text-slate-800 mt-0.5">{chats.length}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Conversations</p>
+            <p className="text-xl font-black text-slate-900 mt-0.5">{chats.length}</p>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue shrink-0">
+            <MessageCircle className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3.5 bg-emerald-50 text-emerald-600 rounded-2xl">
-            <Calendar className="w-6 h-6" />
-          </div>
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Active Today</p>
-            <p className="text-2xl font-black text-slate-800 mt-0.5">{activeTodayCount}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Active Today</p>
+            <p className="text-xl font-black text-saVividOrange mt-0.5">{activeTodayCount}</p>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-saVividOrange/10 flex items-center justify-center text-saVividOrange shrink-0">
+            <Calendar className="w-4 h-4" />
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-          <div className="p-3.5 bg-purple-50 text-purple-600 rounded-2xl">
-            <Layers className="w-6 h-6" />
-          </div>
+        <div className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Total Messages</p>
-            <p className="text-2xl font-black text-slate-800 mt-0.5">{totalMessagesCount}</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Messages</p>
+            <p className="text-xl font-black text-saBlue mt-0.5">{totalMessagesCount}</p>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue shrink-0">
+            <Layers className="w-4 h-4" />
           </div>
         </div>
       </div>

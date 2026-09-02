@@ -6,6 +6,7 @@ import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
 import PageHeader from '@/components/ui/PageHeader';
+import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -358,12 +359,11 @@ export default function StudentDashboardPage() {
     return (
         <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
             {/* Top Header */}
-            <PageHeader
+            <UnifiedPageHeader
                 title="My Dashboard"
                 subtitle="Track your learning progress, test performance, and academic metrics"
                 icon={LayoutDashboard}
-                iconColor="bg-saBlueSubtle"
-                iconTextColor="text-saBlue"
+                badge="Student Portal"
             />
 
             {/* 🎂 Birthday Banner */}

@@ -319,14 +319,11 @@ export default function Sidebar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 text-white flex flex-col transition-all duration-300 ease-in-out",
-          "border-r border-white/10",
+          "fixed inset-y-0 left-0 z-50 text-white flex flex-col transition-all duration-300 ease-in-out bg-saBlue",
+          "border-r border-white/10 shadow-lg",
           collapsed ? "w-14" : "w-56",
           isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
-        style={{
-          background: "linear-gradient(180deg, #0276D3 0%, #025AA3 100%)",
-        }}
       >
         {/* ── Logo / Brand Header */}
         <div
@@ -361,7 +358,7 @@ export default function Sidebar({
 
         {/* ── Search bar (only when expanded) */}
         {!collapsed && (
-          <div className="px-3 py-2.5 border-b border-white/10 flex-shrink-0">
+          <div className="px-3 py-2.5 border-b border-white/10 flex-shrink-0 bg-black/10">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/50 pointer-events-none" />
               <input
@@ -369,7 +366,7 @@ export default function Sidebar({
                 placeholder="Search menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/15 
+                className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 
                            border border-white/10 focus:border-white/25
                            text-white text-xs rounded-lg pl-8 pr-7 py-1.5
                            outline-none transition-all placeholder:text-white/40"
@@ -446,13 +443,13 @@ export default function Sidebar({
                             onClick={closeMobile}
                             className={({ isActive }) =>
                               cn(
-                                "flex items-center w-full rounded-lg transition-all duration-150 group relative overflow-hidden",
+                                "flex items-center w-full rounded-xl transition-all duration-150 group relative overflow-hidden",
                                 collapsed
                                   ? "h-10 justify-center px-0"
                                   : "h-9 px-3 gap-3",
                                 isActive
-                                  ? "bg-saVividOrange text-white font-semibold shadow-sm"
-                                  : "text-white/75 hover:text-white hover:bg-white/12"
+                                  ? "bg-saVividOrange text-white font-bold shadow-xs"
+                                  : "text-white/80 hover:text-white hover:bg-white/10"
                               )
                             }
                           >
@@ -504,9 +501,9 @@ export default function Sidebar({
 
         {/* ── User mini-profile at bottom */}
         {!collapsed && user && (
-          <div className="border-t border-white/10 px-3 py-3 flex-shrink-0">
+          <div className="border-t border-white/10 px-3.5 py-3 flex-shrink-0 bg-black/10">
             <div className="flex items-center gap-2.5">
-              <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-white/20">
+              <Avatar className="h-8 w-8 flex-shrink-0 ring-1 ring-white/20">
                 <AvatarImage src={user.profile_url} alt={user.name} />
                 <AvatarFallback className="bg-saVividOrange text-white text-xs font-bold">
                   {getInitials(user.name)}
@@ -516,13 +513,7 @@ export default function Sidebar({
                 <p className="text-white text-xs font-semibold truncate leading-tight">
                   {user.name}
                 </p>
-                <span
-                  className="text-[10px] font-medium px-1.5 py-0.5 rounded-full inline-block mt-0.5"
-                  style={{
-                    background: "rgba(236,162,9,0.25)",
-                    color: "#f5c842",
-                  }}
-                >
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mt-0.5 bg-white/15 text-white/90">
                   {user.role}
                 </span>
               </div>

@@ -252,16 +252,16 @@ export default function KnowYourChildPage() {
   const enrolledSubjects = student?.enrollments?.filter((e: any) => e.type === 'SUBJECT' && e.subject).map((e: any) => e.subject) || [];
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div className="space-y-5 max-w-7xl mx-auto pb-12">
       {/* Simple Page Header */}
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Weekly Performance Reports</h1>
-          <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 font-semibold px-2.5 py-0.5 rounded-full text-xs">
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">Weekly Performance Reports</h1>
+          <Badge variant="outline" className="bg-saOrangeSubtle text-saOrangeDark border-saVividOrange/30 font-bold px-2.5 py-0.5 rounded-full text-xs">
             Know Your Child
           </Badge>
         </div>
-        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500">
           Track weekly progress evaluations, check subject ratings, and share feedback with your child's teachers.
         </p>
       </div>

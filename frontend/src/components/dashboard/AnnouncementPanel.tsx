@@ -58,41 +58,57 @@ export default function AnnouncementPanel({
       <div
         className={cn(
           "fixed top-16 right-0 bottom-0 w-full sm:w-96",
-          "bg-white shadow-xl border-l rounded-tl-2xl flex flex-col",
+          "bg-white shadow-2xl border-l border-slate-200 rounded-tl-2xl flex flex-col",
           "transform transition-transform duration-300 ease-in-out z-50",
           "will-change-transform",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >
-        {/* Header */}
-        <div className="p-4 border-b flex items-center justify-between bg-gray-50 rounded-tl-2xl">
-          <div className="flex items-center gap-2">
-            <Megaphone className="h-5 w-5 text-saBlue" />
-            <h2 className="text-lg font-semibold text-saBlue">Announcements</h2>
+        {/* Header — Solid StudyAsan Blue */}
+        <div className="p-4 flex items-center justify-between rounded-tl-2xl bg-saBlue border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-white/15 text-white">
+              <Megaphone className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white tracking-tight">Announcements</h2>
+                {announcements.length > 0 && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-saVividOrange text-white">
+                    {announcements.length}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-white/80">Notices, events & broadcast updates</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 text-gray-500 hover:text-gray-700"
-              onClick={onClose}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-white/80 hover:text-white hover:bg-white/20 rounded-xl"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </div>
 
         {/* List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-3 bg-slate-50/50">
           {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <div className="animate-spin h-8 w-8 rounded-full border-b-2 border-saBlue" />
+            <div className="flex flex-col items-center justify-center h-48 gap-3">
+              <div className="animate-spin h-8 w-8 rounded-full border-2 border-saBlue border-t-transparent" />
+              <p className="text-xs text-slate-400 font-medium">Fetching announcements...</p>
             </div>
           ) : announcements.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-40 text-gray-500 text-center">
-              <Megaphone className="h-8 w-8 mb-2 opacity-20" />
-              <p>No announcements found</p>
+            <div className="flex flex-col items-center justify-center h-64 text-center px-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saBlue/15 to-saVividOrange/15 text-saBlue border border-saBlue/20 flex items-center justify-center mb-3 shadow-xs">
+                <Megaphone className="h-6 w-6 text-saBlue" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800">No Announcements Right Now</h4>
+              <p className="text-xs text-slate-400 mt-1 max-w-[220px]">
+                You're completely up to date! Check back later for news and alerts.
+              </p>
             </div>
           ) : (
             announcements.map((a) => {
@@ -104,8 +120,8 @@ export default function AnnouncementPanel({
                   key={a.id}
                   onClick={handleViewAll}
                   className={cn(
-                    "p-4 rounded-xl shadow-xs bg-white border transition-all cursor-pointer",
-                    "hover:shadow-md hover:bg-slate-50/80 border-l-4",
+                    "p-3.5 rounded-2xl shadow-xs bg-white border transition-all cursor-pointer",
+                    "hover:shadow-md hover:border-saBlue/40 border-l-4 group",
                     config.borderLeftClass
                   )}
                 >
@@ -116,22 +132,23 @@ export default function AnnouncementPanel({
                         <span>{config.label}</span>
                       </span>
 
-                      <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+                      <span className="text-[10px] text-slate-400 flex items-center gap-1 whitespace-nowrap font-medium">
                         <Clock className="h-3 w-3" />
                         {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold text-gray-900 leading-tight">
+                    <h3 className="text-sm font-bold text-slate-900 leading-tight group-hover:text-saBlue transition-colors">
                       {a.title}
                     </h3>
                     
-                    <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
                       {a.content}
                     </p>
 
-                    <div className="pt-2 flex items-center gap-2 text-[10px] text-gray-400 border-t border-slate-100">
-                      <span className="font-medium text-gray-500">By {a.creator?.name || 'Admin'}</span>
+                    <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100">
+                      <span className="font-semibold text-slate-500">By {a.creator?.name || 'Admin'}</span>
+                      <span className="text-saBlue font-bold group-hover:underline">View details →</span>
                     </div>
                   </div>
                 </div>
@@ -141,12 +158,12 @@ export default function AnnouncementPanel({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t bg-gray-50">
+        <div className="p-3.5 border-t border-slate-200/80 bg-white">
           <Button 
-            className="w-full bg-saBlue hover:bg-saBlueDark"
+            className="w-full bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-2 shadow-xs"
             onClick={handleViewAll}
           >
-            <ExternalLink className="h-4 w-4 mr-2" />
+            <ExternalLink className="h-4 w-4" />
             View All Announcements
           </Button>
         </div>

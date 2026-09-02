@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import UnifiedPageHeader from "@/components/ui/UnifiedPageHeader";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -225,48 +226,33 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
 
   return (
     <div className={cn(
-      !embedded && "min-h-screen bg-slate-50/70 pb-12"
+      "space-y-5 pb-12 w-full",
+      !embedded && "max-w-7xl mx-auto"
     )}>
       {/* Header - Only show if not embedded */}
       {!embedded && (
-        <div className="bg-white border-b border-slate-200/80 px-4 sm:px-6 py-6 sticky top-0 z-10 shadow-sm">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 bg-saBlue text-white rounded-2xl flex items-center justify-center shadow-md shadow-saBlue/20">
-                  <Compass className="h-6 w-6" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Curriculum Hub</h1>
-                    <Badge className="bg-saBlue/10 text-saBlue hover:bg-saBlue/15 font-semibold px-2.5 py-0.5 rounded-full text-xs border border-saBlue/20">
-                      {total} Designed
-                    </Badge>
-                  </div>
-                  <p className="text-xs sm:text-sm text-slate-500">
-                    Organize, sort, and navigate all educational curriculums designed in your platform.
-                  </p>
-                </div>
-              </div>
-
-              {canAddSubject && (
-                <Button
-                  className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl px-4 py-2 font-semibold transition-all"
-                  onClick={() => navigate("/dashboard/subjects/new")}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Subject
-                </Button>
-              )}
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+          <div className="space-y-0.5">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+              Curriculum Management
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              Manage your educational offerings, including subjects, classes, boards, and test series.
+            </p>
           </div>
+          {canAddSubject && (
+            <Button
+              className="bg-saBlue hover:bg-saBlueDarkHover text-white shadow-xs rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2"
+              onClick={() => navigate("/dashboard/subjects/new")}
+            >
+              <Plus className="h-4 w-4" />
+              Add Subject
+            </Button>
+          )}
         </div>
       )}
 
-      <div className={cn(
-        "space-y-5 w-full max-w-full",
-        !embedded && "max-w-7xl mx-auto px-4 sm:px-6 py-6"
-      )}>
+      <div className="space-y-5 w-full max-w-full">
         {/* BRAND UNIFIED STATS CARDS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl p-3 hover:border-saBlue/40 transition-all">

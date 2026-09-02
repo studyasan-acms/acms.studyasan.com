@@ -28,6 +28,7 @@ import { testService, subjectService } from "@/services/api";
 import type { Test, Subject, TestType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import UnifiedPageHeader from "@/components/ui/UnifiedPageHeader";
 import SearchablePaginatedSelect from "@/components/ui/searchablePaginatedSelect";
 import {
   Select,
@@ -334,57 +335,55 @@ export default function TestsPage() {
   const hasActiveFilters = searchQuery !== "" || selectedSubject !== "ALL" || activeTab !== "ALL" || statusFilter !== "ALL";
 
   return (
-    <div className="space-y-5 p-1 sm:p-4 pb-20 max-w-7xl mx-auto">
+    <div className="space-y-6 p-1 sm:p-4 pb-20 max-w-7xl mx-auto">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-            Tests & Practice Sets
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Access chapter practice sets, full-length mock tests, assessments, and certifications in one place.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2.5 w-full sm:w-auto">
-          {isTeacherOrAdmin && (
-            <Button
-              className="bg-[#0276D3] hover:bg-[#015bb5] text-white flex items-center justify-center shadow-sm rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 w-full sm:w-auto"
-              onClick={() => navigate("/tests/create")}
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create Test
-            </Button>
-          )}
-          {isStudent && (
-            <Button
-              variant="outline"
-              className="border-[#0276D3] text-[#0276D3] hover:bg-blue-50 flex items-center justify-center rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider w-full sm:w-auto"
-              onClick={() => navigate("/tests/my-results")}
-            >
-              <Award className="w-4 h-4 mr-1.5" />
-              My Test Results
-            </Button>
-          )}
-        </div>
-      </div>
+      <UnifiedPageHeader
+        title="Tests & Practice Sets"
+        subtitle="Access chapter practice sets, full-length mock tests, assessments, and certifications in one place."
+        icon={FileText}
+        badge={`${categoryCounts.ALL} Total Tests`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {isTeacherOrAdmin && (
+              <Button
+                className="bg-gradient-to-r from-saBlue to-[#025AA3] hover:from-[#025AA3] hover:to-saBlue text-white shadow-md shadow-saBlue/20 rounded-xl h-10 sm:h-11 px-5 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 flex items-center justify-center gap-1.5 w-full sm:w-auto"
+                onClick={() => navigate("/tests/create")}
+              >
+                <Plus className="w-4 h-4" />
+                Create Test
+              </Button>
+            )}
+            {isStudent && (
+              <Button
+                variant="outline"
+                className="border-saBlue text-saBlue hover:bg-saOrangeSubtle hover:text-saOrangeDark hover:border-saVividOrange rounded-xl h-10 sm:h-11 px-5 font-bold text-xs uppercase tracking-wider transition-all w-full sm:w-auto flex items-center gap-1.5"
+                onClick={() => navigate("/tests/my-results")}
+              >
+                <Award className="w-4 h-4" />
+                My Test Results
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {/* CATEGORY SELECTOR & FILTER TOOLBAR - Strict StudyAsan Theme */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3.5">
+      <div className="bg-white p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs space-y-3.5">
         {/* Category Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar select-none">
           <button
             onClick={() => setActiveTab("ALL")}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "ALL"
-                ? "bg-[#0276D3] text-white shadow-xs"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-saBlue to-[#025AA3] text-white shadow-sm ring-1 ring-saVividOrange/50"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-saOrangeSubtle/40 hover:text-saOrangeDark"
             }`}
           >
             <Layers className="w-3.5 h-3.5" />
             <span>All Tests</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === "ALL" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === "ALL" ? "bg-saVividOrange text-white shadow-xs" : "bg-slate-100 text-slate-700"
               }`}
             >
               {categoryCounts.ALL}
@@ -395,15 +394,15 @@ export default function TestsPage() {
             onClick={() => setActiveTab("MOCK")}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "MOCK"
-                ? "bg-[#0276D3] text-white shadow-xs"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-saBlue to-[#025AA3] text-white shadow-sm ring-1 ring-saVividOrange/50"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-saOrangeSubtle/40 hover:text-saOrangeDark"
             }`}
           >
             <Clock className="w-3.5 h-3.5" />
             <span>Mock Tests</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === "MOCK" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === "MOCK" ? "bg-saVividOrange text-white shadow-xs" : "bg-slate-100 text-slate-700"
               }`}
             >
               {categoryCounts.MOCK}
@@ -414,15 +413,15 @@ export default function TestsPage() {
             onClick={() => setActiveTab("PRACTICE")}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "PRACTICE"
-                ? "bg-[#0276D3] text-white shadow-xs"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-saBlue to-[#025AA3] text-white shadow-sm ring-1 ring-saVividOrange/50"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-saOrangeSubtle/40 hover:text-saOrangeDark"
             }`}
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>Practice Sets</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === "PRACTICE" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === "PRACTICE" ? "bg-saVividOrange text-white shadow-xs" : "bg-slate-100 text-slate-700"
               }`}
             >
               {categoryCounts.PRACTICE}
@@ -433,15 +432,15 @@ export default function TestsPage() {
             onClick={() => setActiveTab("ASSESSMENT")}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "ASSESSMENT"
-                ? "bg-[#0276D3] text-white shadow-xs"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-saBlue to-[#025AA3] text-white shadow-sm ring-1 ring-saVividOrange/50"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-saOrangeSubtle/40 hover:text-saOrangeDark"
             }`}
           >
             <ClipboardList className="w-3.5 h-3.5" />
             <span>Assessments</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === "ASSESSMENT" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === "ASSESSMENT" ? "bg-saVividOrange text-white shadow-xs" : "bg-slate-100 text-slate-700"
               }`}
             >
               {categoryCounts.ASSESSMENT}
@@ -452,15 +451,15 @@ export default function TestsPage() {
             onClick={() => setActiveTab("CERTIFICATION")}
             className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-2 shrink-0 ${
               activeTab === "CERTIFICATION"
-                ? "bg-[#0276D3] text-white shadow-xs"
-                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"
+                ? "bg-gradient-to-r from-saBlue to-[#025AA3] text-white shadow-sm ring-1 ring-saVividOrange/50"
+                : "bg-white text-slate-600 border border-slate-200 hover:bg-saOrangeSubtle/40 hover:text-saOrangeDark"
             }`}
           >
             <Award className="w-3.5 h-3.5" />
             <span>Certifications</span>
             <span
-              className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                activeTab === "CERTIFICATION" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-700"
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+                activeTab === "CERTIFICATION" ? "bg-saVividOrange text-white shadow-xs" : "bg-slate-100 text-slate-700"
               }`}
             >
               {categoryCounts.CERTIFICATION}

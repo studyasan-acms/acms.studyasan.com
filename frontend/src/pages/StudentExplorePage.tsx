@@ -5,6 +5,7 @@ import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
+import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -283,17 +284,12 @@ export default function StudentExplorePage() {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
             {/* Top Header */}
-            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-                <div className="flex items-center gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Explore Learning</h1>
-                    <Badge className="bg-saBlue/10 text-saBlue border border-saBlue/20 font-bold text-xs">
-                        StudyAsan
-                    </Badge>
-                </div>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                    Browse curriculum subjects across foundational, preparatory, middle, secondary stages, specialized courses, games & tests
-                </p>
-            </div>
+            <UnifiedPageHeader
+                title="Explore Learning"
+                subtitle="Browse curriculum subjects across foundational, preparatory, middle, secondary stages, specialized courses, games & tests"
+                icon={Compass}
+                badge="Curriculum Hub"
+            />
 
             {/* 🎂 Birthday Banner */}
             {isBirthday && (
@@ -346,7 +342,7 @@ export default function StudentExplorePage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => navigate('/dashboard/announcements')}
-                            className="text-xs font-bold text-saBlue hover:text-saBlueDarkHover h-8 px-2.5 rounded-lg"
+                            className="text-xs font-bold text-saBlue hover:text-saVividOrange h-8 px-2.5 rounded-lg"
                         >
                             View All ({announcements.length})
                         </Button>
@@ -403,7 +399,7 @@ export default function StudentExplorePage() {
                                 }}
                                 className={`flex items-center justify-between p-3 sm:p-3.5 rounded-2xl transition-all duration-200 font-extrabold text-xs sm:text-sm ${
                                     isActive
-                                        ? 'bg-saBlue text-white shadow-md shadow-saBlue/25'
+                                        ? 'bg-saBlue text-white shadow-sm'
                                         : 'bg-slate-50 hover:bg-slate-100 text-slate-700'
                                 }`}
                             >
@@ -419,7 +415,7 @@ export default function StudentExplorePage() {
                                 </div>
                                 <span
                                     className={`text-[11px] px-2 py-0.5 rounded-full font-black ${
-                                        isActive ? 'bg-white/20 text-white' : 'bg-slate-200/80 text-slate-600'
+                                        isActive ? 'bg-saVividOrange text-white shadow-xs' : 'bg-slate-200/80 text-slate-600'
                                     }`}
                                 >
                                     {count}
@@ -471,7 +467,7 @@ export default function StudentExplorePage() {
                                     }}
                                     className={`p-3 sm:p-3.5 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between relative overflow-hidden group ${
                                         isSelected
-                                            ? 'bg-saBlue text-white border-saBlue shadow-lg shadow-saBlue/20 ring-2 ring-saBlue ring-offset-2'
+                                            ? 'bg-saBlue text-white border-saBlue shadow-sm'
                                             : 'bg-white border-slate-200/80 hover:border-saBlue/40 hover:shadow-xs text-slate-800'
                                     }`}
                                 >

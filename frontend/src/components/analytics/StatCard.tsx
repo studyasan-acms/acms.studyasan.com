@@ -15,25 +15,25 @@ interface StatCardProps {
 
 export function StatCard({ title, value, icon: Icon, description, trend, className = '' }: StatCardProps) {
     return (
-        <Card className={`hover:shadow-lg transition-shadow ${className}`}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {title}
-                </CardTitle>
-                <Icon className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
-                {description && (
-                    <p className="text-xs text-muted-foreground mt-1">{description}</p>
-                )}
-                {trend && (
-                    <div className={`text-xs mt-2 flex items-center ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                        <span>{trend.isPositive ? '↑' : '↓'}</span>
-                        <span className="ml-1">{Math.abs(trend.value)}%</span>
-                    </div>
-                )}
-            </CardContent>
+        <Card className={`rounded-xl border border-slate-200/80 shadow-xs hover:border-saBlue/40 transition-all bg-white p-3.5 ${className}`}>
+            <div className="flex items-center justify-between">
+                <div>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+                    <h3 className="text-xl font-black text-slate-900 leading-tight mt-0.5">{value}</h3>
+                </div>
+                <div className="h-8 w-8 bg-saBlue/10 rounded-lg flex items-center justify-center text-saBlue shrink-0">
+                    <Icon className="h-4 w-4" />
+                </div>
+            </div>
+            {description && (
+                <p className="text-[10px] text-slate-400 mt-1">{description}</p>
+            )}
+            {trend && (
+                <div className={`text-xs mt-1.5 flex items-center font-bold ${trend.isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
+                    <span>{trend.isPositive ? '↑' : '↓'}</span>
+                    <span className="ml-1">{Math.abs(trend.value)}%</span>
+                </div>
+            )}
         </Card>
     );
 }
