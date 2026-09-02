@@ -39,6 +39,7 @@ import { format } from "date-fns";
 import SuccessModal from "@/components/ui/successModal";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import IDCardModal from "@/components/students/IDCardModal";
+import { formatEmployeeId } from "@/utils/idUtils";
 
 import {
   Select,
@@ -404,8 +405,8 @@ export default function TeacherDetailPage() {
                 <Badge variant="secondary" className="bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100">
                   Teacher
                 </Badge>
-                <Badge variant="outline" className="border-gray-200 text-gray-500">
-                  ID: {teacher.id}
+                <Badge variant="outline" className="border-gray-200 text-gray-700 font-semibold font-mono">
+                  ID: {formatEmployeeId(teacher.id)}
                 </Badge>
               </div>
             </div>

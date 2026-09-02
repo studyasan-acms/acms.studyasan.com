@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/store/authStore";
 import { usePermissions } from "@/hooks/usePermissions";
+import { isStudentTillClass12 } from "@/utils/studentUtils";
 import {
   Home,
   Users,
@@ -33,6 +34,7 @@ import {
   Bell,
   Search,
   Puzzle,
+  Compass,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 
@@ -46,16 +48,16 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
-    title: "Home",
-    href: "/dashboard",
-    icon: Home,
-    roles: ["STUDENT"],
-  },
-  {
     title: "Dashboard",
     href: "/dashboard",
-    icon: Home,
-    roles: ["ADMIN", "TEACHER"],
+    icon: LayoutDashboard,
+    roles: ["STUDENT", "ADMIN", "TEACHER"],
+  },
+  {
+    title: "Explore",
+    href: "/dashboard/explore",
+    icon: Compass,
+    roles: ["STUDENT"],
   },
   {
     title: "Curriculum",
@@ -220,6 +222,13 @@ export default function Sidebar({
       return hasRole;
     }
 
+    // Jobs and Internships should NOT be visible to students till class 12
+    if (item.href === "/dashboard/jobs" || item.title.toLowerCase().includes("job")) {
+      if (user?.role === "STUDENT" && isStudentTillClass12(user)) {
+        return false;
+      }
+    }
+
     return hasRole;
   });
 
@@ -308,7 +317,7 @@ export default function Sidebar({
           ) : (
             searchedNavItems.map((item, index) => (
             <div
-              key={item.href}
+              key={`${item.title}-${item.href}`}
               className="group relative flex items-center"
               onMouseEnter={() => {
                 if (collapsed && iconRefs.current[index]) {

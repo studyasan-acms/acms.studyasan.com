@@ -21,6 +21,9 @@ import {
   Sparkles,
   Layers,
   CheckCheck,
+  CheckCircle2,
+  AlertCircle,
+  RotateCw,
 } from "lucide-react";
 import { chatService } from "@/services/api";
 import { socketService } from "@/services/socket";
@@ -37,12 +40,26 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+interface ChatAttachmentItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  uploadedUrl?: string;
+  status: 'uploading' | 'ready' | 'error';
+  errorMessage?: string;
+  messageType: MessageType;
+}
+
 export default function AdminChatsPage() {
   usePageTitle("Support Chats");
   const { user } = useAuthStore();
 
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "TEACHER" | "STUDENT">("ALL");
+  const [sortField, setSortField] = useState<"updated_at" | "created_at" | "message_count">("updated_at");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // Search, Filters & Sorting
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,7 +73,7 @@ export default function AdminChatsPage() {
   const [modalMessages, setModalMessages] = useState<Message[]>([]);
   const [loadingModalMessages, setLoadingModalMessages] = useState(false);
   const [modalMessageText, setModalMessageText] = useState("");
-  const [modalSelectedFiles, setModalSelectedFiles] = useState<File[]>([]);
+  const [modalSelectedAttachments, setModalSelectedAttachments] = useState<ChatAttachmentItem[]>([]);
   const [sendingModalMessage, setSendingModalMessage] = useState(false);
 
   // Delete Message Modal
@@ -217,7 +234,7 @@ export default function AdminChatsPage() {
     setActiveChatModal(chat);
     setModalMessages([]);
     setModalMessageText("");
-    setModalSelectedFiles([]);
+    setModalSelectedAttachments([]);
     socketService.joinChat(chat.id);
 
     try {
@@ -232,25 +249,80 @@ export default function AdminChatsPage() {
     }
   };
 
+  const uploadModalAttachmentItem = async (item: ChatAttachmentItem) => {
+    try {
+      const res = await chatService.uploadAttachment(item.file);
+      const uploaded = res.data?.attachments?.[0];
+      if (uploaded && uploaded.url) {
+        setModalSelectedAttachments((prev) =>
+          prev.map((a) =>
+            a.id === item.id
+              ? {
+                  ...a,
+                  status: 'ready',
+                  uploadedUrl: uploaded.url,
+                  messageType: (uploaded.messageType as MessageType) || a.messageType,
+                }
+              : a
+          )
+        );
+      } else {
+        throw new Error('Upload returned no URL');
+      }
+    } catch (err) {
+      console.error('Failed to upload modal attachment:', err);
+      setModalSelectedAttachments((prev) =>
+        prev.map((a) =>
+          a.id === item.id
+            ? { ...a, status: 'error', errorMessage: 'Upload failed' }
+            : a
+        )
+      );
+    }
+  };
+
   // Send message from Modal
   const handleSendModalMessage = async () => {
-    if (!activeChatModal || (!modalMessageText.trim() && modalSelectedFiles.length === 0)) return;
+    if (!activeChatModal || (!modalMessageText.trim() && modalSelectedAttachments.length === 0)) return;
+
+    // Check if still uploading
+    const isStillUploading = modalSelectedAttachments.some((a) => a.status === 'uploading');
+    if (isStillUploading) {
+      toast.info('Please wait for attachments to finish uploading...');
+      return;
+    }
+
+    const failedItems = modalSelectedAttachments.filter((a) => a.status === 'error');
+    if (failedItems.length > 0) {
+      toast.error('Please remove or retry failed attachments before sending.');
+      return;
+    }
 
     setSendingModalMessage(true);
     try {
-      const messageData = {
-        content: modalMessageText.trim() || undefined,
-        messageType: modalSelectedFiles.length > 0 ? getMessageType(modalSelectedFiles[0]) : "TEXT",
-      };
+      const readyAttachments = modalSelectedAttachments
+        .filter((a) => a.status === 'ready' && a.uploadedUrl)
+        .map((a) => ({ url: a.uploadedUrl!, messageType: a.messageType }));
 
-      await chatService.sendMessage(
-        activeChatModal.id,
-        messageData,
-        modalSelectedFiles.length > 0 ? modalSelectedFiles : undefined
-      );
+      if (readyAttachments.length > 0) {
+        await chatService.sendMessage(activeChatModal.id, {
+          content: modalMessageText.trim() || undefined,
+          attachments: readyAttachments,
+        });
+      } else {
+        await chatService.sendMessage(activeChatModal.id, {
+          content: modalMessageText.trim() || undefined,
+          messageType: 'TEXT',
+        });
+      }
+
+      // Cleanup object URLs
+      modalSelectedAttachments.forEach((a) => {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      });
 
       setModalMessageText("");
-      setModalSelectedFiles([]);
+      setModalSelectedAttachments([]);
     } catch (error) {
       console.error("Error sending admin message:", error);
       toast.error("Failed to send message");
@@ -290,26 +362,50 @@ export default function AdminChatsPage() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const fileList = Array.from(files);
-      const validFiles: File[] = [];
+      const newItems: ChatAttachmentItem[] = [];
 
       for (const f of fileList) {
         if (f.size > 100 * 1024 * 1024) {
           toast.error(`File "${f.name}" exceeds 100MB limit`);
-        } else {
-          validFiles.push(f);
+          continue;
         }
+        const item: ChatAttachmentItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          status: 'uploading',
+          messageType: getMessageType(f),
+        };
+        newItems.push(item);
       }
 
-      if (validFiles.length > 0) {
-        setModalSelectedFiles((prev) => [...prev, ...validFiles]);
-        toast.success(`${validFiles.length} file(s) attached`);
+      if (newItems.length > 0) {
+        setModalSelectedAttachments((prev) => [...prev, ...newItems]);
+        newItems.forEach((item) => uploadModalAttachmentItem(item));
+        toast.info(`Uploading ${newItems.length} attachment${newItems.length > 1 ? 's' : ''}...`);
       }
     }
     if (e.target) e.target.value = "";
   };
 
-  const removeModalFile = (index: number) => {
-    setModalSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeModalAttachment = (id: string) => {
+    setModalSelectedAttachments((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
+  const retryModalAttachmentUpload = (id: string) => {
+    const item = modalSelectedAttachments.find((a) => a.id === id);
+    if (item) {
+      setModalSelectedAttachments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: 'uploading', errorMessage: undefined } : a))
+      );
+      uploadModalAttachmentItem(item);
+    }
   };
 
   // Filtered & Sorted Chats
@@ -846,35 +942,72 @@ export default function AdminChatsPage() {
 
             {/* Modal Bottom Input Tray with Multiple Attachments support */}
             <div className="p-4 border-t border-slate-200 bg-white shrink-0">
-              {/* Multiple Attached Previews */}
-              {modalSelectedFiles.length > 0 && (
+              {/* Multiple Attachments Preview Tray with Instant Status */}
+              {modalSelectedAttachments.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 max-h-36 overflow-y-auto">
-                  {modalSelectedFiles.map((file, idx) => {
-                    const isImg = file.type.startsWith("image/");
+                  {modalSelectedAttachments.map((item) => {
+                    const isImg = item.file.type.startsWith("image/");
                     return (
                       <div
-                        key={idx}
-                        className="flex items-center gap-2 p-1.5 pr-2 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs"
-                      >
-                        {isImg ? (
-                          <img
-                            src={URL.createObjectURL(file)}
-                            alt="preview"
-                            className="w-8 h-8 object-cover rounded-lg border border-slate-100"
-                          />
-                        ) : (
-                          <div className="p-1 bg-slate-100 rounded-lg">
-                            {getFileIcon(getMessageType(file))}
-                          </div>
+                        key={item.id}
+                        className={cn(
+                          "relative flex items-center gap-2 p-1.5 pr-2 rounded-xl border transition-all text-xs",
+                          item.status === 'uploading' && "bg-blue-50/50 border-blue-200 shadow-xs",
+                          item.status === 'ready' && "bg-white border-emerald-200 shadow-2xs",
+                          item.status === 'error' && "bg-rose-50 border-rose-200"
                         )}
-                        <div className="max-w-[120px] truncate">
-                          <p className="font-semibold text-slate-700 truncate">{file.name}</p>
-                          <p className="text-[10px] text-slate-400">{(file.size / 1024).toFixed(0)} KB</p>
+                      >
+                        <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
+                          {isImg ? (
+                            <img
+                              src={item.previewUrl}
+                              alt="preview"
+                              className="w-full h-full object-cover border border-slate-100 rounded-lg"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg">
+                              {getFileIcon(item.messageType)}
+                            </div>
+                          )}
+                          {item.status === 'uploading' && (
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
+                              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                            </div>
+                          )}
                         </div>
+
+                        <div className="max-w-[130px] truncate min-w-0">
+                          <p className="font-semibold text-slate-700 truncate leading-tight">{item.file.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <span className="text-[10px] text-slate-400">{(item.file.size / 1024).toFixed(0)} KB</span>
+                            {item.status === 'uploading' && (
+                              <span className="text-[10px] font-bold text-saBlue animate-pulse flex items-center gap-0.5">
+                                Uploading...
+                              </span>
+                            )}
+                            {item.status === 'ready' && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Ready
+                              </span>
+                            )}
+                            {item.status === 'error' && (
+                              <button
+                                type="button"
+                                onClick={() => retryModalAttachmentUpload(item.id)}
+                                className="text-[10px] font-bold text-rose-600 hover:underline flex items-center gap-0.5"
+                                title="Retry upload"
+                              >
+                                <RotateCw className="w-2.5 h-2.5" /> Retry
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => removeModalFile(idx)}
-                          className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+                          onClick={() => removeModalAttachment(item.id)}
+                          className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-0.5"
+                          title="Remove attachment"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -918,11 +1051,24 @@ export default function AdminChatsPage() {
 
                 <Button
                   onClick={handleSendModalMessage}
-                  disabled={sendingModalMessage || (!modalMessageText.trim() && modalSelectedFiles.length === 0)}
+                  disabled={
+                    sendingModalMessage ||
+                    (!modalMessageText.trim() && modalSelectedAttachments.length === 0) ||
+                    modalSelectedAttachments.some((a) => a.status === 'uploading')
+                  }
                   size="icon"
                   className="h-11 w-11 rounded-2xl bg-saBlue hover:bg-saBlue/90 text-white shadow-md shadow-saBlue/20 shrink-0"
+                  title={
+                    modalSelectedAttachments.some((a) => a.status === 'uploading')
+                      ? 'Uploading attachments...'
+                      : 'Send message'
+                  }
                 >
-                  {sendingModalMessage ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                  {sendingModalMessage || modalSelectedAttachments.some((a) => a.status === 'uploading') ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </div>

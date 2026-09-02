@@ -112,9 +112,11 @@ export const getAnnouncements = async (req: AuthRequest, res: Response) => {
     }
 };
 
+const VALID_ANNOUNCEMENT_TYPES = ['NOTICE', 'NEWS', 'EVENT', 'HOLIDAY', 'EXAM', 'GENERAL'];
+
 export const createAnnouncement = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, content, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups } = req.body;
+        const { title, content, type, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups } = req.body;
         const user = req.user!;
 
         if (!title || !content) {
@@ -134,10 +136,13 @@ export const createAnnouncement = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Unauthorized', 403);
         }
 
+        const announcementType = VALID_ANNOUNCEMENT_TYPES.includes(type) ? type : 'GENERAL';
+
         const announcement = await prisma.announcement.create({
             data: {
                 title,
                 content,
+                type: announcementType as any,
                 created_by: user.id,
                 target_roles: target_roles || null,
                 target_boards: target_boards || null,
@@ -158,7 +163,7 @@ export const createAnnouncement = async (req: AuthRequest, res: Response) => {
 export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, content, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups } = req.body;
+        const { title, content, type, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups } = req.body;
         const user = req.user!;
 
         if (user.role === 'TEACHER') {
@@ -179,6 +184,7 @@ export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
             data: {
                 ...(title && { title }),
                 ...(content && { content }),
+                ...(type && VALID_ANNOUNCEMENT_TYPES.includes(type) && { type: type as any }),
                 ...(target_roles !== undefined && { target_roles }),
                 ...(target_boards !== undefined && { target_boards }),
                 ...(target_classes !== undefined && { target_classes }),

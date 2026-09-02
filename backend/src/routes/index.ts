@@ -399,6 +399,9 @@ router.post('/chats', authenticate, chatController.startChat);
 // Send a message (with optional multiple file uploads)
 router.post('/chats/:chatId/messages', authenticate, upload.any(), chatController.sendMessage);
 
+// Upload chat attachment(s) immediately
+router.post('/chats/upload', authenticate, upload.any(), chatController.uploadChatAttachment);
+
 // Get messages for a chat
 router.get('/chats/:chatId/messages', authenticate, chatController.getChatMessages);
 

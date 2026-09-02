@@ -2,7 +2,7 @@ import { useAuthStore } from "@/store/authStore";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
-import StudentDashboard from "@/components/dashboard/StudentDashboard";
+import StudentDashboardPage from "@/pages/StudentDashboardPage";
 
 export default function DashboardPage() {
   usePageTitle("Dashboard");
@@ -11,6 +11,10 @@ export default function DashboardPage() {
   const isAdmin = user?.role === "ADMIN";
   const isTeacher = user?.role === "TEACHER";
   const isStudent = user?.role === "STUDENT";
+
+  if (isStudent) {
+    return <StudentDashboardPage />;
+  }
 
   return (
     <div className="space-y-6">
@@ -28,7 +32,6 @@ export default function DashboardPage() {
       <div className="mt-6">
         {isAdmin && <AdminDashboard />}
         {isTeacher && <TeacherDashboard />}
-        {isStudent && <StudentDashboard />}
 
         {/* Fallback for unknown roles or if role is missing */}
         {!isAdmin && !isTeacher && !isStudent && (

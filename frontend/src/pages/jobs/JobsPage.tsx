@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { isStudentTillClass12 } from '@/utils/studentUtils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -41,6 +42,7 @@ export default function JobsPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
   const isStudent = user?.role === 'STUDENT';
+  const isRestrictedStudent = isStudent && isStudentTillClass12(user);
   
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabType>((searchParams.get('tab') as TabType) || 'jobs');
@@ -195,6 +197,25 @@ export default function JobsPage() {
     }
   };
 
+  if (isRestrictedStudent) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center max-w-md space-y-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+            <Briefcase className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800">Access Restricted</h2>
+          <p className="text-sm text-slate-500">
+            The Jobs & Internships section is available for college, graduate, and higher-education students.
+          </p>
+          <Button onClick={() => navigate('/dashboard')} className="bg-saBlue hover:bg-saBlue/90 rounded-xl">
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10 px-4 sm:px-6">
       {/* Header */}
@@ -254,28 +275,28 @@ export default function JobsPage() {
       {activeTab === 'jobs' && (
         <>
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+          <div className="flex flex-col md:flex-row gap-3 items-center bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
             {/* Search */}
-            <div className="relative flex-1 w-full md:w-auto min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <div className="relative flex-1 w-full md:w-auto min-w-[240px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search jobs..."
+                placeholder="Search jobs by title, department, skills..."
                 value={searchTerm}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full h-9 pl-9 pr-3 rounded-xl border border-gray-200 bg-white text-xs font-medium focus:outline-none focus:ring-2 focus:ring-saBlue/10 transition-all placeholder:text-gray-400"
+                className="w-full h-10 pl-10 pr-3 rounded-xl border border-slate-200/80 bg-slate-50/50 focus:bg-white text-sm focus:outline-none focus:ring-2 focus:ring-saBlue/20 focus:border-saBlue transition-all placeholder:text-slate-400"
               />
             </div>
 
             {/* Dropdowns Container */}
-            <div className="flex flex-wrap flex-1 gap-2 w-full md:w-auto justify-end">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-end">
               <select
                 value={selectedType}
                 onChange={(e) => {
                   setSelectedType(e.target.value);
                   handleJobsFilterChange();
                 }}
-                className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+                className="h-10 px-3 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-saBlue/20 cursor-pointer min-w-[130px]"
               >
                 <option value="">All Types</option>
                 <option value="JOB">Jobs</option>
@@ -288,7 +309,7 @@ export default function JobsPage() {
                   setJobsSelectedStatus(e.target.value);
                   handleJobsFilterChange();
                 }}
-                className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[120px]"
+                className="h-10 px-3 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-saBlue/20 cursor-pointer min-w-[130px]"
               >
                 <option value="">All Status</option>
                 <option value="OPEN">Open</option>
@@ -477,16 +498,16 @@ export default function JobsPage() {
       {activeTab === 'applications' && isStudent && (
         <>
           {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-3 items-center bg-gray-50/50 p-2 rounded-2xl border border-gray-100">
+          <div className="flex flex-col md:flex-row gap-3 items-center bg-white p-3.5 rounded-2xl border border-slate-200/80 shadow-sm">
             <select
               value={appsSelectedStatus}
               onChange={(e) => {
                 setAppsSelectedStatus(e.target.value);
                 handleAppsFilterChange();
               }}
-              className="h-9 px-3 rounded-xl border border-gray-200 bg-white text-[10px] font-bold uppercase tracking-wider text-gray-600 focus:outline-none focus:ring-2 focus:ring-saBlue/10 cursor-pointer min-w-[150px]"
+              className="h-10 px-3 rounded-xl border border-slate-200/80 bg-slate-50/50 hover:bg-white text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-saBlue/20 cursor-pointer min-w-[160px]"
             >
-              <option value="">All Status</option>
+              <option value="">All Application Status</option>
               <option value="PENDING">Pending</option>
               <option value="REVIEWED">Reviewed</option>
               <option value="ACCEPTED">Accepted</option>

@@ -48,6 +48,7 @@ import type {
   Answer,
   Chat,
   Message,
+  MessageType,
   StartChatData,
   SendMessageData,
   ClassSession,
@@ -425,12 +426,28 @@ export const teacherService = {
 };
 
 export const teacherRoleService = {
-  getAll: async (): Promise<{ success: boolean; data: TeacherRole[] }> => {
+  getAll: async (): Promise<{ success: boolean; data: { roles: any[] } }> => {
     const response = await api.get('/teacher-roles');
     return response.data;
   },
-  getById: async (id: number): Promise<{ success: boolean; data: TeacherRole }> => {
+  getById: async (id: number): Promise<{ success: boolean; data: { role: any } }> => {
     const response = await api.get(`/teacher-roles/${id}`);
+    return response.data;
+  },
+  create: async (data: { name: string; description?: string; permissions: Record<string, any> }): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.post('/teacher-roles', data);
+    return response.data;
+  },
+  update: async (id: number, data: { name?: string; description?: string; permissions?: Record<string, any>; is_active?: boolean }): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.put(`/teacher-roles/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.delete(`/teacher-roles/${id}`);
+    return response.data;
+  },
+  assignRole: async (teacherId: number, roleId: number | null): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.post('/teacher-roles/assign', { teacher_id: teacherId, role_id: roleId });
     return response.data;
   },
 };
@@ -472,6 +489,7 @@ export const subjectService = {
     if (data.end_date !== null && data.end_date !== undefined) formData.append('end_date', data.end_date);
     if (data.cover_image) formData.append('cover_image', data.cover_image);
     if (data.price !== null && data.price !== undefined) formData.append('price', data.price.toString());
+    if (data.actual_price !== null && data.actual_price !== undefined) formData.append('actual_price', data.actual_price.toString());
     if (data.currency_id !== null && data.currency_id !== undefined) formData.append('currency_id', data.currency_id.toString());
 
     const response = await api.post('/subjects', formData, {
@@ -495,6 +513,7 @@ export const subjectService = {
     if (data.end_date !== undefined) formData.append('end_date', data.end_date ?? '');
     if (data.cover_image !== undefined && data.cover_image) formData.append('cover_image', data.cover_image);
     if (data.price !== undefined) formData.append('price', data.price !== null ? data.price.toString() : '');
+    if (data.actual_price !== undefined) formData.append('actual_price', data.actual_price !== null ? data.actual_price.toString() : '');
     if (data.currency_id !== undefined) formData.append('currency_id', data.currency_id !== null ? data.currency_id.toString() : '');
 
     const response = await api.put(`/subjects/${id}`, formData, {
@@ -969,7 +988,37 @@ export const chatService = {
     return response.data;
   },
 
-  // Send a message (with optional single or multiple file uploads)
+  // Upload attachment(s) immediately before sending
+  uploadAttachment: async (
+    files: File | File[]
+  ): Promise<{
+    success: boolean;
+    data: {
+      attachments: Array<{
+        originalName: string;
+        filename: string;
+        url: string;
+        key: string;
+        size: number;
+        messageType: MessageType;
+      }>;
+    };
+  }> => {
+    const formData = new FormData();
+    if (Array.isArray(files)) {
+      files.forEach((f) => formData.append('files', f));
+    } else {
+      formData.append('files', files);
+    }
+    const response = await api.post('/chats/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  // Send a message (with optional single/multiple file uploads or pre-uploaded attachment URLs)
   sendMessage: async (
     chatId: number,
     data: SendMessageData,
@@ -983,6 +1032,10 @@ export const chatService = {
 
     if (data.messageType) {
       formData.append('messageType', data.messageType);
+    }
+
+    if (data.attachments && data.attachments.length > 0) {
+      formData.append('attachments', JSON.stringify(data.attachments));
     }
 
     if (file) {
@@ -1687,4 +1740,6 @@ export const whiteboardService = {
 
 export default api;
 export { api as apiService };
+
+
 

@@ -278,7 +278,38 @@ export default function SubjectDetailPage() {
             <div className="space-y-2">
               <InfoItem label="Subject Name" value={subject.name} icon={BookOpen} />
               <InfoItem label="Type" value={subject.is_course ? "Course" : "Regular Subject"} icon={GraduationCap} />
-              <InfoItem label="Price" value={subject.price ? `${subject.currency?.symbol || '$'} ${subject.price.toLocaleString()}` : 'Free'} icon={Coins} />
+              {/* Pricing with Discount */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-2.5 text-xs font-semibold text-gray-500">
+                  <Coins className="w-4 h-4 text-saBlue" />
+                  <span>Price</span>
+                </div>
+                <div className="text-right">
+                  {subject.price || subject.actual_price ? (
+                    <div className="flex items-center gap-1.5 justify-end flex-wrap">
+                      {subject.actual_price && subject.price && subject.actual_price > subject.price ? (
+                        <>
+                          <span className="text-xs text-gray-400 line-through font-semibold">
+                            {subject.currency?.symbol || '₹'}{subject.actual_price.toLocaleString()}
+                          </span>
+                          <span className="text-sm font-black text-gray-900">
+                            {subject.currency?.symbol || '₹'}{subject.price.toLocaleString()}
+                          </span>
+                          <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-1.5 py-0.2 border-none">
+                            {Math.round(((subject.actual_price - subject.price) / subject.actual_price) * 100)}% OFF
+                          </Badge>
+                        </>
+                      ) : (
+                        <span className="text-sm font-black text-gray-900">
+                          {subject.currency?.symbol || '₹'}{(subject.price ?? subject.actual_price)?.toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-bold text-green-600">Free</span>
+                  )}
+                </div>
+              </div>
               {subject.is_course && subject.end_date && (
                 <InfoItem label="End Date" value={format(new Date(subject.end_date), 'PPP')} icon={CalendarDays} />
               )}

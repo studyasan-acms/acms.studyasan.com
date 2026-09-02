@@ -5,6 +5,8 @@ import { Megaphone, X, Clock, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { announcementService } from "@/services/api";
 import { useNavigate } from "react-router-dom";
+import { getAnnouncementTypeConfig } from "@/utils/announcementUtils";
+import type { Announcement } from "@/types";
 
 interface AnnouncementPanelProps {
   isOpen: boolean;
@@ -15,7 +17,7 @@ export default function AnnouncementPanel({
   isOpen,
   onClose,
 }: AnnouncementPanelProps) {
-  const [announcements, setAnnouncements] = useState<any[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -93,35 +95,48 @@ export default function AnnouncementPanel({
               <p>No announcements found</p>
             </div>
           ) : (
-            announcements.map((a) => (
-              <div
-                key={a.id}
-                className={cn(
-                  "p-4 rounded-xl shadow-sm bg-white border transition-all",
-                  "hover:shadow-md hover:bg-gray-50 border-l-4 border-l-orange-400"
-                )}
-              >
-                <div className="space-y-2">
-                  <div className="flex justify-between items-start">
+            announcements.map((a) => {
+              const config = getAnnouncementTypeConfig(a.type);
+              const Icon = config.icon;
+
+              return (
+                <div
+                  key={a.id}
+                  onClick={handleViewAll}
+                  className={cn(
+                    "p-4 rounded-xl shadow-xs bg-white border transition-all cursor-pointer",
+                    "hover:shadow-md hover:bg-slate-50/80 border-l-4",
+                    config.borderLeftClass
+                  )}
+                >
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center gap-2">
+                      <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1.5", config.badgeClass)}>
+                        <Icon className="w-3 h-3" />
+                        <span>{config.label}</span>
+                      </span>
+
+                      <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
+                        <Clock className="h-3 w-3" />
+                        {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+
                     <h3 className="text-sm font-bold text-gray-900 leading-tight">
                       {a.title}
                     </h3>
-                    <span className="text-[10px] text-gray-400 flex items-center gap-1 whitespace-nowrap">
-                      <Clock className="h-3 w-3" />
-                      {formatDistanceToNow(new Date(a.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                  
-                  <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
-                    {a.content}
-                  </p>
+                    
+                    <p className="text-xs text-gray-600 line-clamp-3 leading-relaxed">
+                      {a.content}
+                    </p>
 
-                  <div className="pt-2 flex items-center gap-2 text-[10px] text-gray-400">
-                    <span className="font-medium text-gray-500">By {a.creator?.name || 'Admin'}</span>
+                    <div className="pt-2 flex items-center gap-2 text-[10px] text-gray-400 border-t border-slate-100">
+                      <span className="font-medium text-gray-500">By {a.creator?.name || 'Admin'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 

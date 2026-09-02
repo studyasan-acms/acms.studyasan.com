@@ -68,6 +68,7 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import InvoiceModal from "@/components/InvoiceModal";
 import IDCardModal from "@/components/students/IDCardModal";
+import { formatStudentId } from "@/utils/idUtils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
@@ -634,8 +635,8 @@ export default function StudentDetailPage() {
                   <School className="w-3 h-3 mr-1" />
                   {student.school || "School Not Set"}
                 </Badge>
-                <Badge variant="outline" className="border-gray-200 text-gray-500">
-                  ID: {student.id}
+                <Badge variant="outline" className="border-gray-200 text-gray-700 font-semibold font-mono">
+                  ID: {formatStudentId(student.id)}
                 </Badge>
               </div>
             </div>

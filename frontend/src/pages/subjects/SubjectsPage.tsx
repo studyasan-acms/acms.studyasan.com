@@ -597,15 +597,41 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
 
                       <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
                         {/* Class and Board Info */}
-                        <div className="flex gap-1.5 flex-wrap">
-                          <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] px-2 py-0.5 rounded-lg font-semibold">
-                            <GraduationCap className="h-3 w-3 mr-1" />
-                            {subject.class?.name || "No Class"}
-                          </Badge>
-                          {subject.board && (
-                            <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] px-2 py-0.5 rounded-lg font-semibold">
-                              {subject.board.name}
+                        {/* Class and Board Info */}
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                          <div className="flex gap-1.5 flex-wrap">
+                            <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-[10px] px-2 py-0.5 rounded-lg font-semibold">
+                              <GraduationCap className="h-3 w-3 mr-1" />
+                              {subject.class?.name || "No Class"}
                             </Badge>
+                            {subject.board && (
+                              <Badge variant="outline" className="bg-slate-100 text-slate-700 border-slate-200 text-[10px] px-2 py-0.5 rounded-lg font-semibold">
+                                {subject.board.name}
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Pricing Badge */}
+                          {(subject.price !== null || subject.actual_price !== null) && (
+                            <div className="flex items-center gap-1.5">
+                              {subject.actual_price && subject.price && subject.actual_price > subject.price ? (
+                                <>
+                                  <span className="text-[11px] text-slate-400 line-through font-semibold">
+                                    {subject.currency?.symbol || '₹'}{subject.actual_price.toLocaleString()}
+                                  </span>
+                                  <span className="text-xs font-black text-slate-900">
+                                    {subject.currency?.symbol || '₹'}{subject.price.toLocaleString()}
+                                  </span>
+                                  <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                                    {Math.round(((subject.actual_price - subject.price) / subject.actual_price) * 100)}% OFF
+                                  </Badge>
+                                </>
+                              ) : (
+                                <span className="text-xs font-black text-slate-900">
+                                  {subject.currency?.symbol || '₹'}{(subject.price ?? subject.actual_price)?.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
 
@@ -705,6 +731,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                       <TableHead className="font-bold text-slate-700">Type</TableHead>
                       <TableHead className="font-bold text-slate-700">Class</TableHead>
                       <TableHead className="font-bold text-slate-700">Board</TableHead>
+                      <TableHead className="font-bold text-slate-700">Price</TableHead>
                       <TableHead className="font-bold text-slate-700">Students</TableHead>
                       <TableHead className="text-right font-bold text-slate-700">Actions</TableHead>
                     </TableRow>
@@ -738,6 +765,31 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                         </TableCell>
                         <TableCell className="text-xs text-slate-600 font-medium">
                           {subject.board?.name || "N/A"}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium">
+                          {subject.price !== null || subject.actual_price !== null ? (
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {subject.actual_price && subject.price && subject.actual_price > subject.price ? (
+                                <>
+                                  <span className="text-[11px] text-slate-400 line-through">
+                                    {subject.currency?.symbol || '₹'}{subject.actual_price.toLocaleString()}
+                                  </span>
+                                  <span className="font-bold text-slate-900">
+                                    {subject.currency?.symbol || '₹'}{subject.price.toLocaleString()}
+                                  </span>
+                                  <span className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1 py-0.2 rounded font-bold">
+                                    {Math.round(((subject.actual_price - subject.price) / subject.actual_price) * 100)}% OFF
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="font-bold text-slate-900">
+                                  {subject.currency?.symbol || '₹'}{(subject.price ?? subject.actual_price)?.toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-400">Free</span>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs text-slate-600 font-medium">
                           {subject._count?.enrollments || 0}

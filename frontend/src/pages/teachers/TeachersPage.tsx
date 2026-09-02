@@ -43,13 +43,17 @@ import {
   IndianRupee,
   Sparkles,
 } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
+import { formatEmployeeId } from "@/utils/idUtils";
 
 export default function TeachersPage() {
   usePageTitle("Teachers & Faculty");
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "ADMIN";
 
   // Data State
   const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -76,7 +80,7 @@ export default function TeachersPage() {
     const fetchRoles = async () => {
       try {
         const res = await teacherRoleService.getAll();
-        setRolesList(res.data || []);
+        setRolesList(res.data?.roles || []);
       } catch (err) {
         console.error("Failed to fetch teacher roles:", err);
       }
@@ -449,7 +453,12 @@ export default function TeachersPage() {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 text-sm leading-tight">{teacher.user.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-sm leading-tight">{teacher.user.name}</span>
+                            <span className="text-[10px] font-mono font-bold text-saBlue bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                              {formatEmployeeId(teacher.id)}
+                            </span>
+                          </div>
                           <span className="text-xs text-slate-400">{teacher.user.email}</span>
                         </div>
                       </div>
@@ -487,12 +496,16 @@ export default function TeachersPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-saBlue hover:bg-saBlue/10 rounded-lg" onClick={() => navigate(`/dashboard/teachers/${teacher.id}`)}>
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-saVividOrange hover:bg-saVividOrange/10 rounded-lg" onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg" onClick={() => setDeleteTeacher(teacher)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-saVividOrange hover:bg-saVividOrange/10 rounded-lg" onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}>
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                        )}
+                        {isAdmin && (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg" onClick={() => setDeleteTeacher(teacher)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -512,9 +525,14 @@ export default function TeachersPage() {
             >
               {/* Header Gradient */}
               <div className="h-20 bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400 relative p-4 flex items-start justify-between">
-                <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
-                  {(teacher as any).role?.name || "Faculty"}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
+                    {(teacher as any).role?.name || "Faculty"}
+                  </Badge>
+                  <span className="text-[10px] font-mono font-bold text-white/90 bg-black/20 px-1.5 py-0.5 rounded">
+                    {formatEmployeeId(teacher.id)}
+                  </span>
+                </div>
                 <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button variant="ghost" size="icon" className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20 rounded-lg" onClick={() => navigate(`/dashboard/teachers/${teacher.id}/edit`)}>
                     <Edit className="h-3.5 w-3.5" />

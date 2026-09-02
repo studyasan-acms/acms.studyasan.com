@@ -26,11 +26,24 @@ import {
   Trash2,
   ArrowUpDown,
   CheckCheck,
+  CheckCircle2,
+  AlertCircle,
+  RotateCw,
 } from 'lucide-react';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { usePageTitle } from "@/hooks/usePageTitle";
+
+interface ChatAttachmentItem {
+  id: string;
+  file: File;
+  previewUrl: string;
+  uploadedUrl?: string;
+  status: 'uploading' | 'ready' | 'error';
+  errorMessage?: string;
+  messageType: MessageType;
+}
 
 const ChatsPageNew = () => {
   usePageTitle("Messages");
@@ -57,7 +70,7 @@ const ChatsPageNew = () => {
   const [canSendMessages, setCanSendMessages] = useState(true);
   const [canSendReason, setCanSendReason] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedAttachments, setSelectedAttachments] = useState<ChatAttachmentItem[]>([]);
   const [sending, setSending] = useState(false);
 
   const [deletingMessageId, setDeletingMessageId] = useState<number | null>(null);
@@ -70,39 +83,12 @@ const ChatsPageNew = () => {
   const [contactSearch, setContactSearch] = useState('');
   const [startingChat, setStartingChat] = useState(false);
 
-  const [isMobile, setIsMobile] = useState(false);
-  const [isTablet, setIsTablet] = useState(false);
-  const [viewMode, setViewMode] = useState<'chats' | 'messages' | 'contacts'>('chats');
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     selectedChatRef.current = selectedChat;
   }, [selectedChat]);
-
-  useEffect(() => {
-    const checkScreenSize = () => {
-      const width = window.innerWidth;
-      setIsMobile(width < 768);
-      setIsTablet(width >= 768 && width < 1024);
-      if (width >= 1024) {
-        setViewMode('chats');
-      }
-    };
-
-    checkScreenSize();
-    window.addEventListener('resize', checkScreenSize);
-    return () => window.removeEventListener('resize', checkScreenSize);
-  }, []);
-
-  useEffect(() => {
-    if (isMobile || isTablet) {
-      if (selectedChat) setViewMode('messages');
-      else if (showContacts) setViewMode('contacts');
-      else setViewMode('chats');
-    }
-  }, [selectedChat, showContacts, isMobile, isTablet]);
 
   // Socket Connection
   useEffect(() => {
@@ -267,24 +253,80 @@ const ChatsPageNew = () => {
     }
   };
 
+  const uploadAttachmentItem = async (item: ChatAttachmentItem) => {
+    try {
+      const res = await chatService.uploadAttachment(item.file);
+      const uploaded = res.data?.attachments?.[0];
+      if (uploaded && uploaded.url) {
+        setSelectedAttachments((prev) =>
+          prev.map((a) =>
+            a.id === item.id
+              ? {
+                  ...a,
+                  status: 'ready',
+                  uploadedUrl: uploaded.url,
+                  messageType: (uploaded.messageType as MessageType) || a.messageType,
+                }
+              : a
+          )
+        );
+      } else {
+        throw new Error('Upload returned no URL');
+      }
+    } catch (err) {
+      console.error('Failed to upload attachment:', err);
+      setSelectedAttachments((prev) =>
+        prev.map((a) =>
+          a.id === item.id
+            ? { ...a, status: 'error', errorMessage: 'Upload failed' }
+            : a
+        )
+      );
+    }
+  };
+
   const handleSendMessage = async () => {
-    if (!selectedChat || !canSendMessages || (!messageText.trim() && selectedFiles.length === 0)) return;
+    if (!selectedChat || !canSendMessages) return;
+    if (!messageText.trim() && selectedAttachments.length === 0) return;
+
+    // If attachments are still uploading, notify and wait
+    const isStillUploading = selectedAttachments.some((a) => a.status === 'uploading');
+    if (isStillUploading) {
+      toast.info('Please wait for attachments to finish uploading...');
+      return;
+    }
+
+    const failedItems = selectedAttachments.filter((a) => a.status === 'error');
+    if (failedItems.length > 0) {
+      toast.error('Please remove or retry failed attachments before sending.');
+      return;
+    }
 
     setSending(true);
     try {
-      const messageData = {
-        content: messageText.trim() || undefined,
-        messageType: selectedFiles.length > 0 ? getMessageType(selectedFiles[0]) : 'TEXT',
-      };
+      const readyAttachments = selectedAttachments
+        .filter((a) => a.status === 'ready' && a.uploadedUrl)
+        .map((a) => ({ url: a.uploadedUrl!, messageType: a.messageType }));
 
-      await chatService.sendMessage(
-        selectedChat.id,
-        messageData,
-        selectedFiles.length > 0 ? selectedFiles : undefined
-      );
+      if (readyAttachments.length > 0) {
+        await chatService.sendMessage(selectedChat.id, {
+          content: messageText.trim() || undefined,
+          attachments: readyAttachments,
+        });
+      } else {
+        await chatService.sendMessage(selectedChat.id, {
+          content: messageText.trim() || undefined,
+          messageType: 'TEXT',
+        });
+      }
+
+      // Cleanup object URLs
+      selectedAttachments.forEach((a) => {
+        if (a.previewUrl) URL.revokeObjectURL(a.previewUrl);
+      });
 
       setMessageText('');
-      setSelectedFiles([]);
+      setSelectedAttachments([]);
     } catch (error: unknown) {
       console.error('Error sending message:', error instanceof Error ? error.message : error);
       const message = error instanceof Error ? error.message : 'Failed to send message';
@@ -317,26 +359,50 @@ const ChatsPageNew = () => {
     const files = event.target.files;
     if (files && files.length > 0) {
       const fileList = Array.from(files);
-      const validFiles: File[] = [];
+      const newItems: ChatAttachmentItem[] = [];
 
       for (const f of fileList) {
         if (f.size > 100 * 1024 * 1024) {
           toast.error(`File "${f.name}" exceeds 100MB limit`);
-        } else {
-          validFiles.push(f);
+          continue;
         }
+        const item: ChatAttachmentItem = {
+          id: Math.random().toString(36).substring(2, 9),
+          file: f,
+          previewUrl: URL.createObjectURL(f),
+          status: 'uploading',
+          messageType: getMessageType(f),
+        };
+        newItems.push(item);
       }
 
-      if (validFiles.length > 0) {
-        setSelectedFiles((prev) => [...prev, ...validFiles]);
-        toast.success(`${validFiles.length} attachment${validFiles.length > 1 ? 's' : ''} added`);
+      if (newItems.length > 0) {
+        setSelectedAttachments((prev) => [...prev, ...newItems]);
+        newItems.forEach((item) => uploadAttachmentItem(item));
+        toast.info(`Uploading ${newItems.length} attachment${newItems.length > 1 ? 's' : ''}...`);
       }
     }
     if (event.target) event.target.value = '';
   };
 
-  const removeSelectedFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  const removeSelectedAttachment = (id: string) => {
+    setSelectedAttachments((prev) => {
+      const target = prev.find((a) => a.id === id);
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((a) => a.id !== id);
+    });
+  };
+
+  const retryAttachmentUpload = (id: string) => {
+    const item = selectedAttachments.find((a) => a.id === id);
+    if (item) {
+      setSelectedAttachments((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: 'uploading', errorMessage: undefined } : a))
+      );
+      uploadAttachmentItem(item);
+    }
   };
 
   const getMessageType = (file: File): MessageType => {
@@ -480,27 +546,20 @@ const ChatsPageNew = () => {
   const handleBackToChats = () => {
     setSelectedChat(null);
     setShowContacts(false);
-    setViewMode('chats');
     navigate('/dashboard/chats');
   };
 
   const handleBackFromContacts = () => {
     setShowContacts(false);
-    setViewMode('chats');
   };
 
-  const containerHeight = isMobile || isTablet ? 'h-[calc(100vh-6rem)]' : 'h-[calc(100vh-8rem)]';
-
   return (
-    <div className={cn("flex gap-4", "lg:flex-row flex-col md:flex-col", containerHeight)}>
+    <div className="flex gap-4 h-[calc(100vh-7.5rem)] w-full overflow-hidden">
       {/* Left Sidebar - Chat List */}
       <Card
         className={cn(
-          "flex-col bg-white rounded-3xl border-slate-200 shadow-sm overflow-hidden",
-          "lg:w-88",
-          (isMobile || isTablet) && viewMode !== 'chats' ? "hidden" : "flex",
-          "w-full md:w-full lg:w-88",
-          "h-full"
+          "flex-col bg-white rounded-3xl border-slate-200 shadow-sm overflow-hidden h-full shrink-0",
+          selectedChat ? "hidden md:flex md:w-80 lg:w-96" : "flex w-full md:w-80 lg:w-96"
         )}
       >
         <CardHeader className="pb-3 px-4 pt-4 shrink-0 border-b border-slate-100 bg-slate-50/50">
@@ -516,10 +575,7 @@ const ChatsPageNew = () => {
                 size="sm"
                 variant="ghost"
                 className="h-8 px-2.5 rounded-xl text-saBlue hover:bg-saBlue/10 gap-1.5"
-                onClick={() => {
-                  setShowContacts(true);
-                  setViewMode('contacts');
-                }}
+                onClick={() => setShowContacts(true)}
               >
                 <UserPlus className="h-4 w-4" />
                 <span className="text-xs font-semibold">New Chat</span>
@@ -576,10 +632,7 @@ const ChatsPageNew = () => {
                   <Button
                     size="sm"
                     className="mt-2 rounded-xl bg-saBlue hover:bg-saBlue/90 text-xs"
-                    onClick={() => {
-                      setShowContacts(true);
-                      setViewMode('contacts');
-                    }}
+                    onClick={() => setShowContacts(true)}
                   >
                     Start Chat
                   </Button>
@@ -595,10 +648,10 @@ const ChatsPageNew = () => {
                     <div
                       key={chat.id}
                       className={cn(
-                        "p-3 rounded-2xl cursor-pointer transition-all border border-transparent",
+                        "p-3 rounded-2xl cursor-pointer transition-all border",
                         isSelected
-                          ? "bg-saBlue/10 border-saBlue/20 shadow-sm"
-                          : "hover:bg-slate-50 hover:border-slate-100"
+                          ? "bg-saBlue/10 border-saBlue/20 shadow-xs"
+                          : "border-transparent hover:bg-slate-50 hover:border-slate-100"
                       )}
                       onClick={() => selectChat(chat)}
                     >
@@ -634,14 +687,11 @@ const ChatsPageNew = () => {
         </CardContent>
       </Card>
 
-      {/* Center - Chat Messages */}
+      {/* Center/Right - Chat Messages */}
       <Card
         className={cn(
-          "flex-col bg-white rounded-3xl border-slate-200 shadow-sm overflow-hidden",
-          "lg:flex-1",
-          (isMobile || isTablet) && viewMode === 'chats' ? "hidden" : "flex",
-          "w-full md:w-full lg:flex-1",
-          "h-full"
+          "flex-col bg-white rounded-3xl border-slate-200 shadow-sm overflow-hidden h-full flex-1 min-w-0",
+          !selectedChat ? "hidden md:flex" : "flex w-full"
         )}
       >
         {selectedChat ? (
@@ -650,11 +700,9 @@ const ChatsPageNew = () => {
             <CardHeader className="pb-3 border-b border-slate-100 px-4 py-3 shrink-0 bg-slate-50/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  {(isMobile || isTablet) && (
-                    <Button variant="ghost" size="icon" onClick={handleBackToChats} className="-ml-2 rounded-xl">
-                      <ChevronLeft className="h-5 w-5" />
-                    </Button>
-                  )}
+                  <Button variant="ghost" size="icon" onClick={handleBackToChats} className="md:hidden -ml-2 rounded-xl">
+                    <ChevronLeft className="h-5 w-5 text-slate-600" />
+                  </Button>
 
                   <Avatar className="h-10 w-10 border border-slate-200">
                     <AvatarFallback className="bg-saBlue text-white font-bold">
@@ -818,35 +866,72 @@ const ChatsPageNew = () => {
 
               {/* Bottom Input Area */}
               <div className="p-3 border-t border-slate-200 bg-white mt-auto">
-                {/* Multiple Attachments Preview Tray */}
-                {selectedFiles.length > 0 && (
+                {/* Multiple Attachments Preview Tray with Instant Status */}
+                {selectedAttachments.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-2 p-2 bg-slate-50 rounded-2xl border border-slate-200 max-h-36 overflow-y-auto">
-                    {selectedFiles.map((file, idx) => {
-                      const isImg = file.type.startsWith('image/');
+                    {selectedAttachments.map((item) => {
+                      const isImg = item.file.type.startsWith('image/');
                       return (
                         <div
-                          key={idx}
-                          className="flex items-center gap-2 p-1.5 pr-2 bg-white rounded-xl border border-slate-200 shadow-2xs text-xs"
-                        >
-                          {isImg ? (
-                            <img
-                              src={URL.createObjectURL(file)}
-                              alt="preview"
-                              className="w-8 h-8 object-cover rounded-lg border border-slate-100"
-                            />
-                          ) : (
-                            <div className="p-1 bg-slate-100 rounded-lg">
-                              {getFileIcon(getMessageType(file))}
-                            </div>
+                          key={item.id}
+                          className={cn(
+                            "relative flex items-center gap-2 p-1.5 pr-2 rounded-xl border transition-all text-xs",
+                            item.status === 'uploading' && "bg-blue-50/50 border-blue-200 shadow-xs",
+                            item.status === 'ready' && "bg-white border-emerald-200 shadow-2xs",
+                            item.status === 'error' && "bg-rose-50 border-rose-200"
                           )}
-                          <div className="max-w-[120px] truncate">
-                            <p className="font-semibold text-slate-700 truncate">{file.name}</p>
-                            <p className="text-[10px] text-slate-400">{(file.size / 1024).toFixed(0)} KB</p>
+                        >
+                          <div className="relative w-8 h-8 rounded-lg overflow-hidden shrink-0">
+                            {isImg ? (
+                              <img
+                                src={item.previewUrl}
+                                alt="preview"
+                                className="w-full h-full object-cover border border-slate-100 rounded-lg"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-slate-100 rounded-lg">
+                                {getFileIcon(item.messageType)}
+                              </div>
+                            )}
+                            {item.status === 'uploading' && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[1px]">
+                                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                              </div>
+                            )}
                           </div>
+
+                          <div className="max-w-[130px] truncate min-w-0">
+                            <p className="font-semibold text-slate-700 truncate leading-tight">{item.file.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] text-slate-400">{(item.file.size / 1024).toFixed(0)} KB</span>
+                              {item.status === 'uploading' && (
+                                <span className="text-[10px] font-bold text-saBlue animate-pulse flex items-center gap-0.5">
+                                  Uploading...
+                                </span>
+                              )}
+                              {item.status === 'ready' && (
+                                <span className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Ready
+                                </span>
+                              )}
+                              {item.status === 'error' && (
+                                <button
+                                  type="button"
+                                  onClick={() => retryAttachmentUpload(item.id)}
+                                  className="text-[10px] font-bold text-rose-600 hover:underline flex items-center gap-0.5"
+                                  title="Retry upload"
+                                >
+                                  <RotateCw className="w-2.5 h-2.5" /> Retry
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
                           <button
                             type="button"
-                            onClick={() => removeSelectedFile(idx)}
-                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50"
+                            onClick={() => removeSelectedAttachment(item.id)}
+                            className="p-1 rounded-full text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors ml-0.5"
+                            title="Remove attachment"
                           >
                             <X className="w-3.5 h-3.5" />
                           </button>
@@ -890,11 +975,25 @@ const ChatsPageNew = () => {
 
                   <Button
                     onClick={handleSendMessage}
-                    disabled={sending || !canSendMessages || (!messageText.trim() && selectedFiles.length === 0)}
+                    disabled={
+                      sending ||
+                      !canSendMessages ||
+                      (!messageText.trim() && selectedAttachments.length === 0) ||
+                      selectedAttachments.some((a) => a.status === 'uploading')
+                    }
                     size="icon"
-                    className="h-11 w-11 rounded-2xl bg-saBlue hover:bg-saBlue/90 text-white shadow-md shadow-saBlue/20"
+                    className="h-11 w-11 rounded-2xl bg-saBlue hover:bg-saBlue/90 text-white shadow-md shadow-saBlue/20 shrink-0"
+                    title={
+                      selectedAttachments.some((a) => a.status === 'uploading')
+                        ? 'Uploading attachments...'
+                        : 'Send message'
+                    }
                   >
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    {sending || selectedAttachments.some((a) => a.status === 'uploading') ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
 

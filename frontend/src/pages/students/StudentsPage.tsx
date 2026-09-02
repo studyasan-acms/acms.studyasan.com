@@ -47,6 +47,7 @@ import {
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
+import { formatStudentId } from "@/utils/idUtils";
 
 interface StudentQueryParams {
   page: number;
@@ -490,7 +491,12 @@ export default function StudentsPage() {
                           <AvatarFallback className="bg-saVividOrange text-white text-xs font-bold">{getInitials(student.user.name)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
-                          <span className="font-bold text-slate-900 text-sm leading-tight">{student.user.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-slate-900 text-sm leading-tight">{student.user.name}</span>
+                            <span className="text-[10px] font-mono font-bold text-saBlue bg-blue-50 px-1.5 py-0.2 rounded border border-blue-100">
+                              {formatStudentId(student.id)}
+                            </span>
+                          </div>
                           {!isTeacher && <span className="text-xs text-slate-400">{student.user.email}</span>}
                         </div>
                       </div>
@@ -545,9 +551,14 @@ export default function StudentsPage() {
             >
               {/* Header Gradient */}
               <div className="h-20 bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400 relative p-4 flex items-start justify-between">
-                <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
-                  {student.class?.name || "Student"}
-                </Badge>
+                <div className="flex items-center gap-1.5">
+                  <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
+                    {student.class?.name || "Student"}
+                  </Badge>
+                  <span className="text-[10px] font-mono font-bold text-white/90 bg-black/20 px-1.5 py-0.5 rounded">
+                    {formatStudentId(student.id)}
+                  </span>
+                </div>
                 {isAdmin && (
                   <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-white/80 hover:text-white hover:bg-white/20 rounded-lg" onClick={() => navigate(`/dashboard/students/${student.id}/edit`)}>

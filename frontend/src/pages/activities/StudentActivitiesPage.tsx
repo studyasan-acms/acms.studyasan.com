@@ -274,7 +274,7 @@ export default function StudentActivitiesPage() {
       {/* Join Game Modal */}
       {showJoinModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <Card className="p-8 w-full max-w-md bg-white rounded-3xl shadow-2xl border-0">
+          <Card className="p-8 w-full max-w-md bg-white rounded-3xl shadow-2xl border-0 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-center mb-6">
               <div className="w-16 h-16 bg-saBlue/10 rounded-2xl flex items-center justify-center">
                 <Gamepad2 className="w-8 h-8 text-saBlue" />

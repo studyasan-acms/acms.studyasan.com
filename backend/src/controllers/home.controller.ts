@@ -114,6 +114,7 @@ export const getHomeItems = async (req: Request, res: Response) => {
             description: null,
             cover_image: subject.cover_image,
             price: subject.price,
+            actual_price: subject.actual_price,
             currency: subject.currency,
             syllabus: subject.syllabus,
             class: subject.class?.name || null,

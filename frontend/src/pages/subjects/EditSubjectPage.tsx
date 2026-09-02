@@ -62,6 +62,7 @@ export default function EditSubjectPage() {
     is_course: false,
     end_date: null,
     price: null,
+    actual_price: null,
     currency_id: null,
   });
 
@@ -96,6 +97,7 @@ export default function EditSubjectPage() {
         is_course: data.is_course ?? false,
         end_date: data.end_date ? data.end_date.split('T')[0] : null,
         price: data.price ?? null,
+        actual_price: data.actual_price ?? null,
         currency_id: data.currency_id ?? null,
       });
 
@@ -349,22 +351,59 @@ export default function EditSubjectPage() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Pricing Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div className="space-y-1.5">
+                  <FormLabel icon={Coins}>Actual Price (MRP)</FormLabel>
+                  <Input
+                    id="actual_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 200"
+                    value={formData.actual_price ?? ''}
+                    onChange={(e) => handleChange('actual_price', e.target.value ? parseFloat(e.target.value) : null)}
+                    disabled={isSaving}
+                    className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
+                  />
+                  <p className="text-[10px] text-slate-400">Original price (shown with strike-through)</p>
+                </div>
 
                 <div className="space-y-1.5">
-                  <FormLabel icon={Coins}>Price</FormLabel>
+                  <FormLabel icon={Coins}>Discounted Price (Final Selling Price)</FormLabel>
                   <Input
                     id="price"
                     type="number"
                     step="0.01"
                     min="0"
-                    placeholder="0.00"
+                    placeholder="e.g. 100"
                     value={formData.price ?? ''}
                     onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
                     disabled={isSaving}
                     className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
                   />
+                  <p className="text-[10px] text-slate-400">Actual price student will pay</p>
                 </div>
               </div>
+
+              {/* Live Discount Calculation Badge */}
+              {formData.actual_price !== null && formData.actual_price !== undefined && formData.price !== null && formData.price !== undefined && formData.actual_price > formData.price && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs animate-in fade-in">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 line-through font-semibold">
+                      ₹{formData.actual_price.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-black text-slate-900">
+                      ₹{formData.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 border-none">
+                    {Math.round(((formData.actual_price - formData.price) / formData.actual_price) * 100)}% DISCOUNT
+                  </Badge>
+                </div>
+              )}
 
               {formData.is_course && (
                 <div className="space-y-1.5 animate-in fade-in slide-in-from-top-2">
@@ -380,7 +419,7 @@ export default function EditSubjectPage() {
                 </div>
               )}
 
-              {formData.price !== null && (
+              {(formData.price !== null || formData.actual_price !== null) && (
                 <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                   <FormLabel>Currency</FormLabel>
                   <Select

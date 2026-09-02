@@ -49,7 +49,7 @@ import ConfirmModal from "@/components/ui/confirmationModal";
 import MediaUpload from "@/components/ui/MediaUpload";
 import MathRenderer from "@/components/ui/MathRenderer";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
+import TestInstructionsModal from "@/components/tests/TestInstructionsModal";
 const DEFAULT_TEST_INSTRUCTIONS =
   'This test is proctored. Follow the question color coding and do not switch tabs, copy, or use unauthorized materials.';
 
@@ -123,14 +123,24 @@ export default function TestDetailPage() {
 
   const startAttempt = async (mode: "test" | "practice") => {
     if (!testId) return;
+    // Open reference to new window/tab immediately on click to prevent popup blockers
+    const newWindow = window.open('about:blank', '_blank');
     try {
       const response = mode === "practice"
         ? await testAttemptService.startPracticeAttempt(Number(testId))
         : await testAttemptService.startAttempt(Number(testId));
       setInstructionsOpen(false);
       setPendingAttemptMode(null);
-      navigate(`/test-attempts/${response.data.id}`);
+
+      const targetUrl = `${window.location.origin}/test-attempts/${response.data.id}`;
+      if (newWindow) {
+        newWindow.location.href = targetUrl;
+      } else {
+        window.open(targetUrl, '_blank');
+      }
+      fetchTest();
     } catch (error: unknown) {
+      if (newWindow) newWindow.close();
       setErrorMessage(error instanceof Error ? error.message : "Failed to start test");
       setErrorOpen(true);
     }
@@ -280,38 +290,21 @@ export default function TestDetailPage() {
       <SuccessModal open={successOpen} title={test.title} description={successMessage} showButtons okText="OK" onConfirm={() => setSuccessOpen(false)} onClose={() => setSuccessOpen(false)} />
       <ErrorModal open={errorOpen} title={test?.title || "Error"} description={errorMessage} showButtons okText="Close" onConfirm={() => setErrorOpen(false)} onClose={() => setErrorOpen(false)} />
       <ConfirmModal open={confirmOpen} title={test?.title || "Confirm Action"} description={confirmMessage} onConfirm={confirmAction} onClose={() => setConfirmOpen(false)} confirmText="Yes" cancelText="No" />
-      <Dialog
+      {/* Instructions Modal (Mockers / NTA Standard) */}
+      <TestInstructionsModal
         open={instructionsOpen}
-        onOpenChange={(open) => {
-          setInstructionsOpen(open);
-          if (!open) setPendingAttemptMode(null);
+        onClose={() => {
+          setInstructionsOpen(false);
+          setPendingAttemptMode(null);
         }}
-      >
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Read Instructions Before Starting</DialogTitle>
-            <DialogDescription>
-              Review the test instructions carefully. The timer and proctoring will begin when you continue.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto rounded-xl border border-amber-200 bg-amber-50 p-4">
-            <p className="whitespace-pre-line text-sm text-amber-950">
-              {test?.instructions || DEFAULT_TEST_INSTRUCTIONS}
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setInstructionsOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => pendingAttemptMode && startAttempt(pendingAttemptMode)}
-              className="bg-saBlue text-white hover:bg-saBlueDarkHover"
-            >
-              {pendingAttemptMode === "practice" ? "Begin Practice" : "Begin Test"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        onConfirm={() => {
+          if (pendingAttemptMode) {
+            startAttempt(pendingAttemptMode);
+          }
+        }}
+        test={test}
+        mode={pendingAttemptMode || 'test'}
+      />
 
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">

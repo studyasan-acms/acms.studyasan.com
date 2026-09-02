@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { analyticsService, homeService, announcementService, boardService } from '@/services/api';
 import api from '@/services/api';
+import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import HomeItemCard from '@/components/home/HomeItemCard';
@@ -40,10 +41,21 @@ import {
     Megaphone,
     Grid3x3,
     BookMarked,
-    PartyPopper
+    PartyPopper,
+    Palette,
+    Compass,
+    Laptop,
+    Languages,
+    Code2,
+    Award,
+    Sparkles,
+    School,
+    Star,
+    Layers,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface StudentAnalytics {
@@ -72,6 +84,182 @@ interface StudentAnalytics {
     };
     totalHoursSpent: number;
 }
+
+// ================== LEARNING STAGES STRUCTURE ==================
+export interface LearningStage {
+    id: 'ALL' | 'FOUNDATIONAL' | 'PREPARATORY' | 'MIDDLE' | 'SECONDARY' | 'OTHER_COURSES';
+    name: string;
+    stageNumber: string;
+    grades: string;
+    subtitle: string;
+    description: string;
+    icon: React.ElementType;
+}
+
+export const LEARNING_STAGES: LearningStage[] = [
+    {
+        id: 'ALL',
+        name: 'All Stages',
+        stageNumber: '0',
+        grades: 'Complete Curriculum',
+        subtitle: 'All Grades & Courses',
+        description: 'Explore full academic curriculum and specialized courses',
+        icon: Sparkles,
+    },
+    {
+        id: 'FOUNDATIONAL',
+        name: 'Foundational',
+        stageNumber: '1',
+        grades: 'Pre-Primary, Grades 1-2',
+        subtitle: 'Pre-Primary, Grades 1-2',
+        description: 'Early childhood, play, literacy, numeracy & activity discovery',
+        icon: Palette,
+    },
+    {
+        id: 'PREPARATORY',
+        name: 'Preparatory',
+        stageNumber: '2',
+        grades: 'Grades 3-5',
+        subtitle: 'Grades 3-5',
+        description: 'Building literacy, numeracy & core conceptual foundations',
+        icon: BookOpen,
+    },
+    {
+        id: 'MIDDLE',
+        name: 'Middle',
+        stageNumber: '3',
+        grades: 'Grades 6-8',
+        subtitle: 'Grades 6-8',
+        description: 'Experiential sciences, mathematics, humanities & arts',
+        icon: Compass,
+    },
+    {
+        id: 'SECONDARY',
+        name: 'Secondary',
+        stageNumber: '4',
+        grades: 'Grades 9-12',
+        subtitle: 'Grades 9-12',
+        description: 'Higher concepts, board preparation & stream specialization',
+        icon: GraduationCap,
+    },
+    {
+        id: 'OTHER_COURSES',
+        name: 'Other Courses',
+        stageNumber: '★',
+        grades: 'Computer, Competitive, Spoken English',
+        subtitle: 'Skill & Competitive Programs',
+        description: 'Specialized programs: Computer, Competitive, Spoken English, Aptitude',
+        icon: Laptop,
+    },
+];
+
+export const getItemStage = (item: any): 'FOUNDATIONAL' | 'PREPARATORY' | 'MIDDLE' | 'SECONDARY' | 'OTHER_COURSES' => {
+    const className = (item.class || '').toLowerCase();
+    const name = (item.name || '').toLowerCase();
+    const isSpecialCourse =
+        item.type === 'COURSE' ||
+        name.includes('computer') ||
+        name.includes('coding') ||
+        name.includes('python') ||
+        name.includes('spoken english') ||
+        name.includes('english speaking') ||
+        name.includes('competitive') ||
+        name.includes('jee') ||
+        name.includes('neet') ||
+        name.includes('upsc') ||
+        name.includes('olympiad') ||
+        name.includes('aptitude') ||
+        item.type === 'TEST_SERIES' ||
+        item.type === 'ACTIVITY_GROUP';
+
+    if (!className && isSpecialCourse) {
+        return 'OTHER_COURSES';
+    }
+
+    // 1. Foundational: Pre-Primary, Grades 1-2
+    if (
+        className.includes('nursery') ||
+        className.includes('lkg') ||
+        className.includes('ukg') ||
+        className.includes('pre') ||
+        className.includes('kg') ||
+        className.includes('play') ||
+        className.includes('class 1') ||
+        className.includes('grade 1') ||
+        className.includes('class 2') ||
+        className.includes('grade 2') ||
+        className === '1' ||
+        className === '2' ||
+        className === '1st' ||
+        className === '2nd'
+    ) {
+        return 'FOUNDATIONAL';
+    }
+
+    // 2. Preparatory: Grades 3-5
+    if (
+        className.includes('class 3') ||
+        className.includes('grade 3') ||
+        className.includes('class 4') ||
+        className.includes('grade 4') ||
+        className.includes('class 5') ||
+        className.includes('grade 5') ||
+        className === '3' ||
+        className === '4' ||
+        className === '5' ||
+        className === '3rd' ||
+        className === '4th' ||
+        className === '5th'
+    ) {
+        return 'PREPARATORY';
+    }
+
+    // 3. Middle: Grades 6-8
+    if (
+        className.includes('class 6') ||
+        className.includes('grade 6') ||
+        className.includes('class 7') ||
+        className.includes('grade 7') ||
+        className.includes('class 8') ||
+        className.includes('grade 8') ||
+        className === '6' ||
+        className === '7' ||
+        className === '8' ||
+        className === '6th' ||
+        className === '7th' ||
+        className === '8th'
+    ) {
+        return 'MIDDLE';
+    }
+
+    // 4. Secondary: Grades 9-12
+    if (
+        className.includes('class 9') ||
+        className.includes('grade 9') ||
+        className.includes('class 10') ||
+        className.includes('grade 10') ||
+        className.includes('class 11') ||
+        className.includes('grade 11') ||
+        className.includes('class 12') ||
+        className.includes('grade 12') ||
+        className === '9' ||
+        className === '10' ||
+        className === '11' ||
+        className === '12' ||
+        className === '9th' ||
+        className === '10th' ||
+        className === '11th' ||
+        className === '12th'
+    ) {
+        return 'SECONDARY';
+    }
+
+    if (isSpecialCourse) {
+        return 'OTHER_COURSES';
+    }
+
+    return 'MIDDLE';
+};
 
 // Slider Component from StudentHomePage
 const SectionBoardFilter = ({ 
@@ -259,6 +447,8 @@ export default function StudentDashboard() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState<string>('ALL');
     const [selectedBoard, setSelectedBoard] = useState<string>('ALL');
+    const [selectedStage, setSelectedStage] = useState<string>('ALL');
+    const [selectedSkillCategory, setSelectedSkillCategory] = useState<string>('ALL');
     const [boardsList, setBoardsList] = useState<Array<{ id: string; name: string; count: number }>>([]);
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -342,7 +532,7 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         filterItems();
-    }, [searchQuery, filterType, selectedBoard, items]);
+    }, [searchQuery, filterType, selectedBoard, selectedStage, selectedSkillCategory, items]);
 
     const fetchAnalytics = async () => {
         try {
@@ -457,45 +647,18 @@ export default function StudentDashboard() {
                         }
                         .logo-container {
                             background-color: #3b82f6;
-                            padding: 10px;
+                            color: white;
+                            padding: 8px 16px;
                             border-radius: 8px;
-                            margin-right: 15px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
+                            font-weight: 800;
+                            font-size: 20px;
                         }
-                        .logo { max-height: 45px; width: auto; }
-                        .header-left { display: flex; align-items: center; }
-                        .header-text h1 { font-size: 28px; color: #1f2937; margin: 0; }
-                        .header-text p { font-size: 14px; color: #6b7280; margin: 5px 0 0 0; }
+                        .title { font-size: 24px; font-weight: 800; color: #1f2937; }
+                        .subtitle { font-size: 14px; color: #6b7280; margin-top: 4px; }
                         
-                        .period-badge { 
-                            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-                            color: white; 
-                            padding: 8px 16px; 
-                            border-radius: 20px;
-                            font-size: 13px;
-                            font-weight: 600;
-                        }
-                        
-                        .info-grid { 
-                            display: grid; 
-                            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-                            gap: 20px; 
-                            margin-bottom: 40px;
-                        }
-                        .info-box { 
-                            padding: 20px; 
-                            border-radius: 10px; 
-                            background-color: #f3f4f6 !important;
-                            border: 1px solid #e5e7eb;
-                            border-left: 4px solid #3b82f6;
-                        }
-                        .info-box.avg { border-left-color: #3b82f6; }
-                        .info-box.max { border-left-color: #10b981; }
-                        .info-box.date { border-left-color: #f59e0b; }
-                        
-                        .info-label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+                        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 40px; }
+                        .info-card { padding: 20px; background-color: #f3f4f6 !important; border-radius: 12px; }
+                        .info-label { font-size: 12px; font-weight: 700; color: #6b7280; text-transform: uppercase; margin-bottom: 8px; }
                         .info-value { font-size: 32px; font-weight: 700; color: #1f2937; }
                         .info-value.avg { color: #3b82f6; }
                         .info-value.max { color: #10b981; }
@@ -576,84 +739,103 @@ export default function StudentDashboard() {
                     <div class="page">
                         <div class="header">
                             <div class="header-left">
-                                <div class="logo-container">
-                                    <img src="${window.location.origin}/studyasan-logo.png" alt="StudyAsan Logo" class="logo" />
-                                </div>
-                                <div class="header-text">
-                                    <h1 style="color: #4b5563; font-size: 22px; font-weight: 600; margin-top: 4px;">Performance Report</h1>
-                                </div>
+                                <div class="logo-container">StudyAsan</div>
+                                <p class="subtitle">Student Learning & Progress System</p>
                             </div>
-                            <div class="period-badge">${periodLabel} Overview</div>
+                            <div class="header-right" style="text-align: right;">
+                                <div class="title">Performance Report</div>
+                                <p class="subtitle">Generated on ${today}</p>
+                            </div>
                         </div>
 
                         <div class="info-grid">
-                            <div class="info-box avg">
+                            <div class="info-card">
                                 <div class="info-label">Average Score</div>
                                 <div class="info-value avg">${avgScore}%</div>
                             </div>
-                            <div class="info-box max">
-                                <div class="info-label">Highest Score</div>
+                            <div class="info-card">
+                                <div class="info-label">Peak Performance</div>
                                 <div class="info-value max">${maxScore}%</div>
                             </div>
-                            <div class="info-box date">
-                                <div class="info-label">Generated On</div>
-                                <div class="info-value date" style="font-size: 16px; color: #f59e0b;">${today}</div>
-                            </div>
-                            <div class="info-box">
-                                <div class="info-label">Modules Studied</div>
-                                <div class="info-value" style="color: #4f46e5;">${analytics?.modules?.completed || 0}</div>
-                            </div>
-                            <div class="info-box">
-                                <div class="info-label">Classes Taken</div>
-                                <div class="info-value" style="color: #ea580c;">${analytics?.classes?.attended || 0}</div>
+                            <div class="info-card">
+                                <div class="info-label">Report Period</div>
+                                <div class="info-value date" style="font-size: 24px; padding-top: 6px;">${periodLabel}</div>
                             </div>
                         </div>
 
                         <div class="section">
-                            <div class="section-title">📊 ${periodLabel} Breakdown</div>
+                            <div class="section-title">Timeline Breakdown</div>
                             <div class="data-grid">
-                                ${selectedPeriodData.map((item: any) => `
+                                ${selectedPeriodData.map((d: any) => `
                                     <div class="data-row">
-                                        <div class="data-label">${item.label}</div>
+                                        <div class="data-label">${d.label}</div>
                                         <div class="progress-bar">
-                                            <div class="progress-fill" style="width: ${item.score}%;"></div>
+                                            <div class="progress-fill" style="width: ${d.score}%;"></div>
                                         </div>
-                                        <div class="data-value">${item.score}%</div>
+                                        <div class="data-value">${d.score}%</div>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
 
                         <div class="footer">
-                            <p>This is an automatically generated performance report from StudyAsan.</p>
-                            <p style="margin-top: 8px;">Keep learning and improving! 🎓</p>
+                            <p>StudyAsan Academy Management System • Official Student Analytics Record</p>
                         </div>
                     </div>
                 </body>
             </html>
         `;
 
+        printWindow.document.open();
         printWindow.document.write(content);
         printWindow.document.close();
-        
+
         setTimeout(() => {
             printWindow.print();
         }, 250);
     };
 
-
     const filterItems = () => {
         let filtered = items;
 
-        // Filter by type
+        // 1. Filter by Stage
+        if (selectedStage !== 'ALL') {
+            filtered = filtered.filter((item) => getItemStage(item) === selectedStage);
+        }
+
+        // 2. Filter by Skill Category when Other Courses is active
+        if (selectedStage === 'OTHER_COURSES' && selectedSkillCategory !== 'ALL') {
+            filtered = filtered.filter((item) => {
+                const name = (item.name || '').toLowerCase();
+                const desc = (item.description || '').toLowerCase();
+                const text = `${name} ${desc}`;
+
+                if (selectedSkillCategory === 'COMPUTER') {
+                    return text.includes('computer') || text.includes('coding') || text.includes('python') || text.includes('programming') || text.includes('web') || text.includes('app') || text.includes('tech');
+                }
+                if (selectedSkillCategory === 'COMPETITIVE') {
+                    return text.includes('competitive') || text.includes('jee') || text.includes('neet') || text.includes('upsc') || text.includes('olympiad') || text.includes('aptitude') || text.includes('entrance') || item.type === 'TEST_SERIES';
+                }
+                if (selectedSkillCategory === 'SPOKEN_ENGLISH') {
+                    return text.includes('spoken') || text.includes('english') || text.includes('communication') || text.includes('grammar') || text.includes('fluency');
+                }
+                if (selectedSkillCategory === 'ACTIVITIES') {
+                    return item.type === 'ACTIVITY_GROUP';
+                }
+                return true;
+            });
+        }
+
+        // 3. Filter by type
         if (filterType !== 'ALL' && filterType !== '') {
             filtered = filtered.filter((item) => item.type === filterType);
         }
 
-        // Filter by search query
+        // 4. Filter by search query
         if (searchQuery && searchQuery.trim() !== '') {
             filtered = filtered.filter((item) =>
-                item.name.toLowerCase().includes(searchQuery.toLowerCase())
+                item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (item.class && item.class.toLowerCase().includes(searchQuery.toLowerCase()))
             );
         }
         
@@ -717,190 +899,169 @@ export default function StudentDashboard() {
                         <h2 className="text-white text-2xl md:text-3xl font-extrabold tracking-tight">
                             Happy Birthday{studentName ? `, ${studentName.split(' ')[0]}` : ''}! 🎉
                         </h2>
-                        <p className="text-white/75 text-sm mt-1">Wishing you a wonderful day full of joy and success. Keep learning and growing! 🌟</p>
+                        <p className="text-white/90 text-sm mt-1 max-w-lg">
+                            Wishing you a fantastic year ahead filled with learning, joy, and incredible achievements! ✨
+                        </p>
                     </div>
 
-                    {/* Party icon */}
-                    <div className="relative shrink-0 hidden sm:flex items-center justify-center">
-                        <PartyPopper className="h-10 w-10 text-white/70" />
+                    {/* Right badge */}
+                    <div className="relative shrink-0 hidden md:flex flex-col items-center justify-center px-5 py-3 rounded-xl bg-white/15 backdrop-blur border border-white/20 text-white text-center">
+                        <PartyPopper className="w-6 h-6 mb-1 text-amber-200 animate-bounce" />
+                        <span className="text-xs font-bold tracking-wider uppercase">Best Wishes</span>
+                        <span className="text-[11px] text-white/80">from StudyAsan</span>
                     </div>
                 </div>
             )}
 
-            {/* Announcements Section */}
+            {/* Announcements Broadcast Card */}
             {announcements.length > 0 && (
-                <div className="space-y-4">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-5 space-y-3">
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                            <div className="p-2 rounded-lg bg-orange-100">
-                                <Megaphone className="h-5 w-5 text-orange-600" />
+                        <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-xl bg-saBlue/10 text-saBlue flex items-center justify-center">
+                                <Megaphone className="w-4 h-4" />
                             </div>
-                            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Latest Announcements</h2>
+                            <div>
+                                <h3 className="text-sm font-black text-slate-900">Recent Announcements</h3>
+                                <p className="text-[11px] text-slate-400 font-medium">Important updates from administration & teachers</p>
+                            </div>
                         </div>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-primary hover:text-primary hover:bg-primary/5"
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => navigate('/dashboard/announcements')}
+                            className="text-xs font-bold text-saBlue hover:text-saBlueDarkHover h-8 px-2.5 rounded-lg"
                         >
-                            View All
+                            View All ({announcements.length})
                         </Button>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {announcements.slice(0, 3).map((a) => (
-                            <Card 
-                                key={a.id} 
-                                className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-orange-400" 
-                                onClick={() => navigate('/dashboard/announcements')}
-                            >
-                                <CardHeader className="py-3 px-4 flex flex-row items-start justify-between space-y-0">
-                                    <CardTitle className="text-sm font-bold line-clamp-1 pr-2">{a.title}</CardTitle>
-                                    <span className="text-[10px] text-gray-400 whitespace-nowrap bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {new Date(a.created_at).toLocaleDateString()}
-                                    </span>
-                                </CardHeader>
-                                <CardContent className="py-2 px-4">
-                                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{a.content}</p>
-                                </CardContent>
-                            </Card>
-                        ))}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                        {announcements.slice(0, 2).map((a) => {
+                            const config = getAnnouncementTypeConfig(a.type);
+                            const TypeIcon = config.icon;
+                            return (
+                                <div
+                                    key={a.id}
+                                    onClick={() => navigate('/dashboard/announcements')}
+                                    className={`p-3.5 rounded-2xl border ${config.bgLightClass} ${config.borderLeftClass} border-l-4 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between`}
+                                >
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${config.badgeClass}`}>
+                                                <TypeIcon className="w-3 h-3" />
+                                                <span>{config.label}</span>
+                                            </span>
+                                            <span className="text-[11px] text-slate-400">
+                                                {new Date(a.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1">{a.title}</h4>
+                                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-1 font-normal leading-relaxed">{a.content}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
-            {/* Live Class Attendance Banner */}
-            <LiveClassAttendanceWidget isStudent={true} />
+            {/* Attendance & Session Widget */}
+            <LiveClassAttendanceWidget />
 
-            {/* 1. Analytics Section */}
-            {analytics && performanceData ? (
-                <div className="space-y-6">
-                    {/* Period Selector */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-900">Performance Overview</h2>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <div className="bg-slate-100 p-1 rounded-2xl flex items-center gap-1 border border-slate-200/80">
-                                <Button
-                                    size="sm"
-                                    onClick={() => setPerformancePeriod('daily')}
-                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
-                                        performancePeriod === 'daily'
-                                            ? 'bg-[#0276D3] text-white shadow-sm'
-                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                                    }`}
-                                >
-                                    Daily
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    onClick={() => setPerformancePeriod('weekly')}
-                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
-                                        performancePeriod === 'weekly'
-                                            ? 'bg-[#0276D3] text-white shadow-sm'
-                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                                    }`}
-                                >
-                                    Weekly
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    onClick={() => setPerformancePeriod('monthly')}
-                                    className={`h-9 px-4 rounded-xl text-xs font-bold transition-all ${
-                                        performancePeriod === 'monthly'
-                                            ? 'bg-[#0276D3] text-white shadow-sm'
-                                            : 'bg-transparent text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                                    }`}
-                                >
-                                    Monthly
-                                </Button>
+            {/* Top Analytics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard
+                    title="Classes Attended"
+                    value={analytics?.classes.attended || 0}
+                    description={`${(analytics?.classes.totalHours || 0).toFixed(1)} hours spent`}
+                    icon={GraduationCap}
+                />
+                <StatCard
+                    title="Test Performance"
+                    value={`${(analytics?.tests.averageScore || 0).toFixed(1)}%`}
+                    description={`${analytics?.tests.attempted || 0} tests completed`}
+                    icon={FileText}
+                />
+                <StatCard
+                    title="Activities"
+                    value={analytics?.activities.played || 0}
+                    description={`Avg. Score: ${(analytics?.activities.averageScore || 0).toFixed(1)}%`}
+                    icon={Gamepad2}
+                />
+                <StatCard
+                    title="Module Progress"
+                    value={`${moduleCompletionRate.toFixed(0)}%`}
+                    description={`${analytics?.modules.completed || 0}/${analytics?.modules.total || 0} completed`}
+                    icon={BookOpen}
+                />
+            </div>
+
+            {/* Performance Analytics Timeseries */}
+            {performanceData ? (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2 shadow-xs border border-gray-100 rounded-3xl overflow-hidden bg-white">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-blue-50/50 to-transparent">
+                            <div className="space-y-1">
+                                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                    <TrendingUp className="h-5 w-5 text-saBlue" />
+                                    Performance Analytics
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Historical test scores and learning trend</p>
                             </div>
 
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleExportPDF}
-                                className="h-10 px-4 rounded-2xl text-xs font-bold text-slate-700 border-slate-200 hover:bg-slate-50 flex items-center gap-2"
-                            >
-                                <Download className="h-4 w-4 text-[#0276D3]" />
-                                Export PDF
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Dynamic Stats Cards - Scroll Horizontally */}
-                    <div className="relative">
-                        <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory scroll-smooth" style={{
-                            scrollbarWidth: 'thin',
-                            scrollbarColor: 'rgba(2, 118, 211, 0.3) transparent'
-                        }}>
-                            {performanceData[performancePeriod]?.map((item: any, idx: number) => (
-                                <div key={idx} className="flex-shrink-0 w-64 sm:w-72 snap-start">
-                                    <StatCard
-                                        title={item.label}
-                                        value={`${item.score}%`}
-                                        icon={TrendingUp}
-                                        description={`Score: ${item.score}/${item.total}`}
-                                        className="bg-white rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#0276D3]/40 transition-all p-5"
-                                    />
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                                    {(['daily', 'weekly', 'monthly'] as const).map((period) => (
+                                        <button
+                                            key={period}
+                                            onClick={() => setPerformancePeriod(period)}
+                                            className={`px-3 py-1 text-xs font-semibold rounded-lg capitalize transition-all ${
+                                                performancePeriod === period
+                                                    ? 'bg-white text-saBlue shadow-xs font-bold'
+                                                    : 'text-gray-500 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            {period}
+                                        </button>
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    </div>
 
-                    {/* Summary Stats */}
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#0276D3]/30 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Modules Studied</p>
-                            <p className="text-2xl font-black text-[#0276D3] mt-1">
-                                {analytics?.modules?.completed || 0}
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#eca209]/40 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Classes Taken</p>
-                            <p className="text-2xl font-black text-[#eca209] mt-1">
-                                {analytics?.classes?.attended || 0}
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#0276D3]/30 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Average Score</p>
-                            <p className="text-2xl font-black text-[#0276D3] mt-1">
-                                {performanceData[performancePeriod]?.length > 0 
-                                    ? (performanceData[performancePeriod].reduce((sum: number, d: any) => sum + (d.score || 0), 0) / performanceData[performancePeriod].length || 0).toFixed(0)
-                                    : 0}%
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-emerald-300 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Highest Score</p>
-                            <p className="text-2xl font-black text-emerald-600 mt-1">
-                                {performanceData[performancePeriod]?.length > 0 
-                                    ? Math.max(...performanceData[performancePeriod].map((d: any) => d.score))
-                                    : 0}%
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-[#eca209]/40 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Attempts</p>
-                            <p className="text-2xl font-black text-[#eca209] mt-1">
-                                {performanceData[performancePeriod]?.length || 0}
-                            </p>
-                        </div>
-                        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-2xs hover:border-slate-300 transition-all">
-                            <p className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Lowest Score</p>
-                            <p className="text-2xl font-black text-slate-700 mt-1">
-                                {performanceData[performancePeriod]?.length > 0 
-                                    ? Math.min(...performanceData[performancePeriod].map((d: any) => d.score))
-                                    : 0}%
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Performance Chart */}
-                    <Card className="border-none shadow-md">
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <TrendingUp className="h-5 w-5 text-primary" />
-                                Your Performance Trend
-                            </CardTitle>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleExportPDF}
+                                    className="h-8 gap-1.5 rounded-xl text-xs font-semibold border-gray-200 hover:bg-saBlue/10 hover:text-saBlue"
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    PDF
+                                </Button>
+                            </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="pt-4">
+                            <div className="h-[280px]">
+                                <AnalyticsChart
+                                    title=""
+                                    data={performanceData[performancePeriod] || []}
+                                    type="area"
+                                    dataKey="score"
+                                    xAxisKey="label"
+                                    colors={['#0276D3']}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Progress Composition */}
+                    <Card className="shadow-xs border border-gray-100 rounded-3xl overflow-hidden bg-white flex flex-col justify-between">
+                        <CardHeader className="pb-2 bg-gradient-to-r from-blue-50/50 to-transparent">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                <Activity className="h-5 w-5 text-saBlue" />
+                                Domain Proficiency
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground">Score allocation across modules</p>
+                        </CardHeader>
+                        <CardContent className="flex-1 flex flex-col justify-center pt-2">
                             <AnalyticsChart
                                 title=""
                                 data={performanceTrendData}
@@ -918,31 +1079,43 @@ export default function StudentDashboard() {
                 </div>
             )}
 
-            {/* 2. Explore Learning Section (Unified Home Logic) */}
-            <div className="space-y-6 pt-8 mt-8 border-t border-gray-200">
+            {/* ============================================================ */}
+            {/* 2. EXPLORE LEARNING SECTION WITH STAGES STRUCTURE */}
+            {/* ============================================================ */}
+            <div className="space-y-6 pt-8 mt-8 border-t border-slate-200">
+                {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
-                        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">Explore Learning</h2>
-                        <p className="text-sm text-gray-500 mt-1">Discover courses, subjects, activities, and tests</p>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">
+                                Explore Learning
+                            </h2>
+                            <Badge className="bg-saBlue/10 text-saBlue border border-saBlue/20 font-bold text-xs">
+                                5 Stages
+                            </Badge>
+                        </div>
+                        <p className="text-xs sm:text-sm text-slate-500 mt-1">
+                            Discover foundational, preparatory, middle, secondary stages and specialized skill courses
+                        </p>
                     </div>
 
-                    {/* Search & Filter */}
-                    <div className="flex gap-3 w-full md:w-auto">
+                    {/* Search & Filter Toolbar */}
+                    <div className="flex gap-2.5 w-full md:w-auto">
                         <div className="relative flex-1 md:w-72">
-                            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
                             <Input
-                                placeholder="Search courses, subjects..."
+                                placeholder="Search courses, subjects, skills..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-10 h-10 rounded-xl border-gray-200 focus:border-saBlue focus:ring-saBlue"
+                                className="pl-10 h-10 rounded-xl border-slate-200 text-xs sm:text-sm focus:border-saBlue focus:ring-saBlue bg-white"
                             />
                         </div>
                         <Select value={filterType} onValueChange={setFilterType}>
-                            <SelectTrigger className="w-[160px] h-10 rounded-xl border-gray-200">
-                                <Filter className="h-4 w-4 mr-2" />
+                            <SelectTrigger className="w-[150px] h-10 rounded-xl border-slate-200 text-xs font-semibold bg-white">
+                                <Filter className="h-3.5 w-3.5 mr-1.5 text-slate-400" />
                                 <SelectValue placeholder="All Types" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="rounded-xl text-xs">
                                 <SelectItem value="ALL">All Types</SelectItem>
                                 <SelectItem value="COURSE">Courses</SelectItem>
                                 <SelectItem value="SUBJECT">Subjects</SelectItem>
@@ -953,27 +1126,168 @@ export default function StudentDashboard() {
                     </div>
                 </div>
 
+                {/* STAGES STRUCTURE CARDS (28.1 Requirement) */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <School className="w-4 h-4 text-saBlue" />
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                                Stages Structure & Skill Programs
+                            </h3>
+                        </div>
+                        {selectedStage !== 'ALL' && (
+                            <button
+                                onClick={() => setSelectedStage('ALL')}
+                                className="text-xs font-bold text-saBlue hover:underline"
+                            >
+                                View All Stages
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+                        {LEARNING_STAGES.filter((s) => s.id !== 'ALL').map((stage) => {
+                            const Icon = stage.icon;
+                            const isSelected = selectedStage === stage.id;
+                            const count = items.filter((item) => getItemStage(item) === stage.id).length;
+
+                            return (
+                                <button
+                                    key={stage.id}
+                                    type="button"
+                                    onClick={() => setSelectedStage(isSelected ? 'ALL' : stage.id)}
+                                    className={`p-3 sm:p-4 rounded-2xl border text-left transition-all duration-200 flex flex-col justify-between relative overflow-hidden group ${
+                                        isSelected
+                                            ? 'bg-saBlue text-white border-saBlue shadow-lg shadow-saBlue/20 ring-2 ring-saBlue ring-offset-2'
+                                            : 'bg-white border-slate-200/80 hover:border-saBlue/40 hover:shadow-xs text-slate-800'
+                                    }`}
+                                >
+                                    <div className="flex items-start justify-between w-full mb-2">
+                                        <div
+                                            className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                                                isSelected ? 'bg-white/20 text-white' : 'bg-saBlue/10 text-saBlue'
+                                            }`}
+                                        >
+                                            <Icon className="w-4 h-4" />
+                                        </div>
+                                        <span
+                                            className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
+                                            }`}
+                                        >
+                                            {stage.stageNumber}
+                                        </span>
+                                    </div>
+
+                                    <div>
+                                        <h4 className={`text-xs sm:text-sm font-black tracking-tight leading-tight ${isSelected ? 'text-white' : 'text-slate-900'}`}>
+                                            {stage.name}
+                                        </h4>
+                                        <p className={`text-[10px] sm:text-[11px] font-bold mt-0.5 line-clamp-1 ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                                            {stage.grades}
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-2.5 pt-2 border-t border-slate-100/30 flex items-center justify-between text-[10px]">
+                                        <span className={isSelected ? 'text-blue-100' : 'text-slate-400'}>Programs</span>
+                                        <span className={`font-black ${isSelected ? 'text-white' : 'text-slate-700'}`}>{count}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Sub-Filter Pills for "Other Courses" (Eg: Computer, Competitive, Spoken English) */}
+                {selectedStage === 'OTHER_COURSES' && (
+                    <div className="p-3 bg-white rounded-2xl border border-slate-200/80 flex items-center gap-1.5 overflow-x-auto select-none">
+                        <span className="text-xs font-bold text-slate-500 mr-1 whitespace-nowrap">Specializations:</span>
+                        {[
+                            { id: 'ALL', label: 'All Skill Programs', icon: Sparkles },
+                            { id: 'COMPUTER', label: 'Computer & Coding', icon: Code2 },
+                            { id: 'COMPETITIVE', label: 'Competitive Exams', icon: Award },
+                            { id: 'SPOKEN_ENGLISH', label: 'Spoken English & Communication', icon: Languages },
+                            { id: 'ACTIVITIES', label: 'Interactive Activities', icon: Gamepad2 },
+                        ].map((sub) => {
+                            const SubIcon = sub.icon;
+                            const isSubActive = selectedSkillCategory === sub.id;
+                            return (
+                                <button
+                                    key={sub.id}
+                                    onClick={() => setSelectedSkillCategory(sub.id)}
+                                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 border ${
+                                        isSubActive
+                                            ? 'bg-saBlue text-white border-saBlue shadow-xs'
+                                            : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    <SubIcon className="w-3.5 h-3.5" />
+                                    <span>{sub.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Content Display */}
                 {itemsLoading ? (
-                    <div className="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-2xl">
+                    <div className="flex flex-col items-center justify-center h-64 bg-white rounded-3xl border border-slate-200/80">
                         <Loader2 className="h-10 w-10 animate-spin text-saBlue mb-4" />
-                        <p className="text-gray-500 font-medium">Loading content...</p>
+                        <p className="text-slate-500 font-medium text-xs uppercase tracking-wider">Loading learning content...</p>
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        {/* Content Sections */}
                         {filteredItems.length === 0 ? (
-                            <div className="p-8 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                <BookOpen className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                                <p className="text-gray-500 font-medium">No content found</p>
-                                <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or search query</p>
+                            <div className="p-12 text-center bg-white rounded-3xl border-2 border-dashed border-slate-200">
+                                <BookOpen className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                                <h4 className="text-base font-bold text-slate-700">No content found</h4>
+                                <p className="text-slate-400 text-xs mt-1">
+                                    No courses or subjects match your selected stage or search query.
+                                </p>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-4 rounded-xl text-xs font-semibold"
+                                    onClick={() => {
+                                        setSelectedStage('ALL');
+                                        setSelectedSkillCategory('ALL');
+                                        setSearchQuery('');
+                                        setFilterType('ALL');
+                                    }}
+                                >
+                                    Reset Filters
+                                </Button>
+                            </div>
+                        ) : selectedStage !== 'ALL' ? (
+                            /* DIRECT GRID VIEW FOR SELECTED STAGE */
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <Badge className="bg-saBlue text-white font-bold text-xs px-2.5 py-1">
+                                            {LEARNING_STAGES.find((s) => s.id === selectedStage)?.name}
+                                        </Badge>
+                                        <span className="text-xs text-slate-500 font-semibold">
+                                            {filteredItems.length} programs available
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {filteredItems.map((item) => (
+                                        <div key={`${item.type}-${item.id}`} className="h-full">
+                                            <HomeItemCard item={item} onClick={() => handleItemClick(item)} />
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         ) : (
+                            /* ALL STAGES SLIDERS VIEW */
                             <div className="space-y-12">
                                 {/* Courses Section */}
-                                {filteredItems.some(item => item.type === 'COURSE') && (
+                                {filteredItems.some((item) => item.type === 'COURSE') && (
                                     <ItemSlider
-                                        title="Courses"
-                                        items={filteredItems.filter(item => item.type === 'COURSE').filter(item => selectedCourseBoard === 'ALL' || item.board === selectedCourseBoard)}
+                                        title="Specialized Courses"
+                                        items={filteredItems.filter((item) => item.type === 'COURSE').filter((item) => selectedCourseBoard === 'ALL' || item.board === selectedCourseBoard)}
                                         icon={BookOpen}
                                         onItemClick={handleItemClick}
                                         boards={getBoardsForCategory('COURSE')}
@@ -983,10 +1297,10 @@ export default function StudentDashboard() {
                                 )}
 
                                 {/* Subjects Section */}
-                                {filteredItems.some(item => item.type === 'SUBJECT') && (
+                                {filteredItems.some((item) => item.type === 'SUBJECT') && (
                                     <ItemSlider
-                                        title="Subjects"
-                                        items={filteredItems.filter(item => item.type === 'SUBJECT').filter(item => selectedSubjectBoard === 'ALL' || item.board === selectedSubjectBoard)}
+                                        title="Curriculum Subjects"
+                                        items={filteredItems.filter((item) => item.type === 'SUBJECT').filter((item) => selectedSubjectBoard === 'ALL' || item.board === selectedSubjectBoard)}
                                         icon={GraduationCap}
                                         onItemClick={handleItemClick}
                                         boards={getBoardsForCategory('SUBJECT')}
@@ -996,10 +1310,10 @@ export default function StudentDashboard() {
                                 )}
 
                                 {/* Activity Groups Section */}
-                                {filteredItems.some(item => item.type === 'ACTIVITY_GROUP') && (
+                                {filteredItems.some((item) => item.type === 'ACTIVITY_GROUP') && (
                                     <ItemSlider
-                                        title="Activity Groups"
-                                        items={filteredItems.filter(item => item.type === 'ACTIVITY_GROUP').filter(item => selectedActivityBoard === 'ALL' || item.board === selectedActivityBoard)}
+                                        title="Activity Groups & Games"
+                                        items={filteredItems.filter((item) => item.type === 'ACTIVITY_GROUP').filter((item) => selectedActivityBoard === 'ALL' || item.board === selectedActivityBoard)}
                                         icon={Activity}
                                         onItemClick={handleItemClick}
                                         boards={getBoardsForCategory('ACTIVITY_GROUP')}
@@ -1009,10 +1323,10 @@ export default function StudentDashboard() {
                                 )}
 
                                 {/* Test Series Section */}
-                                {filteredItems.some(item => item.type === 'TEST_SERIES') && (
+                                {filteredItems.some((item) => item.type === 'TEST_SERIES') && (
                                     <ItemSlider
-                                        title="Test Series"
-                                        items={filteredItems.filter(item => item.type === 'TEST_SERIES').filter(item => selectedTestSeriesBoard === 'ALL' || item.board === selectedTestSeriesBoard)}
+                                        title="Mock Tests & Test Series"
+                                        items={filteredItems.filter((item) => item.type === 'TEST_SERIES').filter((item) => selectedTestSeriesBoard === 'ALL' || item.board === selectedTestSeriesBoard)}
                                         icon={Trophy}
                                         onItemClick={handleItemClick}
                                         boards={getBoardsForCategory('TEST_SERIES')}

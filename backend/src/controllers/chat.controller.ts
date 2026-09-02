@@ -276,13 +276,81 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       filesToProcess.push(singleFile);
     }
 
+    // Parse any pre-uploaded attachments if supplied
+    let preUploadedAttachments: { url: string; messageType?: MessageType }[] = [];
+    if (req.body.attachments) {
+      try {
+        if (typeof req.body.attachments === 'string') {
+          preUploadedAttachments = JSON.parse(req.body.attachments);
+        } else if (Array.isArray(req.body.attachments)) {
+          preUploadedAttachments = req.body.attachments;
+        }
+      } catch (e) {
+        console.error('Failed to parse pre-uploaded attachments:', e);
+      }
+    }
+
     const chatParticipants = await prisma.chatParticipant.findMany({
       where: { chat_id: parsedChatId },
       select: { user_id: true },
     });
     const io = getIo();
 
-    // If no files, create regular text message
+    // 1. If pre-uploaded attachments are provided
+    if (preUploadedAttachments.length > 0) {
+      const createdMessages: any[] = [];
+      for (let i = 0; i < preUploadedAttachments.length; i++) {
+        const item = preUploadedAttachments[i];
+        if (!item || !item.url) continue;
+        const msgContent = i === 0 ? (content || null) : null;
+        const msgType = item.messageType || getMessageTypeFromFile(item.url);
+
+        const createdMsg = await prisma.message.create({
+          data: {
+            chat_id: parsedChatId,
+            sender_id: userId,
+            content: msgContent,
+            message_type: msgType,
+            attachment_url: item.url,
+          },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              },
+            },
+          },
+        });
+
+        createdMessages.push(createdMsg);
+
+        try {
+          io.to(`chat_${chatId}`).emit('receive_message', createdMsg);
+        } catch (error) {
+          console.error('Socket error:', error);
+        }
+
+        scheduleUnreadMessageNotifications({
+          messageId: createdMsg.id,
+          senderId: userId,
+          senderName: createdMsg.sender.name,
+          content: createdMsg.content,
+          messageType: createdMsg.message_type,
+          recipientIds: chatParticipants.map((p) => p.user_id),
+        });
+      }
+
+      return sendSuccess(
+        res,
+        createdMessages.length === 1 ? createdMessages[0] : createdMessages[createdMessages.length - 1],
+        'Message(s) sent successfully',
+        201
+      );
+    }
+
+    // 2. If no multipart files and no pre-uploaded attachments, create text message
     if (filesToProcess.length === 0) {
       const message = await prisma.message.create({
         data: {
@@ -321,7 +389,7 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
       return sendSuccess(res, message, 'Message sent successfully', 201);
     }
 
-    // Process all file uploads
+    // 3. Process multipart file uploads
     let uploadResults: { file: Express.Multer.File; url: string; messageType: MessageType }[] = [];
     try {
       uploadResults = await Promise.all(
@@ -393,6 +461,51 @@ export const sendMessage = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error sending message:', error);
     return sendError(res, 'Failed to send message');
+  }
+};
+
+// Dedicated chat attachment uploader
+export const uploadChatAttachment = async (req: AuthRequest, res: Response) => {
+  try {
+    const rawFiles = (req.files as Express.Multer.File[]) || [];
+    const singleFile = req.file;
+    const filesToProcess: Express.Multer.File[] = [];
+
+    if (rawFiles && Array.isArray(rawFiles) && rawFiles.length > 0) {
+      const seen = new Set<string>();
+      for (const f of rawFiles) {
+        const key = `${f.originalname}_${f.size}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          filesToProcess.push(f);
+        }
+      }
+    } else if (singleFile) {
+      filesToProcess.push(singleFile);
+    }
+
+    if (filesToProcess.length === 0) {
+      return sendError(res, 'No files provided for upload', 400);
+    }
+
+    const uploadResults = await Promise.all(
+      filesToProcess.map(async (f) => {
+        const uploadResult = await uploadToS3(f, 'chat-attachments');
+        return {
+          originalName: f.originalname,
+          filename: uploadResult.filename,
+          url: uploadResult.url,
+          key: uploadResult.key,
+          size: f.size,
+          messageType: getMessageTypeFromFile(f.originalname),
+        };
+      })
+    );
+
+    return sendSuccess(res, { attachments: uploadResults }, 'Attachments uploaded successfully');
+  } catch (error) {
+    console.error('Error uploading chat attachments:', error);
+    return sendError(res, 'Failed to upload attachments', 500);
   }
 };
 

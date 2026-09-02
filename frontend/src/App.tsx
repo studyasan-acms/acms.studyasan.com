@@ -98,6 +98,8 @@ import ActivityFormPage from '@/pages/activities/ActivityFormPage';
 
 // Home and Enquiry imports
 import StudentHomePage from '@/pages/StudentHomePage';
+import StudentExplorePage from '@/pages/StudentExplorePage';
+import StudentDashboardPage from '@/pages/StudentDashboardPage';
 import AdminEnquiriesPage from '@/pages/AdminEnquiriesPage';
 import ProfilePage from '@/pages/ProfilePage';
 import SettingsPage from '@/pages/SettingsPage';
@@ -346,8 +348,10 @@ function App() {
           <Route path="applications/my" element={<Navigate to="/dashboard/jobs?tab=applications" replace />} />
           <Route path="applications/all" element={<AdminApplicationsPage />} />
 
-          {/* Student Home Route */}
-          <Route path="home" element={<StudentHomePage />} />
+          {/* Student Explore & Dashboard Routes */}
+          <Route path="explore" element={<StudentExplorePage />} />
+          <Route path="student-dashboard" element={<StudentDashboardPage />} />
+          <Route path="home" element={<StudentExplorePage />} />
 
           {/* Admin Enquiries Route */}
           <Route path="enquiries" element={<AdminEnquiriesPage />} />

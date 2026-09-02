@@ -19,6 +19,7 @@ import {
   Send,
 } from 'lucide-react';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { isStudentTillClass12 } from '@/utils/studentUtils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -30,6 +31,25 @@ export default function JobDetailPage() {
   const isAdmin = user?.role === 'ADMIN';
 
   usePageTitle('Job Details');
+
+  if (isStudent && isStudentTillClass12(user)) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center max-w-md space-y-4 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm">
+          <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mx-auto">
+            <Briefcase className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800">Access Restricted</h2>
+          <p className="text-sm text-slate-500">
+            The Jobs & Internships section is available for college, graduate, and higher-education students.
+          </p>
+          <Button onClick={() => navigate('/dashboard')} className="bg-saBlue hover:bg-saBlue/90 rounded-xl">
+            Back to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const [job, setJob] = useState<Job | null>(null);
   const [isLoading, setIsLoading] = useState(true);

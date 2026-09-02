@@ -9,7 +9,10 @@ interface HomeItemCardProps {
         type: 'COURSE' | 'SUBJECT' | 'ACTIVITY_GROUP' | 'TEST_SERIES';
         name: string;
         cover_image: string | null;
+        class?: string | null;
+        board?: string | null;
         price: number | null;
+        actual_price?: number | null;
         currency: { symbol: string; code: string } | null;
         item_count: number;
         item_count_label: string;
@@ -19,8 +22,8 @@ interface HomeItemCardProps {
 
 const typeConfig = {
     COURSE: { icon: GraduationCap, color: 'bg-[#0276D3]', label: 'Course' },
-    SUBJECT: { icon: BookOpen, color: 'bg-emerald-600', label: 'Subject' },
-    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-indigo-600', label: 'Activity' },
+    SUBJECT: { icon: BookOpen, color: 'bg-[#0276D3]', label: 'Subject' },
+    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#eca209]', label: 'Activity' },
     TEST_SERIES: { icon: FileText, color: 'bg-[#eca209]', label: 'Test Series' },
 };
 
@@ -58,9 +61,15 @@ export default function HomeItemCard({ item, onClick }: HomeItemCardProps) {
 
                 {/* Content Body */}
                 <CardContent className="p-5">
-                    <h3 className="font-extrabold text-base text-slate-900 line-clamp-2 mb-2 group-hover:text-[#0276D3] transition-colors leading-snug">
+                    <h3 className="font-extrabold text-base text-slate-900 line-clamp-2 mb-1 group-hover:text-[#0276D3] transition-colors leading-snug">
                         {item.name}
                     </h3>
+                    {(item.class || item.board) && (
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 font-semibold mt-1">
+                            {item.class && <span className="bg-slate-100 px-2 py-0.5 rounded-md text-[11px] font-bold text-slate-700">{item.class}</span>}
+                            {item.board && <span className="text-[11px] text-slate-400 font-medium">• {item.board}</span>}
+                        </div>
+                    )}
                 </CardContent>
             </div>
 
@@ -71,11 +80,27 @@ export default function HomeItemCard({ item, onClick }: HomeItemCardProps) {
                 </span>
 
                 {item.price !== null && item.currency ? (
-                    <span className="font-black text-[#0276D3] text-base">
-                        {item.currency.symbol}{item.price}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {item.actual_price && item.actual_price > item.price ? (
+                            <>
+                                <span className="text-xs text-slate-400 line-through font-semibold">
+                                    {item.currency.symbol}{item.actual_price}
+                                </span>
+                                <span className="font-black text-[#0276D3] text-sm sm:text-base">
+                                    {item.currency.symbol}{item.price}
+                                </span>
+                                <Badge className="bg-[#eca209] text-white font-black text-[9px] px-1 py-0 border-none">
+                                    {Math.round(((item.actual_price - item.price) / item.actual_price) * 100)}% OFF
+                                </Badge>
+                            </>
+                        ) : (
+                            <span className="font-black text-[#0276D3] text-base">
+                                {item.currency.symbol}{item.price}
+                            </span>
+                        )}
+                    </div>
                 ) : (
-                    <span className="text-emerald-700 font-extrabold text-xs bg-emerald-50 px-3 py-1 rounded-xl border border-emerald-100">
+                    <span className="text-saBlue font-extrabold text-xs bg-blue-50 px-3 py-1 rounded-xl border border-blue-100">
                         Free
                     </span>
                 )}

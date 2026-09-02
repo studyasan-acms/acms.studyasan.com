@@ -158,7 +158,8 @@ model Subject {
   syllabus                  Json?
   is_course                 Boolean                  @default(false)
   end_date                  DateTime?
-  price                     Float? // Optional pricing for paid subjects/courses
+  price                     Float? // Optional pricing for paid subjects/courses (Discounted Selling Price)
+  actual_price              Float? // Actual / Original MRP price before discount
   currency_id               Int?
   currency                  Currency?                @relation(fields: [currency_id], references: [id])
   created_at                DateTime                 @default(now())
@@ -1134,13 +1135,23 @@ model JobApplication {
   @@map("job_applications")
 }
 
+enum AnnouncementType {
+  NOTICE
+  NEWS
+  EVENT
+  HOLIDAY
+  EXAM
+  GENERAL
+}
+
 model Announcement {
-  id             Int      @id @default(autoincrement())
+  id             Int              @id @default(autoincrement())
   title          String
   content        String
+  type           AnnouncementType @default(GENERAL)
   created_by     Int
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
 
   target_roles   Json?    // Array of roles or null for all
   target_boards  Json?    // Array of board IDs or null

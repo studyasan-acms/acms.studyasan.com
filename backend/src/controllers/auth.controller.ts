@@ -345,10 +345,26 @@ export const login = async (req: Request, res: Response) => {
     const isEmail = email && email.includes('@');
 
     let user;
+    const userInclude = {
+      student: {
+        include: {
+          class: true,
+          board: true,
+        },
+      },
+      teacher: {
+        select: {
+          id: true,
+          role_id: true,
+        },
+      },
+    };
+
     if (isEmail) {
       // Search by email
       user = await prisma.user.findUnique({
         where: { email },
+        include: userInclude,
       });
 
       if (!user) {
@@ -358,6 +374,7 @@ export const login = async (req: Request, res: Response) => {
       // Search by phone number
       user = await prisma.user.findFirst({
         where: { phone: email },
+        include: userInclude,
       });
 
       if (!user) {
@@ -408,6 +425,18 @@ export const verifyToken = async (req: AuthRequest, res: Response) => {
         role: true,
         created_at: true,
         updated_at: true,
+        student: {
+          include: {
+            class: true,
+            board: true,
+          },
+        },
+        teacher: {
+          select: {
+            id: true,
+            role_id: true,
+          },
+        },
       },
     });
 

@@ -33,10 +33,10 @@ interface ItemDetailModalProps {
 }
 
 const typeConfig = {
-    COURSE: { icon: GraduationCap, color: 'bg-blue-500', label: 'Course' },
-    SUBJECT: { icon: BookOpen, color: 'bg-green-500', label: 'Subject' },
-    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-amber-500', label: 'Activity Group' },
-    TEST_SERIES: { icon: FileText, color: 'bg-orange-500', label: 'Test Series' },
+    COURSE: { icon: GraduationCap, color: 'bg-[#0276D3]', label: 'Course' },
+    SUBJECT: { icon: BookOpen, color: 'bg-[#0276D3]', label: 'Subject' },
+    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#eca209]', label: 'Activity Group' },
+    TEST_SERIES: { icon: FileText, color: 'bg-[#eca209]', label: 'Test Series' },
 };
 
 export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailModalProps) {
@@ -183,11 +183,11 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                             ) : (
                                 <div>
                                     <p className="text-sm text-gray-500">Price</p>
-                                    <p className="text-2xl font-bold text-green-600">Free</p>
+                                    <p className="text-2xl font-bold text-saBlue">Free</p>
                                 </div>
                             )}
                         </div>
-                        <Button onClick={() => setShowEnquiryForm(true)} size="lg">
+                        <Button onClick={() => setShowEnquiryForm(true)} size="lg" className="bg-saBlue hover:bg-saBlueDarkHover text-white font-bold rounded-xl">
                             Enquire Now
                         </Button>
                     </div>

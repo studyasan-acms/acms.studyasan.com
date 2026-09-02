@@ -478,7 +478,7 @@ export function AdminAgenciesPage() {
             {/* Create / Edit Agency Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                             <h3 className="text-lg font-bold text-slate-900">
                                 {editingAgency ? 'Edit Agency / Referrer' : 'Register New Agency / Referrer'}

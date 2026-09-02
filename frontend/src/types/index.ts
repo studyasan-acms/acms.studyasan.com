@@ -8,6 +8,17 @@ export interface User {
   role: 'ADMIN' | 'TEACHER' | 'STUDENT';
   created_at: string;
   updated_at: string;
+  student?: {
+    id: number;
+    class_id: number | null;
+    board_id: number | null;
+    class?: { id: number; name: string } | null;
+    board?: { id: number; name: string } | null;
+  } | null;
+  teacher?: {
+    id: number;
+    role_id: number | null;
+  } | null;
 }
 
 export interface AuthResponse {
@@ -342,6 +353,7 @@ export interface Subject {
   is_course: boolean;
   end_date: string | null;
   price: number | null;
+  actual_price?: number | null;
   currency_id: number | null;
   created_at: string;
   updated_at: string;
@@ -368,6 +380,7 @@ export interface CreateSubjectData {
   is_course: boolean;
   end_date: string | null;
   price: number | null;
+  actual_price?: number | null;
   currency_id: number | null;
 }
 
@@ -380,6 +393,7 @@ export interface UpdateSubjectData {
   is_course?: boolean;
   end_date?: string | null;
   price?: number | null;
+  actual_price?: number | null;
   currency_id?: number | null;
 }
 
@@ -919,6 +933,7 @@ export interface StartChatData {
 export interface SendMessageData {
   content?: string;
   messageType?: MessageType;
+  attachments?: Array<{ url: string; messageType?: MessageType }>;
 }
 
 export interface ChatMessagesResponse {
@@ -1172,4 +1187,37 @@ export interface WhiteboardsResponse {
     };
   };
 }
+
+// ================== ANNOUNCEMENT TYPES ==================
+export type AnnouncementType = 'NOTICE' | 'NEWS' | 'EVENT' | 'HOLIDAY' | 'EXAM' | 'GENERAL';
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  type: AnnouncementType;
+  created_by: number;
+  created_at: string;
+  updated_at?: string;
+  creator?: { name: string; email: string };
+  target_roles?: string[];
+  target_boards?: number[];
+  target_classes?: number[];
+  target_subjects?: number[];
+  target_courses?: number[];
+  target_groups?: number[];
+}
+
+export interface CreateAnnouncementData {
+  title: string;
+  content: string;
+  type?: AnnouncementType;
+  target_roles?: string[] | null;
+  target_boards?: number[] | null;
+  target_classes?: number[] | null;
+  target_subjects?: number[] | null;
+  target_courses?: number[] | null;
+  target_groups?: number[] | null;
+}
+
 

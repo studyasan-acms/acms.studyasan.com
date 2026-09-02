@@ -219,7 +219,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
 
 export const createSubject = async (req: Request, res: Response) => {
   try {
-    const { name, class_id, board_id, syllabus, is_course, end_date, price, currency_id } = req.body;
+    const { name, class_id, board_id, syllabus, is_course, end_date, price, actual_price, currency_id } = req.body;
     let cover_image: string | undefined;
 
     // Handle file upload
@@ -236,7 +236,8 @@ export const createSubject = async (req: Request, res: Response) => {
         ...(board_id && { board_id: parseInt(board_id) }),
         ...(syllabus && { syllabus: JSON.parse(syllabus) }),
         ...(end_date && { end_date: new Date(end_date) }),
-        ...(price && { price: parseFloat(price) }),
+        ...(price !== undefined && price !== '' && { price: parseFloat(price) }),
+        ...(actual_price !== undefined && actual_price !== '' && { actual_price: parseFloat(actual_price) }),
         ...(currency_id && { currency_id: parseInt(currency_id) }),
         is_course: is_course === 'true',
       },
@@ -256,7 +257,7 @@ export const createSubject = async (req: Request, res: Response) => {
 export const updateSubject = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, class_id, board_id, syllabus, is_course, end_date, price, currency_id } = req.body;
+    const { name, class_id, board_id, syllabus, is_course, end_date, price, actual_price, currency_id } = req.body;
     let cover_image: string | undefined;
 
     // Handle file upload
@@ -274,7 +275,8 @@ export const updateSubject = async (req: Request, res: Response) => {
         ...(board_id && { board_id: parseInt(board_id) }),
         ...(syllabus && { syllabus: JSON.parse(syllabus) }),
         ...(end_date !== undefined && { end_date: end_date ? new Date(end_date) : null }),
-        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(price !== undefined && { price: price !== '' && price !== null ? parseFloat(price) : null }),
+        ...(actual_price !== undefined && { actual_price: actual_price !== '' && actual_price !== null ? parseFloat(actual_price) : null }),
         ...(currency_id !== undefined && { currency_id: currency_id ? parseInt(currency_id) : null }),
         ...(is_course !== undefined && { is_course: is_course === 'true' }),
       },

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { analyticsService, announcementService, subjectService } from '@/services/api';
 import api from '@/services/api';
+import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -200,23 +201,33 @@ export default function TeacherDashboard() {
                         </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {announcements.slice(0, 3).map((a) => (
-                            <Card 
-                                key={a.id} 
-                                className="hover:shadow-md transition-all cursor-pointer border-l-4 border-l-orange-400" 
-                                onClick={() => navigate('/dashboard/announcements')}
-                            >
-                                <CardHeader className="py-3 px-4 flex flex-row items-start justify-between space-y-0">
-                                    <CardTitle className="text-sm font-bold line-clamp-1 pr-2">{a.title}</CardTitle>
-                                    <span className="text-[10px] text-gray-400 whitespace-nowrap bg-gray-100 px-1.5 py-0.5 rounded">
-                                        {new Date(a.created_at).toLocaleDateString()}
-                                    </span>
-                                </CardHeader>
-                                <CardContent className="py-2 px-4">
-                                    <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{a.content}</p>
-                                </CardContent>
-                            </Card>
-                        ))}
+                        {announcements.slice(0, 3).map((a) => {
+                            const config = getAnnouncementTypeConfig(a.type);
+                            const Icon = config.icon;
+                            return (
+                                <Card 
+                                    key={a.id} 
+                                    className={`hover:shadow-md transition-all cursor-pointer border-l-4 rounded-2xl bg-white ${config.borderLeftClass}`} 
+                                    onClick={() => navigate('/dashboard/announcements')}
+                                >
+                                    <CardHeader className="py-3 px-4 flex flex-col gap-1.5 space-y-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1.5 ${config.badgeClass}`}>
+                                                <Icon className="w-3 h-3" />
+                                                <span>{config.label}</span>
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 whitespace-nowrap bg-gray-100 px-1.5 py-0.5 rounded">
+                                                {new Date(a.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <CardTitle className="text-sm font-bold line-clamp-1 text-gray-900">{a.title}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="py-2 px-4 pb-3">
+                                        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{a.content}</p>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 </div>
             )}
