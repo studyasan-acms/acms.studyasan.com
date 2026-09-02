@@ -145,9 +145,9 @@ const navItems: NavItem[] = [
     roles: ["ADMIN"],
   },
   {
-    title: "Enrollments",
+    title: "Billing & Invoices",
     href: "/dashboard/enrollments",
-    icon: GraduationCap,
+    icon: DollarSign,
     roles: ["ADMIN", "TEACHER"],
     permission: { resource: "enrollments", action: "view" },
   },

@@ -398,17 +398,32 @@ export interface UpdateSubjectData {
 }
 
 // ================== ENROLLMENTS ==================
+export type EnrollmentType = 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+export type BillingFrequency = 'one_time' | 'monthly' | 'quarterly' | 'semi_yearly' | 'yearly';
+
+export interface EnrollmentInvoiceSummary {
+  id: number;
+  invoice_number: string;
+  status: InvoiceStatus;
+  total_amount: number;
+  due_date: string;
+  paid_date: string | null;
+}
+
 export interface Enrollment {
   id: number;
-  type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  type: EnrollmentType;
   student_id: number;
   subject_id: number | null;
   test_series_id: number | null;
   activity_group_id: number | null;
+  invoice_id: number | null;
   price: number | null;
   is_recurring: boolean;
-  frequency: string | null;
+  frequency: BillingFrequency | null;
   end_date: string | null;
+  invoice_date: string | null;
+  notes: string | null;
   created_on: string;
   updated_on: string;
   student: {
@@ -417,21 +432,20 @@ export interface Enrollment {
     class: { id: number; name: string } | null;
     board: { id: number; name: string } | null;
   };
-  subject?: {
+  subject: {
     id: number;
     name: string;
-    is_course: boolean;
-    class: { id: number; name: string } | null;
-    board: { id: number; name: string } | null;
+    price: number | null;
+    actual_price: number | null;
+    // legacy fields from old pages
+    is_course?: boolean;
+    class?: { id: number; name: string } | null;
+    board?: { id: number; name: string } | null;
   } | null;
-  test_series?: {
-    id: number;
-    title: string;
-  } | null;
-  activity_group?: {
-    id: number;
-    name: string;
-  } | null;
+  test_series: { id: number; title: string; price: number | null } | null;
+  activity_group: { id: number; name: string; price: number | null } | null;
+  invoice: EnrollmentInvoiceSummary | null;
+  // legacy compat
   payments?: EnrollmentPayment[];
 }
 
@@ -446,19 +460,48 @@ export interface EnrollmentPayment {
   created_at: string;
   updated_at: string;
   enrollment?: Enrollment;
-  type?: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  type?: EnrollmentType;
   original_price?: number | null;
+}
+
+export interface CreateEnrollmentItemData {
+  type: EnrollmentType;
+  subject_id?: number;
+  test_series_id?: number;
+  activity_group_id?: number;
+  price?: number;
+  frequency?: BillingFrequency;
+  is_recurring?: boolean;
+  end_date?: string;
 }
 
 export interface CreateEnrollmentData {
   student_id: number;
-  subject_id: number;
-  price?: number | null;
+  items: CreateEnrollmentItemData[];
+  invoice_date?: string;
+  due_date?: string;
+  notes?: string;
+  generate_invoice?: boolean;
+  send_email?: boolean;
+}
+
+export interface UpdateEnrollmentData {
+  price?: number;
+  frequency?: BillingFrequency;
   is_recurring?: boolean;
-  frequency?: string | null;
-  end_date?: string | null;
-  one_time_amount?: number | null;
-  due_date?: string | null;
+  end_date?: string;
+  invoice_date?: string;
+  notes?: string;
+}
+
+export interface EnrollmentsResponse {
+  data: Enrollment[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export interface BulkEnrollmentData {
@@ -1220,4 +1263,123 @@ export interface CreateAnnouncementData {
   target_groups?: number[] | null;
 }
 
+// ================== INVOICE & BILLING TYPES ==================
+export type InvoiceStatus = 'PAID' | 'PENDING' | 'OVERDUE' | 'CANCELLED';
 
+export interface InvoiceItem {
+  id: number;
+  invoice_id: number;
+  type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  subject_id?: number | null;
+  test_series_id?: number | null;
+  activity_group_id?: number | null;
+  item_name: string;
+  unit_price: number;
+  actual_price?: number | null;
+  quantity: number;
+  discount: number;
+  total: number;
+  subject?: Subject | null;
+  test_series?: any | null;
+  activity_group?: any | null;
+}
+
+export interface Invoice {
+  id: number;
+  invoice_number: string;
+  student_id: number;
+  status: InvoiceStatus;
+  display_status?: string;
+  is_overdue?: boolean;
+  issue_date: string;
+  due_date: string;
+  paid_date?: string | null;
+  subtotal: number;
+  discount_amount: number;
+  total_amount: number;
+  notes?: string | null;
+  payment_method?: string | null;
+  transaction_id?: string | null;
+  created_at: string;
+  updated_at: string;
+  student?: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      phone?: string;
+    };
+    class?: { id: number; name: string } | null;
+    board?: { id: number; name: string } | null;
+    school?: string | null;
+  };
+  items: InvoiceItem[];
+}
+
+export interface InvoiceStats {
+  totalInvoiced: number;
+  totalPaid: number;
+  totalPending: number;
+  totalOverdue: number;
+  totalCount: number;
+}
+
+export interface InvoicesResponse {
+  data: Invoice[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  stats: InvoiceStats;
+}
+
+export interface CreateInvoiceData {
+  student_id: number;
+  due_date: string;
+  issue_date?: string;
+  items: {
+    type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+    subject_id?: number;
+    test_series_id?: number;
+    activity_group_id?: number;
+    item_name?: string;
+    unit_price: number;
+    actual_price?: number;
+    quantity?: number;
+    discount?: number;
+  }[];
+  discount_amount?: number;
+  notes?: string;
+  payment_method?: string;
+  transaction_id?: string;
+  status?: 'PAID' | 'PENDING';
+  paid_date?: string;
+  send_email?: boolean;
+}
+
+export interface UpdateInvoiceData {
+  student_id?: number;
+  due_date?: string;
+  issue_date?: string;
+  status?: 'PAID' | 'PENDING';
+  paid_date?: string;
+  discount_amount?: number;
+  notes?: string;
+  payment_method?: string;
+  transaction_id?: string;
+  items?: {
+    type: 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+    subject_id?: number;
+    test_series_id?: number;
+    activity_group_id?: number;
+    item_name?: string;
+    unit_price: number;
+    actual_price?: number;
+    quantity?: number;
+    discount?: number;
+  }[];
+}

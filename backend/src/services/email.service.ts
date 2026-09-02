@@ -303,3 +303,219 @@ export const sendCertificateEmail = async (
     html,
   });
 };
+
+export const sendInvoiceEmailNotification = async (
+  email: string,
+  name: string,
+  invoice: {
+    invoice_number: string;
+    issue_date: Date | string;
+    due_date: Date | string;
+    status: string;
+    subtotal: number;
+    discount_amount: number;
+    total_amount: number;
+    items: Array<{
+      item_name: string;
+      type: string;
+      unit_price: number;
+      quantity: number;
+      discount: number;
+      total: number;
+    }>;
+    notes?: string | null;
+  }
+): Promise<boolean> => {
+  const issueDateFormatted = new Date(invoice.issue_date).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  const dueDateFormatted = new Date(invoice.due_date).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const isPaid = invoice.status === 'PAID';
+  const statusColor = isPaid ? '#0276D3' : '#eca209';
+  const statusBg = isPaid ? '#f0f7ff' : '#fffbeb';
+
+  const itemsRows = invoice.items
+    .map(
+      (item, idx) => `
+        <tr style="border-bottom: 1px solid #edf2f7;">
+          <td style="padding: 12px 16px; color: #1e293b; font-size: 14px; font-weight: 600;">
+            ${item.item_name}
+            <span style="display: block; font-size: 11px; color: #64748b; font-weight: normal; text-transform: uppercase; margin-top: 2px;">
+              ${item.type.replace('_', ' ')}
+            </span>
+          </td>
+          <td style="padding: 12px 16px; color: #475569; font-size: 14px; text-align: center;">
+            ${item.quantity || 1}
+          </td>
+          <td style="padding: 12px 16px; color: #475569; font-size: 14px; text-align: right;">
+            ₹${item.unit_price.toFixed(2)}
+          </td>
+          <td style="padding: 12px 16px; color: #1e293b; font-size: 14px; font-weight: 700; text-align: right;">
+            ₹${item.total.toFixed(2)}
+          </td>
+        </tr>
+      `
+    )
+    .join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Invoice ${invoice.invoice_number} - StudyAsan</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f7fa;">
+        <tr>
+          <td align="center" style="padding: 40px 20px;">
+            <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06); overflow: hidden; border: 1px solid #e2e8f0;">
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #0276D3 0%, #015bb5 100%); padding: 35px 40px; text-align: left;">
+                  <table width="100%" cellspacing="0" cellpadding="0">
+                    <tr>
+                      <td>
+                        <div style="background: #ffffff; display: inline-block; padding: 6px 12px; border-radius: 8px; margin-bottom: 8px;">
+                          <img src="https://xdas-tech.sirv.com/studyasan-logo.png" alt="StudyAsan" style="height: 28px; display: block;" />
+                        </div>
+                        <p style="color: #bfdbfe; font-size: 12px; margin: 0;">The Path To Success</p>
+                      </td>
+                      <td style="text-align: right;">
+                        <span style="display: inline-block; padding: 6px 14px; background: rgba(255, 255, 255, 0.2); color: #ffffff; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: monospace;">
+                          ${invoice.invoice_number}
+                        </span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+              
+              <!-- Content -->
+              <tr>
+                <td style="padding: 35px 40px;">
+                  <!-- Greeting & Status Banner -->
+                  <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
+                    <tr>
+                      <td>
+                        <p style="color: #64748b; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Billed To</p>
+                        <h3 style="color: #0f172a; font-size: 18px; font-weight: 700; margin: 0;">${name}</h3>
+                        <p style="color: #64748b; font-size: 13px; margin: 2px 0 0;">${email}</p>
+                      </td>
+                      <td style="text-align: right;">
+                        <div style="display: inline-block; padding: 8px 18px; background-color: ${statusBg}; border: 1px solid ${statusColor}; color: ${statusColor}; border-radius: 10px; font-size: 12px; font-weight: 800; text-transform: uppercase;">
+                          ${invoice.status}
+                        </div>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Invoice Meta Grid -->
+                  <table width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; border: 1px solid #edf2f7;">
+                    <tr>
+                      <td width="50%" style="padding: 4px 10px;">
+                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">Issue Date:</span>
+                        <span style="color: #1e293b; font-size: 13px; font-weight: 700; margin-left: 6px;">${issueDateFormatted}</span>
+                      </td>
+                      <td width="50%" style="padding: 4px 10px; text-align: right;">
+                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">Due Date:</span>
+                        <span style="color: #1e293b; font-size: 13px; font-weight: 700; margin-left: 6px;">${dueDateFormatted}</span>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <!-- Items Table -->
+                  <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-bottom: 25px;">
+                    <thead>
+                      <tr style="background-color: #f1f5f9; text-align: left;">
+                        <th style="padding: 10px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">Item Description</th>
+                        <th style="padding: 10px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; text-align: center;">Qty</th>
+                        <th style="padding: 10px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; text-align: right;">Price</th>
+                        <th style="padding: 10px 16px; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #475569; text-align: right; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${itemsRows}
+                    </tbody>
+                  </table>
+
+                  <!-- Totals Summary -->
+                  <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 30px;">
+                    <tr>
+                      <td width="50%"></td>
+                      <td width="50%">
+                        <table width="100%" cellspacing="0" cellpadding="0">
+                          <tr>
+                            <td style="padding: 6px 0; color: #64748b; font-size: 13px;">Subtotal:</td>
+                            <td style="padding: 6px 0; color: #1e293b; font-size: 13px; font-weight: 600; text-align: right;">₹${invoice.subtotal.toFixed(2)}</td>
+                          </tr>
+                          ${
+                            invoice.discount_amount > 0
+                              ? `
+                          <tr>
+                            <td style="padding: 6px 0; color: #0276D3; font-size: 13px; font-weight: 600;">Discount:</td>
+                            <td style="padding: 6px 0; color: #0276D3; font-size: 13px; font-weight: 700; text-align: right;">- ₹${invoice.discount_amount.toFixed(2)}</td>
+                          </tr>
+                          `
+                              : ''
+                          }
+                          <tr style="border-top: 2px solid #e2e8f0;">
+                            <td style="padding: 12px 0 6px; color: #0f172a; font-size: 16px; font-weight: 800;">Total Amount:</td>
+                            <td style="padding: 12px 0 6px; color: #0276D3; font-size: 20px; font-weight: 900; text-align: right;">₹${invoice.total_amount.toFixed(2)}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+
+                  ${
+                    invoice.notes
+                      ? `
+                    <div style="background-color: #f8fafc; border-left: 3px solid #0276D3; padding: 14px 18px; border-radius: 8px; margin-bottom: 25px;">
+                      <p style="color: #64748b; font-size: 11px; font-weight: 700; text-transform: uppercase; margin: 0 0 4px;">Notes / Instructions</p>
+                      <p style="color: #334155; font-size: 13px; margin: 0; line-height: 1.5;">${invoice.notes}</p>
+                    </div>
+                  `
+                      : ''
+                  }
+
+                  <!-- CTA Button -->
+                  <div style="text-align: center; margin-top: 10px;">
+                    <a href="https://studyasan.com/dashboard" style="display: inline-block; background: #0276D3; color: #ffffff; text-decoration: none; padding: 14px 34px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(2, 118, 211, 0.3);">
+                      View Invoice on Dashboard
+                    </a>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
+                  <p style="color: #64748b; font-size: 12px; font-weight: 600; margin: 0 0 4px;">StudyAsan Learning Technologies</p>
+                  <p style="color: #94a3b8; font-size: 11px; margin: 0;">
+                    For billing support or queries, contact billing@studyasan.com
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `Invoice ${invoice.invoice_number} from StudyAsan`,
+    html,
+  });
+};

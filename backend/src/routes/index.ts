@@ -40,6 +40,7 @@ import * as knowYourChildController from '../controllers/knowYourChild.controlle
 import * as brainQuestController from '../controllers/brainQuest.controller.js';
 import * as agencyController from '../controllers/agency.controller.js';
 import * as whiteboardController from '../controllers/whiteboard.controller.js';
+import * as invoiceController from '../controllers/invoice.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -134,10 +135,14 @@ router.delete('/subjects/:id', authenticate, authorize('ADMIN', 'TEACHER'), subj
 
 // Enrollment routes
 router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);
+router.get('/enrollments/student/:studentId', authenticate, enrollmentController.getEnrollmentsByStudentId);
 router.get('/enrollments/:id', authenticate, enrollmentController.getEnrollmentById);
-router.post('/enrollments', authenticate, enrollmentController.createEnrollment);
+router.post('/enrollments', authenticate, authorize('ADMIN'), enrollmentController.createEnrollment);
 router.post('/enrollments/bulk', authenticate, authorize('ADMIN', 'TEACHER'), enrollmentController.bulkEnroll);
+router.post('/enrollments/generate-invoice', authenticate, authorize('ADMIN'), enrollmentController.generateInvoiceFromEnrollments);
+router.put('/enrollments/:id', authenticate, authorize('ADMIN'), enrollmentController.updateEnrollment);
 router.delete('/enrollments/:id', authenticate, authorize('ADMIN', 'TEACHER', 'STUDENT'), enrollmentController.deleteEnrollment);
+
 
 // Payment routes
 router.get('/payments', authenticate, paymentController.getAllPayments);
@@ -706,6 +711,15 @@ router.post('/video-rooms/:janusRoomId/participants/:participantId/kick', authen
 router.post('/video-rooms/:janusRoomId/join', authenticate, videoRoomController.recordJoin);
 router.post('/video-rooms/:janusRoomId/leave', authenticate, videoRoomController.recordLeave);
 router.get('/class-sessions/:sessionId/attendance', authenticate, videoRoomController.getSessionAttendance);
+
+// ================== INVOICE & BILLING ROUTES ==================
+router.get('/invoices', authenticate, invoiceController.getAllInvoices);
+router.get('/invoices/:id', authenticate, invoiceController.getInvoiceById);
+router.post('/invoices', authenticate, authorize('ADMIN'), invoiceController.createInvoice);
+router.put('/invoices/:id', authenticate, authorize('ADMIN'), invoiceController.updateInvoice);
+router.patch('/invoices/:id/status', authenticate, authorize('ADMIN'), invoiceController.markInvoiceStatus);
+router.post('/invoices/:id/send-email', authenticate, authorize('ADMIN'), invoiceController.sendInvoiceEmail);
+router.delete('/invoices/:id', authenticate, authorize('ADMIN'), invoiceController.deleteInvoice);
 
 // ================== ENROLLMENT ROUTES ==================
 router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);

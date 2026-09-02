@@ -42,13 +42,11 @@ import StudentModulesPage from '@/pages/subjects/StudentModulesPage';
 import StudyModulePage from '@/pages/subjects/StudyModulePage';
 import SubjectProgressPage from '@/pages/subjects/SubjectProgressPage';
 
-// Enrollment imports
-import EnrollmentsPage from '@/pages/enrollments/EnrollmentsPage';
+// Enrollment and Billing imports
+import EnrollmentsInvoicesPage from '@/pages/billing/EnrollmentsInvoicesPage';
 import CreateEnrollmentPage from '@/pages/enrollments/CreateEnrollmentPage';
 import BulkEnrollmentPage from '@/pages/enrollments/BulkEnrollmentPage';
 import EnrollmentDetailPage from '@/pages/enrollments/EnrollmentDetailPage';
-
-// Payment imports
 import PaymentsPage from '@/pages/PaymentsPage';
 
 // Board imports
@@ -279,14 +277,16 @@ function App() {
           {/* New Curriculum Management Route */}
           <Route path="offerings" element={<CurriculumPage />} />
 
-          {/* Enrollment Routes */}
-          <Route path="enrollments" element={<EnrollmentsPage />} />
+          {/* Billing & Enrollment Routes (Unified Two-Tab Page) */}
+          <Route path="enrollments" element={<EnrollmentsInvoicesPage />} />
+          <Route path="billing" element={<EnrollmentsInvoicesPage />} />
           <Route path="enrollments/new" element={<CreateEnrollmentPage />} />
           <Route path="enrollments/bulk" element={<BulkEnrollmentPage />} />
           <Route path="enrollments/:id" element={<EnrollmentDetailPage />} />
 
-          {/* Payment Routes */}
-          <Route path="payments" element={<PaymentsPage />} />
+          {/* Payment Route redirects to Unified Billing */}
+          <Route path="payments" element={<EnrollmentsInvoicesPage />} />
+
 
           {/* Board Routes */}
           <Route path="boards" element={<BoardsPage />} />

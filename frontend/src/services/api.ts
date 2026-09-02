@@ -22,7 +22,13 @@ import type {
   Enrollment,
   EnrollmentPayment,
   CreateEnrollmentData,
+  UpdateEnrollmentData,
   BulkEnrollmentData,
+  Invoice,
+  InvoiceItem,
+  InvoicesResponse,
+  CreateInvoiceData,
+  UpdateInvoiceData,
   CreateBoardData,
   UpdateBoardData,
   CreateClassData,
@@ -539,10 +545,10 @@ export const enrollmentService = {
     test_series_id?: number;
     activity_group_id?: number;
     type?: string;
-  }): Promise<PaginatedResponse<Enrollment>> => {
-    const response = await api.get<PaginatedResponse<Enrollment>>('/enrollments', {
-      params,
-    });
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ success: boolean; data: { data: Enrollment[]; pagination: { page: number; limit: number; total: number; totalPages: number } } }> => {
+    const response = await api.get('/enrollments', { params });
     return response.data;
   },
 
@@ -551,8 +557,29 @@ export const enrollmentService = {
     return response.data;
   },
 
-  create: async (data: CreateEnrollmentData): Promise<{ success: boolean; data: Enrollment }> => {
+  getByStudentId: async (studentId: number): Promise<{ success: boolean; data: Enrollment[] }> => {
+    const response = await api.get(`/enrollments/student/${studentId}`);
+    return response.data;
+  },
+
+  create: async (data: CreateEnrollmentData): Promise<{ success: boolean; data: { enrollments: Enrollment[]; invoice: any; skipped: string[] }; message?: string }> => {
     const response = await api.post('/enrollments', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateEnrollmentData): Promise<{ success: boolean; data: Enrollment; message?: string }> => {
+    const response = await api.put(`/enrollments/${id}`, data);
+    return response.data;
+  },
+
+  generateInvoice: async (data: {
+    enrollment_ids: number[];
+    due_date?: string;
+    invoice_date?: string;
+    notes?: string;
+    send_email?: boolean;
+  }): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.post('/enrollments/generate-invoice', data);
     return response.data;
   },
 
@@ -602,6 +629,54 @@ export const paymentService = {
 
   getOverdue: async (): Promise<{ success: boolean; data: EnrollmentPayment[] }> => {
     const response = await api.get('/payments/overdue');
+    return response.data;
+  },
+};
+
+export const invoiceService = {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    student_id?: number;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<{ success: boolean; data: InvoicesResponse }> => {
+    const response = await api.get('/invoices', { params });
+    return response.data;
+  },
+
+  getById: async (id: number | string): Promise<{ success: boolean; data: Invoice }> => {
+    const response = await api.get(`/invoices/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateInvoiceData): Promise<{ success: boolean; data: Invoice; message?: string }> => {
+    const response = await api.post('/invoices', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateInvoiceData): Promise<{ success: boolean; data: Invoice; message?: string }> => {
+    const response = await api.put(`/invoices/${id}`, data);
+    return response.data;
+  },
+
+  markStatus: async (
+    id: number,
+    data: { status: 'PAID' | 'PENDING'; paid_date?: string; payment_method?: string }
+  ): Promise<{ success: boolean; data: Invoice; message?: string }> => {
+    const response = await api.patch(`/invoices/${id}/status`, data);
+    return response.data;
+  },
+
+  sendEmail: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post(`/invoices/${id}/send-email`);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.delete(`/invoices/${id}`);
     return response.data;
   },
 };

@@ -167,8 +167,15 @@ const CreateEnrollmentPage: React.FC = () => {
 
       if (enrollmentType === 'SUBJECT') {
         await enrollmentService.create({
-          ...commonData,
-          subject_id: formData.item_id,
+          student_id: formData.student_id,
+          items: [{
+            type: 'SUBJECT',
+            subject_id: formData.item_id,
+            price: formData.price ?? undefined,
+            frequency: (formData.frequency || 'one_time') as any,
+            is_recurring: formData.is_recurring,
+          }],
+          due_date: formData.due_date ?? undefined,
         });
       } else if (enrollmentType === 'TEST_SERIES') {
         await testSeriesService.enroll(formData.item_id, commonData);

@@ -139,6 +139,7 @@ model Student {
   know_your_child_reports KnowYourChildReport[]
   brain_quest_submissions BrainQuestSubmission[]
   referral_earnings    ReferralEarning[]
+  invoices             Invoice[]
 
   @@map("students")
 }
@@ -167,6 +168,7 @@ model Subject {
   class                     Class?                   @relation(fields: [class_id], references: [id])
   board                     Board?                   @relation(fields: [board_id], references: [id])
   enrollments               Enrollment[]
+  invoice_items             InvoiceItem[]
   teacher_subject_junctions TeacherSubjectJunction[]
   class_sessions            ClassSession[]
   student_progress          StudentModuleProgress[]
@@ -185,6 +187,60 @@ enum EnrollmentType {
   ACTIVITY_GROUP
 }
 
+enum InvoiceStatus {
+  PAID
+  PENDING
+  OVERDUE
+  CANCELLED
+}
+
+model Invoice {
+  id              Int           @id @default(autoincrement())
+  invoice_number  String        @unique // e.g. "INV-2026-00001"
+  student_id      Int
+  status          InvoiceStatus @default(PENDING) // PAID, PENDING, OVERDUE, CANCELLED
+  issue_date      DateTime      @default(now())
+  due_date        DateTime
+  paid_date       DateTime?
+  subtotal        Float         @default(0)
+  discount_amount Float         @default(0)
+  total_amount    Float         @default(0)
+  notes           String?
+  payment_method  String?       // "UPI", "Bank Transfer", "Cash", "Card", "Online", etc.
+  transaction_id  String?
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+
+  student         Student       @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  items           InvoiceItem[]
+  enrollments     Enrollment[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id                Int            @id @default(autoincrement())
+  invoice_id        Int
+  type              EnrollmentType @default(SUBJECT) // SUBJECT, TEST_SERIES, ACTIVITY_GROUP
+  subject_id        Int?
+  test_series_id    Int?
+  activity_group_id Int?
+  item_name         String         // Snapshot name
+  unit_price        Float
+  actual_price      Float?
+  quantity          Int            @default(1)
+  discount          Float          @default(0)
+  total             Float
+  created_at        DateTime       @default(now())
+
+  invoice           Invoice        @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  subject           Subject?       @relation(fields: [subject_id], references: [id], onDelete: SetNull)
+  test_series       TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: SetNull)
+  activity_group    ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: SetNull)
+
+  @@map("invoice_items")
+}
+
 model Enrollment {
   id         Int            @id @default(autoincrement())
   type       EnrollmentType @default(SUBJECT)
@@ -193,11 +249,14 @@ model Enrollment {
   subject_id        Int?
   test_series_id    Int?
   activity_group_id Int?
+  invoice_id        Int?
 
   price        Float? // Enrollment fee amount
   is_recurring Boolean   @default(false)
-  frequency    String? // "monthly", "yearly", "quarterly", etc.
+  frequency    String? // "monthly", "yearly", "quarterly", "semi_yearly", "one_time"
   end_date     DateTime? // When recurring payments should stop
+  invoice_date DateTime? // Admin-set invoice date (can be backdated)
+  notes        String?   // Admin notes on this enrollment
   created_on   DateTime  @default(now())
   updated_on   DateTime  @updatedAt
 
@@ -206,6 +265,7 @@ model Enrollment {
   subject        Subject?       @relation(fields: [subject_id], references: [id], onDelete: Cascade)
   test_series    TestSeries?    @relation(fields: [test_series_id], references: [id], onDelete: Cascade)
   activity_group ActivityGroup? @relation(fields: [activity_group_id], references: [id], onDelete: Cascade)
+  invoice        Invoice?       @relation(fields: [invoice_id], references: [id], onDelete: SetNull)
 
   payments Payment[]
 
@@ -691,6 +751,7 @@ model TestSeries {
   creator           User                        @relation("TestSeriesCreator", fields: [created_by], references: [id])
   tests             Test[]
   enrollments       Enrollment[] // Unified
+  invoice_items     InvoiceItem[]
   teacher_junctions TestSeriesTeacherJunction[]
 
   @@map("test_series")
@@ -748,6 +809,7 @@ model ActivityGroup {
   activities        Activity[]
   teacher_junctions ActivityGroupTeacherJunction[]
   enrollments       Enrollment[] // Unified
+  invoice_items     InvoiceItem[]
 
   @@map("activity_groups")
 }

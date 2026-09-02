@@ -454,7 +454,10 @@ export default function StudentDetailPage() {
       const { enrollmentService } = await import("@/services/api");
       await enrollmentService.create({
         student_id: student.id,
-        subject_id: selectedSubjectId
+        items: [{
+          type: 'SUBJECT',
+          subject_id: selectedSubjectId,
+        }],
       });
       setShowSubjectModal(false);
       setSelectedSubjectId(null);
