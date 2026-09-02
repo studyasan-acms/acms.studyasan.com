@@ -33,13 +33,57 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
   <title>StudyAsan</title>
 </head>
-
 <body>
+  <script>
+    // Fix: Prevent Google Translate DOM alterations from crashing React with NotFoundError (removeChild / insertBefore)
+    if (typeof Node === 'function' && Node.prototype) {
+      var origRemoveChild = Node.prototype.removeChild;
+      Node.prototype.removeChild = function(child) {
+        if (child.parentNode !== this) {
+          if (child.parentNode) {
+            return child.parentNode.removeChild(child);
+          }
+          return child;
+        }
+        return origRemoveChild.apply(this, arguments);
+      };
+
+      var origInsertBefore = Node.prototype.insertBefore;
+      Node.prototype.insertBefore = function(newNode, referenceNode) {
+        if (referenceNode && referenceNode.parentNode !== this) {
+          if (referenceNode.parentNode) {
+            return referenceNode.parentNode.insertBefore(newNode, referenceNode);
+          }
+          return this.appendChild(newNode);
+        }
+        return origInsertBefore.apply(this, arguments);
+      };
+    }
+  </script>
   <div id="root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <div id="google_translate_element" style="display:none"></div>
   <script type="text/javascript">
     function googleTranslateElementInit() {
+      try {
+        var pref = localStorage.getItem('preferredLanguage');
+        if (pref === 'en') {
+          var h = window.location.hostname;
+          var dp = h.split('.');
+          var ds = ['', h, '.' + h];
+          if (dp.length >= 2) {
+            ds.push('.' + dp.slice(-2).join('.'));
+            ds.push(dp.slice(-2).join('.'));
+          }
+          ds.forEach(function(d) {
+            ['/', '', '/dashboard'].forEach(function(p) {
+              document.cookie = 'googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + p + (d ? '; domain=' + d : '');
+              document.cookie = 'googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=' + p + (d ? '; domain=' + d : '');
+            });
+          });
+        }
+      } catch (e) {}
+
       new google.translate.TranslateElement(
         { pageLanguage: 'en', autoDisplay: false },
         'google_translate_element'

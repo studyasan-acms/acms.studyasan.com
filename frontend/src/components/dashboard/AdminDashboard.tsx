@@ -115,7 +115,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Revenue */}
-        <Card className="bg-white border border-slate-200/80 shadow-xs hover:border-saBlue/40 hover:shadow-md transition-all rounded-2xl sm:rounded-3xl p-5">
+        <Card className="bg-white border border-slate-200/80 shadow-xs hover:border-saVividOrange/40 hover:shadow-md transition-all rounded-2xl sm:rounded-3xl p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Revenue</p>
@@ -123,12 +123,12 @@ export default function AdminDashboard() {
                 ₹{(businessAnalytics?.payments.totalRevenue || 0).toLocaleString()}
               </h3>
             </div>
-            <div className="h-12 w-12 bg-saBlue/10 rounded-2xl flex items-center justify-center text-saBlue shrink-0">
+            <div className="h-12 w-12 bg-saVividOrange/10 rounded-2xl flex items-center justify-center text-saVividOrange shrink-0">
               <DollarSign className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1.5 text-xs">
-            <span className="font-bold text-saBlue">
+            <span className="font-bold text-saOrangeDark">
               ₹{(businessAnalytics?.payments.revenueLast30Days || 0).toLocaleString()}
             </span>
             <span className="text-slate-400 font-medium">in last 30 days</span>
@@ -144,18 +144,18 @@ export default function AdminDashboard() {
                 {businessAnalytics?.enrollments.total || 0}
               </h3>
             </div>
-            <div className="h-12 w-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-700 shrink-0">
+            <div className="h-12 w-12 bg-saBlue/10 rounded-2xl flex items-center justify-center text-saBlue shrink-0">
               <GraduationCap className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1.5 text-xs">
-            <span className="font-bold text-slate-700">+{businessAnalytics?.enrollments.last30Days || 0}</span>
+            <span className="font-bold text-saBlue">+{businessAnalytics?.enrollments.last30Days || 0}</span>
             <span className="text-slate-400 font-medium">this month</span>
           </div>
         </Card>
 
         {/* Health Score / Paid Ratio */}
-        <Card className="bg-white border border-slate-200/80 shadow-xs hover:border-saBlue/40 hover:shadow-md transition-all rounded-2xl sm:rounded-3xl p-5">
+        <Card className="bg-white border border-slate-200/80 shadow-xs hover:border-saVividOrange/40 hover:shadow-md transition-all rounded-2xl sm:rounded-3xl p-5">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Collection Ratio</p>
@@ -168,12 +168,12 @@ export default function AdminDashboard() {
                 %
               </h3>
             </div>
-            <div className="h-12 w-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-700 shrink-0">
+            <div className="h-12 w-12 bg-saVividOrange/10 rounded-2xl flex items-center justify-center text-saVividOrange shrink-0">
               <TrendingUp className="h-6 w-6" />
             </div>
           </div>
           <div className="mt-4 flex items-center gap-1.5 text-xs">
-            <span className="font-bold text-slate-700">{businessAnalytics?.payments.paidCount || 0}</span>
+            <span className="font-bold text-saOrangeDark">{businessAnalytics?.payments.paidCount || 0}</span>
             <span className="text-slate-400 font-medium">paid / {businessAnalytics?.payments.totalCount || 0} invoices</span>
           </div>
         </Card>
@@ -193,9 +193,9 @@ export default function AdminDashboard() {
                   </CardTitle>
                   <p className="text-xs text-slate-500 font-medium">Daily payment collection insights</p>
                 </div>
-                <Badge variant="outline" className="border-saBlue/20 text-saBlue font-bold text-[10px] bg-saBlue/5">
+                <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/30">
                   Last 30 Days
-                </Badge>
+                </span>
               </CardHeader>
               <CardContent className="p-4 sm:p-5 pt-0">
                 <div className="h-[280px]">
@@ -223,7 +223,7 @@ export default function AdminDashboard() {
           <Card className="rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden bg-white">
             <CardHeader className="p-4 sm:p-5 pb-2">
               <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Activity className="h-4 w-4 text-saBlue" />
+                <Activity className="h-4 w-4 text-saVividOrange" />
                 Pending Actions & Alerts
               </CardTitle>
             </CardHeader>
@@ -232,14 +232,14 @@ export default function AdminDashboard() {
                 <>
                   <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200/60 shadow-xs">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-saBlue/10 text-saBlue flex items-center justify-center font-bold text-xs">
+                      <div className="w-8 h-8 rounded-lg bg-saVividOrange/10 text-saVividOrange flex items-center justify-center font-bold text-xs">
                         <CreditCard className="w-4 h-4" />
                       </div>
                       <span className="text-xs font-bold text-slate-700">Pending Payments</span>
                     </div>
-                    <Badge variant="outline" className="bg-white text-slate-800 font-mono font-bold text-xs px-2.5">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/30">
                       {businessAnalytics.payments.pendingCount}
-                    </Badge>
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-200/60 shadow-xs">
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-saBlue/10 text-saBlue flex items-center justify-center font-bold shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-saVividOrange/10 text-saVividOrange flex items-center justify-center font-bold shrink-0">
                 <Activity className="w-5 h-5" />
               </div>
               <div>
@@ -274,9 +274,9 @@ export default function AdminDashboard() {
                 <p className="text-xs text-slate-500 mt-0.5">Institutional enrolment trajectory, revenue breakdown, and cohort performance</p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-blue-50 text-saBlue border-blue-200 font-bold text-xs px-3 py-1 w-fit">
+            <span className="inline-flex items-center text-xs font-bold px-3 py-1 rounded-full bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/30 w-fit">
               Live Metrics
-            </Badge>
+            </span>
           </div>
 
           {/* Grid of Business Health Cards */}
@@ -309,14 +309,14 @@ export default function AdminDashboard() {
             <Card className="rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs bg-white overflow-hidden">
               <CardHeader className="p-4 sm:p-5 pb-3 border-b border-slate-100 bg-slate-50/60">
                 <CardTitle className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-saBlue" />
+                  <DollarSign className="w-4 h-4 text-saVividOrange" />
                   Financial Breakdown
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 sm:p-5 space-y-3 text-xs">
                 <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
                   <span className="text-slate-500 font-medium">Total Lifetime Revenue</span>
-                  <span className="font-bold text-saBlue text-sm">₹{businessAnalytics.payments.totalRevenue.toLocaleString()}</span>
+                  <span className="font-bold text-saOrangeDark text-sm">₹{businessAnalytics.payments.totalRevenue.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center py-1.5 border-b border-slate-100">
                   <span className="text-slate-500 font-medium">Paid Invoices</span>
@@ -324,7 +324,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex justify-between items-center py-1.5">
                   <span className="text-slate-500 font-medium">Pending Invoices</span>
-                  <span className="font-bold text-slate-900 text-sm">{businessAnalytics.payments.pendingCount}</span>
+                  <span className="font-bold text-saOrangeDark text-sm">{businessAnalytics.payments.pendingCount}</span>
                 </div>
               </CardContent>
             </Card>
@@ -348,7 +348,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex justify-between items-center py-1.5">
                   <span className="text-slate-500 font-medium">Test Series Enrollments</span>
-                  <span className="font-bold text-slate-900 text-sm">{businessAnalytics.testSeries?.totalEnrollments || 0}</span>
+                  <span className="font-bold text-saBlue text-sm">{businessAnalytics.testSeries?.totalEnrollments || 0}</span>
                 </div>
               </CardContent>
             </Card>

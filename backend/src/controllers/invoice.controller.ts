@@ -454,6 +454,9 @@ export const updateInvoice = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const invoiceId = parseInt(id!, 10);
+    if (isNaN(invoiceId)) {
+      return sendError(res, 'Invalid invoice ID', 400);
+    }
 
     const existingInvoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -575,6 +578,9 @@ export const markInvoiceStatus = async (req: Request, res: Response) => {
     const { id } = req.params;
     const { status, paid_date, payment_method } = req.body;
     const invoiceId = parseInt(id!, 10);
+    if (isNaN(invoiceId)) {
+      return sendError(res, 'Invalid invoice ID', 400);
+    }
 
     const isPaid = status === 'PAID';
 
@@ -605,6 +611,9 @@ export const sendInvoiceEmail = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const invoiceId = parseInt(id!, 10);
+    if (isNaN(invoiceId)) {
+      return sendError(res, 'Invalid invoice ID', 400);
+    }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -662,6 +671,9 @@ export const deleteInvoice = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const invoiceId = parseInt(id!, 10);
+    if (isNaN(invoiceId)) {
+      return sendError(res, 'Invalid invoice ID', 400);
+    }
 
     await prisma.invoice.delete({
       where: { id: invoiceId },
@@ -672,3 +684,103 @@ export const deleteInvoice = async (req: Request, res: Response) => {
     sendError(res, error.message, 500);
   }
 };
+
+export const getInvoiceSettings = async (req: Request, res: Response) => {
+  try {
+    let settings = await prisma.invoiceSetting.findFirst();
+    if (!settings) {
+      settings = await prisma.invoiceSetting.create({
+        data: {
+          business_name: 'StudyAsan Academy',
+          address: 'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126',
+          email: 'contact@studyasan.com',
+          phone: '',
+          website: 'www.studyasan.com',
+          include_gst: false,
+          gst_percentage: 18,
+          gst_number: '',
+          bank_name: '',
+          account_number: '',
+          account_holder_name: '',
+          ifsc_code: '',
+          branch_name: '',
+          upi_id: '',
+          upi_name: '',
+        },
+      });
+    }
+    sendSuccess(res, settings);
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+
+export const updateInvoiceSettings = async (req: Request, res: Response) => {
+  try {
+    const {
+      business_name,
+      address,
+      email,
+      phone,
+      website,
+      include_gst,
+      gst_percentage,
+      gst_number,
+      bank_name,
+      account_number,
+      account_holder_name,
+      ifsc_code,
+      branch_name,
+      upi_id,
+      upi_name,
+    } = req.body;
+
+    let settings = await prisma.invoiceSetting.findFirst();
+    if (!settings) {
+      settings = await prisma.invoiceSetting.create({
+        data: {
+          business_name: business_name || 'StudyAsan Academy',
+          address: address || '',
+          email: email || 'contact@studyasan.com',
+          phone: phone || '',
+          website: website || 'www.studyasan.com',
+          include_gst: Boolean(include_gst),
+          gst_percentage: Number(gst_percentage) || 18,
+          gst_number: gst_number || '',
+          bank_name: bank_name || '',
+          account_number: account_number || '',
+          account_holder_name: account_holder_name || '',
+          ifsc_code: ifsc_code || '',
+          branch_name: branch_name || '',
+          upi_id: upi_id || '',
+          upi_name: upi_name || '',
+        },
+      });
+    } else {
+      settings = await prisma.invoiceSetting.update({
+        where: { id: settings.id },
+        data: {
+          business_name: business_name !== undefined ? business_name : settings.business_name,
+          address: address !== undefined ? address : settings.address,
+          email: email !== undefined ? email : settings.email,
+          phone: phone !== undefined ? phone : settings.phone,
+          website: website !== undefined ? website : settings.website,
+          include_gst: include_gst !== undefined ? Boolean(include_gst) : settings.include_gst,
+          gst_percentage: gst_percentage !== undefined ? Number(gst_percentage) : settings.gst_percentage,
+          gst_number: gst_number !== undefined ? gst_number : settings.gst_number,
+          bank_name: bank_name !== undefined ? bank_name : settings.bank_name,
+          account_number: account_number !== undefined ? account_number : settings.account_number,
+          account_holder_name: account_holder_name !== undefined ? account_holder_name : settings.account_holder_name,
+          ifsc_code: ifsc_code !== undefined ? ifsc_code : settings.ifsc_code,
+          branch_name: branch_name !== undefined ? branch_name : settings.branch_name,
+          upi_id: upi_id !== undefined ? upi_id : settings.upi_id,
+          upi_name: upi_name !== undefined ? upi_name : settings.upi_name,
+        },
+      });
+    }
+    sendSuccess(res, settings, 'Invoice settings updated successfully');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+

@@ -713,6 +713,8 @@ router.post('/video-rooms/:janusRoomId/leave', authenticate, videoRoomController
 router.get('/class-sessions/:sessionId/attendance', authenticate, videoRoomController.getSessionAttendance);
 
 // ================== INVOICE & BILLING ROUTES ==================
+router.get('/invoices/settings', authenticate, invoiceController.getInvoiceSettings);
+router.put('/invoices/settings', authenticate, authorize('ADMIN'), invoiceController.updateInvoiceSettings);
 router.get('/invoices', authenticate, invoiceController.getAllInvoices);
 router.get('/invoices/:id', authenticate, invoiceController.getInvoiceById);
 router.post('/invoices', authenticate, authorize('ADMIN'), invoiceController.createInvoice);

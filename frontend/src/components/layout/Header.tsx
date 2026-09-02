@@ -103,8 +103,34 @@ export default function Header({
   const [showAnnouncements, setShowAnnouncements] = useState(false);
   const pageLabel = usePageLabel();
 
+  const wipeGoogleTranslateCookies = () => {
+    if (typeof window === "undefined") return;
+    const hostname = window.location.hostname;
+    const domainParts = hostname.split(".");
+    const domains: string[] = ["", hostname, `.${hostname}`];
+    if (domainParts.length >= 2) {
+      domains.push(`.${domainParts.slice(-2).join(".")}`);
+      domains.push(domainParts.slice(-2).join("."));
+    }
+    const paths = ["/", "", "/dashboard"];
+
+    domains.forEach((d) => {
+      paths.forEach((p) => {
+        const domainStr = d ? ` domain=${d};` : "";
+        document.cookie = `googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p};${domainStr}`;
+        document.cookie = `googtrans=/en/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p};${domainStr}`;
+        document.cookie = `googtrans=/auto/en; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${p};${domainStr}`;
+      });
+    });
+  };
+
   const [currentLanguage, setCurrentLanguage] = useState(() => {
     if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("preferredLanguage");
+      if (saved === "en") {
+        wipeGoogleTranslateCookies();
+        return "en";
+      }
       const getCookie = (name: string) => {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
@@ -114,9 +140,8 @@ export default function Header({
       if (googtrans) {
         const parts = googtrans.split("/");
         const lang = parts[parts.length - 1];
-        if (lang && languages.find((l) => l.code === lang)) return lang;
+        if (lang && lang !== "en" && languages.find((l) => l.code === lang)) return lang;
       }
-      const saved = localStorage.getItem("preferredLanguage");
       if (saved && languages.find((lang) => lang.code === saved)) return saved;
     }
     return "en";
@@ -125,10 +150,33 @@ export default function Header({
   const handleLanguageChange = (langCode: string) => {
     localStorage.setItem("preferredLanguage", langCode);
     setCurrentLanguage(langCode);
-    const cookieValue = langCode === "en" ? "/en/en" : `/en/${langCode}`;
-    document.cookie = `googtrans=${cookieValue}; path=/; domain=${window.location.hostname}`;
-    document.cookie = `googtrans=${cookieValue}; path=/;`;
-    window.location.reload();
+
+    // 1. Programmatically trigger the Google Translate combo box if present
+    const selectElem = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+    if (selectElem) {
+      selectElem.value = langCode;
+      selectElem.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    // 2. Wipe existing cookies across all domain levels
+    wipeGoogleTranslateCookies();
+
+    // 3. If non-English, set the target language cookie
+    if (langCode !== "en") {
+      const cookieValue = `/en/${langCode}`;
+      const hostname = window.location.hostname;
+      const domainParts = hostname.split(".");
+
+      document.cookie = `googtrans=${cookieValue}; path=/;`;
+      document.cookie = `googtrans=${cookieValue}; path=/; domain=${hostname};`;
+      if (domainParts.length >= 2) {
+        document.cookie = `googtrans=${cookieValue}; path=/; domain=.${domainParts.slice(-2).join(".")};`;
+      }
+    }
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 150);
   };
 
   const handleLogout = () => {

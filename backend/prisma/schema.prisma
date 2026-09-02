@@ -1394,3 +1394,26 @@ model SavedWhiteboard {
   @@map("saved_whiteboards")
 }
 
+model InvoiceSetting {
+  id                  Int      @id @default(autoincrement())
+  business_name       String   @default("StudyAsan Academy")
+  address             String   @default("Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126")
+  email               String   @default("contact@studyasan.com")
+  phone               String?  @default("")
+  website             String?  @default("www.studyasan.com")
+  include_gst         Boolean  @default(false)
+  gst_percentage      Float    @default(18.0)
+  gst_number          String?  @default("")
+  bank_name           String?  @default("")
+  account_number      String?  @default("")
+  account_holder_name String?  @default("")
+  ifsc_code           String?  @default("")
+  branch_name         String?  @default("")
+  upi_id              String?  @default("")
+  upi_name            String?  @default("")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  @@map("invoice_settings")
+}
+

@@ -7,6 +7,8 @@ import {
   markInvoiceStatus,
   sendInvoiceEmail,
   deleteInvoice,
+  getInvoiceSettings,
+  updateInvoiceSettings,
 } from '../controllers/invoice.controller.js';
 import { authenticate, authorize } from '../middleware/auth.middleware.js';
 
@@ -14,6 +16,10 @@ const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+
+// Settings routes (must be before /:id)
+router.get('/settings', authorize('ADMIN', 'TEACHER', 'STUDENT'), getInvoiceSettings);
+router.put('/settings', authorize('ADMIN'), updateInvoiceSettings);
 
 // Admin / Teacher accessible routes
 router.get('/', authorize('ADMIN', 'TEACHER'), getAllInvoices);

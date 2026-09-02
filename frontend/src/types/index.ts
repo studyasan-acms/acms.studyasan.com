@@ -1389,3 +1389,23 @@ export interface UpdateInvoiceData {
     discount?: number;
   }[];
 }
+
+export interface InvoiceSetting {
+  id?: number;
+  business_name: string;
+  address: string;
+  email: string;
+  phone?: string;
+  website?: string;
+  include_gst: boolean;
+  gst_percentage: number;
+  gst_number?: string;
+  bank_name?: string;
+  account_number?: string;
+  account_holder_name?: string;
+  ifsc_code?: string;
+  branch_name?: string;
+  upi_id?: string;
+  upi_name?: string;
+}
+

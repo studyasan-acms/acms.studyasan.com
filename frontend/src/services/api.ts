@@ -29,6 +29,7 @@ import type {
   InvoicesResponse,
   CreateInvoiceData,
   UpdateInvoiceData,
+  InvoiceSetting,
   CreateBoardData,
   UpdateBoardData,
   CreateClassData,
@@ -677,6 +678,16 @@ export const invoiceService = {
 
   delete: async (id: number): Promise<{ success: boolean; message?: string }> => {
     const response = await api.delete(`/invoices/${id}`);
+    return response.data;
+  },
+
+  getSettings: async (): Promise<{ success: boolean; data: InvoiceSetting }> => {
+    const response = await api.get('/invoices/settings');
+    return response.data;
+  },
+
+  updateSettings: async (data: Partial<InvoiceSetting>): Promise<{ success: boolean; data: InvoiceSetting; message?: string }> => {
+    const response = await api.put('/invoices/settings', data);
     return response.data;
   },
 };

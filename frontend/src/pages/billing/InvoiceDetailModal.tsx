@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
-import { Mail, Printer, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Mail, Printer, CheckCircle2, Landmark, QrCode } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { invoiceService } from '@/services/api';
-import type { Invoice } from '@/types';
+import type { Invoice, InvoiceSetting } from '@/types';
 
 interface InvoiceDetailModalProps {
   open: boolean;
   onClose: () => void;
   invoice: Invoice | null;
+  onStatusChange?: () => void;
 }
 
 export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
@@ -18,6 +19,18 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 }) => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
+  const [settings, setSettings] = useState<InvoiceSetting | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      invoiceService
+        .getSettings()
+        .then((res) => {
+          if (res.data) setSettings(res.data);
+        })
+        .catch(() => {});
+    }
+  }, [open]);
 
   if (!invoice) return null;
 
@@ -115,7 +128,15 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   };
 
   const isPaid = invoice.status === 'PAID';
-  const isOverdue = !isPaid && (invoice.is_overdue || new Date(invoice.due_date) < new Date());
+
+  // Financial calculations with optional GST
+  const subtotal = invoice.subtotal || 0;
+  const discount = invoice.discount_amount || 0;
+  const taxableAmount = Math.max(0, subtotal - discount);
+  const includeGst = Boolean(settings?.include_gst);
+  const gstRate = settings?.gst_percentage ?? 18;
+  const gstAmount = includeGst ? (taxableAmount * gstRate) / 100 : 0;
+  const finalTotal = includeGst ? taxableAmount + gstAmount : (invoice.total_amount || taxableAmount);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -171,46 +192,53 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
         {/* Professional Invoice Sheet Container */}
         <div id="invoice-printable-area" className="p-8 sm:p-10 space-y-7 bg-white text-slate-900 w-full font-sans">
           
-          {/* 1. Header: Logo & Academy Info (Left) | INVOICE Title, Meta & Status (Right) */}
+          {/* 1. Header: Logo & Academy Info (Left) | INVOICE Title & Document Meta (Right) */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-6">
             
             {/* Left: Organization Header */}
             <div className="space-y-2 max-w-sm">
               <div className="flex items-center gap-2">
-                <img
-                  src="/studyasan-logo.png"
-                  alt="StudyAsan Logo"
-                  className="h-10 w-auto object-contain"
-                />
+                {/* Blue background logo container */}
+                <div className="bg-[#0276D3] px-3.5 py-2 rounded-xl inline-flex items-center justify-center shadow-xs">
+                  <img
+                    src="/studyasan-logo.png"
+                    alt="StudyAsan Logo"
+                    className="h-8 w-auto object-contain"
+                  />
+                </div>
               </div>
               <div className="text-xs text-gray-600 leading-relaxed pt-1">
-                <p className="font-bold text-gray-900 text-sm">StudyAsan Academy</p>
+                <p className="font-bold text-gray-900 text-sm">
+                  {settings?.business_name || 'StudyAsan Academy'}
+                </p>
                 <p className="mt-0.5">
-                  Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126
+                  {settings?.address ||
+                    'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126'}
                 </p>
                 <p className="mt-1 text-gray-500">
-                  <span className="font-medium text-gray-700">Email:</span> billing@studyasan.com &nbsp;|&nbsp; <span className="font-medium text-gray-700">Web:</span> www.studyasan.com
+                  <span className="font-medium text-gray-700">Email:</span>{' '}
+                  {settings?.email || 'contact@studyasan.com'} &nbsp;|&nbsp;{' '}
+                  <span className="font-medium text-gray-700">Web:</span>{' '}
+                  {settings?.website || 'www.studyasan.com'}
                 </p>
+                {settings?.phone && (
+                  <p className="text-gray-500">
+                    <span className="font-medium text-gray-700">Phone:</span> {settings.phone}
+                  </p>
+                )}
+                {includeGst && settings?.gst_number && (
+                  <p className="mt-1">
+                    <span className="font-bold text-gray-900">GSTIN:</span>{' '}
+                    <span className="font-mono font-semibold text-gray-700">{settings.gst_number}</span>
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Right: Invoice Label & Document Meta */}
+            {/* Right: Invoice Label & Document Meta (Badge completely removed) */}
             <div className="text-left sm:text-right space-y-1.5 flex-shrink-0">
-              <div className="flex items-center sm:justify-end gap-3">
+              <div className="flex items-center sm:justify-end">
                 <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">INVOICE</h1>
-                {isPaid ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    <CheckCircle2 size={12} /> PAID
-                  </span>
-                ) : isOverdue ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
-                    <AlertTriangle size={12} /> OVERDUE
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
-                    <Clock size={12} /> PENDING
-                  </span>
-                )}
               </div>
 
               <p className="font-mono text-sm font-bold text-gray-800 pt-1">
@@ -244,7 +272,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           )}
 
-          {/* 2. Billing Meta: Billed To (Left) & Payment Details (Right) */}
+          {/* 2. Billing Meta: Billed To (Student) & Payment Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
             {/* Student Details */}
             <div className="space-y-1">
@@ -279,10 +307,10 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
             {/* Payment Meta */}
             <div className="sm:text-right space-y-1">
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Payment Details</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Payment Status</p>
               <div className="text-xs text-gray-600 space-y-1 pt-1">
                 <p>
-                  <span className="text-gray-500">Payment Status:</span>{' '}
+                  <span className="text-gray-500">Status:</span>{' '}
                   <span className="font-semibold text-gray-900">{isPaid ? 'Paid in Full' : 'Payment Awaited'}</span>
                 </p>
                 {invoice.payment_method && (
@@ -301,7 +329,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           </div>
 
-          {/* 3. Items Table: Standard Clean Corporate Table */}
+          {/* 3. Items Table */}
           <div className="overflow-x-auto pt-2">
             <table className="w-full text-xs text-left border-collapse">
               <thead>
@@ -364,10 +392,35 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </table>
           </div>
 
-          {/* 4. Bottom Section: Terms & Notes (Left) | Financial Totals (Right) */}
+          {/* 4. Bottom Section: Notes & Bank/UPI Remittance (Left) | Totals with GST (Right) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-2 items-start border-t border-gray-200">
-            {/* Left: Notes and Terms */}
+            {/* Left: Notes, Bank/UPI Remittance, and Terms */}
             <div className="space-y-3 text-xs text-gray-600">
+              {/* Bank & UPI Details */}
+              {(settings?.bank_name || settings?.upi_id) && (
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
+                  <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                    <Landmark className="w-3.5 h-3.5 text-saBlue" /> Payment Remittance Details:
+                  </p>
+                  {settings.bank_name && (
+                    <div className="space-y-0.5 text-slate-700">
+                      <p><span className="font-semibold text-slate-500">Bank:</span> {settings.bank_name} {settings.branch_name && `(${settings.branch_name})`}</p>
+                      {settings.account_number && <p><span className="font-semibold text-slate-500">A/C No:</span> <span className="font-mono font-bold text-slate-900">{settings.account_number}</span></p>}
+                      {settings.account_holder_name && <p><span className="font-semibold text-slate-500">A/C Name:</span> {settings.account_holder_name}</p>}
+                      {settings.ifsc_code && <p><span className="font-semibold text-slate-500">IFSC:</span> <span className="font-mono font-bold text-slate-900">{settings.ifsc_code}</span></p>}
+                    </div>
+                  )}
+                  {settings.upi_id && (
+                    <div className="pt-1.5 mt-1 border-t border-slate-200 flex items-center gap-1 text-slate-700">
+                      <QrCode className="w-3.5 h-3.5 text-saVividOrange" />
+                      <span className="font-semibold text-slate-500">UPI ID:</span>
+                      <span className="font-mono font-bold text-saBlue">{settings.upi_id}</span>
+                      {settings.upi_name && <span className="text-slate-400">({settings.upi_name})</span>}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {invoice.notes && (
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <p className="font-bold text-gray-700 text-[11px] uppercase tracking-wider mb-0.5">Notes:</p>
@@ -385,28 +438,47 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Right: Subtotal, Discount & Total Amount */}
+            {/* Right: Subtotal, Discount, GST & Total Amount */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 text-gray-600 border-b border-gray-100">
                 <span>Subtotal (MRP):</span>
                 <span className="font-semibold text-gray-900">
-                  ₹{(invoice.subtotal || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
 
-              {invoice.discount_amount > 0 && (
+              {discount > 0 && (
                 <div className="flex justify-between py-1 text-emerald-700 border-b border-gray-100">
                   <span>Total Discount:</span>
                   <span className="font-semibold">
-                    - ₹{invoice.discount_amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    - ₹{discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               )}
 
+              {includeGst && (
+                <>
+                  <div className="flex justify-between py-1 text-gray-600 border-b border-gray-100">
+                    <span>Taxable Amount:</span>
+                    <span className="font-semibold text-gray-900">
+                      ₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 text-slate-700 border-b border-gray-100">
+                    <span>GST ({gstRate}%):</span>
+                    <span className="font-semibold text-slate-900">
+                      ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </>
+              )}
+
               <div className="flex justify-between py-2 border-t-2 border-b-2 border-gray-900 text-sm font-bold text-gray-900">
-                <span className="uppercase tracking-wider text-xs">Total Amount Due:</span>
+                <span className="uppercase tracking-wider text-xs">
+                  {includeGst ? 'Total Amount Due (incl. GST):' : 'Total Amount Due:'}
+                </span>
                 <span className="text-base sm:text-lg font-black text-[#0276D3]">
-                  ₹{(invoice.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  ₹{finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
             </div>

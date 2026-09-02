@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Users,
   RotateCcw,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ import CreateEditInvoiceModal from './CreateEditInvoiceModal';
 import InvoiceDetailModal from './InvoiceDetailModal';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import EnrollmentsTab from './EnrollmentsTab';
+import InvoiceSettingsTab from './InvoiceSettingsTab';
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
 
@@ -78,7 +80,7 @@ const EnrollmentsInvoicesPage: React.FC = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
 
-  const [activeTab, setActiveTab] = useState<'enrollments' | 'invoices'>('enrollments');
+  const [activeTab, setActiveTab] = useState<'enrollments' | 'invoices' | 'settings'>('enrollments');
 
   // Invoice state
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -336,6 +338,19 @@ const EnrollmentsInvoicesPage: React.FC = () => {
             <FileText className="w-3.5 h-3.5" />
             Invoices
           </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('settings')}
+              className={`rounded-lg px-3.5 py-1.5 transition-all flex items-center gap-1.5 text-xs font-bold ${
+                activeTab === 'settings'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Invoice Configuration
+            </button>
+          )}
         </div>
       </div>
 
@@ -655,6 +670,10 @@ const EnrollmentsInvoicesPage: React.FC = () => {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <InvoiceSettingsTab onSaved={fetchInvoices} />
       )}
 
       {/* Toast */}
