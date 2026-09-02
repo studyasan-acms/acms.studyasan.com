@@ -130,8 +130,11 @@ export default function TeacherDashboard() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="space-y-6 animate-pulse">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-100 rounded-xl" />)}
+                </div>
+                <div className="h-72 bg-slate-100 rounded-xl" />
             </div>
         );
     }
@@ -234,13 +237,14 @@ export default function TeacherDashboard() {
 
             {/* Live Class Attendance Banner */}
             <LiveClassAttendanceWidget isStudent={false} />
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h2 className="text-xl font-semibold text-muted-foreground">Classroom Overview</h2>
+                    <h2 className="text-lg font-bold text-slate-800">Classroom Overview</h2>
+                    <p className="text-xs text-slate-500 mt-0.5">Aggregated performance across your students</p>
                 </div>
-                <div className="flex items-center gap-4 w-full md:w-auto">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                     <Select value={selectedSubject} onValueChange={setSelectedSubject}>
-                        <SelectTrigger className="w-full md:w-[250px]">
+                        <SelectTrigger className="w-full sm:w-[220px] border-slate-200 text-sm">
                             <SelectValue placeholder="Filter by subject" />
                         </SelectTrigger>
                         <SelectContent>
@@ -311,28 +315,28 @@ export default function TeacherDashboard() {
                     <QuickActions />
 
                     <Card className="h-full max-h-[500px] overflow-hidden flex flex-col">
-                        <CardHeader>
-                            <CardTitle>Recent Student Activity</CardTitle>
+                        <CardHeader className="border-b border-slate-100">
+                            <CardTitle className="text-sm font-bold text-slate-800">Recent Student Activity</CardTitle>
                         </CardHeader>
-                        <CardContent className="overflow-y-auto flex-1 pr-2">
-                            <div className="space-y-4">
+                        <CardContent className="overflow-y-auto flex-1 p-4">
+                            <div className="space-y-2.5">
                                 {studentsAnalytics.length === 0 ? (
-                                    <p className="text-center text-muted-foreground py-8">No activity found</p>
+                                    <p className="text-center text-slate-400 text-sm py-8">No activity found</p>
                                 ) : (
                                     studentsAnalytics.slice(0, 5).map((student) => (
                                         <div
                                             key={student.studentId}
-                                            className="p-3 border rounded-lg bg-card/50 hover:bg-muted/50 transition-colors"
+                                            className="p-3 border border-slate-100 rounded-xl bg-slate-50 hover:bg-saBlueSubtle hover:border-saBlue/20 transition-all"
                                         >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-semibold text-sm">{student.studentName}</h3>
-                                                <Badge variant={(student.tests?.averageScore || 0) > 75 ? "default" : "secondary"} className="text-[10px]">
+                                            <div className="flex justify-between items-center mb-1.5">
+                                                <h3 className="font-semibold text-sm text-slate-800">{student.studentName}</h3>
+                                                <Badge variant={(student.tests?.averageScore || 0) > 75 ? "success" : "slate"} className="text-[10px]">
                                                     {(student.tests?.averageScore || 0).toFixed(0)}% Avg
                                                 </Badge>
                                             </div>
-                                            <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                                <div>Classes: {student.classes.attended}</div>
-                                                <div>Modules: {student.modules.completed}</div>
+                                            <div className="grid grid-cols-2 gap-1 text-xs text-slate-500">
+                                                <div>📚 Classes: {student.classes.attended}</div>
+                                                <div>📝 Modules: {student.modules.completed}</div>
                                             </div>
                                         </div>
                                     ))

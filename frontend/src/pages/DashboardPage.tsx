@@ -3,6 +3,8 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import AdminDashboard from "@/components/dashboard/AdminDashboard";
 import TeacherDashboard from "@/components/dashboard/TeacherDashboard";
 import StudentDashboardPage from "@/pages/StudentDashboardPage";
+import PageHeader from "@/components/ui/PageHeader";
+import { LayoutDashboard } from "lucide-react";
 
 export default function DashboardPage() {
   usePageTitle("Dashboard");
@@ -17,29 +19,24 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-2">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-600 dark:text-gray-100">Dashboard</h1>
-          <p className="text-gray-400 mt-1 text-sm sm:text-base">
-            Welcome back, {user?.name}!
-          </p>
+    <div className="space-y-5">
+      <PageHeader
+        title="Dashboard"
+        subtitle={`Welcome back, ${user?.name}!`}
+        icon={LayoutDashboard}
+        iconColor="bg-saBlueSubtle"
+        iconTextColor="text-saBlue"
+      />
+
+      {isAdmin && <AdminDashboard />}
+      {isTeacher && <TeacherDashboard />}
+
+      {!isAdmin && !isTeacher && !isStudent && (
+        <div className="p-8 text-center text-slate-500 bg-white rounded-xl border border-dashed border-slate-200">
+          <p>Welcome! Your role privileges are being set up or are not recognized.</p>
         </div>
-      </div>
-
-      {/* Role-based Dashboard Content */}
-      <div className="mt-6">
-        {isAdmin && <AdminDashboard />}
-        {isTeacher && <TeacherDashboard />}
-
-        {/* Fallback for unknown roles or if role is missing */}
-        {!isAdmin && !isTeacher && !isStudent && (
-          <div className="p-8 text-center text-muted-foreground bg-muted/20 rounded-lg border border-dashed">
-            <p>Welcome! Your role privileges are being set up or are not recognized.</p>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }
+

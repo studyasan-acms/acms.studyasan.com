@@ -24,6 +24,19 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 206 97% 42%;
     --radius: 0.5rem;
+
+    /* StudyAsan Design Tokens */
+    --sa-blue: #0276D3;
+    --sa-blue-hover: #025AA3;
+    --sa-blue-light: #5BAEF0;
+    --sa-blue-subtle: #EBF4FD;
+    --sa-orange: #eca209;
+    --sa-orange-dark: #c98908;
+    --sa-orange-subtle: #FEF7E6;
+    --sa-surface: #F8FAFD;
+    --sa-sidebar-width: 14rem;   /* 224px */
+    --sa-sidebar-collapsed: 3.5rem; /* 56px */
+    --sa-header-height: 4rem;    /* 64px */
   }
 
   .dark {
@@ -52,13 +65,232 @@
 @layer base {
   * {
     @apply border-border;
+    box-sizing: border-box;
   }
   body {
     @apply bg-background text-foreground;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+  html {
+    scroll-behavior: smooth;
   }
 }
 
+/* ============================
+   GLOBAL LAYOUT UTILITIES
+   ============================ */
 @layer components {
+
+  /* Page wrapper — consistent padding */
+  .page-content {
+    @apply p-4 sm:p-6 space-y-5;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Page header — title + action buttons row */
+  .page-header {
+    @apply flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4;
+  }
+
+  .page-header-title {
+    @apply text-xl sm:text-2xl font-bold text-slate-800;
+  }
+
+  .page-header-subtitle {
+    @apply text-sm text-slate-500 mt-0.5;
+  }
+
+  .page-header-actions {
+    @apply flex items-center gap-2 flex-shrink-0;
+  }
+
+  /* Section card — standard white card container */
+  .section-card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card overflow-hidden;
+  }
+
+  /* Section card with padding */
+  .section-card-padded {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card p-4 sm:p-6;
+  }
+
+  /* ============================
+     STATS CARD GRID
+     ============================ */
+  .stat-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4;
+  }
+
+  .stat-grid-3 {
+    @apply grid grid-cols-1 sm:grid-cols-3 gap-4;
+  }
+
+  .stat-card {
+    @apply bg-white rounded-xl border border-slate-200 shadow-card p-4 sm:p-5
+           hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200;
+  }
+
+  .stat-card-icon {
+    @apply h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center flex-shrink-0;
+  }
+
+  /* ============================
+     DATA TABLE
+     ============================ */
+  .table-wrapper {
+    @apply overflow-x-auto -mx-0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Horizontal scroll hint on mobile */
+  .table-wrapper::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 24px;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.9));
+    pointer-events: none;
+    border-radius: 0 0.75rem 0.75rem 0;
+  }
+
+  .data-table {
+    @apply w-full min-w-[600px] text-sm;
+  }
+
+  .data-table th {
+    @apply bg-slate-50 text-slate-500 font-semibold text-xs uppercase tracking-wider px-4 py-3 text-left whitespace-nowrap;
+  }
+
+  .data-table td {
+    @apply px-4 py-3 text-slate-700 border-t border-slate-100;
+  }
+
+  .data-table tr:hover td {
+    @apply bg-saBlueSubtle/50;
+  }
+
+  /* ============================
+     FILTER / SEARCH BAR
+     ============================ */
+  .filter-bar {
+    @apply flex flex-col sm:flex-row gap-2 sm:gap-3 p-3 sm:p-4 bg-slate-50 border-b border-slate-200;
+  }
+
+  .filter-search {
+    @apply relative flex-1 min-w-0;
+  }
+
+  .filter-search-icon {
+    @apply absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none;
+  }
+
+  .filter-search-input {
+    @apply w-full pl-9 pr-4 h-9 rounded-lg border border-slate-200 bg-white text-sm 
+           outline-none transition-all
+           focus:border-saBlue focus:ring-2 focus:ring-saBlue/15
+           placeholder:text-slate-400;
+  }
+
+  /* ============================
+     BUTTONS — BRAND VARIANTS
+     ============================ */
+  .btn-blue {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+           bg-saBlue text-white hover:bg-saBlueDarkHover
+           transition-all duration-150 shadow-sm hover:shadow
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-orange {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+           bg-saVividOrange text-white hover:bg-saOrangeDark
+           transition-all duration-150 shadow-sm hover:shadow
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-outline-blue {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold
+           border border-saBlue text-saBlue hover:bg-saBlueSubtle
+           transition-all duration-150
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-ghost-slate {
+    @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium
+           text-slate-600 hover:bg-slate-100 hover:text-slate-800
+           transition-all duration-150;
+  }
+
+  /* Action icon buttons */
+  .action-btn-view {
+    @apply p-1.5 rounded-md text-saBlue hover:bg-saBlueSubtle transition-colors;
+  }
+
+  .action-btn-edit {
+    @apply p-1.5 rounded-md text-saVividOrange hover:bg-saOrangeSubtle transition-colors;
+  }
+
+  .action-btn-delete {
+    @apply p-1.5 rounded-md text-red-500 hover:bg-red-50 transition-colors;
+  }
+
+  /* ============================
+     BADGES
+     ============================ */
+  .badge-blue {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+           bg-saBlueSubtle text-saBlue;
+  }
+
+  .badge-orange {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+           bg-saOrangeSubtle text-saOrangeDark;
+  }
+
+  .badge-green {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+           bg-emerald-50 text-emerald-700;
+  }
+
+  .badge-red {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+           bg-red-50 text-red-600;
+  }
+
+  .badge-slate {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold
+           bg-slate-100 text-slate-600;
+  }
+
+  /* ============================
+     INPUT — BRAND FOCUS RING
+     ============================ */
+  .input-brand {
+    @apply h-10 w-full rounded-lg border border-slate-200 px-3 text-sm
+           outline-none transition-all bg-white
+           focus:border-saBlue focus:ring-2 focus:ring-saBlue/15
+           placeholder:text-slate-400 text-slate-800
+           disabled:bg-slate-50 disabled:opacity-60;
+  }
+
+  /* ============================
+     SKELETON SHIMMER
+     ============================ */
+  .skeleton {
+    @apply bg-slate-200 rounded;
+    background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 37%, #e2e8f0 63%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite linear;
+  }
+
+  /* ============================
+     3D BUTTONS (existing)
+     ============================ */
   .btn-3d {
     @apply relative transition-all duration-75 active:translate-y-1 active:shadow-none;
   }
@@ -83,33 +315,74 @@
     box-shadow: 0 6px 0 0 #cbd5e1;
   }
 
+  /* ============================
+     GAMIFIED / STUDENT CARDS
+     ============================ */
   .gamified-card {
     @apply bg-slate-950/55 text-slate-100 backdrop-blur-md border border-saBlueLight/20 rounded-3xl shadow-2xl;
   }
 
+  /* ============================
+     ANIMATIONS
+     ============================ */
   .floating {
     animation: floating 4s ease-in-out infinite;
   }
 
   @keyframes floating {
-    0% { transform: translateY(0px); }
-    50% { transform: translateY(-15px); }
-    100% { transform: translateY(0px); }
+    0%   { transform: translateY(0px);   }
+    50%  { transform: translateY(-15px); }
+    100% { transform: translateY(0px);   }
   }
 
   .animate-spin-slow {
     animation: spin 3s linear infinite;
   }
 
+  /* ============================
+     SCROLLBAR UTILITIES
+     ============================ */
   .scrollbar-hide {
-    -ms-overflow-style: none;  /* Internet Explorer 10+ */
-    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
   }
-  .scrollbar-hide::-webkit-scrollbar { 
-    display: none;  /* Safari and Chrome */
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* ============================
+     MISC UTILITIES
+     ============================ */
   .clip-path-header {
     clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+  }
+
+  /* Ensure no horizontal overflow on mobile */
+  .mobile-safe {
+    @apply max-w-full overflow-x-hidden;
+  }
+
+  /* Page-level fade-in animation */
+  .page-enter {
+    @apply animate-fadeUp;
   }
 }

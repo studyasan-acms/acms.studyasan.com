@@ -27,7 +27,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     if (!isAuthLoading && !isAuthenticated) {
       navigate("/login");
     } else if (!isAuthLoading && isAuthenticated) {
-      // Only fetch notifications after auth is fully loaded
       useNotificationStore.getState().fetchNotifications();
     }
   }, [isAuthLoading, isAuthenticated, navigate]);
@@ -40,24 +39,31 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-white lg:bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
+      {/* Header — fixed at top, full width */}
       <Header toggleSidebar={() => setMobileSidebarOpen(true)} />
 
       <div className="flex">
+        {/* Sidebar */}
         <Sidebar
           isMobileOpen={mobileSidebarOpen}
           closeMobile={() => setMobileSidebarOpen(false)}
-          collapsed={sidebarCollapsed}              // <- NEW
-          setCollapsed={setSidebarCollapsed}        // <- NEW
+          collapsed={sidebarCollapsed}
+          setCollapsed={setSidebarCollapsed}
         />
 
+        {/* Main content area */}
         <main
           className={cn(
-            "flex-1 p-6 transition-all duration-300 w-full overflow-x-hidden max-w-full",
-            sidebarCollapsed ? "lg:ml-14" : "lg:ml-56" // <- ADJUST WIDTH
+            "flex-1 min-h-[calc(100vh-4rem)] transition-all duration-300 overflow-x-hidden",
+            "p-4 sm:p-5 lg:p-6",
+            // Desktop: offset for sidebar width
+            sidebarCollapsed ? "lg:ml-14" : "lg:ml-56"
           )}
         >
-          {children || <Outlet />}
+          <div className="max-w-full animate-fadeUp">
+            {children || <Outlet />}
+          </div>
         </main>
       </div>
     </div>

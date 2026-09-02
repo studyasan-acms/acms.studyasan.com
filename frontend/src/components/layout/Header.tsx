@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,25 +12,81 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useAuthStore } from "@/store/authStore";
 import { useNotificationStore } from "@/store/notificationStore";
-import { Bell, LogOut, User, Settings, Menu, Languages, Globe, Megaphone } from "lucide-react";
+import {
+  Bell,
+  LogOut,
+  User,
+  Settings,
+  Menu,
+  Languages,
+  Globe,
+  Megaphone,
+  ChevronRight,
+} from "lucide-react";
 import NotificationPanel from "@/components/dashboard/NotificationPanel";
 import AnnouncementPanel from "@/components/dashboard/AnnouncementPanel";
 
-// Add language options
+// Language options
 const languages = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'hi', name: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'zh', name: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-  { code: 'pt', name: 'Português', flag: '🇵🇹' },
-  { code: 'ru', name: 'Русский', flag: '🇷🇺' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: "en", name: "English",    flag: "🇺🇸" },
+  { code: "hi", name: "हिन्दी",      flag: "🇮🇳" },
+  { code: "es", name: "Español",    flag: "🇪🇸" },
+  { code: "fr", name: "Français",   flag: "🇫🇷" },
+  { code: "de", name: "Deutsch",    flag: "🇩🇪" },
+  { code: "zh", name: "中文",        flag: "🇨🇳" },
+  { code: "ja", name: "日本語",      flag: "🇯🇵" },
+  { code: "ko", name: "한국어",      flag: "🇰🇷" },
+  { code: "ar", name: "العربية",    flag: "🇸🇦" },
+  { code: "pt", name: "Português",  flag: "🇵🇹" },
+  { code: "ru", name: "Русский",    flag: "🇷🇺" },
+  { code: "it", name: "Italiano",   flag: "🇮🇹" },
 ];
+
+// Map known route prefixes to human-readable page names
+const routeLabels: { prefix: string; label: string }[] = [
+  { prefix: "/dashboard/students",       label: "Students" },
+  { prefix: "/dashboard/teachers",       label: "Teachers" },
+  { prefix: "/dashboard/offerings",      label: "Curriculum" },
+  { prefix: "/dashboard/subjects",       label: "Curriculum" },
+  { prefix: "/dashboard/class-sessions", label: "Class Sessions" },
+  { prefix: "/dashboard/whiteboard",     label: "Whiteboard" },
+  { prefix: "/dashboard/homework",       label: "Homework" },
+  { prefix: "/dashboard/activities",     label: "Activities" },
+  { prefix: "/dashboard/student-activities", label: "Learning Games" },
+  { prefix: "/dashboard/enrollments",    label: "Billing & Invoices" },
+  { prefix: "/dashboard/enquiries",      label: "Enquiries" },
+  { prefix: "/dashboard/chats",          label: "Chats" },
+  { prefix: "/dashboard/admin/chats",    label: "All Chats" },
+  { prefix: "/dashboard/admin/roles",    label: "Role Management" },
+  { prefix: "/dashboard/admin/coupons",  label: "Coupons" },
+  { prefix: "/dashboard/admin/agencies", label: "Agencies & Referrers" },
+  { prefix: "/dashboard/announcements",  label: "Announcements" },
+  { prefix: "/dashboard/jobs",           label: "Jobs & Internships" },
+  { prefix: "/dashboard/explore",        label: "Explore" },
+  { prefix: "/dashboard/know-your-child", label: "Know Your Child" },
+  { prefix: "/dashboard/profile",        label: "Profile" },
+  { prefix: "/dashboard/settings",       label: "Settings" },
+  { prefix: "/dashboard/home",           label: "Home" },
+  { prefix: "/dashboard/analytics",      label: "Analytics" },
+  { prefix: "/tests",                    label: "Tests" },
+  { prefix: "/dashboard",                label: "Dashboard" },
+];
+
+function usePageLabel() {
+  const { pathname } = useLocation();
+  // Sort by length descending so more specific prefixes match first
+  const sorted = [...routeLabels].sort((a, b) => b.prefix.length - a.prefix.length);
+  const match = sorted.find((r) => pathname.startsWith(r.prefix));
+  return match?.label ?? "Dashboard";
+}
+
+const getInitials = (name: string) =>
+  name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
 export default function Header({
   toggleSidebar,
@@ -43,63 +99,33 @@ export default function Header({
   const { unreadCount } = useNotificationStore();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const pageLabel = usePageLabel();
+
   const [currentLanguage, setCurrentLanguage] = useState(() => {
-    if (typeof window !== 'undefined') {
-      // Check for Google Translate cookie
+    if (typeof window !== "undefined") {
       const getCookie = (name: string) => {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        if (parts.length === 2) return parts.pop()?.split(";").shift();
       };
-
-      const googtrans = getCookie('googtrans');
+      const googtrans = getCookie("googtrans");
       if (googtrans) {
-        // Cookie format is usually /source/target or /auto/target
-        // We want the target language (last part)
-        const parts = googtrans.split('/');
+        const parts = googtrans.split("/");
         const lang = parts[parts.length - 1];
-        if (lang && languages.find(l => l.code === lang)) {
-          return lang;
-        }
+        if (lang && languages.find((l) => l.code === lang)) return lang;
       }
-
-      // Check localStorage for saved preference
-      const saved = localStorage.getItem('preferredLanguage');
-      if (saved && languages.find(lang => lang.code === saved)) {
-        return saved;
-      }
+      const saved = localStorage.getItem("preferredLanguage");
+      if (saved && languages.find((lang) => lang.code === saved)) return saved;
     }
-    return 'en';
+    return "en";
   });
 
-
-
   const handleLanguageChange = (langCode: string) => {
-    const language = languages.find(lang => lang.code === langCode);
-    if (!language) return;
-
-
-
-    // Save preference
-    localStorage.setItem('preferredLanguage', langCode);
+    localStorage.setItem("preferredLanguage", langCode);
     setCurrentLanguage(langCode);
-
-    // Show loading feedback
-    const button = document.querySelector('[title="Translate Page"]');
-    if (button) {
-      button.textContent = '⏳';
-      setTimeout(() => {
-        button.innerHTML = '';
-        button.appendChild(document.createElement('div')); // Reset content
-      }, 1000);
-    }
-
-    // Set the cookie for Google Translate
-    const cookieValue = langCode === 'en' ? '/en/en' : `/en/${langCode}`;
+    const cookieValue = langCode === "en" ? "/en/en" : `/en/${langCode}`;
     document.cookie = `googtrans=${cookieValue}; path=/; domain=${window.location.hostname}`;
-    document.cookie = `googtrans=${cookieValue}; path=/;`; // Fallback for some browsers
-
-
+    document.cookie = `googtrans=${cookieValue}; path=/;`;
     window.location.reload();
   };
 
@@ -108,187 +134,205 @@ export default function Header({
     navigate("/login");
   };
 
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  const currentLang = languages.find((l) => l.code === currentLanguage);
 
   return (
     <>
-      {/* HEADER — Styled Like Sidebar Header */}
-      <header className="bg-saBlue border-b border-saBlueLight h-16 flex items-center sticky top-0 z-40">
-        <div className="flex items-center justify-between w-full px-4">
-          {/* LEFT SECTION — Logo (Desktop Only) */}
-          <div className="hidden lg:flex items-center gap-4">
+      <header
+        className="sticky top-0 z-40 h-16 flex-shrink-0 flex items-center"
+        style={{
+          background: "linear-gradient(180deg, #0276D3 0%, #025AA3 100%)",
+          borderBottom: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 1px 8px 0 rgba(2,86,163,0.18)",
+        }}
+      >
+        <div className="flex items-center w-full h-full px-3 sm:px-4 gap-2">
+
+          {/* ── LEFT: Hamburger (mobile) + Logo (mobile) */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {/* Hamburger */}
+            <button
+              onClick={toggleSidebar}
+              className="p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
+              aria-label="Open menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            {/* Logo — visible on mobile ONLY */}
             <img
               src="/studyasan-logo.png"
-              alt="StudyAsan Logo"
-              className="h-10 w-auto object-contain"
+              alt="StudyAsan"
+              className="h-8 w-auto object-contain"
             />
           </div>
 
-          {/* MAIN SECTION — 5 Icons (Equal width on mobile, right-aligned on desktop) */}
-          <div className="grid grid-cols-5 w-full lg:flex lg:w-auto lg:items-center gap-0 lg:gap-3 items-center justify-items-center">
-            {/* 1. Menu Button (Mobile Only) */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden hover:bg-saBlueDarkHover/20"
-              onClick={toggleSidebar}
-            >
-              <Menu className="h-6 w-6 text-white" />
-            </Button>
+          {/* ── CENTER / DESKTOP LEFT: Page title breadcrumb */}
+          <div className="hidden lg:flex items-center gap-2 flex-1 min-w-0">
+            <span className="text-white/60 text-sm font-medium">StudyAsan</span>
+            <ChevronRight className="h-3.5 w-3.5 text-white/30 flex-shrink-0" />
+            <span className="text-white text-sm font-semibold truncate">
+              {pageLabel}
+            </span>
+          </div>
 
-            {/* 2. Language Selector */}
+          {/* Mobile: flex spacer */}
+          <div className="flex-1 lg:hidden" />
+
+          {/* ── RIGHT: Action icons */}
+          <div className="flex items-center gap-0.5 sm:gap-1">
+
+            {/* Language */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:bg-saBlueDarkHover/20 relative"
-                  title={`Translate Page - Current: ${languages.find(lang => lang.code === currentLanguage)?.name || 'English'}`}
+                <button
+                  className="relative p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
+                  title={`Language: ${currentLang?.name}`}
                 >
-                  <Globe className="h-5 w-5 text-white" />
-                  <span className="absolute -bottom-1 -right-1 text-[10px]">
-                    {languages.find(lang => lang.code === currentLanguage)?.flag}
+                  <Globe className="h-5 w-5" />
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none">
+                    {currentLang?.flag}
                   </span>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
-
               <DropdownMenuContent
                 align="end"
-                className="w-48 max-h-64 overflow-y-auto bg-white border border-gray-200 shadow-lg"
+                className="w-48 max-h-72 overflow-y-auto bg-white border border-slate-200 shadow-xl rounded-xl p-1"
               >
-                <DropdownMenuLabel className="text-gray-700 font-semibold border-b border-gray-100 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Languages className="h-4 w-4" />
-                    Choose Language
-                  </div>
+                <DropdownMenuLabel className="text-slate-500 font-semibold text-xs uppercase tracking-wider pb-2 px-2 flex items-center gap-1.5">
+                  <Languages className="h-3.5 w-3.5" />
+                  Language
                 </DropdownMenuLabel>
-
                 {languages.map((language) => (
                   <DropdownMenuItem
                     key={language.code}
                     onClick={() => handleLanguageChange(language.code)}
-                    className={`cursor-pointer flex items-center gap-3 py-2 px-3 hover:bg-blue-50 transition-colors ${currentLanguage === language.code ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
-                      }`}
+                    className={`cursor-pointer flex items-center gap-2.5 px-2 py-1.5 rounded-lg transition-colors text-sm ${
+                      currentLanguage === language.code
+                        ? "bg-saBlueSubtle text-saBlue font-semibold"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
                   >
-                    <span className="text-lg">{language.flag}</span>
-                    <span className="font-medium">{language.name}</span>
+                    <span className="text-base">{language.flag}</span>
+                    <span>{language.name}</span>
                     {currentLanguage === language.code && (
-                      <span className="ml-auto text-blue-600 text-xs font-bold">✓</span>
+                      <span className="ml-auto text-saBlue text-xs">✓</span>
                     )}
                   </DropdownMenuItem>
                 ))}
-
-                <div className="border-t border-gray-100 mt-2 pt-2">
+                <div className="border-t border-slate-100 mt-1 pt-1">
                   <DropdownMenuItem
-                    onClick={() => handleLanguageChange('en')}
-                    className="cursor-pointer flex items-center gap-3 py-2 px-3 hover:bg-gray-50 text-gray-600 focus:text-gray-700 transition-colors"
+                    onClick={() => handleLanguageChange("en")}
+                    className="cursor-pointer flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors"
                   >
-                    <span className="text-lg">🔄</span>
-                    <span className="font-medium">Back to English</span>
+                    <span className="text-base">🔄</span>
+                    <span>Back to English</span>
                   </DropdownMenuItem>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* 3. Notifications */}
+            {/* Notifications */}
             <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-saBlueDarkHover/20"
-                onClick={() => setShowNotifications(!showNotifications)}
+              <button
+                className="relative p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setShowAnnouncements(false);
+                }}
+                aria-label="Notifications"
               >
-                <Bell className="h-5 w-5 text-white" />
+                <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
+                  <span className="absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-[10px] font-bold rounded-full text-white"
+                    style={{ background: "#eca209" }}>
                     {unreadCount > 9 ? "9+" : unreadCount}
-                  </Badge>
+                  </span>
                 )}
-              </Button>
+              </button>
             </div>
 
-            {/* 4. Announcements */}
+            {/* Announcements */}
             <div className="relative">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-saBlueDarkHover/20"
-                onClick={() => setShowAnnouncements(!showAnnouncements)}
-                title="View Announcements"
+              <button
+                className="relative p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
+                onClick={() => {
+                  setShowAnnouncements(!showAnnouncements);
+                  setShowNotifications(false);
+                }}
+                aria-label="Announcements"
               >
-                <Megaphone className="h-5 w-5 text-white" />
-                <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-red-600 rounded-full border-2 border-saBlue animate-pulse"></span>
-              </Button>
+                <Megaphone className="h-5 w-5" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2"
+                  style={{ background: "#eca209", borderColor: "#025AA3" }} />
+              </button>
             </div>
 
-            {/* 5. User Dropdown */}
+            {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 hover:bg-saBlueDarkHover/20 p-1 md:px-3"
-                >
-                  <Avatar className="h-8 w-8">
+                <button className="flex items-center gap-2 p-1 pl-1 pr-2 rounded-lg hover:bg-white/15 transition-colors ml-0.5">
+                  <Avatar className="h-8 w-8 ring-2 ring-white/30">
                     <AvatarImage
                       src={user?.profile_url}
-                      alt={user?.name || 'User'}
+                      alt={user?.name || "User"}
                       onError={(e) => {
-                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.style.display = "none";
                       }}
                     />
-                    <AvatarFallback className="bg-saVividOrange text-white">
+                    <AvatarFallback
+                      className="text-white text-xs font-bold"
+                      style={{ background: "#eca209" }}
+                    >
                       {user && getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="hidden lg:inline font-medium text-white">
+                  <span className="hidden md:inline text-sm font-semibold text-white max-w-[120px] truncate">
                     {user?.name}
                   </span>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
                 align="end"
-                className="w-56 bg-saBlue border border-saBlueLight text-white"
+                className="w-56 bg-white border border-slate-200 shadow-xl rounded-xl p-1.5"
               >
-                <div className="border-b border-saBlueLight">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col space-y-1 text-white p-2">
-                      <p className="text-sm font-medium">{user?.name}</p>
-                      <p className="text-xs text-saBlueLight">{user?.email}</p>
-                    </div>
-                  </DropdownMenuLabel>
+                {/* User info */}
+                <div className="px-3 py-2 mb-1 rounded-lg bg-saBlueSubtle">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
+                    {user?.name}
+                  </p>
+                  <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                  <span className="inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                    style={{ background: "#0276D3" }}>
+                    {user?.role}
+                  </span>
                 </div>
 
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard/profile")}
-                  className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue transition-colors text-sm"
                 >
-                  <User className="mr-2 h-4 w-4" /> Profile
+                  <User className="h-4 w-4" />
+                  Profile
                 </DropdownMenuItem>
 
                 <DropdownMenuItem
                   onClick={() => navigate("/dashboard/settings")}
-                  className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue transition-colors text-sm"
                 >
-                  <Settings className="mr-2 h-4 w-4" /> Settings
+                  <Settings className="h-4 w-4" />
+                  Settings
                 </DropdownMenuItem>
 
-                <div className="border-t border-saBlueLight my-1" />
+                <div className="border-t border-slate-100 my-1" />
 
                 <DropdownMenuItem
                   onClick={handleLogout}
-                  className="text-white cursor-pointer data-[highlighted]:bg-saBlueDarkHover/20 data-[highlighted]:text-white"
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-red-600 hover:bg-red-50 transition-colors text-sm"
                 >
-                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                  <LogOut className="h-4 w-4" />
+                  Logout
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -300,7 +344,6 @@ export default function Header({
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
       />
-
       <AnnouncementPanel
         isOpen={showAnnouncements}
         onClose={() => setShowAnnouncements(false)}

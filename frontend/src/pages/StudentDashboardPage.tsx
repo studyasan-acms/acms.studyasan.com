@@ -5,6 +5,7 @@ import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
+import PageHeader from '@/components/ui/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -17,13 +18,11 @@ import {
     Megaphone,
     PartyPopper,
     Activity,
-    Compass,
-    LayoutDashboard,
     ArrowRight,
     Trophy,
     Play,
     CheckCircle2,
-    Clock,
+    LayoutDashboard,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -336,8 +335,12 @@ export default function StudentDashboardPage() {
 
     if (analyticsLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            <div className="space-y-6 animate-pulse">
+                <div className="h-14 bg-slate-100 rounded-xl w-1/3" />
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[1,2,3,4].map(i => <div key={i} className="h-28 bg-slate-100 rounded-xl" />)}
+                </div>
+                <div className="h-72 bg-slate-100 rounded-xl" />
             </div>
         );
     }
@@ -353,12 +356,15 @@ export default function StudentDashboardPage() {
     ] : [];
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+        <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
             {/* Top Header */}
-            <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200/80 shadow-xs">
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Student Dashboard</h1>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">Track your learning progress, test series performance, and academic metrics</p>
-            </div>
+            <PageHeader
+                title="My Dashboard"
+                subtitle="Track your learning progress, test performance, and academic metrics"
+                icon={LayoutDashboard}
+                iconColor="bg-saBlueSubtle"
+                iconTextColor="text-saBlue"
+            />
 
             {/* 🎂 Birthday Banner */}
             {isBirthday && (
