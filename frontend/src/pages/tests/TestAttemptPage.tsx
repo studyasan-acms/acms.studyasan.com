@@ -258,13 +258,12 @@ function MatchTheFollowingInteractive({
               key={i}
               ref={(el) => { leftRefs.current[p.left] = el; }}
               onClick={() => handleLeftClick(p.left)}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${
-                isSelected
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all flex justify-between items-center ${isSelected
                   ? 'border-saBlue bg-blue-50 ring-2 ring-blue-200 shadow-md transform scale-[1.02]'
                   : isMatched
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-200 bg-white hover:border-saBlue'
-              }`}
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 bg-white hover:border-saBlue'
+                }`}
             >
               <span className="font-medium text-gray-800"><MathRenderer text={p.left} inline={true} /></span>
               {isMatched && (
@@ -294,13 +293,12 @@ function MatchTheFollowingInteractive({
               key={i}
               ref={(el) => { rightRefs.current[choice] = el; }}
               onClick={() => handleRightClick(choice)}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                selectedLeft && !isMatched
+              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedLeft && !isMatched
                   ? 'border-dashed border-blue-400 bg-blue-50/50 hover:bg-blue-100 hover:border-solid hover:border-saBlue'
                   : isMatched
-                  ? 'border-green-300 bg-green-50'
-                  : 'border-gray-200 bg-white opacity-90'
-              }`}
+                    ? 'border-green-300 bg-green-50'
+                    : 'border-gray-200 bg-white opacity-90'
+                }`}
             >
               <span className="font-medium text-gray-800"><MathRenderer text={choice} inline={true} /></span>
             </div>
@@ -337,6 +335,7 @@ export default function TestAttemptPage() {
   const [autoSubmitting, setAutoSubmitting] = useState(false);
   const [maxViolations, setMaxViolations] = useState(DEFAULT_MAX_VIOLATIONS);
   const [enforceWarningAttempts, setEnforceWarningAttempts] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const violationCountRef = useRef(0);
   const hasAutoSubmittedRef = useRef(false);
 
@@ -382,48 +381,55 @@ export default function TestAttemptPage() {
   useEffect(() => {
     if (attemptId) {
       fetchAttempt();
-      enterFullscreen();
     }
     return () => { exitFullscreen(); faceDetection.stopCamera(); };
   }, [attemptId]);
 
-  // ---- Timer ----
-  useEffect(() => {
-    if (!attempt || attempt.submitted_at) return;
-    const startTime = new Date(attempt.started_at).getTime();
-    const durationMs = attempt.test!.duration_minutes * 60 * 1000;
-    const timer = setInterval(() => {
-      const remaining = Math.max(0, durationMs - (Date.now() - startTime));
-      setTimeRemaining(Math.floor(remaining / 1000));
-      if (remaining <= 0) handleSubmitTest(true);
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [attempt]);
+  // ---- Fullscreen Helpers ----
+  const enterFullscreen = () => {
+    const docEl = document.documentElement as any;
+    const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.mozRequestFullScreen || docEl.msRequestFullscreen;
+    if (req) {
+      req.call(docEl).then(() => {
+        setIsFullscreen(true);
+      }).catch((err: any) => {
+        console.warn("Fullscreen request error:", err);
+      });
+    }
+  };
 
-  useEffect(() => {
-    const currentQuestionId = attempt?.test?.questions?.[currentQuestionIndex]?.id;
-    if (!currentQuestionId) return;
+  const exitFullscreen = () => {
+    const doc = document as any;
+    const exit = doc.exitFullscreen || doc.webkitExitFullscreen || doc.mozCancelFullScreen || doc.msExitFullscreen;
+    if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement) {
+      exit?.call(doc);
+      setIsFullscreen(false);
+    }
+  };
 
-    setVisitedQuestionIds((prev) => {
-      if (prev.has(currentQuestionId)) return prev;
-      const next = new Set(prev);
-      next.add(currentQuestionId);
-      return next;
-    });
-  }, [attempt, currentQuestionIndex]);
-
-  // ---- Screen Lock: Fullscreen Change ----
+  // ---- Screen Lock: Fullscreen Change Listener ----
   useEffect(() => {
-    const handle = () => {
-      if (!document.fullscreenElement && !attempt?.submitted_at) {
-        addViolation({ type: 'fullscreen_exit', timestamp: new Date(), message: 'Fullscreen exited.' });
-        // NOTE: We cannot automatically re-enter fullscreen here because it requires a user gesture.
-        // The user will have to manually re-enter or we can show a UI prompt if needed.
+    const checkFs = () => {
+      const isFs = Boolean(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement
+      );
+      setIsFullscreen(isFs);
+      if (!isFs && !attempt?.submitted_at && attempt && !attempt.is_practice) {
+        addViolation({ type: 'fullscreen_exit', timestamp: new Date(), message: 'Fullscreen exited — return to fullscreen mode.' });
       }
     };
-    document.addEventListener('fullscreenchange', handle);
-    return () => document.removeEventListener('fullscreenchange', handle);
+    document.addEventListener('fullscreenchange', checkFs);
+    document.addEventListener('webkitfullscreenchange', checkFs);
+    document.addEventListener('mozfullscreenchange', checkFs);
+    return () => {
+      document.removeEventListener('fullscreenchange', checkFs);
+      document.removeEventListener('webkitfullscreenchange', checkFs);
+      document.removeEventListener('mozfullscreenchange', checkFs);
+    };
   }, [attempt, addViolation]);
+
 
   // ---- Screen Lock: Visibility / Tab Switch ----
   useEffect(() => {
@@ -494,15 +500,8 @@ export default function TestAttemptPage() {
     return () => window.removeEventListener('beforeunload', handle);
   }, [attempt]);
 
-  // ---- Fullscreen Helpers ----
-  const enterFullscreen = () => {
-    document.documentElement.requestFullscreen?.().catch(console.error);
-  };
-  const exitFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen?.();
-  };
-
   // ---- Fetch ----
+
   const fetchAttempt = async () => {
     try {
       setLoading(true);
@@ -681,6 +680,27 @@ export default function TestAttemptPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 select-none" style={{ userSelect: 'none' }}>
+      {/* Fullscreen Gate Modal (Ensures proper browser user gesture to lock fullscreen) */}
+      {!isFullscreen && !attempt.is_practice && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center text-white select-none">
+          <div className="w-16 h-16 rounded-3xl bg-[#0276D3]/20 border border-[#0276D3]/40 flex items-center justify-center text-[#0276D3] mb-4">
+            <Shield className="w-8 h-8" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight mb-2">Secure Examination Mode</h2>
+          <p className="text-xs sm:text-sm text-slate-300 max-w-md mb-6 leading-relaxed">
+            {attempt.test.title}
+            <br />
+            Please click below to enter distraction-free fullscreen mode and begin your test.
+          </p>
+          <Button
+            onClick={enterFullscreen}
+            className="bg-[#0276D3] hover:bg-[#015bb5] text-white rounded-2xl px-8 py-3 text-sm font-bold shadow-xl shadow-[#0276D3]/30 flex items-center gap-2 transform active:scale-95 transition-all"
+          >
+            <Eye className="w-4 h-4" /> Enter Fullscreen & Start
+          </Button>
+        </div>
+      )}
+
       {/* Confirm Submit Modal */}
       <ConfirmModal
         open={confirmSubmit}
@@ -732,8 +752,18 @@ export default function TestAttemptPage() {
             {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
           </div>
 
-          {/* Right: Proctoring + Submit */}
+          {/* Right: Proctoring + Fullscreen + Submit */}
           <div className="flex items-center gap-2">
+            {/* Fullscreen Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={isFullscreen ? exitFullscreen : enterFullscreen}
+              className="hidden sm:flex rounded-xl text-xs font-semibold border-slate-200 text-slate-700 hover:bg-slate-100 items-center gap-1"
+            >
+              <span>{isFullscreen ? 'Exit Fullscreen' : '⛶ Fullscreen'}</span>
+            </Button>
+
             {/* Violation Counter */}
             {violations.length > 0 && (
               <button
@@ -772,6 +802,7 @@ export default function TestAttemptPage() {
           <div className="h-1 bg-saBlue transition-all duration-500" style={{ width: `${progress}%` }} />
         </div>
       </header>
+
 
       {/* ============== VIOLATION LOG ============== */}
       {showViolationLog && (
@@ -1060,19 +1091,19 @@ export default function TestAttemptPage() {
                         if (Array.isArray(rawOptions)) {
                           pairs = rawOptions.map(opt => {
                             if (typeof opt === 'string') {
-                              try { return JSON.parse(opt); } catch(e) { return {left: '', right: ''}; }
+                              try { return JSON.parse(opt); } catch (e) { return { left: '', right: '' }; }
                             }
                             return opt;
                           });
                         }
-                      } catch (e) {}
+                      } catch (e) { }
 
                       let currentAnswer: { left: string; right: string }[] = [];
                       try {
                         currentAnswer = answers[currentQuestion.id]
                           ? JSON.parse(answers[currentQuestion.id]!)
                           : [];
-                      } catch (e) {}
+                      } catch (e) { }
 
                       return (
                         <MatchTheFollowingInteractive

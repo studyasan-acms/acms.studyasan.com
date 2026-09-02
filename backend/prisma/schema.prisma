@@ -466,11 +466,19 @@ model StudentModuleProgress {
   @@map("student_module_progress")
 }
 
+enum TestType {
+  MOCK_TEST
+  PRACTICE
+  ASSESSMENT
+  CERTIFICATION
+}
+
 model Test {
   id                       Int           @id @default(autoincrement())
   title                    String
   description              String?
   instructions             String? // Default student instructions, editable by teachers/admins
+  test_type                TestType      @default(MOCK_TEST) // MOCK_TEST, PRACTICE, ASSESSMENT, CERTIFICATION
   subject_id               Int? // Optional - for subject-based tests
   test_series_id           Int? // Optional - for test series tests
   created_by               Int
@@ -496,6 +504,7 @@ model Test {
 
   @@map("tests")
 }
+
 
 enum QuestionType {
   MCQ

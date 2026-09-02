@@ -755,17 +755,31 @@ export default function StudentDetailPage() {
                 {/* Subjects */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Subjects ({student.enrollments?.filter(e => e.type === 'SUBJECT').length || 0})</h4>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openSubjectModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Subjects ({student.enrollments?.filter(e => e.type === 'SUBJECT').length || 0})
+                    </h4>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
                     {student.enrollments && student.enrollments.filter(e => e.type === 'SUBJECT').length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {student.enrollments.filter(e => e.type === 'SUBJECT').map(e => (
-                          <Badge key={e.id} variant="secondary" className="bg-white border-gray-200 text-gray-700 shadow-sm">
-                            {e.subject?.name}
-                          </Badge>
-                        ))}
+                        {student.enrollments.filter(e => e.type === 'SUBJECT').map(e => {
+                          const parts = [e.subject?.name];
+                          const className = (e.subject as any)?.class?.name || student.class?.name;
+                          const boardName = (e.subject as any)?.board?.name || student.board?.name;
+                          if (className) parts.push(className);
+                          if (boardName) parts.push(boardName);
+                          const formattedLabel = parts.filter(Boolean).join(' - ');
+
+                          return (
+                            <Badge
+                              key={e.id}
+                              variant="secondary"
+                              className="bg-white border-gray-200 text-gray-700 shadow-sm text-xs py-1 px-2.5 font-medium"
+                            >
+                              {formattedLabel}
+                            </Badge>
+                          );
+                        })}
                       </div>
                     ) : <p className="text-gray-300 text-xs italic">No subjects enrolled</p>}
                   </div>
@@ -774,8 +788,9 @@ export default function StudentDetailPage() {
                 {/* Test Series */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Test Series ({student.enrollments?.filter(e => e.type === 'TEST_SERIES').length || 0})</h4>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openTestSeriesModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Test Series ({student.enrollments?.filter(e => e.type === 'TEST_SERIES').length || 0})
+                    </h4>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
                     {(student.enrollments?.filter(e => e.type === 'TEST_SERIES') || []).length > 0 ? (
@@ -794,8 +809,9 @@ export default function StudentDetailPage() {
                 {/* Activity Groups */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Activity Groups ({student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP').length || 0})</h4>
-                    <Button size="icon" variant="ghost" className="h-6 w-6 rounded-full hover:bg-blue-50" onClick={openActivityGroupModal}><Plus className="w-3 h-3 text-saBlue" /></Button>
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Activity Groups ({student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP').length || 0})
+                    </h4>
                   </div>
                   <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
                     {(student.enrollments?.filter(e => e.type === 'ACTIVITY_GROUP') || []).length > 0 ? (
@@ -811,6 +827,7 @@ export default function StudentDetailPage() {
                   </div>
                 </div>
               </div>
+
             </CardContent>
           </Card>
         )}

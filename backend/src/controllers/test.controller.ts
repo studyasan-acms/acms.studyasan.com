@@ -161,6 +161,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       title,
       description,
       instructions,
+      test_type,
       subject_id,
       test_series_id,
       total_marks,
@@ -177,6 +178,7 @@ export const createTest = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     const userId = (req as any).user!.id;
+    const resolvedTestType = test_type || (is_certification ? 'CERTIFICATION' : 'MOCK_TEST');
 
     // Verify the subject exists if provided
     if (subject_id) {
@@ -210,6 +212,8 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         title,
         description,
         instructions: instructions?.trim() ? instructions.trim() : DEFAULT_TEST_INSTRUCTIONS,
+        // @ts-ignore
+        test_type: resolvedTestType,
         subject_id: subject_id || null,
         test_series_id: test_series_id || null,
         created_by: userId,
@@ -221,11 +225,12 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         available_from: new Date(available_from),
         available_until: new Date(available_until),
         is_published: is_published || false,
-        is_certification: is_certification || false,
+        is_certification: resolvedTestType === 'CERTIFICATION' || is_certification || false,
         has_negative_marking: !!has_negative_marking,
         // @ts-ignore - Prisma client needs generation
         is_autograded: is_autograded !== false, // default true
       },
+
       include: {
         subject: true,
         test_series: true,
@@ -568,7 +573,7 @@ export const deleteQuestion = async (req: AuthRequest, res: Response) => {
 // Get all tests (with filters)
 export const getTests = async (req: AuthRequest, res: Response) => {
   try {
-    const { subject_id, is_published } = req.query;
+    const { subject_id, is_published, test_type } = req.query;
     const userId = (req as any).user!.id;
     const userRole = (req as any).user!.role;
 
@@ -576,6 +581,10 @@ export const getTests = async (req: AuthRequest, res: Response) => {
 
     if (is_published !== undefined) {
       where.is_published = is_published === 'true';
+    }
+
+    if (test_type && typeof test_type === 'string' && test_type !== 'ALL') {
+      where.test_type = test_type;
     }
 
     if (userRole === 'STUDENT') {
@@ -846,6 +855,7 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       title,
       description,
       instructions,
+      test_type,
       subject_id,
       test_series_id,
       total_marks,
@@ -871,6 +881,14 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
     };
+
+    if (test_type !== undefined) {
+      data.test_type = test_type;
+      if (test_type === 'CERTIFICATION') {
+        data.is_certification = true;
+      }
+    }
+
 
     if (is_autograded !== undefined) {
       // @ts-ignore - Prisma client needs generation

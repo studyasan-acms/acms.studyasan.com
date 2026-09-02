@@ -746,11 +746,14 @@ export interface Question {
   updated_at: string;
 }
 
+export type TestType = 'MOCK_TEST' | 'PRACTICE' | 'ASSESSMENT' | 'CERTIFICATION';
+
 export interface Test {
   id: number;
   title: string;
   description: string | null;
   instructions?: string | null;
+  test_type?: TestType;
   subject_id: number | null;
   test_series_id?: number | null;
   created_by: number;
@@ -839,6 +842,7 @@ export interface CreateTestData {
   title: string;
   description?: string;
   instructions?: string;
+  test_type?: TestType;
   subject_id?: number | null;
   test_series_id?: number | null;
   total_marks: number;
@@ -858,6 +862,7 @@ export interface UpdateTestData {
   title?: string;
   description?: string;
   instructions?: string;
+  test_type?: TestType;
   subject_id?: number | null;
   test_series_id?: number | null;
   total_marks?: number;
@@ -865,6 +870,7 @@ export interface UpdateTestData {
   has_negative_marking?: boolean;
   is_autograded?: boolean;
   max_warning_attempts?: number;
+  enforce_warning_attempts?: boolean;
   duration_minutes?: number;
   available_from?: string;
   available_until?: string;

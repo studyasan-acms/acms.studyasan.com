@@ -657,9 +657,7 @@ export const gradeTestAttempt = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test attempt not found', 404);
     }
 
-    if (attempt.is_graded) {
-      return sendError(res, 'Test attempt already graded', 403);
-    }
+    // Allow regrading by authorized teachers/admins
 
     // Authorization check: Verify teacher can grade this test
     const user = await prisma.user.findUnique({

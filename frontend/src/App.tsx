@@ -408,7 +408,25 @@ function App() {
           }
         />
         <Route
+          path="/tests/:testId/attempt/:attemptId"
+          element={
+            <ProtectedRoute>
+              <TestAttemptPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/test-attempts/:attemptId/results"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<TestResultsPage />} />
+        </Route>
+        <Route
+          path="/tests/:testId/attempt/:attemptId/results"
           element={
             <ProtectedRoute>
               <DashboardLayout />
@@ -427,6 +445,17 @@ function App() {
         >
           <Route index element={<GradeTestPage />} />
         </Route>
+        <Route
+          path="/tests/:testId/attempt/:attemptId/grade"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<GradeTestPage />} />
+        </Route>
+
 
         {/* Classroom Route - Fullscreen video conferencing */}
         <Route

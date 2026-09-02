@@ -37,8 +37,14 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={() => (onClose || onCancel || onConfirm)?.()}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Animation */}
         <div className="w-40 mx-auto">
@@ -49,14 +55,14 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
           />
         </div>
 
-        {/* Title (from page) */}
+        {/* Title */}
         {title && (
-          <h2 className="text-xl font-semibold mt-4">
+          <h2 className="text-xl font-semibold mt-4 text-green-600">
             {title}
           </h2>
         )}
 
-        {/* Description (from page) */}
+        {/* Description */}
         {description && (
           <p className="text-gray-600 text-sm mt-2">
             {description}
@@ -70,17 +76,19 @@ const SuccessModal: React.FC<SuccessModalProps> = ({
             {/* Only render cancel button if provided */}
             {cancelText && (
               <button
-                onClick={onCancel}
+                type="button"
+                onClick={onCancel || onClose}
                 className="px-4 py-2 rounded-lg border border-gray-300 
-                           text-gray-700 hover:bg-gray-100"
+                           text-gray-700 hover:bg-gray-100 font-medium text-sm"
               >
                 {cancelText}
               </button>
             )}
 
             <button
-              onClick={onConfirm}
-              className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700"
+              type="button"
+              onClick={onConfirm || onClose}
+              className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 font-medium text-sm transition-colors"
             >
               {okText}
             </button>

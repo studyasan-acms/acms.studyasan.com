@@ -79,8 +79,14 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={() => (onClose || onCancel || onConfirm)?.()}
+    >
+      <div
+        className="bg-white rounded-xl shadow-lg p-6 w-full max-w-sm text-center animate-fade-in max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
 
         {/* Animation */}
         <div className="w-40 mx-auto">
@@ -88,7 +94,6 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
             src="/lottie/Error.json"
             autoplay
             loop={false}
-           
           />
         </div>
 
@@ -108,17 +113,19 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
 
             {cancelText && (
               <button
-                onClick={onCancel}
+                type="button"
+                onClick={onCancel || onClose}
                 className="px-4 py-2 rounded-lg border border-gray-300 
-                           text-gray-700 hover:bg-gray-100"
+                           text-gray-700 hover:bg-gray-100 font-medium text-sm"
               >
                 {cancelText}
               </button>
             )}
 
             <button
-              onClick={onConfirm}
-              className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+              type="button"
+              onClick={onConfirm || onClose}
+              className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 font-medium text-sm transition-colors"
             >
               {okText}
             </button>
@@ -131,3 +138,4 @@ const ErrorModal: React.FC<ErrorModalProps> = ({
 };
 
 export default ErrorModal;
+

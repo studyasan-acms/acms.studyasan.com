@@ -158,11 +158,17 @@ export const getStudentById = async (req: Request, res: Response) => {
         board: true,
         enrollments: {
           include: {
-            subject: true,
+            subject: {
+              include: {
+                class: true,
+                board: true,
+              },
+            },
             test_series: true,
             activity_group: true,
           },
         },
+
         address: { include: { country: true, state: true, city: true } },
         activity_enrollments: {
           include: {

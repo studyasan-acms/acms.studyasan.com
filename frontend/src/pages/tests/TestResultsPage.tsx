@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle, XCircle, Clock, Award, FileText, BookOpen } from 'lucide-react';
+import {
+  ArrowLeft,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Award,
+  FileText,
+  BookOpen,
+  Sparkles,
+  ClipboardList,
+  RotateCcw,
+  Download,
+} from 'lucide-react';
 import { testAttemptService } from '@/services/api';
 import type { TestAttempt } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -8,12 +20,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { usePageTitle } from "@/hooks/usePageTitle";
 import MathRenderer from "@/components/ui/MathRenderer";
+import { getEffectiveTestType } from "./TestsPage";
 
 export default function TestResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
   const [attempt, setAttempt] = useState<TestAttempt | null>(null);
-  usePageTitle(attempt ? `Test Results: ${attempt.test?.title || ""}` : "Test Results");
+  usePageTitle(attempt ? `Results: ${attempt.test?.title || ""}` : "Test Results");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -38,134 +51,197 @@ export default function TestResultsPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <div className="w-12 h-12 border-4 border-saBlue border-t-transparent rounded-full animate-spin"></div>
-        <p className="text-gray-500 font-medium">Loading results...</p>
+        <div className="w-8 h-8 border-3 border-[#0276D3]/20 border-t-[#0276D3] rounded-full animate-spin"></div>
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Loading results...</p>
       </div>
     );
   }
 
   if (!attempt) {
     return (
-      <div className="flex flex-col items-center justify-center py-32 space-y-4">
-        <FileText className="w-12 h-12 text-gray-300" />
-        <p className="text-gray-500 font-medium">Results not found</p>
-        <Button variant="link" className="text-saBlue" onClick={() => navigate('/tests')}>Back to Tests</Button>
+      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-slate-200 p-8 max-w-md mx-auto mt-10 text-center">
+        <FileText className="w-12 h-12 text-slate-300 mb-3" />
+        <p className="text-slate-600 font-semibold mb-4">Results not found.</p>
+        <Button
+          className="bg-[#0276D3] text-white hover:bg-[#015bb5] rounded-xl text-xs"
+          onClick={() => navigate('/tests')}
+        >
+          Back to Tests
+        </Button>
       </div>
     );
   }
 
-  const percentage = attempt.score ? (attempt.score / attempt.total_marks) * 100 : 0;
+  const percentage = attempt.score !== null && attempt.total_marks > 0
+    ? (attempt.score / attempt.total_marks) * 100
+    : 0;
+
+  const effectiveType = attempt.test ? getEffectiveTestType(attempt.test) : 'MOCK_TEST';
+  const isPassed = attempt.is_passed ?? (attempt.score !== null && attempt.test?.passing_marks ? attempt.score >= attempt.test.passing_marks : false);
 
   return (
     <div className="space-y-6 p-1 sm:p-4 pb-20 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/tests/my-results')} className="text-gray-500 hover:text-saBlue">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/tests/my-results')}
+            className="text-slate-500 hover:text-[#0276D3] hover:bg-slate-100 rounded-xl h-10 w-10 shrink-0"
+          >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 tracking-tight">Test Results</h1>
-            <p className="text-gray-500 text-sm mt-0.5">{attempt.test?.title}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Test Scorecard</h1>
+              {effectiveType === "PRACTICE" && (
+                <span className="text-[11px] font-bold text-[#eca209] bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Practice Set
+                </span>
+              )}
+              {effectiveType === "MOCK_TEST" && (
+                <span className="text-[11px] font-bold text-[#0276D3] bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Clock className="w-3 h-3" /> Mock Test
+                </span>
+              )}
+              {effectiveType === "ASSESSMENT" && (
+                <span className="text-[11px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <ClipboardList className="w-3 h-3" /> Assessment
+                </span>
+              )}
+              {effectiveType === "CERTIFICATION" && (
+                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                  <Award className="w-3 h-3" /> Certification
+                </span>
+              )}
+            </div>
+            <p className="text-slate-500 text-xs mt-1">{attempt.test?.title}</p>
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          {attempt.test && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/tests/${attempt.test?.id}`)}
+              className="rounded-xl text-xs border-slate-200 text-slate-700 hover:bg-slate-50 w-full sm:w-auto"
+            >
+              Test Overview
+            </Button>
+          )}
+          {effectiveType === "CERTIFICATION" && isPassed && (
+            <Button
+              size="sm"
+              onClick={() => navigate('/certificates')}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold w-full sm:w-auto flex items-center gap-1.5"
+            >
+              <Award className="w-3.5 h-3.5" /> View Certificate
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Practice Attempt Banner */}
-      {attempt.is_practice && (
-        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-center gap-3">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <BookOpen className="w-5 h-5 text-purple-600" />
+      {/* Practice Set Notice Banner */}
+      {(attempt.is_practice || effectiveType === 'PRACTICE') && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+          <div className="p-2 bg-amber-100 rounded-xl text-[#eca209]">
+            <Sparkles className="w-5 h-5" />
           </div>
-          <div>
-            <p className="font-semibold text-purple-800">Practice Attempt</p>
-            <p className="text-sm text-purple-600">This was a practice attempt. Scores are not counted towards your official results.</p>
+          <div className="text-xs text-amber-900">
+            <p className="font-bold">Self-Paced Practice Completed</p>
+            <p className="text-amber-700 mt-0.5">
+              This was a practice run for learning. Detailed answer keys and explanations are available below.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Score Banner */}
-      <Card className="shadow-sm border border-gray-100 rounded-xl overflow-hidden">
+      {/* Score Summary Card */}
+      <Card className="shadow-xs border border-slate-200 rounded-2xl overflow-hidden bg-white">
         <CardContent className="p-0">
           {!attempt.is_graded ? (
             <div className="text-center py-12 px-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-yellow-50 mb-4">
-                <Clock className="w-10 h-10 text-yellow-500" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 text-[#eca209] mb-3">
+                <Clock className="w-8 h-8" />
               </div>
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Grading in Progress</h3>
-              <p className="text-gray-500 max-w-md mx-auto">
-                Your test is being reviewed by a teacher. Results will be available once grading is complete.
+              <h3 className="text-lg font-bold text-slate-900 mb-1">Grading Under Review</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Your subjective submissions are being evaluated by your teacher. Your final scorecard will update shortly.
               </p>
             </div>
           ) : (
-            <div className={`text-center py-10 px-6 ${attempt.is_passed ? 'bg-gradient-to-b from-green-50 to-white' : 'bg-gradient-to-b from-red-50 to-white'}`}>
-              <div className={`inline-flex items-center justify-center w-20 h-20 rounded-full ${attempt.is_passed ? 'bg-green-100' : 'bg-red-100'} mb-4`}>
-                {attempt.is_passed ? (
-                  <CheckCircle className="w-10 h-10 text-green-500" />
+            <div className="text-center py-10 px-6">
+              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3 ${isPassed ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                {isPassed ? (
+                  <CheckCircle2 className="w-8 h-8" />
                 ) : (
-                  <XCircle className="w-10 h-10 text-red-500" />
+                  <XCircle className="w-8 h-8" />
                 )}
               </div>
-              <h3 className="text-2xl font-bold text-gray-800 mb-1">
-                {attempt.is_passed ? '🎉 Congratulations! You Passed' : 'You did not pass this time'}
+              <h3 className="text-2xl font-black text-slate-900 mb-1">
+                {isPassed ? 'Passed Successfully!' : 'Needs Improvement'}
               </h3>
-              <p className="text-gray-500 text-sm mb-6">
-                {attempt.is_passed ? 'Great job on this test!' : "Keep practicing, you'll get there!"}
+              <p className="text-xs text-slate-500 mb-6">
+                {isPassed
+                  ? (effectiveType === 'CERTIFICATION' ? 'Congratulations! You qualified for certification.' : 'Great job on this attempt!')
+                  : `Passing threshold was ${attempt.test?.passing_marks || 0} marks. Keep practicing!`}
               </p>
 
               <div className="flex items-center justify-center gap-6 mb-6">
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Your Score</p>
-                  <p className="text-4xl font-extrabold text-gray-800 mt-1">{attempt.score || 0}</p>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Your Score</p>
+                  <p className="text-3xl sm:text-4xl font-black text-[#0276D3] mt-0.5">{attempt.score || 0}</p>
                 </div>
-                <div className="text-3xl text-gray-300 font-light">/</div>
+                <div className="text-3xl text-slate-300 font-light">/</div>
                 <div className="text-center">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Total Marks</p>
-                  <p className="text-4xl font-extrabold text-gray-800 mt-1">{attempt.total_marks}</p>
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Marks</p>
+                  <p className="text-3xl sm:text-4xl font-black text-slate-800 mt-0.5">{attempt.total_marks}</p>
                 </div>
               </div>
 
               <div className="max-w-xs mx-auto">
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-2 overflow-hidden">
+                <div className="w-full bg-slate-100 rounded-full h-2.5 mb-2 overflow-hidden">
                   <div
-                    className={`h-3 rounded-full transition-all duration-1000 ${attempt.is_passed ? 'bg-green-500' : 'bg-red-500'}`}
-                    style={{ width: `${percentage}%` }}
+                    className={`h-2.5 rounded-full transition-all duration-700 ${isPassed ? 'bg-emerald-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
                   />
                 </div>
-                <p className="text-lg font-bold text-gray-700">{percentage.toFixed(1)}%</p>
+                <p className="text-sm font-bold text-slate-700">{percentage.toFixed(1)}% Accuracy</p>
               </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-6 border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 border-t border-slate-100 bg-slate-50/50 text-xs">
             <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Test</p>
-              <p className="font-semibold text-gray-800 mt-1">{attempt.test?.title}</p>
+              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Test Type</p>
+              <p className="font-bold text-slate-800 mt-0.5">{effectiveType.replace('_', ' ')}</p>
             </div>
             <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Submitted</p>
-              <p className="font-semibold text-gray-800 mt-1">
-                {attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString() : 'N/A'}
+              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Submitted Date</p>
+              <p className="font-bold text-slate-800 mt-0.5">
+                {attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString('en-IN') : 'In Progress'}
               </p>
             </div>
             {attempt.is_graded && attempt.grader && (
               <div className="text-center">
-                <p className="text-xs text-gray-500 uppercase tracking-wider">Graded By</p>
-                <p className="font-semibold text-gray-800 mt-1">{attempt.grader?.name}</p>
+                <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Reviewed By</p>
+                <p className="font-bold text-slate-800 mt-0.5">{attempt.grader?.name}</p>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Detailed Review */}
+      {/* Detailed Question Review */}
       {attempt.is_graded && attempt.answers && (
-        <Card className="shadow-sm border border-gray-100 rounded-xl overflow-hidden">
-          <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-4">
-            <CardTitle className="text-lg text-gray-800">Detailed Review</CardTitle>
+        <Card className="shadow-xs border border-slate-200 rounded-2xl overflow-hidden bg-white">
+          <CardHeader className="bg-slate-50/60 border-b border-slate-200 py-3.5 px-5">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-700">Detailed Answer Review</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-slate-100">
               {attempt.answers.map((answer, index) => {
                 const isSubQuestion = answer.question?.parent_id != null;
                 const parentQuestion = isSubQuestion ? attempt.test?.questions?.find((q: any) => q.id === answer.question?.parent_id) : null;
@@ -174,135 +250,74 @@ export default function TestResultsPage() {
                   <div key={answer.id} className="p-5">
                     {/* Render Case Study context for sub-questions */}
                     {isSubQuestion && parentQuestion && (
-                      <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-5">
-                        <div className="mb-1.5">
-                          <Badge className="bg-indigo-100 text-indigo-700 border-none">Case Study</Badge>
+                      <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3.5 mb-4 text-xs">
+                        <div className="mb-1">
+                          <span className="text-[10px] font-bold text-[#0276D3] uppercase tracking-wider">Case Study Context</span>
                         </div>
-                        <div className="text-sm text-gray-700">
+                        <div className="text-slate-700">
                           <MathRenderer text={parentQuestion.question_text} />
                         </div>
                       </div>
                     )}
                     
-                    <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <span className="flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 text-sm font-bold text-gray-600 flex-shrink-0 mt-0.5">
-                        {index + 1}
-                      </span>
-                      <p className="font-medium text-gray-800">
-                        <MathRenderer text={answer.question?.question_text || ''} />
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 ml-4 flex-shrink-0">
-                      <Badge variant={answer.is_correct ? 'default' : 'destructive'}>
-                        {answer.marks_obtained || 0} / {answer.question?.marks} marks
-                      </Badge>
-                      {answer.is_correct ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
-                      ) : (
-                        <XCircle className="w-5 h-5 text-red-500" />
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="ml-10 space-y-3">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Your Answer</p>
-                      {!answer.answer_text && !answer.answer_media_url ? (
-                        <p className="text-sm text-gray-400 italic">Not answered</p>
-                      ) : (
-                        <>
-                          {answer.answer_text && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
-                            <p className="text-sm text-gray-700">
-                              <MathRenderer text={answer.answer_text} />
-                            </p>
-                          )}
-                          {answer.answer_text && answer.question?.question_type === 'MATCH_THE_FOLLOWING' && (
-                            <div className="space-y-1 mt-2">
-                              {(() => {
-                                try {
-                                  let parsedStr = answer.answer_text || "[]";
-                                  if (parsedStr.startsWith('"') && parsedStr.endsWith('"')) {
-                                    parsedStr = JSON.parse(parsedStr);
-                                  }
-                                  let parsed = JSON.parse(parsedStr);
-                                  if (typeof parsed === 'string') {
-                                    parsed = JSON.parse(parsed);
-                                  }
-                                  if (Array.isArray(parsed)) {
-                                    parsed = parsed.map(opt => typeof opt === 'string' ? JSON.parse(opt) : opt);
-                                    return parsed.map((p: any, i: number) => (
-                                      <div key={i} className="flex gap-2 text-sm text-gray-700 bg-white p-2 rounded border border-gray-100 shadow-sm">
-                                        <span className="font-medium">{p?.left || 'Empty'}</span>
-                                        <span className="text-gray-400">→</span>
-                                        <span>{p?.right || 'Empty'}</span>
-                                      </div>
-                                    ));
-                                  }
-                                } catch (e) {
-                                  console.error("Error parsing student answer JSON", e, answer.answer_text);
-                                }
-                                return <p className="text-sm text-gray-700">{answer.answer_text}</p>;
-                              })()}
-                            </div>
-                          )}
-                          {answer.answer_media_url && answer.answer_media_type === 'image' && (
-                            <img src={answer.answer_media_url} alt="Your answer" className="mt-2 max-w-md max-h-48 rounded border" />
-                          )}
-                        </>
-                      )}
-                    </div>
-
-                    {answer.question?.question_type !== 'SHORT_ANSWER' && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                        <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
-                        <p className="text-sm text-green-700 font-medium">
-                          <MathRenderer text={answer.question?.correct_answer || ''} />
-                        </p>
-                      </div>
-                    )}
-                    {answer.question?.question_type === 'MATCH_THE_FOLLOWING' && (
-                      <div className="p-3 bg-green-50 rounded-lg border border-green-100">
-                        <p className="text-xs font-medium text-green-600 uppercase tracking-wider mb-1">Correct Answer</p>
-                        <div className="space-y-1 mt-2">
-                          {(() => {
-                            try {
-                              let parsedStr = answer.question?.options || "[]";
-                              if (typeof parsedStr === 'string' && parsedStr.startsWith('"') && parsedStr.endsWith('"')) {
-                                parsedStr = JSON.parse(parsedStr);
-                              }
-                              let parsed = typeof parsedStr === 'string' ? JSON.parse(parsedStr) : parsedStr;
-                              if (typeof parsed === 'string') {
-                                parsed = JSON.parse(parsed);
-                              }
-                              if (Array.isArray(parsed)) {
-                                parsed = parsed.map((opt: any) => {
-                                  if (typeof opt === 'string') {
-                                    try { return JSON.parse(opt); } catch(e) { return opt; }
-                                  }
-                                  return opt;
-                                });
-                                if (parsed.length > 0) {
-                                  return parsed.map((p: any, i: number) => (
-                                    <div key={i} className="flex gap-2 text-sm text-green-700 bg-green-100/50 p-2 rounded border border-green-200">
-                                      <span className="font-medium">{p?.left || 'Empty'}</span>
-                                      <span className="text-green-500/50">→</span>
-                                      <span>{p?.right || 'Empty'}</span>
-                                    </div>
-                                  ));
-                                }
-                              }
-                            } catch (e) {
-                              console.error("Error parsing correct answer JSON", e, answer.question?.options);
-                            }
-                            return <p className="text-sm text-green-700 font-medium">Data missing or failed to parse.</p>;
-                          })()}
+                    <div className="flex items-start justify-between mb-3 gap-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <span className="flex items-center justify-center w-7 h-7 rounded-xl bg-slate-100 text-xs font-bold text-slate-700 shrink-0 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <div className="font-semibold text-slate-900 text-sm">
+                          <MathRenderer text={answer.question?.question_text || ''} />
                         </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          answer.is_correct
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                            : 'bg-red-50 text-red-600 border-red-200'
+                        }`}>
+                          {answer.marks_obtained || 0} / {answer.question?.marks} marks
+                        </span>
+                        {answer.is_correct ? (
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="ml-10 space-y-2.5 text-xs">
+                      {/* Student's response */}
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Your Submission</p>
+                        {!answer.answer_text && !answer.answer_media_url ? (
+                          <p className="text-slate-400 italic">Not answered</p>
+                        ) : (
+                          <>
+                            {answer.answer_text && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
+                              <div className="text-slate-800 font-medium">
+                                <MathRenderer text={answer.answer_text} />
+                              </div>
+                            )}
+                            {answer.answer_media_url && (
+                              <img src={answer.answer_media_url} alt="Your answer" className="mt-2 max-w-md max-h-48 rounded-lg border" />
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {/* Correct answer */}
+                      {answer.question?.question_type !== 'SHORT_ANSWER' && (
+                        <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
+                          <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Correct Answer</p>
+                          <div className="text-emerald-900 font-bold">
+                            <MathRenderer text={answer.question?.correct_answer || ''} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )})}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

@@ -499,7 +499,10 @@ export const sendInvoiceEmailNotification = async (
               <!-- Footer -->
               <tr>
                 <td style="background-color: #f8fafc; padding: 25px 40px; text-align: center; border-top: 1px solid #e2e8f0;">
-                  <p style="color: #64748b; font-size: 12px; font-weight: 600; margin: 0 0 4px;">StudyAsan Learning Technologies</p>
+                  <p style="color: #64748b; font-size: 12px; font-weight: 700; margin: 0 0 4px;">StudyAsan Academy</p>
+                  <p style="color: #94a3b8; font-size: 11px; margin: 0 0 6px; line-height: 1.4;">
+                    Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126
+                  </p>
                   <p style="color: #94a3b8; font-size: 11px; margin: 0;">
                     For billing support or queries, contact billing@studyasan.com
                   </p>
