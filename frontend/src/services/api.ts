@@ -1045,9 +1045,17 @@ export const classSessionService = {
     return response.data;
   },
 
-  // Delete class session
-  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
-    const response = await api.delete(`/class-sessions/${id}`);
+  // Delete class session (with optional delete_recurring flag)
+  delete: async (id: number, options?: { delete_recurring?: boolean }): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/class-sessions/${id}`, {
+      params: options?.delete_recurring ? { delete_recurring: 'true' } : undefined,
+    });
+    return response.data;
+  },
+
+  // Bulk delete class sessions
+  bulkDelete: async (data: { session_ids: number[]; delete_recurring_series?: boolean }): Promise<{ success: boolean; data: { count: number }; message?: string }> => {
+    const response = await api.post('/class-sessions/bulk-delete', data);
     return response.data;
   },
 };

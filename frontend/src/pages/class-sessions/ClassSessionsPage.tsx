@@ -20,6 +20,10 @@ import {
   PlayCircle,
   ArrowUpDown,
   UserCheck,
+  CheckSquare,
+  Square,
+  AlertTriangle,
+  Pencil,
 } from 'lucide-react';
 import { classSessionService, subjectService, teacherService, attendanceService } from '@/services/api';
 import type { ClassSession, Subject, Teacher } from '@/types';
@@ -35,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
@@ -82,8 +87,16 @@ export default function ClassSessionsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  // Delete modal state
+  // Selection & Batch Delete State
+  const [selectedSessionIds, setSelectedSessionIds] = useState<number[]>([]);
+  const [bulkDeleteModalOpen, setBulkDeleteModalOpen] = useState(false);
+  const [bulkDeleteRecurringSeries, setBulkDeleteRecurringSeries] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Single Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [recurringDeleteModalOpen, setRecurringDeleteModalOpen] = useState(false);
+  const [recurringDeleting, setRecurringDeleting] = useState(false);
   const [sessionToDelete, setSessionToDelete] = useState<ClassSession | null>(null);
 
   // Debounce search
@@ -296,21 +309,62 @@ export default function ClassSessionsPage() {
     return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const handleDeleteSession = (session: ClassSession) => {
-    setSessionToDelete(session);
-    setDeleteModalOpen(true);
+  const handleToggleSelectSession = (id: number) => {
+    setSelectedSessionIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
   };
 
-  const confirmDeleteSession = async () => {
+  const handleSelectAllVisible = (allIds: number[]) => {
+    const allSelected = allIds.length > 0 && allIds.every((id) => selectedSessionIds.includes(id));
+    if (allSelected) {
+      setSelectedSessionIds((prev) => prev.filter((id) => !allIds.includes(id)));
+    } else {
+      setSelectedSessionIds((prev) => Array.from(new Set([...prev, ...allIds])));
+    }
+  };
+
+  const handleDeleteSession = (session: ClassSession) => {
+    setSessionToDelete(session);
+    if (session.is_recurring || session.recurrence_group_id) {
+      setRecurringDeleteModalOpen(true);
+    } else {
+      setDeleteModalOpen(true);
+    }
+  };
+
+  const confirmDeleteSession = async (deleteRecurring = false) => {
     if (!sessionToDelete) return;
     try {
-      await classSessionService.delete(sessionToDelete.id);
+      if (deleteRecurring) setRecurringDeleting(true);
+      await classSessionService.delete(sessionToDelete.id, { delete_recurring: deleteRecurring });
+      setSelectedSessionIds((prev) => prev.filter((id) => id !== sessionToDelete.id));
       fetchSessions();
     } catch (error) {
       console.error('Error deleting session:', error);
     } finally {
+      setRecurringDeleting(false);
       setDeleteModalOpen(false);
+      setRecurringDeleteModalOpen(false);
       setSessionToDelete(null);
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedSessionIds.length === 0) return;
+    try {
+      setBulkDeleting(true);
+      await classSessionService.bulkDelete({
+        session_ids: selectedSessionIds,
+        delete_recurring_series: bulkDeleteRecurringSeries,
+      });
+      setSelectedSessionIds([]);
+      fetchSessions();
+    } catch (error) {
+      console.error('Error in bulk delete:', error);
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteModalOpen(false);
     }
   };
 
@@ -344,11 +398,17 @@ export default function ClassSessionsPage() {
   const renderSessionCard = (session: ClassSession) => {
     const status = getSessionStatus(session);
     const isOnline = session.mode === 'ONLINE';
+    const isSelected = selectedSessionIds.includes(session.id);
 
     return (
       <Card
         key={session.id}
-        className="group hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden flex flex-col border border-slate-200/80 bg-white hover:border-saBlue/50"
+        className={cn(
+          "group hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden flex flex-col border bg-white relative",
+          isSelected
+            ? "border-saBlue ring-2 ring-saBlue/20 shadow-md"
+            : "border-slate-200/80 hover:border-saBlue/50"
+        )}
       >
         {/* Header Banner */}
         <div className={cn(
@@ -358,14 +418,33 @@ export default function ClassSessionsPage() {
             : "bg-gradient-to-r from-saVividOrange/10 via-saVividOrange/5 to-transparent border-b border-saVividOrange/10"
         )}>
           <div className="flex items-start justify-between gap-2 mb-2">
-            <div className={cn(
-              "p-2.5 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-sm",
-              isOnline
-                ? "bg-saBlue text-white"
-                : "bg-saVividOrange text-white"
-            )}>
-              {isOnline ? <Video className="w-4 h-4" /> : <BookOpen className="w-4 h-4" />}
-              <span>{session.mode}</span>
+            <div className="flex items-center gap-2">
+              {canDeleteSession && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleSelectSession(session.id);
+                  }}
+                  className="p-1 rounded-lg hover:bg-white/80 transition-colors"
+                  title={isSelected ? 'Deselect Session' : 'Select Session'}
+                >
+                  {isSelected ? (
+                    <CheckSquare className="w-5 h-5 text-saBlue fill-saBlue/10" />
+                  ) : (
+                    <Square className="w-5 h-5 text-slate-400 hover:text-saBlue" />
+                  )}
+                </button>
+              )}
+              <div className={cn(
+                "p-2 rounded-xl font-bold flex items-center gap-1.5 text-xs shadow-sm",
+                isOnline
+                  ? "bg-saBlue text-white"
+                  : "bg-saVividOrange text-white"
+              )}>
+                {isOnline ? <Video className="w-3.5 h-3.5" /> : <BookOpen className="w-3.5 h-3.5" />}
+                <span>{session.mode}</span>
+              </div>
             </div>
             <div className="flex flex-col items-end gap-1">
               <Badge className={cn("text-[10px] font-bold border-0 px-2 py-0.5 rounded-full shadow-sm", status.color)}>
@@ -468,7 +547,7 @@ export default function ClassSessionsPage() {
                 }}
                 title="Edit Session"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <Pencil className="w-3.5 h-3.5" />
               </Button>
             )}
 
@@ -508,11 +587,23 @@ export default function ClassSessionsPage() {
       <div className="space-y-6">
         <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <h3 className="text-base font-bold text-slate-900">{selectedDay} Schedule</h3>
               <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold">
                 {currentSessions.length} Classes
               </Badge>
+              {canDeleteSession && currentSessions.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSelectAllVisible(currentSessions.map((s) => s.id))}
+                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg border-slate-200 text-slate-600 hover:text-saBlue hover:bg-saBlue/5"
+                >
+                  {currentSessions.every((s) => selectedSessionIds.includes(s.id))
+                    ? 'Deselect Day'
+                    : 'Select All on Day'}
+                </Button>
+              )}
             </div>
             <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
               <Button
@@ -859,12 +950,156 @@ export default function ClassSessionsPage() {
         message={`Are you sure you want to delete "${sessionToDelete?.subject?.name}"? This action cannot be undone.`}
         confirmText="Yes, Delete"
         cancelText="No, Keep It"
-        onConfirm={confirmDeleteSession}
+        onConfirm={() => confirmDeleteSession(false)}
         onCancel={() => {
           setDeleteModalOpen(false);
           setSessionToDelete(null);
         }}
       />
+
+      {/* Recurring Session Delete Modal */}
+      {recurringDeleteModalOpen && sessionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 animate-in fade-in duration-200 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
+                <RefreshCw className="w-6 h-6 animate-spin-slow" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Delete Recurring Class</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  <strong>"{sessionToDelete.subject?.name}"</strong> is part of a recurring schedule. How would you like to proceed?
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600 space-y-1">
+              <p className="font-semibold text-slate-700">Scheduled Date & Time:</p>
+              <p>{new Date(sessionToDelete.start_time).toLocaleDateString()} at {formatTime(sessionToDelete.start_time)} – {formatTime(sessionToDelete.end_time)}</p>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <Button
+                type="button"
+                disabled={recurringDeleting}
+                onClick={() => confirmDeleteSession(false)}
+                className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs justify-between px-4 border border-slate-200"
+              >
+                <span>Delete This Session Only</span>
+                <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-md font-semibold text-slate-700">Single</span>
+              </Button>
+
+              <Button
+                type="button"
+                disabled={recurringDeleting}
+                onClick={() => confirmDeleteSession(true)}
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs justify-between px-4 shadow-md shadow-red-600/20"
+              >
+                <span>{recurringDeleting ? 'Deleting Series...' : 'Delete Entire Recurring Series'}</span>
+                <span className="text-[10px] bg-red-700 px-2 py-0.5 rounded-md font-semibold text-red-100">All Dates</span>
+              </Button>
+
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setRecurringDeleteModalOpen(false);
+                  setSessionToDelete(null);
+                }}
+                className="w-full h-9 text-slate-500 hover:text-slate-800 text-xs rounded-xl font-semibold"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Modal */}
+      {bulkDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 animate-in fade-in duration-200 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="flex items-start gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Batch Delete Classes</h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  You are about to delete <strong>{selectedSessionIds.length}</strong> selected class session{selectedSessionIds.length > 1 ? 's' : ''}.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-amber-900">Delete recurring series</p>
+                <p className="text-[11px] text-amber-700">If any selected classes are recurring, delete their entire series as well.</p>
+              </div>
+              <Switch
+                checked={bulkDeleteRecurringSeries}
+                onCheckedChange={setBulkDeleteRecurringSeries}
+              />
+            </div>
+
+            <p className="text-[11px] text-red-600 font-medium">* This action is permanent and cannot be undone.</p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setBulkDeleteModalOpen(false)}
+                className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={confirmBulkDelete}
+                className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-600/20"
+              >
+                {bulkDeleting ? 'Deleting...' : `Delete ${selectedSessionIds.length} Classes`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Batch Action Bar */}
+      {canDeleteSession && selectedSessionIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-700 animate-in slide-in-from-bottom-5 duration-300">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-saBlue text-white text-xs font-bold flex items-center justify-center">
+              {selectedSessionIds.length}
+            </div>
+            <span className="text-xs font-bold">Classes Selected</span>
+          </div>
+
+          <div className="h-4 w-px bg-slate-700" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelectedSessionIds([])}
+            className="h-8 text-xs text-slate-300 hover:text-white hover:bg-slate-800 rounded-xl"
+          >
+            Clear Selection
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => {
+              setBulkDeleteRecurringSeries(false);
+              setBulkDeleteModalOpen(true);
+            }}
+            className="h-8 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold gap-1.5 shadow-lg shadow-red-600/30"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            Delete Selected ({selectedSessionIds.length})
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

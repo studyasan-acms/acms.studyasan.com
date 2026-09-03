@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { sendNotificationAllChannels } from '../services/notification.service.js';
@@ -7,7 +8,8 @@ import type { AuthRequest } from '../types/index.js';
 import { googleMeetService } from '../utils/googleMeet.js';
 
 const prisma = new PrismaClient();
-const MAX_SESSION_DURATION_HOURS = 8;
+const MAX_CLASS_DURATION_MINUTES = 120; // Maximum allowed class duration is 2 hours (120 minutes)
+const MAX_SESSION_DURATION_HOURS = 2;
 
 // Helper function to create notifications for enrolled students
 async function notifyEnrolledStudents(
@@ -422,12 +424,17 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Location is required for offline sessions', 400);
     }
 
-    // Validate time
+    // Validate time and duration (Max 2 hours)
     const startTime = new Date(start_time);
     const endTime = new Date(end_time);
 
     if (startTime >= endTime) {
       return sendError(res, 'End time must be after start time', 400);
+    }
+
+    const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+    if (durationMinutes > MAX_CLASS_DURATION_MINUTES) {
+      return sendError(res, `Single class session duration cannot exceed 2 hours (${MAX_CLASS_DURATION_MINUTES} minutes). Your duration: ${Math.round(durationMinutes)} mins.`, 400);
     }
 
     // Get teacher info
@@ -495,11 +502,12 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // If it's recurring, generate multiple instances
+    // If it's recurring, generate multiple instances grouped by a recurrence_group_id
     if (is_recurring && recurrence_rule) {
       const instances = generateRecurringInstances(startTime, endTime, recurrence_rule);
+      const recurrenceGroupId = `rec_${uuidv4()}`;
 
-      // Create all instances (including the first one which is already in the array)
+      // Create all instances
       const sessionData = instances.map((inst) => ({
         teacher_id,
         subject_id,
@@ -514,6 +522,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         end_time: inst.endTime,
         is_recurring: true,
         recurrence_rule,
+        recurrence_group_id: recurrenceGroupId,
         created_by: req.user!.id,
       }));
 
@@ -524,8 +533,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       // Get the first session to return as response
       const firstSession = await prisma.classSession.findFirst({
         where: {
-          teacher_id,
-          subject_id,
+          recurrence_group_id: recurrenceGroupId,
           start_time: startTime,
         },
         include: {
@@ -558,10 +566,10 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         instances
       );
 
-      return sendSuccess(res, firstSession, 'Recurring class sessions created successfully', 201);
+      return sendSuccess(res, firstSession, `Recurring class series (${instances.length} sessions) created successfully`, 201);
     }
 
-    // Single session creation (original logic)
+    // Single session creation
     const session = await prisma.classSession.create({
       data: {
         teacher_id,
@@ -630,7 +638,16 @@ export const updateClassSession = async (req: Request, res: Response) => {
       end_time,
       is_recurring,
       recurrence_rule,
+      apply_to_all_recurring,
     } = req.body;
+
+    const existingSession = await prisma.classSession.findUnique({
+      where: { id: parseInt(id!) },
+    });
+
+    if (!existingSession) {
+      return sendError(res, 'Class session not found', 404);
+    }
 
     // Validate time if provided
     if (start_time && end_time) {
@@ -639,6 +656,11 @@ export const updateClassSession = async (req: Request, res: Response) => {
 
       if (startTime >= endTime) {
         return sendError(res, 'End time must be after start time', 400);
+      }
+
+      const durationMinutes = (endTime.getTime() - startTime.getTime()) / (1000 * 60);
+      if (durationMinutes > MAX_CLASS_DURATION_MINUTES) {
+        return sendError(res, `Single class session duration cannot exceed 2 hours (${MAX_CLASS_DURATION_MINUTES} minutes). Your duration: ${Math.round(durationMinutes)} mins.`, 400);
       }
     }
 
@@ -655,6 +677,73 @@ export const updateClassSession = async (req: Request, res: Response) => {
     if (end_time !== undefined) updateData.end_time = new Date(end_time);
     if (is_recurring !== undefined) updateData.is_recurring = is_recurring;
     if (recurrence_rule !== undefined) updateData.recurrence_rule = recurrence_rule;
+
+    // If admin/teacher wants to apply changes across all recurring sessions in the series
+    if (apply_to_all_recurring && (existingSession.recurrence_group_id || existingSession.is_recurring)) {
+      const whereFilter = existingSession.recurrence_group_id
+        ? { recurrence_group_id: existingSession.recurrence_group_id }
+        : {
+            teacher_id: existingSession.teacher_id,
+            subject_id: existingSession.subject_id,
+            is_recurring: true,
+          };
+
+      const commonUpdateData: any = { ...updateData };
+      delete commonUpdateData.start_time;
+      delete commonUpdateData.end_time;
+
+      if (start_time && end_time) {
+        const newStartTime = new Date(start_time);
+        const newEndTime = new Date(end_time);
+        const durationMs = newEndTime.getTime() - newStartTime.getTime();
+
+        const matchingSessions = await prisma.classSession.findMany({
+          where: whereFilter,
+        });
+
+        for (const s of matchingSessions) {
+          const instanceStart = new Date(s.start_time);
+          instanceStart.setUTCHours(newStartTime.getUTCHours(), newStartTime.getUTCMinutes(), newStartTime.getUTCSeconds(), 0);
+          const instanceEnd = new Date(instanceStart.getTime() + durationMs);
+
+          await prisma.classSession.update({
+            where: { id: s.id },
+            data: {
+              ...commonUpdateData,
+              start_time: instanceStart,
+              end_time: instanceEnd,
+            },
+          });
+        }
+      } else {
+        await prisma.classSession.updateMany({
+          where: whereFilter,
+          data: commonUpdateData,
+        });
+      }
+
+      const updated = await prisma.classSession.findUnique({
+        where: { id: parseInt(id!) },
+        include: {
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                },
+              },
+            },
+          },
+          subject: true,
+          class: true,
+          board: true,
+        },
+      });
+
+      return sendSuccess(res, updated, 'All recurring sessions in series updated successfully');
+    }
 
     const session = await prisma.classSession.update({
       where: { id: parseInt(id!) },
@@ -686,12 +775,80 @@ export const updateClassSession = async (req: Request, res: Response) => {
 export const deleteClassSession = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const deleteRecurring = req.query.delete_recurring === 'true' || req.body?.delete_recurring === true;
+
+    const session = await prisma.classSession.findUnique({
+      where: { id: parseInt(id!) },
+    });
+
+    if (!session) {
+      return sendError(res, 'Class session not found', 404);
+    }
+
+    if (deleteRecurring && (session.recurrence_group_id || session.is_recurring)) {
+      const whereFilter = session.recurrence_group_id
+        ? { recurrence_group_id: session.recurrence_group_id }
+        : {
+            teacher_id: session.teacher_id,
+            subject_id: session.subject_id,
+            is_recurring: true,
+          };
+
+      const deleted = await prisma.classSession.deleteMany({
+        where: whereFilter,
+      });
+
+      return sendSuccess(res, null, `Deleted ${deleted.count} recurring sessions in series successfully`);
+    }
 
     await prisma.classSession.delete({
       where: { id: parseInt(id!) },
     });
 
     sendSuccess(res, null, 'Class session deleted successfully');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+
+// Batch delete class sessions
+export const bulkDeleteClassSessions = async (req: Request, res: Response) => {
+  try {
+    const { session_ids, delete_recurring_series } = req.body;
+
+    if (!Array.isArray(session_ids) || session_ids.length === 0) {
+      return sendError(res, 'Array of session IDs is required', 400);
+    }
+
+    const ids = session_ids.map((id: any) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
+
+    if (delete_recurring_series) {
+      const selectedSessions = await prisma.classSession.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, recurrence_group_id: true, is_recurring: true },
+      });
+
+      const recurrenceGroupIds = selectedSessions
+        .map((s) => s.recurrence_group_id)
+        .filter(Boolean) as string[];
+
+      const whereOr: any[] = [{ id: { in: ids } }];
+      if (recurrenceGroupIds.length > 0) {
+        whereOr.push({ recurrence_group_id: { in: recurrenceGroupIds } });
+      }
+
+      const deleted = await prisma.classSession.deleteMany({
+        where: { OR: whereOr },
+      });
+
+      return sendSuccess(res, { count: deleted.count }, `Successfully deleted ${deleted.count} sessions`);
+    }
+
+    const deleted = await prisma.classSession.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    sendSuccess(res, { count: deleted.count }, `Successfully deleted ${deleted.count} sessions`);
   } catch (error: any) {
     sendError(res, error.message, 500);
   }

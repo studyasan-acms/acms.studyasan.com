@@ -361,6 +361,7 @@ model ClassSession {
   end_time               DateTime
   is_recurring           Boolean                  @default(false)
   recurrence_rule        Json?
+  recurrence_group_id    String?
   created_by             Int
   created_at             DateTime                 @default(now())
   updated_at             DateTime                 @updatedAt

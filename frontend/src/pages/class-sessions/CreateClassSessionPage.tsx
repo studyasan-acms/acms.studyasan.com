@@ -85,6 +85,35 @@ export default function CreateClassSessionPage() {
     endDate: '',
     count: undefined,
   });
+  const [applyToAllRecurring, setApplyToAllRecurring] = useState(true);
+
+  const getDurationMinutes = (startStr: string, endStr: string) => {
+    if (!startStr || !endStr) return 0;
+    const s = new Date(startStr).getTime();
+    const e = new Date(endStr).getTime();
+    if (isNaN(s) || isNaN(e)) return 0;
+    return (e - s) / (1000 * 60);
+  };
+
+  const handleStartTimeChange = (val: string) => {
+    setFormData((prev) => {
+      const next = { ...prev, start_time: val };
+      if (val) {
+        const sDate = new Date(val);
+        if (!isNaN(sDate.getTime())) {
+          // Auto-set end time to 1 hour later
+          const eDate = new Date(sDate.getTime() + 60 * 60 * 1000);
+          const year = eDate.getFullYear();
+          const month = String(eDate.getMonth() + 1).padStart(2, '0');
+          const day = String(eDate.getDate()).padStart(2, '0');
+          const hours = String(eDate.getHours()).padStart(2, '0');
+          const minutes = String(eDate.getMinutes()).padStart(2, '0');
+          next.end_time = `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+      }
+      return next;
+    });
+  };
 
   const isAdmin = user?.role === 'ADMIN';
 
@@ -294,6 +323,21 @@ export default function CreateClassSessionPage() {
           description: 'Please set the session start and end times.',
         });
       }
+      const durMins = getDurationMinutes(formData.start_time, formData.end_time);
+      if (durMins <= 0) {
+        return setErrorModal({
+          open: true,
+          title: 'Invalid Timing',
+          description: 'End time must be after start time.',
+        });
+      }
+      if (durMins > 120) {
+        return setErrorModal({
+          open: true,
+          title: 'Duration Exceeds 2 Hours',
+          description: `A single class session cannot exceed 2 hours (120 minutes). Your current selection is ${Math.round(durMins)} minutes. For recurring classes, set the daily lecture duration here and pick the end date in the next step.`,
+        });
+      }
       if (formData.mode === 'OFFLINE' && !formData.location) {
         return setErrorModal({
           open: true,
@@ -323,6 +367,15 @@ export default function CreateClassSessionPage() {
       });
     }
 
+    const finalDurMins = getDurationMinutes(formData.start_time, formData.end_time);
+    if (finalDurMins <= 0 || finalDurMins > 120) {
+      return setErrorModal({
+        open: true,
+        title: 'Invalid Class Duration',
+        description: 'Class duration must be between 1 minute and 2 hours (120 minutes).',
+      });
+    }
+
     if (formData.mode === 'OFFLINE' && !formData.location) {
       return setErrorModal({
         open: true,
@@ -341,7 +394,7 @@ export default function CreateClassSessionPage() {
         return new Date(localDateTimeString).toISOString();
       };
 
-      const dataToSubmit = {
+      const dataToSubmit: any = {
         ...formData,
         start_time: convertToUTC(formData.start_time),
         end_time: convertToUTC(formData.end_time),
@@ -349,12 +402,15 @@ export default function CreateClassSessionPage() {
       };
 
       if (isEditing && id) {
+        dataToSubmit.apply_to_all_recurring = applyToAllRecurring;
         await classSessionService.update(parseInt(id), dataToSubmit);
 
         setSuccessModal({
           open: true,
           title: 'Session Updated!',
-          description: 'The class session was successfully updated.',
+          description: applyToAllRecurring && formData.is_recurring
+            ? 'All sessions in this recurring series were successfully updated.'
+            : 'The class session was successfully updated.',
         });
 
       } else {
@@ -673,22 +729,59 @@ export default function CreateClassSessionPage() {
                         type="datetime-local"
                         className="h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-saBlue/5"
                         value={formData.start_time}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, start_time: e.target.value }))}
+                        onChange={(e) => handleStartTimeChange(e.target.value)}
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest ml-1'>End Date & Time *</Label>
+                      <Label className='text-[10px] font-semibold text-gray-400 uppercase tracking-widest ml-1'>End Date & Time * (Max 2 Hours)</Label>
                       <Input
                         type="datetime-local"
-                        className="h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 focus:ring-saBlue/5"
+                        className={`h-11 rounded-xl border-gray-200 bg-gray-50/30 focus:bg-white text-sm font-medium focus:ring-2 ${
+                          getDurationMinutes(formData.start_time, formData.end_time) > 120
+                            ? 'border-red-400 focus:ring-red-200 text-red-600'
+                            : 'focus:ring-saBlue/5'
+                        }`}
                         value={formData.end_time}
                         onChange={(e) => setFormData((prev) => ({ ...prev, end_time: e.target.value }))}
                         required
                       />
                     </div>
                   </div>
+
+                  {/* Duration badge and recurring note */}
+                  {formData.start_time && formData.end_time && (
+                    <div className="space-y-2">
+                      {(() => {
+                        const dur = getDurationMinutes(formData.start_time, formData.end_time);
+                        if (dur <= 0) {
+                          return (
+                            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-semibold flex items-center gap-2">
+                              <span>⚠️ End time must be after start time.</span>
+                            </div>
+                          );
+                        }
+                        if (dur > 120) {
+                          return (
+                            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs font-semibold flex items-center justify-between">
+                              <span>🚫 Duration: {Math.floor(dur / 60)}h {Math.round(dur % 60)}m — Exceeds max 2-hour limit!</span>
+                              <span className="text-[10px] bg-red-200 text-red-800 px-2 py-0.5 rounded-full font-bold">Max 2h</span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-center justify-between">
+                            <span>⏱️ Class Duration: {Math.floor(dur / 60)}h {Math.round(dur % 60)}m</span>
+                            <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-0.5 rounded-full font-bold">Valid (≤ 2 hrs)</span>
+                          </div>
+                        );
+                      })()}
+                      <p className="text-[11px] text-gray-500 italic ml-1">
+                        💡 <strong>Note:</strong> Set the daily class duration here (max 2 hours). For recurring classes, series end dates are configured in the next step.
+                      </p>
+                    </div>
+                  )}
 
                   {formData.mode === 'ONLINE' && (
                     <div className="space-y-4">
@@ -760,6 +853,24 @@ export default function CreateClassSessionPage() {
                       />
                     </div>
                   </div>
+
+                  {isEditing && formData.is_recurring && (
+                    <div className="p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
+                          <RefreshCw className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-amber-900">Apply changes to all recurring sessions</p>
+                          <p className="text-[11px] text-amber-700">When enabled, updating time or details applies to the entire recurring series.</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={applyToAllRecurring}
+                        onCheckedChange={(checked: boolean) => setApplyToAllRecurring(checked)}
+                      />
+                    </div>
+                  )}
 
                   <div className={`p-5 rounded-2xl border transition-all duration-300 ${formData.is_recurring ? 'bg-saBlue/5 border-saBlue/20' : 'border-gray-100 bg-gray-50/50'}`}>
                     <div className="flex items-center justify-between">

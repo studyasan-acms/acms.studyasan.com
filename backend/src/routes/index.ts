@@ -181,6 +181,7 @@ router.get('/class-sessions/weekly', authenticate, classSessionController.getWee
 router.get('/class-sessions/:id', authenticate, classSessionController.getClassSessionById);
 router.get('/class-sessions/:id/can-join', authenticate, classSessionController.canJoinSession);
 router.post('/class-sessions', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.createClassSession);
+router.post('/class-sessions/bulk-delete', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.bulkDeleteClassSessions);
 router.put('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.updateClassSession);
 router.delete('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.deleteClassSession);
 

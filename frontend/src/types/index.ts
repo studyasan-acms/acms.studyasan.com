@@ -524,6 +524,7 @@ export interface ClassSession {
   end_time: string;
   is_recurring: boolean;
   recurrence_rule: RecurrenceRule | null;
+  recurrence_group_id?: string | null;
   created_by: number;
   created_at: string;
   updated_at: string;
@@ -616,6 +617,7 @@ export interface UpdateClassSessionData {
   end_time?: string;
   is_recurring?: boolean;
   recurrence_rule?: RecurrenceRule | null;
+  apply_to_all_recurring?: boolean;
 }
 
 export interface WeeklyScheduleResponse {
