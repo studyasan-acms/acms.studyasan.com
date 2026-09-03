@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video, MapPin, RefreshCw, Info, BookOpen, Calendar, Settings, ChevronRight, Check } from 'lucide-react';
-import { classSessionService, subjectService, teacherService, classService, boardService, profileService } from '@/services/api';
-import type { Subject, Teacher, Class, Board, CreateClassSessionData, ClassSession, RecurrenceRule } from '@/types';
+import { classSessionService, subjectService, teacherService, classService, boardService, profileService, sectionService } from '@/services/api';
+import type { Subject, Teacher, Class, Board, CreateClassSessionData, ClassSession, RecurrenceRule, Section } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -45,6 +45,8 @@ export default function CreateClassSessionPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [classes, setClasses] = useState<Class[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
 
   // 🔥 Modal States
   const [errorModal, setErrorModal] = useState({
@@ -65,6 +67,7 @@ export default function CreateClassSessionPage() {
     subject_id: 0,
     class_id: null,
     board_id: null,
+    section_id: null,
     mode: 'ONLINE',
     location: null,
     meeting_link: null,
@@ -186,6 +189,7 @@ export default function CreateClassSessionPage() {
           subject_id: session.subject_id,
           class_id: session.class_id,
           board_id: session.board_id,
+          section_id: session.section_id || null,
           mode: session.mode,
           location: session.location,
           meeting_link: session.meeting_link,
@@ -199,12 +203,16 @@ export default function CreateClassSessionPage() {
 
         if (session.recurrence_rule) setRecurrenceRule(session.recurrence_rule);
         
-        // Fetch teachers for the existing subject
+        // Fetch teachers and sections for the existing subject
         try {
-          const res = await teacherService.getBySubject(session.subject_id);
-          setTeachers(res.data);
+          const [tRes, sRes] = await Promise.all([
+            teacherService.getBySubject(session.subject_id),
+            sectionService.getAll({ subject_id: session.subject_id }),
+          ]);
+          setTeachers(tRes.data);
+          setSections(sRes.data?.data || sRes.data || []);
         } catch (err) {
-          console.error("Failed to fetch teachers for subject", err);
+          console.error("Failed to fetch teachers/sections for subject", err);
         }
       }
     } catch (error) {
@@ -247,7 +255,8 @@ export default function CreateClassSessionPage() {
   // 🔥 Handle Subject Selection change
   const handleSubjectChange = async (subjectId: number) => {
     if (!subjectId) {
-      setFormData(prev => ({ ...prev, subject_id: 0, class_id: null, board_id: null }));
+      setFormData(prev => ({ ...prev, subject_id: 0, class_id: null, board_id: null, section_id: null }));
+      setSections([]);
       return;
     }
 
@@ -257,14 +266,21 @@ export default function CreateClassSessionPage() {
         ...prev,
         subject_id: subjectId,
         class_id: subject.class_id,
-        board_id: subject.board_id
+        board_id: subject.board_id,
+        section_id: null, // Reset section on subject change
       }));
 
-      // Fetch teachers for this subject
+      // Fetch teachers and sections for this subject
       try {
-        const res = await teacherService.getBySubject(subjectId);
-        const subjectTeachers = res.data;
+        setSectionsLoading(true);
+        const [tRes, sRes] = await Promise.all([
+          teacherService.getBySubject(subjectId),
+          sectionService.getAll({ subject_id: subjectId }),
+        ]);
+
+        const subjectTeachers = tRes.data;
         setTeachers(subjectTeachers);
+        setSections(sRes.data?.data || sRes.data || []);
 
         // Auto-select if only one teacher
         if (subjectTeachers.length === 1) {
@@ -277,7 +293,9 @@ export default function CreateClassSessionPage() {
           }
         }
       } catch (err) {
-        console.error("Failed to fetch teachers for subject", err);
+        console.error("Failed to fetch teachers/sections for subject", err);
+      } finally {
+        setSectionsLoading(false);
       }
     }
   };
@@ -396,6 +414,7 @@ export default function CreateClassSessionPage() {
 
       const dataToSubmit: any = {
         ...formData,
+        section_id: formData.section_id ? parseInt(String(formData.section_id)) : null,
         start_time: convertToUTC(formData.start_time),
         end_time: convertToUTC(formData.end_time),
         recurrence_rule: formData.is_recurring ? recurrenceRule : null,
@@ -666,11 +685,83 @@ export default function CreateClassSessionPage() {
                           )}
                         </div>
 
+                        {/* Section Selector (Optional) */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <Label className='text-[10px] font-semibold text-slate-500 uppercase tracking-widest'>
+                              Section (Optional)
+                            </Label>
+                            {sections.length > 0 && (
+                              <span className="text-[10px] text-blue-600 font-bold">
+                                {sections.length} available
+                              </span>
+                            )}
+                          </div>
+                          <Select
+                            value={formData.section_id ? String(formData.section_id) : 'all'}
+                            onValueChange={(val) => {
+                              if (val === 'all') {
+                                setFormData(prev => ({ ...prev, section_id: null }));
+                              } else {
+                                const secId = parseInt(val);
+                                const selectedSec = sections.find(s => s.id === secId);
+                                setFormData(prev => ({
+                                  ...prev,
+                                  section_id: secId,
+                                  // If section has a designated teacher, auto-select them
+                                  ...(selectedSec?.teacher_id ? { teacher_id: selectedSec.teacher_id } : {})
+                                }));
+                              }
+                            }}
+                            disabled={!formData.subject_id || sectionsLoading}
+                          >
+                            <SelectTrigger className="w-full h-11 border border-slate-200 bg-white rounded-xl text-sm font-medium text-slate-800 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50">
+                              <SelectValue
+                                placeholder={
+                                  !formData.subject_id
+                                    ? "Select a subject first"
+                                    : sectionsLoading
+                                    ? "Loading sections..."
+                                    : sections.length === 0
+                                    ? "No sections (Subject-wide only)"
+                                    : "Subject-Wide (All Students)"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">
+                                🌟 Subject-Wide (All Enrolled Students)
+                              </SelectItem>
+                              {sections.map((sec) => (
+                                <SelectItem key={sec.id} value={String(sec.id)}>
+                                  🏷️ {sec.title} ({sec._count?.memberships || 0} students) — Teacher: {sec.teacher?.user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <p className="text-[10px] text-slate-500 mt-1 px-1">
+                            {formData.section_id
+                              ? "Only students in this section and the assigned teacher will see this session."
+                              : "Without a section, all students enrolled in this subject will see the session."}
+                          </p>
+                        </div>
+
                         <div>
                           <Label className='text-[9px] font-semibold text-gray-400 block uppercase tracking-widest mb-2 px-1'>Teacher Allocation *</Label>
                           <SearchablePaginatedSelect
                             value={formData.teacher_id ? String(formData.teacher_id) : ''}
-                            onValueChange={(val) => setFormData((prev) => ({ ...prev, teacher_id: parseInt(val) }))}
+                            onValueChange={(val) => {
+                              const tId = parseInt(val);
+                              // Find section matching this teacher if current section doesn't match
+                              const teacherSection = sections.find(s => s.teacher_id === tId);
+                              setFormData((prev) => ({
+                                ...prev,
+                                teacher_id: tId,
+                                ...(teacherSection && (!prev.section_id || sections.find(s => s.id === prev.section_id)?.teacher_id !== tId)
+                                  ? { section_id: teacherSection.id }
+                                  : {}),
+                              }));
+                            }}
                             placeholder={formData.subject_id ? "Select Teacher" : "Select Subject First"}
                             searchPlaceholder="Search teacher..."
                             disabled={!formData.subject_id || (!isAdmin && formData.teacher_id !== 0)}

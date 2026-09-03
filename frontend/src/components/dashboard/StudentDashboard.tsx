@@ -1001,7 +1001,7 @@ export default function StudentDashboard() {
             {performanceData ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2 shadow-xs border border-gray-100 rounded-3xl overflow-hidden bg-white">
-                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-gradient-to-r from-blue-50/50 to-transparent">
+                        <CardHeader className="flex flex-row items-center justify-between pb-2 bg-slate-50/60 border-b border-slate-100">
                             <div className="space-y-1">
                                 <CardTitle className="text-lg font-bold flex items-center gap-2">
                                     <TrendingUp className="h-5 w-5 text-saBlue" />
@@ -1054,7 +1054,7 @@ export default function StudentDashboard() {
 
                     {/* Progress Composition */}
                     <Card className="shadow-xs border border-gray-100 rounded-3xl overflow-hidden bg-white flex flex-col justify-between">
-                        <CardHeader className="pb-2 bg-gradient-to-r from-blue-50/50 to-transparent">
+                        <CardHeader className="pb-2 bg-slate-50/60 border-b border-slate-100">
                             <CardTitle className="text-lg font-bold flex items-center gap-2">
                                 <Activity className="h-5 w-5 text-saBlue" />
                                 Domain Proficiency

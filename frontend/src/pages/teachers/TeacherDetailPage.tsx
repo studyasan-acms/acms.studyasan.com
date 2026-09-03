@@ -48,6 +48,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Label } from "@/components/ui/label";
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
@@ -639,109 +646,187 @@ export default function TeacherDetailPage() {
       )}
 
       {/* Modal - Assign Subject */}
-      {showAssignModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Assign Subject</h2>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Select Subject</Label>
-                <SearchablePaginatedSelect
-                  value={selectedSubject}
-                  onValueChange={setSelectedSubject}
-                  placeholder={subjectListLoading ? "Loading..." : "Select a subject"}
-                  searchPlaceholder="Search subject..."
-                  options={subjects.map((s) => ({
-                    value: s.id.toString(),
-                    label: `${s.name}${s.class ? ` (${s.class.name})` : ''}`,
-                  }))}
-                />
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                <BookOpen className="w-4 h-4" />
               </div>
+              <span>Assign Subject</span>
+            </DialogTitle>
+          </DialogHeader>
 
-              {assignError && <p className="text-red-500 text-sm">{assignError}</p>}
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-                <Button onClick={handleAssignSubject} disabled={assignLoading}>
-                  {assignLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Assign
-                </Button>
-              </div>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Subject <span className="text-red-500">*</span>
+              </Label>
+              <SearchablePaginatedSelect
+                value={selectedSubject}
+                onValueChange={setSelectedSubject}
+                placeholder={subjectListLoading ? "Loading subjects..." : "Select a subject"}
+                searchPlaceholder="Search subject by name, class, or board..."
+                emptyLabel="No subjects found"
+                triggerClassName="bg-slate-50 border-slate-200"
+                options={subjects.map((s) => ({
+                  value: s.id.toString(),
+                  label: `${s.name}${s.class ? ` (${s.class.name})` : ''}`,
+                  searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
+                }))}
+              />
             </div>
+
+            {assignError && (
+              <p className="text-xs font-medium text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                {assignError}
+              </p>
+            )}
+
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAssignModal(false)}
+                className="border-slate-300 text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAssignSubject}
+                disabled={assignLoading || !selectedSubject}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
+              >
+                {assignLoading && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                Assign Subject
+              </Button>
+            </DialogFooter>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Modal - Assign Test Series */}
-      {showTestSeriesModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Assign Test Series</h2>
+      <Dialog open={showTestSeriesModal} onOpenChange={setShowTestSeriesModal}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 shrink-0">
+                <FileText className="w-4 h-4" />
+              </div>
+              <span>Assign Test Series</span>
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Select Test Series</Label>
-                <Select value={selectedTestSeries} onValueChange={setSelectedTestSeries}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={testSeriesListLoading ? "Loading..." : "Select test series"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {testSeries.map((s) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>
-                        {s.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {testSeriesError && <p className="text-red-500 text-sm">{testSeriesError}</p>}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowTestSeriesModal(false)}>Cancel</Button>
-                <Button onClick={handleAssignTestSeries} disabled={testSeriesLoading}>
-                  {testSeriesLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Assign
-                </Button>
-              </div>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Test Series <span className="text-red-500">*</span>
+              </Label>
+              <SearchablePaginatedSelect
+                value={selectedTestSeries}
+                onValueChange={setSelectedTestSeries}
+                placeholder={testSeriesListLoading ? "Loading test series..." : "Select test series"}
+                searchPlaceholder="Search test series..."
+                emptyLabel="No test series found"
+                triggerClassName="bg-slate-50 border-slate-200"
+                options={testSeries.map((s) => ({
+                  value: s.id.toString(),
+                  label: s.title,
+                  searchText: s.title,
+                }))}
+              />
             </div>
+
+            {testSeriesError && (
+              <p className="text-xs font-medium text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                {testSeriesError}
+              </p>
+            )}
+
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTestSeriesModal(false)}
+                className="border-slate-300 text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAssignTestSeries}
+                disabled={testSeriesLoading || !selectedTestSeries}
+                className="bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm"
+              >
+                {testSeriesLoading && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                Assign Test Series
+              </Button>
+            </DialogFooter>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       {/* Modal - Assign Activity Group */}
-      {showActivityGroupModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Assign Activity Group</h2>
+      <Dialog open={showActivityGroupModal} onOpenChange={setShowActivityGroupModal}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl rounded-2xl overflow-visible">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                <LayoutGrid className="w-4 h-4" />
+              </div>
+              <span>Assign Activity Group</span>
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Select Activity Group</Label>
-                <Select value={selectedActivityGroup} onValueChange={setSelectedActivityGroup}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={activityGroupListLoading ? "Loading..." : "Select activity group"} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {activityGroups.map((g) => (
-                      <SelectItem key={g.id} value={g.id.toString()}>
-                        {g.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              {activityGroupError && <p className="text-red-500 text-sm">{activityGroupError}</p>}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setShowActivityGroupModal(false)}>Cancel</Button>
-                <Button onClick={handleAssignActivityGroup} disabled={activityGroupLoading}>
-                  {activityGroupLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Assign
-                </Button>
-              </div>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Select Activity Group <span className="text-red-500">*</span>
+              </Label>
+              <SearchablePaginatedSelect
+                value={selectedActivityGroup}
+                onValueChange={setSelectedActivityGroup}
+                placeholder={activityGroupListLoading ? "Loading activity groups..." : "Select activity group"}
+                searchPlaceholder="Search activity group..."
+                emptyLabel="No activity groups found"
+                triggerClassName="bg-slate-50 border-slate-200"
+                options={activityGroups.map((g) => ({
+                  value: g.id.toString(),
+                  label: g.name,
+                  searchText: g.name,
+                }))}
+              />
             </div>
+
+            {activityGroupError && (
+              <p className="text-xs font-medium text-red-600 bg-red-50 p-2.5 rounded-lg border border-red-200">
+                {activityGroupError}
+              </p>
+            )}
+
+            <DialogFooter className="pt-3 gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowActivityGroupModal(false)}
+                className="border-slate-300 text-slate-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleAssignActivityGroup}
+                disabled={activityGroupLoading || !selectedActivityGroup}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-sm"
+              >
+                {activityGroupLoading && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                Assign Activity Group
+              </Button>
+            </DialogFooter>
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
 
       <SuccessModal
         open={showSuccessModal}

@@ -42,6 +42,7 @@ import * as agencyController from '../controllers/agency.controller.js';
 import * as whiteboardController from '../controllers/whiteboard.controller.js';
 import * as invoiceController from '../controllers/invoice.controller.js';
 import * as recordingController from '../controllers/recording.controller.js';
+import * as sectionController from '../controllers/section.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -190,6 +191,17 @@ router.post('/class-sessions/:id/recording', authenticate, authorize('ADMIN', 'T
 router.get('/class-sessions/:id/recording', authenticate, recordingController.getSessionRecording);
 router.get('/class-sessions/:id/recording/stream', authenticate, recordingController.streamSessionRecording);
 router.delete('/class-sessions/:id/recording/:recordingId', authenticate, authorize('ADMIN', 'TEACHER'), recordingController.deleteSessionRecording);
+
+// ================== SECTION ROUTES ==================
+router.get('/sections', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.getAllSections);
+router.get('/sections/:id', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.getSectionById);
+router.post('/sections', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.createSection);
+router.put('/sections/:id', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.updateSection);
+router.delete('/sections/:id', authenticate, authorize('ADMIN'), sectionController.deleteSection);
+router.get('/sections/:id/students', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.getSectionStudents);
+router.post('/sections/:id/students', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.addStudentToSection);
+router.delete('/sections/:id/students/:studentId', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.removeStudentFromSection);
+router.get('/sections/:id/available-students', authenticate, authorize('ADMIN', 'TEACHER'), sectionController.getAvailableStudents);
 
 // Attendance routes
 router.get('/attendances', authenticate, attendanceController.getAllAttendances);

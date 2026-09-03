@@ -67,6 +67,7 @@ model User {
   room_chat_messages      RoomChatMessage[]
   announcements           Announcement[]           @relation("AnnouncementCreator")
   saved_whiteboards       SavedWhiteboard[]
+  section_creations       Section[]                @relation("SectionCreator")
 
   @@map("user")
 }
@@ -140,6 +141,7 @@ model Student {
   brain_quest_submissions BrainQuestSubmission[]
   referral_earnings    ReferralEarning[]
   invoices             Invoice[]
+  section_memberships  SectionStudent[]
 
   @@map("students")
 }
@@ -177,6 +179,7 @@ model Subject {
   know_your_child_reports   KnowYourChildReport[]
   brain_quests              BrainQuest[]
   saved_whiteboards         SavedWhiteboard[]
+  sections                  Section[]
 
   @@map("subjects")
 }
@@ -332,6 +335,7 @@ model Teacher {
   created_homework          Homework[]
   know_your_child_reports   KnowYourChildReport[]
   brain_quests              BrainQuest[]
+  sections                  Section[]
 
   @@map("teachers")
 }
@@ -352,6 +356,7 @@ model ClassSession {
   subject_id             Int
   class_id               Int?
   board_id               Int?
+  section_id             Int? // Optional: if set, only section members can see this session
   mode                   SessionMode
   location               String?
   meeting_link           String?
@@ -369,6 +374,7 @@ model ClassSession {
   subject                Subject                  @relation(fields: [subject_id], references: [id], onDelete: Cascade)
   class                  Class?                   @relation(fields: [class_id], references: [id])
   board                  Board?                   @relation(fields: [board_id], references: [id])
+  section                Section?                 @relation(fields: [section_id], references: [id], onDelete: SetNull)
   creator                User                     @relation("SessionCreator", fields: [created_by], references: [id])
   attendances            ClassSessionAttendance[]
   video_room             VideoRoom?
@@ -1444,3 +1450,37 @@ enum RecordingStatus {
   EXPIRED
 }
 
+// ================== SECTIONS ==================
+// A Section groups a subset of students from a subject under one designated teacher.
+// Class sessions can be section-scoped (only that section sees it) or subject-scoped (everyone sees it).
+
+model Section {
+  id         Int      @id @default(autoincrement())
+  title      String
+  subject_id Int
+  teacher_id Int
+  created_by Int
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  subject        Subject          @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  teacher        Teacher          @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
+  creator        User             @relation("SectionCreator", fields: [created_by], references: [id])
+  memberships    SectionStudent[]
+  class_sessions ClassSession[]
+
+  @@map("sections")
+}
+
+model SectionStudent {
+  id         Int @id @default(autoincrement())
+  section_id Int
+  student_id Int
+
+  section Section @relation(fields: [section_id], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+
+  // One student cannot be in two sections for the same subject (enforced at app level via section.subject_id check)
+  @@unique([section_id, student_id])
+  @@map("section_students")
+}

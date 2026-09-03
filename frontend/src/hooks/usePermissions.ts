@@ -22,6 +22,7 @@ interface Permissions {
     homework?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     tests?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     roles?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
+    sections?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     announcements?: { manage?: boolean };
 }
 

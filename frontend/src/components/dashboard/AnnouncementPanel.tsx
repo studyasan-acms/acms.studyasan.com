@@ -102,7 +102,7 @@ export default function AnnouncementPanel({
             </div>
           ) : announcements.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center px-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-saBlue/15 to-saVividOrange/15 text-saBlue border border-saBlue/20 flex items-center justify-center mb-3 shadow-xs">
+              <div className="w-14 h-14 rounded-2xl bg-orange-50 text-orange-600 border border-orange-200 flex items-center justify-center mb-3 shadow-xs">
                 <Megaphone className="h-6 w-6 text-saBlue" />
               </div>
               <h4 className="text-sm font-bold text-slate-800">No Announcements Right Now</h4>

@@ -515,6 +515,7 @@ export interface ClassSession {
   subject_id: number;
   class_id: number | null;
   board_id: number | null;
+  section_id?: number | null;
   mode: 'ONLINE' | 'OFFLINE';
   location: string | null;
   meeting_link: string | null;
@@ -547,6 +548,10 @@ export interface ClassSession {
   board?: {
     id: number;
     name: string;
+  } | null;
+  section?: {
+    id: number;
+    title: string;
   } | null;
   creator?: {
     id: number;
@@ -591,6 +596,7 @@ export interface CreateClassSessionData {
   subject_id: number;
   class_id?: number | null;
   board_id?: number | null;
+  section_id?: number | null;
   mode: 'ONLINE' | 'OFFLINE';
   location?: string | null;
   meeting_link?: string | null;
@@ -1411,3 +1417,44 @@ export interface InvoiceSetting {
   upi_name?: string;
 }
 
+// ================== SECTION TYPES ==================
+export interface Section {
+  id: number;
+  title: string;
+  subject_id: number;
+  teacher_id: number;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  subject?: { id: number; name: string };
+  teacher?: {
+    id: number;
+    user: { id: number; name: string; email: string };
+  };
+  creator?: { id: number; name: string };
+  memberships?: SectionStudent[];
+  _count?: {
+    memberships: number;
+    class_sessions: number;
+  };
+}
+
+export interface SectionStudent {
+  id: number;
+  section_id: number;
+  student_id: number;
+  section?: Section;
+  student?: Student;
+}
+
+export interface CreateSectionData {
+  title: string;
+  subject_id: number;
+  teacher_id: number;
+}
+
+export interface UpdateSectionData {
+  title?: string;
+  teacher_id?: number;
+  subject_id?: number;
+}

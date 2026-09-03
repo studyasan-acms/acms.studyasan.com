@@ -76,6 +76,9 @@ import ClassSessionsPage from '@/pages/class-sessions/ClassSessionsPage';
 import ClassSessionDetailPage from '@/pages/class-sessions/ClassSessionDetailPage';
 import CreateClassSessionPage from '@/pages/class-sessions/CreateClassSessionPage';
 
+// Sections import
+import SectionsPage from '@/pages/sections/SectionsPage';
+
 // Classroom import (integrated video conferencing)
 import ClassroomPage from '@/pages/classroom/ClassroomPage';
 
@@ -309,6 +312,9 @@ function App() {
           <Route path="class-sessions/:id" element={<ClassSessionDetailPage />} />
           <Route path="class-sessions/:sessionId/attendance" element={<ClassAttendancePage />} />
           <Route path="class-sessions/:id/edit" element={<CreateClassSessionPage />} />
+
+          {/* Sections Route */}
+          <Route path="sections" element={<SectionsPage />} />
 
           {/* Standalone Whiteboard Route */}
           <Route path="whiteboard" element={<WhiteboardPage />} />

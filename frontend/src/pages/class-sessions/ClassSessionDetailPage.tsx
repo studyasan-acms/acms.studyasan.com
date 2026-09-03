@@ -25,6 +25,7 @@ import {
   ShieldCheck,
   Sparkles,
   Link as LinkIcon,
+  Layers,
 } from 'lucide-react';
 import { classSessionService, recordingApi, type SessionRecordingInfo } from '@/services/api';
 import type { ClassSession } from '@/types';
@@ -32,6 +33,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
+import { cn } from '@/lib/utils';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import { RecordingPlayerModal } from '@/components/classroom/RecordingPlayerModal';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -362,6 +364,14 @@ export default function ClassSessionDetailPage() {
                 </span>
               )}
 
+              {/* Section Pill */}
+              {session.section && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">
+                  <Layers className="w-3.5 h-3.5 text-orange-600" />
+                  Section: {session.section.title}
+                </span>
+              )}
+
               {/* Recurring Pill */}
               {session.is_recurring && (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/20">
@@ -388,14 +398,26 @@ export default function ClassSessionDetailPage() {
             </p>
           </div>
 
-          {/* Key Pills Bar (Subject / Class / Board / Teacher) */}
-          <div className="mt-5 pt-5 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {/* Key Pills Bar (Subject / Class / Board / Teacher / Section) */}
+          <div className={cn(
+            "mt-5 pt-5 border-t border-slate-100 grid gap-3",
+            session.section ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"
+          )}>
             <div className="p-3 rounded-2xl bg-saBlueSubtle/40 border border-saBlue/10">
               <p className="text-[11px] font-bold text-saBlue uppercase tracking-wider">Subject</p>
               <p className="text-sm font-extrabold text-slate-800 truncate mt-0.5">
                 {session.subject?.name || 'Not specified'}
               </p>
             </div>
+
+            {session.section && (
+              <div className="p-3 rounded-2xl bg-orange-50 border border-orange-200">
+                <p className="text-[11px] font-bold text-orange-700 uppercase tracking-wider">Section</p>
+                <p className="text-sm font-extrabold text-slate-800 truncate mt-0.5">
+                  {session.section.title}
+                </p>
+              </div>
+            )}
 
             <div className="p-3 rounded-2xl bg-saOrangeSubtle/50 border border-saVividOrange/15">
               <p className="text-[11px] font-bold text-saOrangeDark uppercase tracking-wider">Class / Grade</p>

@@ -36,6 +36,7 @@ import {
   Puzzle,
   Compass,
   ChevronDown,
+  Layers,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -87,6 +88,14 @@ const navItems: NavItem[] = [
     href: "/dashboard/class-sessions",
     icon: Video,
     roles: ["ADMIN", "TEACHER", "STUDENT"],
+    group: "Learning",
+  },
+  {
+    title: "Sections",
+    href: "/dashboard/sections",
+    icon: Layers,
+    roles: ["ADMIN"],
+    permission: { resource: "sections", action: "view" },
     group: "Learning",
   },
   {

@@ -78,6 +78,10 @@ import type {
   CreateWhiteboardData,
   UpdateWhiteboardData,
   WhiteboardsResponse,
+  Section,
+  SectionStudent,
+  CreateSectionData,
+  UpdateSectionData,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -1872,8 +1876,53 @@ export const recordingApi = {
   },
 };
 
+// ================== SECTION SERVICE ==================
+export const sectionService = {
+  getAll: async (params?: { subject_id?: number; search?: string; page?: number; limit?: number }) => {
+    const response = await api.get('/sections', { params });
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<{ success: boolean; data: Section }> => {
+    const response = await api.get(`/sections/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateSectionData): Promise<{ success: boolean; data: Section }> => {
+    const response = await api.post('/sections', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateSectionData): Promise<{ success: boolean; data: Section }> => {
+    const response = await api.put(`/sections/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean }> => {
+    const response = await api.delete(`/sections/${id}`);
+    return response.data;
+  },
+
+  getStudents: async (id: number): Promise<{ success: boolean; data: SectionStudent[] }> => {
+    const response = await api.get(`/sections/${id}/students`);
+    return response.data;
+  },
+
+  addStudent: async (sectionId: number, student_id: number): Promise<{ success: boolean; data: SectionStudent }> => {
+    const response = await api.post(`/sections/${sectionId}/students`, { student_id });
+    return response.data;
+  },
+
+  removeStudent: async (sectionId: number, studentId: number): Promise<{ success: boolean }> => {
+    const response = await api.delete(`/sections/${sectionId}/students/${studentId}`);
+    return response.data;
+  },
+
+  getAvailableStudents: async (sectionId: number): Promise<{ success: boolean; data: any[] }> => {
+    const response = await api.get(`/sections/${sectionId}/available-students`);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };
-
-
-

@@ -312,6 +312,7 @@ export const getAllClassSessions = async (req: Request, res: Response) => {
           _count: {
             select: { attendances: true },
           },
+          section: { select: { id: true, title: true } },
         },
         orderBy: { start_time: 'desc' },
       }),
@@ -403,6 +404,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
       subject_id,
       class_id,
       board_id,
+      section_id,
       mode,
       location,
       start_time,
@@ -513,6 +515,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         subject_id,
         class_id,
         board_id,
+        section_id: section_id ? parseInt(section_id) : null,
         mode,
         location,
         meeting_link: meetingLink || req.body.meeting_link,
@@ -576,6 +579,7 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
         subject_id,
         class_id,
         board_id,
+        section_id: section_id ? parseInt(section_id) : null,
         mode,
         location,
         meeting_link: meetingLink || req.body.meeting_link,
@@ -630,6 +634,7 @@ export const updateClassSession = async (req: Request, res: Response) => {
       subject_id,
       class_id,
       board_id,
+      section_id,
       mode,
       location,
       meeting_link,
@@ -669,6 +674,7 @@ export const updateClassSession = async (req: Request, res: Response) => {
     if (subject_id !== undefined) updateData.subject_id = subject_id;
     if (class_id !== undefined) updateData.class_id = class_id;
     if (board_id !== undefined) updateData.board_id = board_id;
+    if (section_id !== undefined) updateData.section_id = section_id ? parseInt(section_id) : null;
     if (mode !== undefined) updateData.mode = mode;
     if (location !== undefined) updateData.location = location;
     if (meeting_link !== undefined) updateData.meeting_link = meeting_link;
@@ -966,13 +972,12 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
     );
     const { upcoming_only, subject_id, search } = req.query;
 
-    // Get the student profile
+    // Get the student profile with enrollments and section memberships
     const student = await prisma.student.findUnique({
       where: { user_id: userId },
       include: {
-        enrollments: {
-          select: { subject_id: true },
-        },
+        enrollments: { select: { subject_id: true } },
+        section_memberships: { select: { section_id: true } },
       },
     });
 
@@ -989,15 +994,26 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
       return sendSuccess(res, createPaginatedResponse([], 0, 1, limit));
     }
 
+    const mySectionIds = student.section_memberships.map((m) => m.section_id);
+
+    // Session visibility rules:
+    // 1. No section_id (subject-wide) → visible to all enrolled students
+    // 2. Has section_id → only visible if student is in that section
     const where: any = {
       subject_id: { in: enrolledSubjectIds },
+      OR: [
+        { section_id: null },
+        { section_id: { in: mySectionIds } },
+      ],
     };
 
     if (search) {
-      where.OR = [
-        { subject: { name: { contains: search as string, mode: 'insensitive' } } },
-        { teacher: { user: { name: { contains: search as string, mode: 'insensitive' } } } },
-      ];
+      where.AND = [{
+        OR: [
+          { subject: { name: { contains: search as string, mode: 'insensitive' } } },
+          { teacher: { user: { name: { contains: search as string, mode: 'insensitive' } } } },
+        ]
+      }];
     }
 
     // Filter by specific subject if provided
@@ -1018,36 +1034,14 @@ export const getMyScheduledSessions = async (req: AuthRequest, res: Response) =>
         include: {
           teacher: {
             include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
+              user: { select: { id: true, name: true, email: true } },
             },
           },
-          subject: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          class: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          board: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          _count: {
-            select: { attendances: true },
-          },
+          subject: { select: { id: true, name: true } },
+          class: { select: { id: true, name: true } },
+          board: { select: { id: true, name: true } },
+          section: { select: { id: true, title: true } },
+          _count: { select: { attendances: true } },
         },
         orderBy: { start_time: 'asc' },
       }),
@@ -1083,9 +1077,8 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
       const student = await prisma.student.findUnique({
         where: { user_id: userId },
         include: {
-          enrollments: {
-            select: { subject_id: true },
-          },
+          enrollments: { select: { subject_id: true } },
+          section_memberships: { select: { section_id: true } },
         },
       });
 
@@ -1093,7 +1086,12 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
         const enrolledSubjectIds = student.enrollments
           .map((e) => e.subject_id)
           .filter((id) => id !== null);
+        const mySectionIds = student.section_memberships.map((m) => m.section_id);
         where.subject_id = { in: enrolledSubjectIds };
+        where.OR = [
+          { section_id: null },
+          { section_id: { in: mySectionIds } },
+        ];
       }
     } else if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
@@ -1101,6 +1099,7 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
       });
 
       if (teacher) {
+        // Teacher sees: sessions they teach that are either subject-wide OR their section
         where.teacher_id = teacher.id;
       }
     }
@@ -1110,26 +1109,14 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
       include: {
         teacher: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+            user: { select: { id: true, name: true, email: true } },
           },
         },
-        subject: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        subject: { select: { id: true, name: true } },
         class: true,
         board: true,
-        _count: {
-          select: { attendances: true },
-        },
+        section: { select: { id: true, title: true } },
+        _count: { select: { attendances: true } },
       },
       orderBy: { start_time: 'asc' },
     });
@@ -1166,9 +1153,8 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
       const student = await prisma.student.findUnique({
         where: { user_id: userId },
         include: {
-          enrollments: {
-            select: { subject_id: true },
-          },
+          enrollments: { select: { subject_id: true } },
+          section_memberships: { select: { section_id: true } },
         },
       });
 
@@ -1176,7 +1162,12 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
         const enrolledSubjectIds = student.enrollments
           .map((e) => e.subject_id)
           .filter((id) => id !== null);
+        const mySectionIds = student.section_memberships.map((m) => m.section_id);
         where.subject_id = { in: enrolledSubjectIds };
+        where.OR = [
+          { section_id: null },
+          { section_id: { in: mySectionIds } },
+        ];
       }
     } else if (userRole === 'TEACHER') {
       const teacher = await prisma.teacher.findUnique({
@@ -1193,26 +1184,14 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
       include: {
         teacher: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
+            user: { select: { id: true, name: true, email: true } },
           },
         },
-        subject: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        subject: { select: { id: true, name: true } },
         class: true,
         board: true,
-        _count: {
-          select: { attendances: true },
-        },
+        section: { select: { id: true, title: true } },
+        _count: { select: { attendances: true } },
       },
       orderBy: { start_time: 'asc' },
     });
@@ -1220,7 +1199,7 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
     sendSuccess(res, {
       weekStart: startOfWeek.toISOString(),
       weekEnd: endOfWeek.toISOString(),
-      sessions: sessions, // Return flat array
+      sessions: sessions,
       totalSessions: sessions.length,
     });
   } catch (error: any) {

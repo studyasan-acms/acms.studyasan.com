@@ -25,6 +25,7 @@ import {
   Square,
   AlertTriangle,
   Pencil,
+  Layers,
 } from 'lucide-react';
 import { classSessionService, subjectService, teacherService, attendanceService } from '@/services/api';
 import type { ClassSession, Subject, Teacher } from '@/types';
@@ -467,6 +468,12 @@ export default function ClassSessionsPage() {
               <Badge className={cn("text-[10px] font-bold border-0 px-2 py-0.5 rounded-full shadow-sm", status.color)}>
                 {status.label}
               </Badge>
+              {session.section && (
+                <div className="flex items-center gap-1 text-[9px] font-bold text-orange-700 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-200" title={`Section: ${session.section.title}`}>
+                  <Layers className="w-2.5 h-2.5 text-orange-600" />
+                  <span className="truncate max-w-[120px]">{session.section.title}</span>
+                </div>
+              )}
               {session.is_recurring && (
                 <div className="flex items-center gap-1 text-[9px] font-semibold text-slate-500 bg-white/90 px-2 py-0.5 rounded-full border border-slate-200">
                   <RefreshCw className="w-2.5 h-2.5 text-saBlue" /> Recurring
