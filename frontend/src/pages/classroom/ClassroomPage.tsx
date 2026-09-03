@@ -11,6 +11,7 @@ import { Loader2, AlertCircle, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ClassroomLayout } from '@/components/classroom';
 import { useJanus } from '@/hooks/useJanus';
+import { useClassroomRecorder } from '@/hooks/useClassroomRecorder';
 import { useAuthStore } from '@/store/authStore';
 import api from '@/services/api';
 import type { VideoRoomInfo } from '@/types/videoRoom';
@@ -36,6 +37,13 @@ export function ClassroomPage() {
         displayName: user?.name || 'Guest',
         isTeacher: roomInfo?.isTeacher || false,
         onKicked: () => handleLeave(),
+    });
+
+    // 360p Classroom Recorder hook (captures whiteboard, screen share, mic & audio)
+    const sessionIdNum = parseInt(sessionId || '0', 10);
+    const recorder = useClassroomRecorder({
+        sessionId: sessionIdNum,
+        autoUpload: true,
     });
 
     // Fetch room info and validate access
@@ -94,6 +102,16 @@ export function ClassroomPage() {
     // Handle leave
     const handleLeave = async () => {
         hasLeftIntentionally.current = true; // Prevent auto-reconnect
+
+        // Stop active recording if running
+        if (recorder.isRecording) {
+            try {
+                await recorder.stopRecording();
+            } catch (recErr) {
+                console.warn('[ClassroomPage] Error stopping recording on leave:', recErr);
+            }
+        }
+
         try {
             await janus.disconnect();
         } catch (err) {
@@ -200,6 +218,12 @@ export function ClassroomPage() {
         <div className="h-[100dvh] w-screen overflow-hidden">
             <ClassroomLayout
                 isConnected={janus.isConnected}
+                isRecording={recorder.isRecording}
+                formattedDuration={recorder.formattedDuration}
+                isUploading={recorder.isUploading}
+                uploadProgress={recorder.uploadProgress}
+                onStartRecording={recorder.startRecording}
+                onStopRecording={recorder.stopRecording}
                 localStream={janus.localStream}
                 localUser={janus.localUser}
                 participants={janus.participants}

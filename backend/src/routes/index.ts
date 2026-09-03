@@ -41,6 +41,7 @@ import * as brainQuestController from '../controllers/brainQuest.controller.js';
 import * as agencyController from '../controllers/agency.controller.js';
 import * as whiteboardController from '../controllers/whiteboard.controller.js';
 import * as invoiceController from '../controllers/invoice.controller.js';
+import * as recordingController from '../controllers/recording.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -182,6 +183,12 @@ router.get('/class-sessions/:id/can-join', authenticate, classSessionController.
 router.post('/class-sessions', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.createClassSession);
 router.put('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.updateClassSession);
 router.delete('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.deleteClassSession);
+
+// Session Recording routes (30-day retention)
+router.post('/class-sessions/:id/recording', authenticate, authorize('ADMIN', 'TEACHER'), recordingController.uploadRecordingMiddleware.single('video'), recordingController.uploadSessionRecording);
+router.get('/class-sessions/:id/recording', authenticate, recordingController.getSessionRecording);
+router.get('/class-sessions/:id/recording/stream', authenticate, recordingController.streamSessionRecording);
+router.delete('/class-sessions/:id/recording/:recordingId', authenticate, authorize('ADMIN', 'TEACHER'), recordingController.deleteSessionRecording);
 
 // Attendance routes
 router.get('/attendances', authenticate, attendanceController.getAllAttendances);

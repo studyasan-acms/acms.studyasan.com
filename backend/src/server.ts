@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/error.middleware.js';
 import { NotificationProcessorService } from './services/notificationProcessor.service.js';
 import { JanusCleanupService } from './services/janusCleanup.service.js';
 import { KnowYourChildScheduler } from './services/knowYourChildScheduler.service.js';
+import { RecordingCleanupService } from './services/recordingCleanup.service.js';
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ initSocket(httpServer);
 NotificationProcessorService.start();
 JanusCleanupService.start();
 KnowYourChildScheduler.start();
+RecordingCleanupService.start();
 
 httpServer.listen(PORT, () => {
   console.log(` Server is running on port ${PORT}`);

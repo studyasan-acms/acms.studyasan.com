@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Video, MapPin, Clock, Calendar, Users, RefreshCw, User, ExternalLink, ArrowLeft } from 'lucide-react';
-import { classSessionService } from '@/services/api';
+import { Video, MapPin, Clock, Calendar, Users, RefreshCw, User, ExternalLink, ArrowLeft, PlayCircle } from 'lucide-react';
+import { classSessionService, recordingApi, type SessionRecordingInfo } from '@/services/api';
 import type { ClassSession } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
+import { RecordingPlayerModal } from '@/components/classroom/RecordingPlayerModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 const MAX_SESSION_DURATION_HOURS = 8;
@@ -22,6 +23,8 @@ export default function ClassSessionDetailPage() {
   const [joinReason, setJoinReason] = useState('');
   const [now, setNow] = useState<Date>(new Date());
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [recordingInfo, setRecordingInfo] = useState<SessionRecordingInfo | null>(null);
+  const [recordingModalOpen, setRecordingModalOpen] = useState(false);
   const { user } = useAuthStore();
 
   const isAdmin = user?.role === 'ADMIN';
@@ -40,6 +43,18 @@ export default function ClassSessionDetailPage() {
       const joinResponse = await classSessionService.canJoin(parseInt(id));
       setCanJoin(joinResponse.data.canJoin);
       setJoinReason(joinResponse.data.reason);
+
+      // Fetch 360p recording info if available (30-day retention)
+      try {
+        const recRes = await recordingApi.getInfo(parseInt(id));
+        if (recRes.success && recRes.data) {
+          setRecordingInfo(recRes.data);
+        } else {
+          setRecordingInfo(null);
+        }
+      } catch (recErr) {
+        setRecordingInfo(null);
+      }
     } catch (error) {
       console.error('Error fetching session:', error);
     } finally {
@@ -349,6 +364,30 @@ export default function ClassSessionDetailPage() {
             </div>
           </div>
 
+          {/* Class Recording Banner (30-day retention) */}
+          {recordingInfo?.available && (
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-blue-600 text-white">
+                  <PlayCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-blue-900">Class Recording Available (360p)</p>
+                  <p className="text-xs text-blue-700">
+                    Whiteboard, screen share & audio are recorded. Retained for 30 days.
+                  </p>
+                </div>
+              </div>
+              <Button
+                onClick={() => setRecordingModalOpen(true)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold gap-1.5 shadow-sm"
+              >
+                <PlayCircle className="w-4 h-4" />
+                Watch Recording
+              </Button>
+            </div>
+          )}
+
           {/* Attendees List (if available) */}
           {session.attendances && session.attendances.length > 0 && (
             <div>
@@ -371,6 +410,17 @@ export default function ClassSessionDetailPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
+            {recordingInfo?.available && (
+              <Button
+                variant="default"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-1.5"
+                onClick={() => setRecordingModalOpen(true)}
+              >
+                <PlayCircle className="w-4 h-4" />
+                Watch Recording
+              </Button>
+            )}
+
             <Button
               variant="outline"
               className="flex-1"
@@ -400,6 +450,16 @@ export default function ClassSessionDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Recording Player Modal */}
+      {session && (
+        <RecordingPlayerModal
+          isOpen={recordingModalOpen}
+          onClose={() => setRecordingModalOpen(false)}
+          sessionId={session.id}
+          sessionTitle={session.subject?.name}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal

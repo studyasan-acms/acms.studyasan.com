@@ -9,12 +9,21 @@ import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { Whiteboard } from './Whiteboard';
 import { ReactionOverlay } from './ReactionOverlay';
+import { RecordingControls } from './RecordingControls';
 import type { FloatingReaction } from './ReactionOverlay';
 import type { Participant, WhiteboardMessage, LocalUserState } from '@/types/videoRoom';
 
 interface ClassroomLayoutProps {
     // Connection
     isConnected: boolean;
+
+    // Recording (360p / 30-day retention)
+    isRecording?: boolean;
+    formattedDuration?: string;
+    isUploading?: boolean;
+    uploadProgress?: number;
+    onStartRecording?: () => void;
+    onStopRecording?: () => void;
 
     // Local user
     localStream: MediaStream | null;
@@ -57,6 +66,12 @@ interface ClassroomLayoutProps {
 
 export function ClassroomLayout({
     isConnected,
+    isRecording = false,
+    formattedDuration = '00:00',
+    isUploading = false,
+    uploadProgress = 0,
+    onStartRecording,
+    onStopRecording,
     localStream,
     localUser,
     participants,
@@ -115,13 +130,25 @@ export function ClassroomLayout({
     return (
         <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden">
             {/* Header */}
-            <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0">
+            <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0 shadow-md">
                 <div className="flex items-center gap-1">
                     <img src="/studyasan-logo.png" alt="StudyAsan" className="h-12" />
                 </div>
-                <div className="flex items-center gap-2 text-sm text-blue-200">
-                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-                    <span>{isConnected ? 'Connected' : 'Disconnected'}</span>
+                <div className="flex items-center gap-3">
+                    {/* 360p Classroom Recording Controls */}
+                    <RecordingControls
+                        isTeacher={isTeacher}
+                        isRecording={isRecording}
+                        formattedDuration={formattedDuration}
+                        isUploading={isUploading}
+                        uploadProgress={uploadProgress}
+                        onStartRecording={onStartRecording || (() => {})}
+                        onStopRecording={onStopRecording || (() => {})}
+                    />
+                    <div className="flex items-center gap-2 text-sm text-blue-200 pl-2 border-l border-blue-600/50">
+                        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
+                        <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
+                    </div>
                 </div>
             </header>
 

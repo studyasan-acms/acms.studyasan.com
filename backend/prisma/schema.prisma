@@ -371,6 +371,7 @@ model ClassSession {
   creator                User                     @relation("SessionCreator", fields: [created_by], references: [id])
   attendances            ClassSessionAttendance[]
   video_room             VideoRoom?
+  recordings             SessionRecording[]
 
   @@map("class_sessions")
 }
@@ -1415,5 +1416,30 @@ model InvoiceSetting {
   updated_at          DateTime @updatedAt
 
   @@map("invoice_settings")
+}
+
+// Class Session Recordings (Retained for 30 days)
+model SessionRecording {
+  id               Int             @id @default(autoincrement())
+  class_session_id Int
+  file_name        String          // e.g. "recording_session_123_1709470000000.webm"
+  file_path        String          // Local absolute or relative server path
+  file_size_bytes  BigInt?
+  duration_seconds Int?
+  mime_type        String          @default("video/webm")
+  status           RecordingStatus @default(READY)
+  created_at       DateTime        @default(now())
+  expires_at       DateTime        // Date when file will be auto-deleted (created_at + 30 days)
+
+  class_session    ClassSession    @relation(fields: [class_session_id], references: [id], onDelete: Cascade)
+
+  @@map("session_recordings")
+}
+
+enum RecordingStatus {
+  RECORDING
+  PROCESSING
+  READY
+  EXPIRED
 }
 

@@ -1824,6 +1824,46 @@ export const whiteboardService = {
   },
 };
 
+export interface SessionRecordingInfo {
+  available: boolean;
+  recordingId?: number;
+  sessionId?: number;
+  durationSeconds?: number;
+  fileSizeBytes?: string;
+  mimeType?: string;
+  status?: 'READY' | 'PROCESSING' | 'EXPIRED';
+  createdAt?: string;
+  expiresAt?: string;
+  streamUrl?: string;
+}
+
+export const recordingApi = {
+  upload: async (
+    sessionId: number,
+    formData: FormData,
+    onUploadProgress?: (progressEvent: any) => void
+  ) => {
+    const response = await api.post(`/class-sessions/${sessionId}/recording`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress,
+    });
+    return response.data;
+  },
+  getInfo: async (sessionId: number): Promise<{ success: boolean; data: SessionRecordingInfo }> => {
+    const response = await api.get(`/class-sessions/${sessionId}/recording`);
+    return response.data;
+  },
+  delete: async (sessionId: number, recordingId: number) => {
+    const response = await api.delete(`/class-sessions/${sessionId}/recording/${recordingId}`);
+    return response.data;
+  },
+  getStreamUrl: (sessionId: number) => {
+    const token = localStorage.getItem('token') || '';
+    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    return `${baseUrl}/class-sessions/${sessionId}/recording/stream?token=${encodeURIComponent(token)}`;
+  },
+};
+
 export default api;
 export { api as apiService };
 

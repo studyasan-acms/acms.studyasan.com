@@ -38,6 +38,7 @@ import {
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { useAuthStore } from '@/store/authStore';
 import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
+import { RecordingPlayerModal } from '@/components/classroom/RecordingPlayerModal';
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { usePermissions } from '@/hooks/usePermissions';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,7 @@ export default function ClassSessionsPage() {
   usePageTitle("Schedule & Class Sessions");
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const [selectedRecordingSession, setSelectedRecordingSession] = useState<ClassSession | null>(null);
 
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
@@ -416,7 +418,7 @@ export default function ClassSessionsPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap sm:flex-nowrap">
             <Button
               size="sm"
               className={cn(
@@ -429,6 +431,22 @@ export default function ClassSessionsPage() {
             >
               {status.canJoin ? 'Join Live Class' : 'View Details'}
             </Button>
+
+            {status.label === 'Ended' && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3 rounded-xl font-bold text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 gap-1.5 shadow-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedRecordingSession(session);
+                }}
+                title="Watch Class Recording"
+              >
+                <PlayCircle className="w-3.5 h-3.5 text-blue-600" />
+                <span>Recording</span>
+              </Button>
+            )}
 
             <Button
               variant="outline"
@@ -822,6 +840,16 @@ export default function ClassSessionsPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Recording Player Modal */}
+      {selectedRecordingSession && (
+        <RecordingPlayerModal
+          isOpen={!!selectedRecordingSession}
+          onClose={() => setSelectedRecordingSession(null)}
+          sessionId={selectedRecordingSession.id}
+          sessionTitle={selectedRecordingSession.subject?.name}
+        />
       )}
 
       {/* Delete Confirmation Modal */}
