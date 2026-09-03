@@ -747,7 +747,7 @@ const ChatsPageNew = () => {
                   <div className="space-y-3 pb-4">
                     {messages.map((message) => {
                       const isOwnMessage = message.sender_id === user?.id;
-                      const canDelete = user?.role === 'ADMIN' || isOwnMessage;
+                      const canDelete = user?.role === 'ADMIN';
 
                       return (
                         <div

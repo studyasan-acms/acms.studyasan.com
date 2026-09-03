@@ -180,9 +180,9 @@ export const getSessionRecording = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
-    const hasAccess = await checkSessionAccess(userId, userRole, classSession);
-    if (!hasAccess) {
-      return sendError(res, 'Access denied for this class session', 403);
+    // Class recordings are strictly restricted to ADMIN role only
+    if (userRole !== 'ADMIN') {
+      return sendSuccess(res, { available: false }, 'Access restricted: Only administrators can view class recordings');
     }
 
     const recording = await (prisma as any).sessionRecording.findFirst({
@@ -239,9 +239,9 @@ export const streamSessionRecording = async (req: AuthRequest, res: Response) =>
       return sendError(res, 'Class session not found', 404);
     }
 
-    const hasAccess = await checkSessionAccess(userId, userRole, classSession);
-    if (!hasAccess) {
-      return sendError(res, 'Access denied', 403);
+    // Only ADMIN role can stream class session recordings
+    if (userRole !== 'ADMIN') {
+      return sendError(res, 'Access restricted: Only administrators can view or stream class recordings', 403);
     }
 
     const recording = await (prisma as any).sessionRecording.findFirst({
@@ -325,8 +325,8 @@ export const deleteSessionRecording = async (req: AuthRequest, res: Response) =>
     const userId = req.user!.id;
     const userRole = req.user!.role;
 
-    if (userRole !== 'ADMIN' && userRole !== 'TEACHER') {
-      return sendError(res, 'Only teachers or admins can delete recordings', 403);
+    if (userRole !== 'ADMIN') {
+      return sendError(res, 'Access restricted: Only administrators can delete class recordings', 403);
     }
 
     const recording = await (prisma as any).sessionRecording.findUnique({

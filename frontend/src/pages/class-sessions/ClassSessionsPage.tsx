@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -306,7 +307,23 @@ export default function ClassSessionsPage() {
   };
 
   const formatTime = (dateStr: string) => {
-    return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    try {
+      return new Date(dateStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatDate = (dateStr: string) => {
+    try {
+      return new Date(dateStr).toLocaleDateString([], {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   const handleToggleSelectSession = (id: number) => {
@@ -414,8 +431,8 @@ export default function ClassSessionsPage() {
         <div className={cn(
           "p-4 relative flex flex-col justify-between transition-all",
           isOnline
-            ? "bg-gradient-to-r from-saBlue/10 via-saBlue/5 to-transparent border-b border-saBlue/10"
-            : "bg-gradient-to-r from-saVividOrange/10 via-saVividOrange/5 to-transparent border-b border-saVividOrange/10"
+            ? "bg-saBlueSubtle/40 border-b border-saBlue/15"
+            : "bg-saOrangeSubtle/40 border-b border-saVividOrange/15"
         )}>
           <div className="flex items-start justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
@@ -470,22 +487,43 @@ export default function ClassSessionsPage() {
         <CardContent className="p-4 space-y-4 flex-1 flex flex-col justify-between">
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Start Time</p>
-                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs mt-0.5">
-                  <Clock className="w-3.5 h-3.5 text-saBlue" />
-                  <span>{formatTime(session.start_time)}</span>
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Start Date & Time</p>
+                <div className="space-y-0.5 mt-1">
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs truncate">
+                    <Calendar className="w-3.5 h-3.5 text-saBlue shrink-0" />
+                    <span className="truncate">{formatDate(session.start_time)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-600 font-semibold text-[11px] truncate">
+                    <Clock className="w-3 h-3 text-saBlue/70 shrink-0" />
+                    <span>{formatTime(session.start_time)}</span>
+                  </div>
                 </div>
               </div>
-              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class & Board</p>
-                <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs mt-0.5 truncate">
-                  <Users className="w-3.5 h-3.5 text-saVividOrange shrink-0" />
-                  <span className="truncate">
-                    {session.class?.name || 'All Students'}
-                    {session.board?.name ? ` (${session.board.name})` : ''}
-                  </span>
+
+              <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 flex flex-col justify-between">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">End Date & Time</p>
+                <div className="space-y-0.5 mt-1">
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs truncate">
+                    <Calendar className="w-3.5 h-3.5 text-saVividOrange shrink-0" />
+                    <span className="truncate">{formatDate(session.end_time)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-600 font-semibold text-[11px] truncate">
+                    <Clock className="w-3 h-3 text-saVividOrange/70 shrink-0" />
+                    <span>{formatTime(session.end_time)}</span>
+                  </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Class & Board</p>
+              <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs mt-0.5 truncate">
+                <Users className="w-3.5 h-3.5 text-saVividOrange shrink-0" />
+                <span className="truncate">
+                  {session.class?.name || 'All Students'}
+                  {session.board?.name ? ` (${session.board.name})` : ''}
+                </span>
               </div>
             </div>
 
@@ -497,11 +535,11 @@ export default function ClassSessionsPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-1.5 pt-2.5 border-t border-slate-100 flex-wrap">
             <Button
               size="sm"
               className={cn(
-                "flex-1 h-9 rounded-xl font-bold text-xs transition-all shadow-sm",
+                "flex-1 min-w-[110px] h-9 rounded-xl font-bold text-xs transition-all shadow-sm",
                 status.canJoin
                   ? "bg-saBlue hover:bg-saBlueDarkHover text-white shadow-saBlue/20"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
@@ -511,18 +549,18 @@ export default function ClassSessionsPage() {
               {status.canJoin ? 'Join Live Class' : 'View Details'}
             </Button>
 
-            {status.label === 'Ended' && (
+            {isAdmin && status.label === 'Ended' && (
               <Button
                 variant="outline"
                 size="sm"
-                className="h-9 px-3 rounded-xl font-bold text-xs border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 gap-1.5 shadow-sm"
+                className="h-9 px-2.5 rounded-xl font-bold text-xs border-saBlue/20 text-saBlue bg-saBlueSubtle/60 hover:bg-saBlue hover:text-white gap-1 shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   setSelectedRecordingSession(session);
                 }}
-                title="Watch Class Recording"
+                title="Watch Class Recording (Admin Only)"
               >
-                <PlayCircle className="w-3.5 h-3.5 text-blue-600" />
+                <PlayCircle className="w-3.5 h-3.5" />
                 <span>Recording</span>
               </Button>
             )}
@@ -530,7 +568,7 @@ export default function ClassSessionsPage() {
             <Button
               variant="outline"
               size="sm"
-              className="h-9 px-3 rounded-xl font-semibold text-xs border-slate-200 hover:bg-saBlue/10 hover:text-saBlue hover:border-saBlue/30"
+              className="h-9 px-2.5 rounded-xl font-bold text-xs border-slate-200 hover:bg-saOrangeSubtle hover:text-saOrangeDark hover:border-saVividOrange/30 shrink-0"
               onClick={() => navigate(`/dashboard/class-sessions/${session.id}/attendance`)}
             >
               Attendance
@@ -540,7 +578,7 @@ export default function ClassSessionsPage() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:border-saVividOrange hover:text-saVividOrange hover:bg-saVividOrange/10"
+                className="h-9 w-9 rounded-xl border-slate-200 text-slate-600 hover:border-saVividOrange hover:text-saVividOrange hover:bg-saOrangeSubtle shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate(`/dashboard/class-sessions/${session.id}/edit`);
@@ -555,7 +593,7 @@ export default function ClassSessionsPage() {
               <Button
                 variant="outline"
                 size="icon"
-                className="h-9 w-9 rounded-xl border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-600 hover:bg-red-50"
+                className="h-9 w-9 rounded-xl border-slate-200 text-slate-400 hover:border-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleDeleteSession(session);
@@ -584,53 +622,58 @@ export default function ClassSessionsPage() {
     const currentSessions = weeklyData[selectedDay] || [];
 
     return (
-      <div className="space-y-6">
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h3 className="text-base font-bold text-slate-900">{selectedDay} Schedule</h3>
-              <Badge className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold">
-                {currentSessions.length} Classes
-              </Badge>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-sm space-y-3">
+          {/* Top Row: Day Title & Week Offset */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <h3 className="text-sm sm:text-base font-black text-slate-900 truncate">
+                {selectedDay}
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-saBlueSubtle text-saBlue border border-saBlue/20 shrink-0">
+                {currentSessions.length} {currentSessions.length === 1 ? 'Class' : 'Classes'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
               {canDeleteSession && currentSessions.length > 0 && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => handleSelectAllVisible(currentSessions.map((s) => s.id))}
-                  className="h-7 px-2.5 text-[11px] font-bold rounded-lg border-slate-200 text-slate-600 hover:text-saBlue hover:bg-saBlue/5"
+                  className="h-7 px-2 text-[10px] sm:text-[11px] font-bold rounded-lg border-slate-200 text-slate-600 hover:text-saBlue hover:bg-saBlue/5"
                 >
-                  {currentSessions.every((s) => selectedSessionIds.includes(s.id))
-                    ? 'Deselect Day'
-                    : 'Select All on Day'}
+                  {currentSessions.every((s) => selectedSessionIds.includes(s.id)) ? 'Deselect' : 'Select All'}
                 </Button>
               )}
-            </div>
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200/80">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-lg text-slate-600 hover:bg-white"
-                onClick={() => setWeekOffset((prev) => prev - 1)}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <div className="px-2 text-xs font-bold text-slate-700">
-                {weekOffset === 0 ? 'Current Week' : weekOffset > 0 ? `+${weekOffset} Week` : `${weekOffset} Week`}
+
+              <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200/80">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-slate-600 hover:bg-white"
+                  onClick={() => setWeekOffset((prev) => prev - 1)}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </Button>
+                <span className="px-1.5 text-[10px] sm:text-xs font-bold text-slate-700 whitespace-nowrap">
+                  {weekOffset === 0 ? 'This Week' : weekOffset > 0 ? `+${weekOffset}w` : `${weekOffset}w`}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 sm:h-7 sm:w-7 rounded-lg text-slate-600 hover:bg-white"
+                  onClick={() => setWeekOffset((prev) => prev + 1)}
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 rounded-lg text-slate-600 hover:bg-white"
-                onClick={() => setWeekOffset((prev) => prev + 1)}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
             </div>
           </div>
 
-          {/* DAY SELECTOR PILLS */}
-          <div className="overflow-x-auto scrollbar-none -mx-1 px-1">
-            <div className="flex gap-2 min-w-max">
+          {/* DAY SELECTOR PILLS (scrollbar hidden, smooth touch scroll) */}
+          <div className="overflow-x-auto scrollbar-hide -mx-1 px-1 py-0.5">
+            <div className="flex gap-1.5 sm:gap-2 min-w-max">
               {orderedDays.map((day) => {
                 const isToday = day === dayNames[todayIndex] && weekOffset === 0;
                 const isSelected = day === selectedDay;
@@ -641,12 +684,12 @@ export default function ClassSessionsPage() {
                     key={day}
                     onClick={() => setSelectedDay(day)}
                     className={cn(
-                      "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 shrink-0",
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 shrink-0",
                       isSelected
                         ? "bg-saBlue border-saBlue text-white shadow-md shadow-saBlue/20 scale-105"
                         : isToday
-                          ? "bg-saVividOrange/15 border-saVividOrange/30 text-saVividOrange font-black"
-                          : "bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-saBlue/10 hover:text-saBlue"
+                          ? "bg-saOrangeSubtle border-saVividOrange/30 text-saOrangeDark font-black"
+                          : "bg-slate-50 border-slate-200/80 text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue"
                     )}
                   >
                     <span>{isToday ? 'Today' : day.slice(0, 3)}</span>
@@ -667,16 +710,16 @@ export default function ClassSessionsPage() {
 
         <div>
           {currentSessions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {currentSessions.map(renderSessionCard)}
             </div>
           ) : (
-            <Card className="py-16 text-center bg-white border-2 border-dashed border-slate-200 rounded-2xl">
+            <Card className="py-12 sm:py-16 text-center bg-white border-2 border-dashed border-slate-200 rounded-3xl">
               <CardContent>
-                <div className="w-16 h-16 bg-saBlue/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-saBlue">
-                  <Clock className="w-8 h-8" />
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-saBlueSubtle rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-saBlue">
+                  <Clock className="w-6 h-6 sm:w-8 sm:h-8" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800 mb-1">No Classes Scheduled for {selectedDay}</h3>
+                <h3 className="text-base sm:text-lg font-bold text-slate-800 mb-1">No Classes on {selectedDay}</h3>
                 <p className="text-slate-500 text-xs sm:text-sm max-w-md mx-auto">
                   There are no active class sessions scheduled on this day matching your filters.
                 </p>
@@ -689,148 +732,94 @@ export default function ClassSessionsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-10 px-2 sm:px-4">
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto pb-10 px-2 sm:px-4">
       {/* Header */}
-      <UnifiedPageHeader
-        title="Class Schedule & Sessions"
-        subtitle={isStudent ? 'Track your upcoming live classes and past recordings.' : 'Manage online & offline timetable and attendance.'}
-        icon={Video}
-        badge={`${allCurrentSessions.length} Scheduled`}
-        actions={
-          canAddSession && (
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
+        <div className="flex items-center justify-between gap-3 w-full sm:w-auto">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                Class Schedule & Sessions
+              </h1>
+              <span className="inline-flex items-center text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-saOrangeSubtle text-saOrangeDark border border-saVividOrange/30 shrink-0">
+                {allCurrentSessions.length} Scheduled
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5 line-clamp-1 sm:line-clamp-none">
+              {isStudent ? 'Track upcoming live classes and past recordings.' : 'Manage online & offline timetable and attendance.'}
+            </p>
+          </div>
+
+          {canAddSession && (
             <Button
-              className="bg-gradient-to-r from-saBlue to-[#025AA3] hover:from-[#025AA3] hover:to-saBlue text-white shadow-md shadow-saBlue/20 rounded-xl h-10 sm:h-11 px-5 font-bold text-xs sm:text-sm uppercase tracking-wider transition-all active:scale-95 flex items-center gap-2"
+              className="sm:hidden bg-saBlue hover:bg-saBlueDarkHover text-white shadow-sm rounded-xl h-9 px-3 font-bold text-xs shrink-0 flex items-center gap-1.5"
               onClick={() => navigate('/dashboard/class-sessions/create')}
             >
-              <Plus className="w-4 h-4" />
-              New Class
+              <Plus className="w-3.5 h-3.5" />
+              <span>New</span>
             </Button>
-          )
-        }
-      />
+          )}
+        </div>
 
-      {/* COMPACT STATS STRIP WITH BLUE & ORANGE COCKTAIL */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saBlue/40 transition-all">
-          <div className="h-9 w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
-            <Calendar className="h-4.5 w-4.5" />
+        {canAddSession && (
+          <Button
+            className="hidden sm:flex bg-saBlue hover:bg-saBlueDarkHover text-white shadow-md shadow-saBlue/20 rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all active:scale-95 items-center gap-2 shrink-0"
+            onClick={() => navigate('/dashboard/class-sessions/create')}
+          >
+            <Plus className="w-4 h-4" />
+            New Class
+          </Button>
+        )}
+      </div>
+
+      {/* COMPACT STATS STRIP WITH BLUE & ORANGE THEME */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-3">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-1 sm:gap-2.5 shadow-xs hover:border-saBlue/40 transition-all">
+          <div className="h-7 w-7 sm:h-9 sm:w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
+            <Calendar className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Total</p>
-            <p className="text-base sm:text-lg font-black text-slate-900 leading-tight mt-0.5">{allCurrentSessions.length}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Total</p>
+            <p className="text-sm sm:text-lg font-black text-slate-900 leading-tight mt-0.5">{allCurrentSessions.length}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saVividOrange/40 transition-all">
-          <div className="h-9 w-9 bg-saVividOrange/15 rounded-xl flex items-center justify-center text-saVividOrange shrink-0">
-            <Radio className="h-4.5 w-4.5 animate-pulse" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-1 sm:gap-2.5 shadow-xs hover:border-saVividOrange/40 transition-all">
+          <div className="h-7 w-7 sm:h-9 sm:w-9 bg-saVividOrange/15 rounded-xl flex items-center justify-center text-saVividOrange shrink-0">
+            <Radio className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 animate-pulse" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Live Now</p>
-            <p className="text-base sm:text-lg font-black text-saVividOrange leading-tight mt-0.5">{liveCount}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Live</p>
+            <p className="text-sm sm:text-lg font-black text-saVividOrange leading-tight mt-0.5">{liveCount}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-2xl p-3 flex items-center gap-3 shadow-xs hover:border-saBlue/40 transition-all">
-          <div className="h-9 w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
-            <Video className="h-4.5 w-4.5" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-1 sm:gap-2.5 shadow-xs hover:border-saBlue/40 transition-all">
+          <div className="h-7 w-7 sm:h-9 sm:w-9 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue shrink-0">
+            <Video className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Online</p>
-            <p className="text-base sm:text-lg font-black text-saBlue leading-tight mt-0.5">{onlineCount}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Online</p>
+            <p className="text-sm sm:text-lg font-black text-saBlue leading-tight mt-0.5">{onlineCount}</p>
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200/80 rounded-xl px-3 py-2 flex items-center gap-2.5 shadow-sm">
-          <div className="h-7 w-7 bg-saVividOrange/10 rounded-lg flex items-center justify-center text-saVividOrange shrink-0">
-            <BookOpen className="h-3.5 w-3.5" />
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-2 sm:p-3 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-1 sm:gap-2.5 shadow-xs hover:border-saVividOrange/40 transition-all">
+          <div className="h-7 w-7 sm:h-9 sm:w-9 bg-saVividOrange/10 rounded-xl flex items-center justify-center text-saVividOrange shrink-0">
+            <BookOpen className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none">Offline</p>
-            <p className="text-sm font-black text-saVividOrange leading-tight">{offlineCount}</p>
+            <p className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Offline</p>
+            <p className="text-sm sm:text-lg font-black text-saVividOrange leading-tight mt-0.5">{offlineCount}</p>
           </div>
         </div>
       </div>
 
-      {/* COMPACT SINGLE-ROW FILTER TOOLBAR */}
-      <div className="bg-white border border-slate-200/80 shadow-sm rounded-xl p-2.5 overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-2 min-w-max">
-          {/* Search */}
-          <div className="relative shrink-0 w-52">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-            <Input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search..."
-              className="pl-8 h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs focus:ring-saBlue focus:border-saBlue"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Subject Filter */}
-          <div className="shrink-0 w-40">
-            <SearchablePaginatedSelect
-              value={selectedSubject}
-              onValueChange={setSelectedSubject}
-              placeholder="All Subjects"
-              searchPlaceholder="Search subject..."
-              triggerClassName="h-8 px-2.5 rounded-lg border-slate-200/80 bg-slate-50/50 text-xs font-medium"
-              options={[
-                { value: 'all', label: 'All Subjects' },
-                ...subjects.map((subject) => ({
-                  value: String(subject.id),
-                  label: formatSubjectFilterLabel(subject),
-                  searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
-                })),
-              ]}
-            />
-          </div>
-
-          {/* Mode Filter */}
-          <div className="shrink-0 w-32">
-            <Select value={selectedMode} onValueChange={setSelectedMode}>
-              <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium">
-                <SelectValue placeholder="All Modes" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Modes</SelectItem>
-                <SelectItem value="ONLINE">Online</SelectItem>
-                <SelectItem value="OFFLINE">Offline</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Teacher Filter (Admin only) */}
-          {isAdmin && teachers.length > 0 && (
-            <div className="shrink-0 w-36">
-              <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
-                <SelectTrigger className="h-8 border-slate-200/80 rounded-lg bg-slate-50/50 text-xs font-medium">
-                  <SelectValue placeholder="All Teachers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Teachers</SelectItem>
-                  {teachers.map((t) => (
-                    <SelectItem key={t.id} value={t.id.toString()}>
-                      {t.user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Divider */}
-          <div className="h-6 w-px bg-slate-200 shrink-0" />
-
-          {/* View Mode Tabs */}
-          <div className="inline-flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 shrink-0">
+      {/* COMPACT RESPONSIVE FILTER TOOLBAR */}
+      <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-2.5 sm:p-3 space-y-2.5">
+        {/* Top Row: View Mode Tabs */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="grid grid-cols-5 sm:flex w-full sm:w-auto p-1 bg-slate-100 rounded-xl gap-0.5 shrink-0 overflow-x-auto scrollbar-hide">
             {[
               { id: 'week', label: 'Week' },
               { id: 'today', label: 'Today' },
@@ -846,7 +835,7 @@ export default function ClassSessionsPage() {
                   setPage(1);
                 }}
                 className={cn(
-                  "px-2.5 py-1 rounded-md text-[11px] font-bold transition-all whitespace-nowrap",
+                  "px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center whitespace-nowrap",
                   viewMode === mode.id
                     ? "bg-white shadow-sm text-saBlue"
                     : "text-slate-600 hover:text-slate-900"
@@ -857,17 +846,93 @@ export default function ClassSessionsPage() {
             ))}
           </div>
 
-          {/* Clear Filters */}
           {hasActiveFilters && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearFilters}
-              className="h-8 shrink-0 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 font-semibold rounded-lg"
+              className="h-8 shrink-0 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 px-2.5 font-bold rounded-xl"
             >
-              Clear
+              Reset
             </Button>
           )}
+        </div>
+
+        {/* Bottom Row: Search & Dropdowns */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[140px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search subject or teacher..."
+              className="pl-8 pr-8 h-9 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs focus:ring-saBlue focus:border-saBlue"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Dropdowns Row on Mobile */}
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Subject Filter */}
+            <div className="flex-1 sm:flex-initial sm:w-44 min-w-[130px]">
+              <SearchablePaginatedSelect
+                value={selectedSubject}
+                onValueChange={setSelectedSubject}
+                placeholder="All Subjects"
+                searchPlaceholder="Search subject..."
+                triggerClassName="h-9 px-2.5 rounded-xl border-slate-200/80 bg-slate-50/50 text-xs font-medium w-full"
+                options={[
+                  { value: 'all', label: 'All Subjects' },
+                  ...subjects.map((subject) => ({
+                    value: String(subject.id),
+                    label: formatSubjectFilterLabel(subject),
+                    searchText: `${subject.name} ${subject.class?.name || ''} ${subject.board?.name || findBoardNameForSubject(subject.id) || ''}`,
+                  })),
+                ]}
+              />
+            </div>
+
+            {/* Mode Filter */}
+            <div className="w-28 sm:w-32 shrink-0">
+              <Select value={selectedMode} onValueChange={setSelectedMode}>
+                <SelectTrigger className="h-9 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs font-medium">
+                  <SelectValue placeholder="All Modes" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Modes</SelectItem>
+                  <SelectItem value="ONLINE">Online</SelectItem>
+                  <SelectItem value="OFFLINE">Offline</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Teacher Filter (Admin only) */}
+            {isAdmin && teachers.length > 0 && (
+              <div className="w-32 sm:w-36 shrink-0">
+                <Select value={selectedTeacher} onValueChange={setSelectedTeacher}>
+                  <SelectTrigger className="h-9 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs font-medium">
+                    <SelectValue placeholder="All Teachers" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teachers</SelectItem>
+                    {teachers.map((t) => (
+                      <SelectItem key={t.id} value={t.id.toString()}>
+                        {t.user.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -933,8 +998,8 @@ export default function ClassSessionsPage() {
         </>
       )}
 
-      {/* Recording Player Modal */}
-      {selectedRecordingSession && (
+      {/* Recording Player Modal (Admin Only) */}
+      {isAdmin && selectedRecordingSession && (
         <RecordingPlayerModal
           isOpen={!!selectedRecordingSession}
           onClose={() => setSelectedRecordingSession(null)}
@@ -958,45 +1023,53 @@ export default function ClassSessionsPage() {
       />
 
       {/* Recurring Session Delete Modal */}
-      {recurringDeleteModalOpen && sessionToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 animate-in fade-in duration-200 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center text-amber-600 shrink-0">
-                <RefreshCw className="w-6 h-6 animate-spin-slow" />
+      {recurringDeleteModalOpen && sessionToDelete && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div 
+            className="absolute inset-0"
+            onClick={() => {
+              setRecurringDeleteModalOpen(false);
+              setSessionToDelete(null);
+            }}
+          />
+
+          <div className="relative bg-white rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-saOrangeSubtle border border-saVividOrange/20 flex items-center justify-center text-saVividOrange shrink-0">
+                <RefreshCw className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Delete Recurring Class</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  <strong>"{sessionToDelete.subject?.name}"</strong> is part of a recurring schedule. How would you like to proceed?
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Delete Recurring Class</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  <strong className="text-slate-700">"{sessionToDelete.subject?.name}"</strong> is part of a recurring timetable series. How would you like to proceed?
                 </p>
               </div>
             </div>
 
-            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600 space-y-1">
-              <p className="font-semibold text-slate-700">Scheduled Date & Time:</p>
-              <p>{new Date(sessionToDelete.start_time).toLocaleDateString()} at {formatTime(sessionToDelete.start_time)} – {formatTime(sessionToDelete.end_time)}</p>
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 text-xs text-slate-600 space-y-1">
+              <p className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Scheduled Slot:</p>
+              <p className="font-semibold text-slate-900">{formatDate(sessionToDelete.start_time)} at {formatTime(sessionToDelete.start_time)} – {formatTime(sessionToDelete.end_time)}</p>
             </div>
 
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2.5 pt-1">
               <Button
                 type="button"
                 disabled={recurringDeleting}
                 onClick={() => confirmDeleteSession(false)}
-                className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs justify-between px-4 border border-slate-200"
+                className="w-full h-11 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs justify-between px-4 border border-slate-200 transition-all"
               >
                 <span>Delete This Session Only</span>
-                <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-md font-semibold text-slate-700">Single</span>
+                <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-md font-bold text-slate-700">Single Date</span>
               </Button>
 
               <Button
                 type="button"
                 disabled={recurringDeleting}
                 onClick={() => confirmDeleteSession(true)}
-                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs justify-between px-4 shadow-md shadow-red-600/20"
+                className="w-full h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold text-xs justify-between px-4 shadow-md shadow-red-600/20 transition-all"
               >
                 <span>{recurringDeleting ? 'Deleting Series...' : 'Delete Entire Recurring Series'}</span>
-                <span className="text-[10px] bg-red-700 px-2 py-0.5 rounded-md font-semibold text-red-100">All Dates</span>
+                <span className="text-[10px] bg-red-700 px-2 py-0.5 rounded-md font-bold text-red-100">All Dates</span>
               </Button>
 
               <Button
@@ -1012,29 +1085,35 @@ export default function ClassSessionsPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Bulk Delete Modal */}
-      {bulkDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 animate-in fade-in duration-200 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+      {bulkDeleteModalOpen && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div 
+            className="absolute inset-0"
+            onClick={() => setBulkDeleteModalOpen(false)}
+          />
+
+          <div className="relative bg-white rounded-3xl shadow-2xl p-6 sm:p-7 w-full max-w-md text-left space-y-5 animate-in zoom-in-95 duration-200 border border-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-start gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
                 <Trash2 className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Batch Delete Classes</h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  You are about to delete <strong>{selectedSessionIds.length}</strong> selected class session{selectedSessionIds.length > 1 ? 's' : ''}.
+                <h3 className="text-lg font-black text-slate-900 tracking-tight">Batch Delete Classes</h3>
+                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                  You are about to delete <strong className="text-slate-800">{selectedSessionIds.length}</strong> selected class session{selectedSessionIds.length > 1 ? 's' : ''}.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between gap-3">
+            <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-bold text-amber-900">Delete recurring series</p>
-                <p className="text-[11px] text-amber-700">If any selected classes are recurring, delete their entire series as well.</p>
+                <p className="text-[11px] text-amber-700 leading-tight mt-0.5">If any selected classes are recurring, delete their entire series as well.</p>
               </div>
               <Switch
                 checked={bulkDeleteRecurringSeries}
@@ -1042,14 +1121,17 @@ export default function ClassSessionsPage() {
               />
             </div>
 
-            <p className="text-[11px] text-red-600 font-medium">* This action is permanent and cannot be undone.</p>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200/80">
+              <AlertTriangle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+              <span>This action is permanent and cannot be undone</span>
+            </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setBulkDeleteModalOpen(false)}
-                className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200"
+                className="h-10 px-4 rounded-xl text-xs font-bold border-slate-200 hover:bg-slate-100"
               >
                 Cancel
               </Button>
@@ -1057,13 +1139,14 @@ export default function ClassSessionsPage() {
                 type="button"
                 disabled={bulkDeleting}
                 onClick={confirmBulkDelete}
-                className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-red-600/20"
+                className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20"
               >
                 {bulkDeleting ? 'Deleting...' : `Delete ${selectedSessionIds.length} Classes`}
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Floating Batch Action Bar */}

@@ -64,7 +64,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             sidebarCollapsed ? "lg:ml-14" : "lg:ml-56"
           )}
         >
-          <div className="max-w-full animate-fadeUp">
+          <div className="max-w-full">
             {children || <Outlet />}
           </div>
         </main>

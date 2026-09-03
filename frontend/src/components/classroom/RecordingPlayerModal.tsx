@@ -80,7 +80,7 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl border border-slate-200 bg-white shadow-2xl">
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <DialogHeader className="p-5 pb-3 border-b border-slate-100">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

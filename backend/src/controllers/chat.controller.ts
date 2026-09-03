@@ -718,9 +718,9 @@ export const deleteMessage = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Message does not belong to this chat', 400);
     }
 
-    // Admins can delete any message. Senders can delete their own messages.
-    if (userRole !== 'ADMIN' && message.sender_id !== userId) {
-      return sendError(res, 'You are not authorized to delete this message', 403);
+    // Only Admins can delete messages in chats
+    if (userRole !== 'ADMIN') {
+      return sendError(res, 'Access denied: Only administrators can delete chat messages', 403);
     }
 
     await prisma.message.delete({
