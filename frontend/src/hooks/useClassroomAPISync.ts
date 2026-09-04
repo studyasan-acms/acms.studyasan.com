@@ -71,22 +71,39 @@ export function useClassroomAPISync({
                             type: 'clear',
                             timestamp: Date.now(),
                         });
-                    }
-
-                    // Process new strokes
-                    const newStrokes = strokes.filter((stroke) =>
-                        !processedStrokeIds.current.has(stroke.id)
-                    );
-
-                    if (newStrokes.length > 0) {
-                        newStrokes.forEach((stroke) => {
-                            processedStrokeIds.current.add(stroke.id);
+                    } else {
+                        // Detect deleted strokes that were previously present in client state
+                        const serverStrokeIds = new Set(strokes.map((s) => s.id));
+                        const deletedIds: string[] = [];
+                        for (const id of processedStrokeIds.current) {
+                            if (!serverStrokeIds.has(id)) {
+                                deletedIds.push(id);
+                            }
+                        }
+                        if (deletedIds.length > 0) {
+                            deletedIds.forEach((id) => processedStrokeIds.current.delete(id));
                             whiteboardHandlerRef.current?.({
-                                type: 'stroke',
-                                data: stroke,
+                                type: 'delete-strokes',
+                                strokeIds: deletedIds,
                                 timestamp: Date.now(),
                             });
-                        });
+                        }
+
+                        // Process new strokes
+                        const newStrokes = strokes.filter((stroke) =>
+                            !processedStrokeIds.current.has(stroke.id)
+                        );
+
+                        if (newStrokes.length > 0) {
+                            newStrokes.forEach((stroke) => {
+                                processedStrokeIds.current.add(stroke.id);
+                                whiteboardHandlerRef.current?.({
+                                    type: 'stroke',
+                                    data: stroke,
+                                    timestamp: Date.now(),
+                                });
+                            });
+                        }
                     }
                 }
             } catch (error) {
@@ -146,6 +163,17 @@ export function useClassroomAPISync({
             } else if (message.type === 'clear') {
                 await api.delete(`/video-rooms/${roomCode}/whiteboard`);
                 processedStrokeIds.current.clear();
+            } else if (message.type === 'clear-board') {
+                if (message.strokeIds && message.strokeIds.length > 0) {
+                    message.strokeIds.forEach((id) => processedStrokeIds.current.delete(id));
+                    await api.delete(`/video-rooms/${roomCode}/whiteboard/strokes`, { data: { strokeIds: message.strokeIds } });
+                }
+            } else if (message.type === 'delete-strokes' || message.type === 'delete-stroke') {
+                const strokeIds = message.strokeIds || (message.strokeId ? [message.strokeId] : (Array.isArray(message.data) ? message.data as string[] : []));
+                if (strokeIds.length > 0) {
+                    strokeIds.forEach((id) => processedStrokeIds.current.delete(id));
+                    await api.delete(`/video-rooms/${roomCode}/whiteboard/strokes`, { data: { strokeIds } });
+                }
             }
         } catch (error) {
             console.error('[APISync] Error sending whiteboard:', error);

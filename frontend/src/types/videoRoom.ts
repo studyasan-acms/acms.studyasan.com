@@ -120,15 +120,25 @@ export interface Stroke {
 /**
  * Whiteboard message types for DataChannel sync
  */
-export type WhiteboardMessageType = 'stroke' | 'clear' | 'clear-board' | 'undo' | 'sync-request' | 'sync-response';
+export type WhiteboardMessageType =
+    | 'stroke'
+    | 'clear'
+    | 'clear-board'
+    | 'undo'
+    | 'delete-stroke'
+    | 'delete-strokes'
+    | 'sync-request'
+    | 'sync-response';
 
 /**
  * Whiteboard DataChannel message
  */
 export interface WhiteboardMessage {
     type: WhiteboardMessageType;
-    data?: Stroke | Stroke[];
+    data?: Stroke | Stroke[] | string | string[];
     board?: number; // Board number for clear-board operations
+    strokeId?: string;
+    strokeIds?: string[];
     senderId?: string;
     timestamp: number;
 }

@@ -77,6 +77,115 @@ function interpolateColor(color1: string, color2: string, fraction: number): str
     return `rgb(${r}, ${g}, ${b})`;
 }
 
+function distSqToSegment(p: { x: number; y: number }, v: { x: number; y: number }, w: { x: number; y: number }): number {
+    const l2 = (v.x - w.x) * (v.x - w.x) + (v.y - w.y) * (v.y - w.y);
+    if (l2 === 0) return (p.x - v.x) * (p.x - v.x) + (p.y - v.y) * (p.y - v.y);
+    let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+    t = Math.max(0, Math.min(1, t));
+    const projX = v.x + t * (w.x - v.x);
+    const projY = v.y + t * (w.y - v.y);
+    return (p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY);
+}
+
+function isStrokeIntersecting(
+    stroke: Stroke,
+    eraserX: number,
+    eraserY: number,
+    eraserRadius: number,
+    rect: DOMRect
+): boolean {
+    if (!stroke.points || stroke.points.length === 0) return false;
+
+    const eraserPt = { x: eraserX, y: eraserY };
+    const strokeSize = stroke.size || 4;
+    const thresholdSq = (eraserRadius + strokeSize / 2) * (eraserRadius + strokeSize / 2);
+
+    if (['pen', 'rainbow', 'highlight'].includes(stroke.tool)) {
+        for (let i = 0; i < stroke.points.length; i++) {
+            const pA = {
+                x: stroke.points[i].x * rect.width,
+                y: stroke.points[i].y * rect.height,
+            };
+            const dx = pA.x - eraserX;
+            const dy = pA.y - eraserY;
+            if (dx * dx + dy * dy <= thresholdSq) {
+                return true;
+            }
+
+            if (i < stroke.points.length - 1) {
+                const pB = {
+                    x: stroke.points[i + 1].x * rect.width,
+                    y: stroke.points[i + 1].y * rect.height,
+                };
+                if (distSqToSegment(eraserPt, pA, pB) <= thresholdSq) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    if (['line', 'arrow'].includes(stroke.tool) && stroke.points.length >= 2) {
+        const pA = {
+            x: stroke.points[0].x * rect.width,
+            y: stroke.points[0].y * rect.height,
+        };
+        const pB = {
+            x: stroke.points[1].x * rect.width,
+            y: stroke.points[1].y * rect.height,
+        };
+        return distSqToSegment(eraserPt, pA, pB) <= thresholdSq;
+    }
+
+    if (['rect', 'circle', 'triangle', 'star'].includes(stroke.tool) && stroke.points.length >= 2) {
+        const pA = {
+            x: stroke.points[0].x * rect.width,
+            y: stroke.points[0].y * rect.height,
+        };
+        const pB = {
+            x: stroke.points[1].x * rect.width,
+            y: stroke.points[1].y * rect.height,
+        };
+        const minX = Math.min(pA.x, pB.x) - eraserRadius;
+        const maxX = Math.max(pA.x, pB.x) + eraserRadius;
+        const minY = Math.min(pA.y, pB.y) - eraserRadius;
+        const maxY = Math.max(pA.y, pB.y) + eraserRadius;
+        return eraserX >= minX && eraserX <= maxX && eraserY >= minY && eraserY <= maxY;
+    }
+
+    if (stroke.tool === 'text' && stroke.text && stroke.points.length >= 1) {
+        const x = stroke.points[0].x * rect.width;
+        const y = stroke.points[0].y * rect.height;
+        const textHeight = strokeSize * 4;
+        const textWidth = Math.max(stroke.text.length * (textHeight * 0.6), 20);
+        return (
+            eraserX >= x - 4 - eraserRadius &&
+            eraserX <= x + textWidth + 4 + eraserRadius &&
+            eraserY >= y - textHeight - eraserRadius &&
+            eraserY <= y + 8 + eraserRadius
+        );
+    }
+
+    if (stroke.tool === 'image' && stroke.points.length >= 1) {
+        const x = stroke.points[0].x * rect.width;
+        const y = stroke.points[0].y * rect.height;
+        const width = stroke.points.length > 1
+            ? (stroke.points[1].x - stroke.points[0].x) * rect.width
+            : 200;
+        const height = stroke.points.length > 1
+            ? (stroke.points[1].y - stroke.points[0].y) * rect.height
+            : 200;
+        return (
+            eraserX >= x - 4 - eraserRadius &&
+            eraserX <= x + width + 4 + eraserRadius &&
+            eraserY >= y - 4 - eraserRadius &&
+            eraserY <= y + height + 4 + eraserRadius
+        );
+    }
+
+    return false;
+}
+
 export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhiteboardOptions): UseWhiteboardReturn {
     const [currentTool, setCurrentTool] = useState<DrawingTool>('pen');
     const [currentColor, setCurrentColor] = useState('#0ea5e9');
@@ -354,6 +463,44 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         ctx.closePath();
     };
 
+    const eraseStrokesAtPoint = useCallback((point: Point) => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const eraserX = point.x * rect.width;
+        const eraserY = point.y * rect.height;
+        const eraserRadius = Math.max(currentSize * 2, 12);
+
+        const strokesArray = Array.from(strokes.current.entries());
+        const strokesIdsToDelete: string[] = [];
+
+        for (const [strokeId, stroke] of strokesArray) {
+            if (stroke.board !== undefined && stroke.board !== currentBoard) {
+                continue;
+            }
+
+            if (isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
+                strokesIdsToDelete.push(strokeId);
+            }
+        }
+
+        if (strokesIdsToDelete.length > 0) {
+            for (const strokeId of strokesIdsToDelete) {
+                strokes.current.delete(strokeId);
+            }
+            if (selectedStrokeId && strokesIdsToDelete.includes(selectedStrokeId)) {
+                setSelectedStrokeId(null);
+            }
+            redrawCanvas();
+            sendMessage({
+                type: 'delete-strokes',
+                strokeIds: strokesIdsToDelete,
+                timestamp: Date.now(),
+            });
+        }
+    }, [canvasRef, currentBoard, currentSize, redrawCanvas, selectedStrokeId, sendMessage]);
+
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         const point = getCanvasPoint(e);
         if (!point) return;
@@ -457,6 +604,21 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             return;
         }
 
+        if (currentTool === 'eraser') {
+            isDrawing.current = true;
+            currentStroke.current = {
+                id: '',
+                tool: 'eraser',
+                color: '',
+                size: currentSize,
+                points: [point],
+                board: currentBoard,
+                timestamp: Date.now(),
+            };
+            eraseStrokesAtPoint(point);
+            return;
+        }
+
         isDrawing.current = true;
 
         if (['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)) {
@@ -472,8 +634,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
-        } else if (currentTool !== 'eraser') {
-            // Don't create persistent stroke for eraser
+        } else {
             const strokeId = generateStrokeId();
             const color = currentTool === 'rainbow'
                 ? rainbowColors[0] // Start with violet, gradient will be applied during render
@@ -489,21 +650,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
-        } else {
-            // Eraser: just track that we're drawing, but don't create a persistent stroke
-            currentStroke.current = {
-                id: '',
-                tool: 'eraser',
-                color: '',
-                size: currentSize,
-                points: [point],
-                board: currentBoard,
-                timestamp: Date.now(),
-            };
         }
 
         redrawCanvas();
-    }, [currentTool, currentColor, currentSize, getCanvasPoint, redrawCanvas]);
+    }, [currentTool, currentColor, currentSize, currentBoard, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
         const point = getCanvasPoint(e);
@@ -566,58 +716,20 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         // Handle drawing
         if (!isDrawing.current || !currentStroke.current) return;
 
+        if (currentTool === 'eraser') {
+            eraseStrokesAtPoint(point);
+            return;
+        }
+
         if (['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)) {
             currentStroke.current.points[1] = point;
-        } else if (currentTool === 'eraser') {
-            // Eraser mode: detect and delete strokes that intersect with eraser path
-            const canvas = canvasRef.current;
-            if (!canvas) return;
-
-            const rect = canvas.getBoundingClientRect();
-            const eraserX = point.x * rect.width;
-            const eraserY = point.y * rect.height;
-            const eraserSize = currentSize;
-
-            // Check all strokes and remove those that intersect with eraser
-            const strokesArray = Array.from(strokes.current.entries());
-            const strokesIdsToDelete: string[] = [];
-
-            for (const [strokeId, stroke] of strokesArray) {
-                // Eraser only affects pen, rainbow, and highlight strokes
-                // It does NOT affect images, text, or shapes
-                if (!['pen', 'rainbow', 'highlight'].includes(stroke.tool)) {
-                    continue;
-                }
-
-                // Check if eraser path intersects with this stroke
-                for (const strokePoint of stroke.points) {
-                    const strokePixelX = strokePoint.x * rect.width;
-                    const strokePixelY = strokePoint.y * rect.height;
-
-                    // Distance from eraser to stroke point
-                    const dx = eraserX - strokePixelX;
-                    const dy = eraserY - strokePixelY;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-
-                    // If eraser touches this stroke, mark it for deletion
-                    if (distance <= eraserSize) {
-                        strokesIdsToDelete.push(strokeId);
-                        break; // Move to next stroke
-                    }
-                }
-            }
-
-            // Delete the strokes that were hit by the eraser
-            for (const strokeId of strokesIdsToDelete) {
-                strokes.current.delete(strokeId);
-            }
         } else {
             currentStroke.current.points.push(point);
         }
 
         strokes.current.set(currentStroke.current.id, currentStroke.current);
         redrawCanvas();
-    }, [currentTool, currentSize, getCanvasPoint, redrawCanvas, selectedStrokeId]);
+    }, [currentTool, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint]);
 
     const handlePointerUp = useCallback(() => {
         // Send drag/resize updates
@@ -666,13 +778,33 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             // Clear all strokes from the specified board
             const strokesArray = Array.from(strokes.current.entries());
             for (const [strokeId, stroke] of strokesArray) {
-                if (stroke.board === message.board) {
+                if (stroke.board === message.board || (stroke.board === undefined && message.board === 1)) {
                     strokes.current.delete(strokeId);
                 }
             }
             redrawCanvas();
+        } else if (message.type === 'delete-strokes' && (message.strokeIds || message.data)) {
+            const idsToDelete = message.strokeIds || (Array.isArray(message.data) ? (message.data as string[]) : []);
+            if (Array.isArray(idsToDelete) && idsToDelete.length > 0) {
+                idsToDelete.forEach((id) => {
+                    strokes.current.delete(id);
+                });
+                if (selectedStrokeId && idsToDelete.includes(selectedStrokeId)) {
+                    setSelectedStrokeId(null);
+                }
+                redrawCanvas();
+            }
+        } else if (message.type === 'delete-stroke' && (message.strokeId || (typeof message.data === 'string' ? message.data : null))) {
+            const idToDelete = message.strokeId || (typeof message.data === 'string' ? message.data : null);
+            if (idToDelete) {
+                strokes.current.delete(idToDelete);
+                if (selectedStrokeId === idToDelete) {
+                    setSelectedStrokeId(null);
+                }
+                redrawCanvas();
+            }
         }
-    }, [redrawCanvas]);
+    }, [redrawCanvas, selectedStrokeId]);
 
     const clearCanvas = useCallback(() => {
         strokes.current.clear();
@@ -687,18 +819,24 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     const clearBoard = useCallback((board: number) => {
         // Clear all strokes from the specified board
         const strokesArray = Array.from(strokes.current.entries());
+        const deletedIds: string[] = [];
         for (const [strokeId, stroke] of strokesArray) {
-            if (stroke.board === board) {
+            if (stroke.board === board || (stroke.board === undefined && board === 1)) {
                 strokes.current.delete(strokeId);
+                deletedIds.push(strokeId);
             }
+        }
+        if (selectedStrokeId && deletedIds.includes(selectedStrokeId)) {
+            setSelectedStrokeId(null);
         }
         redrawCanvas();
         sendMessage({
             type: 'clear-board',
             board,
+            strokeIds: deletedIds,
             timestamp: Date.now(),
         });
-    }, [redrawCanvas, sendMessage]);
+    }, [redrawCanvas, sendMessage, selectedStrokeId]);
 
     const addTextStroke = useCallback((text: string, position: Point) => {
         const strokeId = generateStrokeId();
@@ -744,11 +882,17 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
     const deleteSelected = useCallback(() => {
         if (selectedStrokeId) {
-            strokes.current.delete(selectedStrokeId);
+            const idToDelete = selectedStrokeId;
+            strokes.current.delete(idToDelete);
             setSelectedStrokeId(null);
             redrawCanvas();
+            sendMessage({
+                type: 'delete-strokes',
+                strokeIds: [idToDelete],
+                timestamp: Date.now(),
+            });
         }
-    }, [selectedStrokeId, redrawCanvas]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
 
     const setActive = useCallback((active: boolean) => {
         setIsActive(active);

@@ -540,6 +540,53 @@ export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * Delete specific whiteboard strokes
+ */
+export const deleteWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
+  try {
+    const { janusRoomId } = req.params;
+    const { strokeIds, strokeId } = req.body;
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+
+    if (!janusRoomId) {
+      return sendError(res, 'Janus room ID is required', 400);
+    }
+
+    const idsToDelete: string[] = strokeIds || (strokeId ? [strokeId] : []);
+    if (!idsToDelete || idsToDelete.length === 0) {
+      return sendError(res, 'Stroke IDs are required', 400);
+    }
+
+    const videoRoom = await prisma.videoRoom.findUnique({
+      where: { janus_room_id: BigInt(janusRoomId) },
+      include: { class_session: true },
+    });
+
+    if (!videoRoom) {
+      return sendError(res, 'Room not found', 404);
+    }
+
+    // Check access
+    const access = await checkRoomAccess(userId, userRole, videoRoom.class_session);
+    if (!access.hasAccess) {
+      return sendError(res, access.reason || 'Access denied', 403);
+    }
+
+    await prisma.whiteboardStroke.deleteMany({
+      where: {
+        room_id: videoRoom.id,
+        stroke_id: { in: idsToDelete },
+      },
+    });
+
+    sendSuccess(res, { deletedCount: idsToDelete.length }, 'Strokes deleted');
+  } catch (error: any) {
+    sendError(res, error.message, 500);
+  }
+};
+
+/**
  * Clear whiteboard
  */
 export const clearWhiteboard = async (req: AuthRequest, res: Response) => {
