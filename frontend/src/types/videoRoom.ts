@@ -115,6 +115,7 @@ export interface Stroke {
     board?: number; // Board number (1-5)
     text?: string;
     imageUrl?: string;
+    rotation?: number; // Optional rotation in degrees (0, 90, 180, 270)
 }
 
 /**
@@ -127,6 +128,7 @@ export type WhiteboardMessageType =
     | 'undo'
     | 'delete-stroke'
     | 'delete-strokes'
+    | 'change-board'
     | 'sync-request'
     | 'sync-response';
 
@@ -136,7 +138,7 @@ export type WhiteboardMessageType =
 export interface WhiteboardMessage {
     type: WhiteboardMessageType;
     data?: Stroke | Stroke[] | string | string[];
-    board?: number; // Board number for clear-board operations
+    board?: number; // Board number for clear-board or change-board operations
     strokeId?: string;
     strokeIds?: string[];
     senderId?: string;

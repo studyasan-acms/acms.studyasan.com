@@ -30,7 +30,7 @@ export function useClassroomAPISync({
     const whiteboardHandlerRef = useRef<((message: WhiteboardMessage) => void) | null>(null);
     const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
     const processedChatIds = useRef<Set<string>>(new Set());
-    const processedStrokeIds = useRef<Set<string>>(new Set());
+    const processedStrokeVersions = useRef<Map<string, number>>(new Map());
 
     // Poll for new messages
     useEffect(() => {
@@ -61,12 +61,12 @@ export function useClassroomAPISync({
                 // Poll whiteboard strokes
                 const whiteboardRes = await api.get(`/video-rooms/${roomCode}/whiteboard`);
                 if (whiteboardRes.data.success) {
-                    const strokes = whiteboardRes.data.data.strokes as Stroke[];
+                    const strokes = whiteboardRes.data.data.strokes as (Stroke & { updatedAt?: number })[];
 
                     // Detect if whiteboard was cleared
-                    if (strokes.length === 0 && processedStrokeIds.current.size > 0) {
+                    if (strokes.length === 0 && processedStrokeVersions.current.size > 0) {
                         console.log('[APISync] Whiteboard was cleared');
-                        processedStrokeIds.current.clear();
+                        processedStrokeVersions.current.clear();
                         whiteboardHandlerRef.current?.({
                             type: 'clear',
                             timestamp: Date.now(),
@@ -75,13 +75,13 @@ export function useClassroomAPISync({
                         // Detect deleted strokes that were previously present in client state
                         const serverStrokeIds = new Set(strokes.map((s) => s.id));
                         const deletedIds: string[] = [];
-                        for (const id of processedStrokeIds.current) {
+                        for (const id of processedStrokeVersions.current.keys()) {
                             if (!serverStrokeIds.has(id)) {
                                 deletedIds.push(id);
                             }
                         }
                         if (deletedIds.length > 0) {
-                            deletedIds.forEach((id) => processedStrokeIds.current.delete(id));
+                            deletedIds.forEach((id) => processedStrokeVersions.current.delete(id));
                             whiteboardHandlerRef.current?.({
                                 type: 'delete-strokes',
                                 strokeIds: deletedIds,
@@ -89,20 +89,21 @@ export function useClassroomAPISync({
                             });
                         }
 
-                        // Process new strokes
-                        const newStrokes = strokes.filter((stroke) =>
-                            !processedStrokeIds.current.has(stroke.id)
-                        );
+                        // Process new and updated strokes
+                        for (const stroke of strokes) {
+                            if (!stroke.board) stroke.board = 1;
+                            const storedVersion = processedStrokeVersions.current.get(stroke.id);
+                            const strokeVersion = stroke.updatedAt || stroke.timestamp || 0;
 
-                        if (newStrokes.length > 0) {
-                            newStrokes.forEach((stroke) => {
-                                processedStrokeIds.current.add(stroke.id);
+                            if (storedVersion === undefined || storedVersion < strokeVersion) {
+                                // New stroke or updated stroke
+                                processedStrokeVersions.current.set(stroke.id, strokeVersion);
                                 whiteboardHandlerRef.current?.({
                                     type: 'stroke',
                                     data: stroke,
                                     timestamp: Date.now(),
                                 });
-                            });
+                            }
                         }
                     }
                 }
@@ -157,23 +158,25 @@ export function useClassroomAPISync({
         try {
             if (message.type === 'stroke' && message.data) {
                 const stroke = message.data as Stroke;
-                processedStrokeIds.current.add(stroke.id);
+                processedStrokeVersions.current.set(stroke.id, Date.now());
 
                 await api.post(`/video-rooms/${roomCode}/whiteboard`, { stroke });
             } else if (message.type === 'clear') {
                 await api.delete(`/video-rooms/${roomCode}/whiteboard`);
-                processedStrokeIds.current.clear();
+                processedStrokeVersions.current.clear();
             } else if (message.type === 'clear-board') {
                 if (message.strokeIds && message.strokeIds.length > 0) {
-                    message.strokeIds.forEach((id) => processedStrokeIds.current.delete(id));
+                    message.strokeIds.forEach((id) => processedStrokeVersions.current.delete(id));
                     await api.delete(`/video-rooms/${roomCode}/whiteboard/strokes`, { data: { strokeIds: message.strokeIds } });
                 }
             } else if (message.type === 'delete-strokes' || message.type === 'delete-stroke') {
                 const strokeIds = message.strokeIds || (message.strokeId ? [message.strokeId] : (Array.isArray(message.data) ? message.data as string[] : []));
                 if (strokeIds.length > 0) {
-                    strokeIds.forEach((id) => processedStrokeIds.current.delete(id));
+                    strokeIds.forEach((id) => processedStrokeVersions.current.delete(id));
                     await api.delete(`/video-rooms/${roomCode}/whiteboard/strokes`, { data: { strokeIds } });
                 }
+            } else if (message.type === 'change-board') {
+                // Board changes are transmitted instantly via WebRTC DataChannel
             }
         } catch (error) {
             console.error('[APISync] Error sending whiteboard:', error);

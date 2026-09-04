@@ -29,29 +29,46 @@ interface UseWhiteboardOptions {
     initialStrokes?: Stroke[] | null;
 }
 
+export interface StrokeBounds {
+    minX: number;
+    minY: number;
+    maxX: number;
+    maxY: number;
+    width: number;
+    height: number;
+}
+
 interface UseWhiteboardReturn {
     currentTool: DrawingTool;
     currentColor: string;
     currentSize: number;
     currentBoard: number;
     selectedStrokeId: string | null;
+    selectedStroke: Stroke | null;
     setTool: (tool: DrawingTool) => void;
     setColor: (color: string) => void;
     setSize: (size: number) => void;
-    setBoard: (board: number) => void;
+    setBoard: (board: number, broadcast?: boolean) => void;
     clearCanvas: () => void;
     clearBoard: (board: number) => void;
     handlePointerDown: (e: React.PointerEvent) => void;
     handlePointerMove: (e: React.PointerEvent) => void;
-    handlePointerUp: (e: React.PointerEvent) => void;
+    handlePointerUp: () => void;
     handleRemoteMessage: (message: WhiteboardMessage) => void;
     setActive: (active: boolean) => void;
     addTextStroke: (text: string, position: Point) => void;
     addImageStroke: (imageUrl: string, position: Point) => void;
     deleteSelected: () => void;
+    scaleSelected: (factor: number) => void;
+    rotateSelected: (degrees?: number) => void;
+    duplicateSelected: () => void;
+    bringSelectedToFront: () => void;
+    sendSelectedToBack: () => void;
+    resetSelectedAspectRatio: () => void;
     getStrokes: () => Stroke[];
     loadStrokes: (loadedStrokes: Stroke[]) => void;
     exportImage: () => string | null;
+    getStrokeBoundsForCanvas: (stroke: Stroke) => StrokeBounds | null;
 }
 
 function generateStrokeId(): string {
@@ -59,7 +76,6 @@ function generateStrokeId(): string {
 }
 
 function interpolateColor(color1: string, color2: string, fraction: number): string {
-    // Convert hex to RGB
     const hex2rgb = (hex: string) => {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
@@ -85,6 +101,60 @@ function distSqToSegment(p: { x: number; y: number }, v: { x: number; y: number 
     const projX = v.x + t * (w.x - v.x);
     const projY = v.y + t * (w.y - v.y);
     return (p.x - projX) * (p.x - projX) + (p.y - projY) * (p.y - projY);
+}
+
+export function getStrokeBounds(stroke: Stroke, rect: DOMRect): StrokeBounds {
+    if (!stroke.points || stroke.points.length === 0) {
+        return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
+    }
+
+    if (stroke.tool === 'image') {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1] || { x: p0.x + 0.3, y: p0.y + 0.2 };
+        const minX = Math.min(p0.x, p1.x) * rect.width;
+        const maxX = Math.max(p0.x, p1.x) * rect.width;
+        const minY = Math.min(p0.y, p1.y) * rect.height;
+        const maxY = Math.max(p0.y, p1.y) * rect.height;
+        return { minX, minY, maxX, maxY, width: Math.max(maxX - minX, 10), height: Math.max(maxY - minY, 10) };
+    }
+
+    if (stroke.tool === 'text' && stroke.text) {
+        const x = stroke.points[0].x * rect.width;
+        const y = stroke.points[0].y * rect.height;
+        const fontSize = (stroke.size || 4) * 4;
+        const textWidth = Math.max(stroke.text.length * (fontSize * 0.6), 24);
+        return {
+            minX: x - 4,
+            minY: y - fontSize - 4,
+            maxX: x + textWidth + 4,
+            maxY: y + 8,
+            width: textWidth + 8,
+            height: fontSize + 12,
+        };
+    }
+
+    // Shapes & freehand strokes
+    let minX = stroke.points[0].x * rect.width;
+    let maxX = stroke.points[0].x * rect.width;
+    let minY = stroke.points[0].y * rect.height;
+    let maxY = stroke.points[0].y * rect.height;
+
+    for (const p of stroke.points) {
+        const px = p.x * rect.width;
+        const py = p.y * rect.height;
+        if (px < minX) minX = px;
+        if (px > maxX) maxX = px;
+        if (py < minY) minY = py;
+        if (py > maxY) maxY = py;
+    }
+
+    const padding = Math.max((stroke.size || 4) / 2, 4);
+    minX -= padding;
+    maxX += padding;
+    minY -= padding;
+    maxY += padding;
+
+    return { minX, minY, maxX, maxY, width: Math.max(maxX - minX, 10), height: Math.max(maxY - minY, 10) };
 }
 
 function isStrokeIntersecting(
@@ -167,19 +237,12 @@ function isStrokeIntersecting(
     }
 
     if (stroke.tool === 'image' && stroke.points.length >= 1) {
-        const x = stroke.points[0].x * rect.width;
-        const y = stroke.points[0].y * rect.height;
-        const width = stroke.points.length > 1
-            ? (stroke.points[1].x - stroke.points[0].x) * rect.width
-            : 200;
-        const height = stroke.points.length > 1
-            ? (stroke.points[1].y - stroke.points[0].y) * rect.height
-            : 200;
+        const bounds = getStrokeBounds(stroke, rect);
         return (
-            eraserX >= x - 4 - eraserRadius &&
-            eraserX <= x + width + 4 + eraserRadius &&
-            eraserY >= y - 4 - eraserRadius &&
-            eraserY <= y + height + 4 + eraserRadius
+            eraserX >= bounds.minX - eraserRadius &&
+            eraserX <= bounds.maxX + eraserRadius &&
+            eraserY >= bounds.minY - eraserRadius &&
+            eraserY <= bounds.maxY + eraserRadius
         );
     }
 
@@ -191,20 +254,22 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     const [currentColor, setCurrentColor] = useState('#0ea5e9');
     const [currentSize, setCurrentSize] = useState(4);
     const [currentBoard, setCurrentBoard] = useState(1);
+    const currentBoardRef = useRef(1);
+    currentBoardRef.current = currentBoard;
     const [isActive, setIsActive] = useState(false);
     const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
 
     const strokes = useRef<Map<string, Stroke>>(new Map());
     const currentStroke = useRef<Stroke | null>(null);
     const isDrawing = useRef(false);
-    const rainbowIndex = useRef(0);
     const shapeStartPoint = useRef<Point | null>(null);
     const loadedImages = useRef<Map<string, HTMLImageElement>>(new Map());
     const isDragging = useRef(false);
     const dragStartPoint = useRef<Point | null>(null);
     const dragStartStrokePoints = useRef<Point[]>([]);
-    const resizeHandle = useRef<'tl' | 'tr' | 'bl' | 'br' | null>(null);
+    const resizeHandle = useRef<'tl' | 'tr' | 'bl' | 'br' | 't' | 'b' | 'l' | 'r' | null>(null);
     const resizeStartPoint = useRef<Point | null>(null);
+    const resizeStartBounds = useRef<{ minX: number; minY: number; maxX: number; maxY: number } | null>(null);
     const resizeStartStrokePoints = useRef<Point[]>([]);
 
     // VIBGYOR rainbow colors
@@ -237,20 +302,18 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         if (!ctx) return;
 
         const rect = canvas.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
+        const activeBoard = currentBoardRef.current;
 
         // Clear and fill white
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, rect.width, rect.height);
 
-        // Draw all strokes for the current board
-        strokes.current.forEach((stroke, strokeId) => {
-            // Only draw strokes from the current board (or legacy strokes without a board)
-            if (stroke.board !== undefined && stroke.board !== currentBoard) {
+        // Draw all strokes strictly for the current active board (default board is 1)
+        strokes.current.forEach((stroke) => {
+            const strokeBoard = stroke.board || 1;
+            if (strokeBoard !== activeBoard) {
                 return;
             }
-
-            const isSelected = strokeId === selectedStrokeId;
 
             ctx.save();
 
@@ -260,52 +323,19 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 ctx.font = `${stroke.size * 4}px Arial`;
                 ctx.fillStyle = stroke.color;
                 ctx.fillText(stroke.text, x, y);
-
-                if (isSelected) {
-                    const metrics = ctx.measureText(stroke.text);
-                    ctx.strokeStyle = '#0ea5e9';
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([5, 5]);
-                    ctx.strokeRect(x - 4, y - stroke.size * 4, metrics.width + 8, stroke.size * 4 + 8);
-                }
             } else if (stroke.tool === 'image' && stroke.imageUrl) {
                 let img = loadedImages.current.get(stroke.imageUrl);
                 if (!img) {
                     img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => redrawCanvas();
+                    img.onerror = (e) => console.warn('[useWhiteboard] Error loading image stroke:', e);
                     img.src = stroke.imageUrl;
                     loadedImages.current.set(stroke.imageUrl, img);
-                    img.onload = () => redrawCanvas();
                 }
-                if (img.complete) {
-                    const x = stroke.points[0].x * rect.width;
-                    const y = stroke.points[0].y * rect.height;
-                    const width = stroke.points.length > 1
-                        ? (stroke.points[1].x - stroke.points[0].x) * rect.width
-                        : 200;
-                    const height = stroke.points.length > 1
-                        ? (stroke.points[1].y - stroke.points[0].y) * rect.height
-                        : (200 * img.height / img.width);
-                    ctx.drawImage(img, x, y, width, height);
-
-                    if (isSelected) {
-                        ctx.strokeStyle = '#0ea5e9';
-                        ctx.lineWidth = 2;
-                        ctx.setLineDash([5, 5]);
-                        ctx.strokeRect(x - 4, y - 4, width + 8, height + 8);
-
-                        // Draw resize handles
-                        ctx.setLineDash([]);
-                        ctx.fillStyle = '#0ea5e9';
-                        const handleSize = 8;
-                        // Top-left
-                        ctx.fillRect(x - 4 - handleSize / 2, y - 4 - handleSize / 2, handleSize, handleSize);
-                        // Top-right
-                        ctx.fillRect(x + width + 4 - handleSize / 2, y - 4 - handleSize / 2, handleSize, handleSize);
-                        // Bottom-left
-                        ctx.fillRect(x - 4 - handleSize / 2, y + height + 4 - handleSize / 2, handleSize, handleSize);
-                        // Bottom-right
-                        ctx.fillRect(x + width + 4 - handleSize / 2, y + height + 4 - handleSize / 2, handleSize, handleSize);
-                    }
+                if (img.complete && img.naturalWidth > 0) {
+                    const bounds = getStrokeBounds(stroke, rect);
+                    ctx.drawImage(img, bounds.minX, bounds.minY, bounds.width, bounds.height);
                 }
             } else if (stroke.tool === 'highlight') {
                 ctx.globalAlpha = 0.3;
@@ -326,9 +356,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             } else if (['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(stroke.tool)) {
                 drawShape(ctx, stroke, rect);
             } else {
-                // Pen, rainbow, eraser
                 if (stroke.tool === 'rainbow' && stroke.points.length > 1) {
-                    // Draw rainbow with VIBGYOR gradient
                     ctx.lineWidth = stroke.size;
                     ctx.lineCap = 'round';
                     ctx.lineJoin = 'round';
@@ -341,7 +369,6 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                         const upperIndex = Math.min(lowerIndex + 1, rainbowColors.length - 1);
                         const fraction = colorIndex - lowerIndex;
 
-                        // Interpolate between two rainbow colors
                         const color1 = rainbowColors[lowerIndex];
                         const color2 = rainbowColors[upperIndex];
                         ctx.strokeStyle = interpolateColor(color1, color2, fraction);
@@ -352,10 +379,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                         ctx.stroke();
                     }
                 } else {
-                    // Regular pen or eraser strokes
-                    // Note: Eraser strokes are not rendered (they delete strokes instead)
                     if (stroke.tool === 'eraser') {
-                        // Eraser strokes are not rendered
                         ctx.restore();
                         return;
                     }
@@ -378,6 +402,82 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
             ctx.restore();
         });
+
+        // Draw unified selection bounding box and resize handles on top
+        if (selectedStrokeId) {
+            const selectedStroke = strokes.current.get(selectedStrokeId);
+            const strokeBoard = selectedStroke ? (selectedStroke.board || 1) : 1;
+            if (selectedStroke && strokeBoard === activeBoard) {
+                const bounds = getStrokeBounds(selectedStroke, rect);
+
+                ctx.save();
+                
+                // Outer subtle glow & dashed border
+                ctx.strokeStyle = '#0284c7';
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([6, 4]);
+                ctx.strokeRect(bounds.minX - 1, bounds.minY - 1, bounds.width + 2, bounds.height + 2);
+
+                // Quick Delete Badge (Top-Right red circular button)
+                const deleteBadgeX = bounds.maxX + 12;
+                const deleteBadgeY = bounds.minY - 12;
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(deleteBadgeX, deleteBadgeY, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Delete 'X' inside badge
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(deleteBadgeX - 3.5, deleteBadgeY - 3.5);
+                ctx.lineTo(deleteBadgeX + 3.5, deleteBadgeY + 3.5);
+                ctx.moveTo(deleteBadgeX + 3.5, deleteBadgeY - 3.5);
+                ctx.lineTo(deleteBadgeX - 3.5, deleteBadgeY + 3.5);
+                ctx.stroke();
+
+                // Draw handles for resizable strokes
+                if (['image', 'rect', 'circle', 'triangle', 'star', 'line', 'arrow', 'text'].includes(selectedStroke.tool)) {
+                    const cornerHandles = [
+                        { name: 'tl', x: bounds.minX, y: bounds.minY },
+                        { name: 'tr', x: bounds.maxX, y: bounds.minY },
+                        { name: 'bl', x: bounds.minX, y: bounds.maxY },
+                        { name: 'br', x: bounds.maxX, y: bounds.maxY },
+                    ];
+                    const edgeHandles = [
+                        { name: 't', x: bounds.minX + bounds.width / 2, y: bounds.minY },
+                        { name: 'b', x: bounds.minX + bounds.width / 2, y: bounds.maxY },
+                        { name: 'l', x: bounds.minX, y: bounds.minY + bounds.height / 2 },
+                        { name: 'r', x: bounds.maxX, y: bounds.minY + bounds.height / 2 },
+                    ];
+
+                    // Draw corner handles
+                    const cRadius = 5.5;
+                    for (const ch of cornerHandles) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#0284c7';
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.arc(ch.x, ch.y, cRadius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+
+                    // Draw edge handles
+                    const eSize = 7;
+                    for (const eh of edgeHandles) {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.strokeStyle = '#0284c7';
+                        ctx.lineWidth = 2;
+                        ctx.fillRect(eh.x - eSize / 2, eh.y - eSize / 2, eSize, eSize);
+                        ctx.strokeRect(eh.x - eSize / 2, eh.y - eSize / 2, eSize, eSize);
+                    }
+                }
+                ctx.restore();
+            }
+        }
     }, [canvasRef, selectedStrokeId, currentBoard]);
 
     const drawShape = useCallback((
@@ -420,7 +520,6 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             case 'arrow':
                 ctx.moveTo(start.x, start.y);
                 ctx.lineTo(end.x, end.y);
-                // Arrowhead
                 const angle = Math.atan2(end.y - start.y, end.x - start.x);
                 const headLen = 15;
                 ctx.lineTo(end.x - headLen * Math.cos(angle - Math.PI / 6), end.y - headLen * Math.sin(angle - Math.PI / 6));
@@ -475,8 +574,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const strokesArray = Array.from(strokes.current.entries());
         const strokesIdsToDelete: string[] = [];
 
+        const activeBoard = currentBoardRef.current;
         for (const [strokeId, stroke] of strokesArray) {
-            if (stroke.board !== undefined && stroke.board !== currentBoard) {
+            const strokeBoard = stroke.board || 1;
+            if (strokeBoard !== activeBoard) {
                 continue;
             }
 
@@ -501,12 +602,246 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
     }, [canvasRef, currentBoard, currentSize, redrawCanvas, selectedStrokeId, sendMessage]);
 
+    const deleteSelected = useCallback(() => {
+        if (selectedStrokeId) {
+            const idToDelete = selectedStrokeId;
+            strokes.current.delete(idToDelete);
+            setSelectedStrokeId(null);
+            redrawCanvas();
+            sendMessage({
+                type: 'delete-strokes',
+                strokeIds: [idToDelete],
+                timestamp: Date.now(),
+            });
+        }
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const scaleSelected = useCallback((scaleFactor: number) => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke) return;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+
+        const bounds = getStrokeBounds(stroke, rect);
+        const cx = bounds.minX + bounds.width / 2;
+        const cy = bounds.minY + bounds.height / 2;
+
+        const newWidth = Math.max(bounds.width * scaleFactor, 24);
+        const newHeight = Math.max(bounds.height * scaleFactor, 24);
+
+        const newMinX = cx - newWidth / 2;
+        const newMaxX = cx + newWidth / 2;
+        const newMinY = cy - newHeight / 2;
+        const newMaxY = cy + newHeight / 2;
+
+        if (['image', 'rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+            stroke.points = [
+                { x: newMinX / rect.width, y: newMinY / rect.height },
+                { x: newMaxX / rect.width, y: newMaxY / rect.height },
+            ];
+        } else if (['line', 'arrow'].includes(stroke.tool) && stroke.points.length >= 2) {
+            stroke.points = stroke.points.map(p => ({
+                x: (cx + (p.x * rect.width - cx) * scaleFactor) / rect.width,
+                y: (cy + (p.y * rect.height - cy) * scaleFactor) / rect.height,
+            }));
+        } else if (stroke.tool === 'text') {
+            stroke.size = Math.max(1, Math.round((stroke.size || 4) * scaleFactor));
+        }
+
+        strokes.current.set(selectedStrokeId, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+
+    const rotateSelected = useCallback((degrees: number = 90) => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke) return;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+
+        stroke.rotation = ((stroke.rotation || 0) + degrees) % 360;
+
+        if (degrees % 180 !== 0 && ['image', 'rect'].includes(stroke.tool)) {
+            const bounds = getStrokeBounds(stroke, rect);
+            const cx = bounds.minX + bounds.width / 2;
+            const cy = bounds.minY + bounds.height / 2;
+            const newW = bounds.height;
+            const newH = bounds.width;
+
+            stroke.points = [
+                { x: (cx - newW / 2) / rect.width, y: (cy - newH / 2) / rect.height },
+                { x: (cx + newW / 2) / rect.width, y: (cy + newH / 2) / rect.height },
+            ];
+            stroke.rotation = 0;
+        }
+
+        strokes.current.set(selectedStrokeId, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+
+    const duplicateSelected = useCallback(() => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke) return;
+
+        const newId = generateStrokeId();
+        const offset = 0.03;
+        const newStroke: Stroke = {
+            ...stroke,
+            id: newId,
+            board: stroke.board || currentBoardRef.current,
+            points: stroke.points.map(p => ({ x: Math.min(p.x + offset, 0.95), y: Math.min(p.y + offset, 0.95) })),
+            timestamp: Date.now(),
+        };
+
+        strokes.current.set(newId, newStroke);
+        setSelectedStrokeId(newId);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: newStroke,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const bringSelectedToFront = useCallback(() => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke) return;
+
+        strokes.current.delete(selectedStrokeId);
+        strokes.current.set(selectedStrokeId, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const sendSelectedToBack = useCallback(() => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke) return;
+
+        const existing = Array.from(strokes.current.entries());
+        strokes.current.clear();
+        strokes.current.set(selectedStrokeId, stroke);
+        for (const [id, s] of existing) {
+            if (id !== selectedStrokeId) {
+                strokes.current.set(id, s);
+            }
+        }
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const resetSelectedAspectRatio = useCallback(() => {
+        if (!selectedStrokeId) return;
+        const stroke = strokes.current.get(selectedStrokeId);
+        if (!stroke || stroke.tool !== 'image' || !stroke.imageUrl) return;
+
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const rect = canvas.getBoundingClientRect();
+
+        const img = loadedImages.current.get(stroke.imageUrl) || new Image();
+        if (!img.src) img.src = stroke.imageUrl;
+
+        const doReset = () => {
+            if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                const bounds = getStrokeBounds(stroke, rect);
+                const currentWidth = bounds.width;
+                const newHeight = currentWidth * (img.naturalHeight / img.naturalWidth);
+                const newMaxY = bounds.minY + newHeight;
+
+                stroke.points = [
+                    { x: bounds.minX / rect.width, y: bounds.minY / rect.height },
+                    { x: bounds.maxX / rect.width, y: newMaxY / rect.height },
+                ];
+                strokes.current.set(selectedStrokeId, stroke);
+                redrawCanvas();
+                sendMessage({
+                    type: 'stroke',
+                    data: stroke,
+                    timestamp: Date.now(),
+                });
+            }
+        };
+
+        if (img.complete && img.naturalWidth > 0) {
+            doReset();
+        } else {
+            img.onload = doReset;
+        }
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+
+    const getStrokeBoundsForCanvas = useCallback((stroke: Stroke): StrokeBounds | null => {
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
+        return getStrokeBounds(stroke, canvas.getBoundingClientRect());
+    }, [canvasRef]);
+
+    const handlePointerUp = useCallback(() => {
+        if ((isDragging.current || resizeHandle.current) && selectedStrokeId) {
+            const stroke = strokes.current.get(selectedStrokeId);
+            if (stroke) {
+                sendMessage({
+                    type: 'stroke',
+                    data: stroke,
+                    timestamp: Date.now(),
+                });
+            }
+        }
+
+        if (currentStroke.current && currentStroke.current.tool !== 'eraser') {
+            sendMessage({
+                type: 'stroke',
+                data: currentStroke.current,
+                timestamp: Date.now(),
+            });
+        }
+
+        isDrawing.current = false;
+        currentStroke.current = null;
+        shapeStartPoint.current = null;
+        isDragging.current = false;
+        dragStartPoint.current = null;
+        dragStartStrokePoints.current = [];
+        resizeHandle.current = null;
+        resizeStartPoint.current = null;
+        resizeStartBounds.current = null;
+        resizeStartStrokePoints.current = [];
+    }, [sendMessage, selectedStrokeId]);
+
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
+        try {
+            (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId);
+        } catch {}
+
         const point = getCanvasPoint(e);
         if (!point) return;
 
         if (currentTool === 'select') {
-            // Hit detection for selecting strokes
             const canvas = canvasRef.current;
             if (!canvas) return;
 
@@ -514,75 +849,93 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             const clickX = point.x * rect.width;
             const clickY = point.y * rect.height;
 
-            // Check if clicking on resize handle of selected stroke
+            // 1. Check delete badge & handles on current selection
             if (selectedStrokeId) {
                 const selectedStroke = strokes.current.get(selectedStrokeId);
-                if (selectedStroke?.tool === 'image' && selectedStroke.points.length >= 1) {
-                    const x = selectedStroke.points[0].x * rect.width;
-                    const y = selectedStroke.points[0].y * rect.height;
-                    const width = selectedStroke.points.length > 1
-                        ? (selectedStroke.points[1].x - selectedStroke.points[0].x) * rect.width
-                        : 200;
-                    const height = selectedStroke.points.length > 1
-                        ? (selectedStroke.points[1].y - selectedStroke.points[0].y) * rect.height
-                        : 200;
+                if (selectedStroke) {
+                    const bounds = getStrokeBounds(selectedStroke, rect);
 
-                    const handleSize = 8;
-                    const tolerance = 6;
+                    // Check delete badge
+                    const deleteBadgeX = bounds.maxX + 12;
+                    const deleteBadgeY = bounds.minY - 12;
+                    if (Math.hypot(clickX - deleteBadgeX, clickY - deleteBadgeY) <= 14) {
+                        deleteSelected();
+                        return;
+                    }
 
-                    // Check each resize handle
-                    const handles = [
-                        { name: 'tl' as const, x: x - 4, y: y - 4 },
-                        { name: 'tr' as const, x: x + width + 4, y: y - 4 },
-                        { name: 'bl' as const, x: x - 4, y: y + height + 4 },
-                        { name: 'br' as const, x: x + width + 4, y: y + height + 4 },
+                    // Check corner handles (12px hit radius)
+                    const cornerHandles = [
+                        { name: 'tl' as const, x: bounds.minX, y: bounds.minY },
+                        { name: 'tr' as const, x: bounds.maxX, y: bounds.minY },
+                        { name: 'bl' as const, x: bounds.minX, y: bounds.maxY },
+                        { name: 'br' as const, x: bounds.maxX, y: bounds.maxY },
                     ];
 
-                    for (const handle of handles) {
-                        if (Math.abs(clickX - handle.x) <= handleSize + tolerance &&
-                            Math.abs(clickY - handle.y) <= handleSize + tolerance) {
+                    for (const handle of cornerHandles) {
+                        if (Math.hypot(clickX - handle.x, clickY - handle.y) <= 12) {
                             resizeHandle.current = handle.name;
                             resizeStartPoint.current = point;
-                            resizeStartStrokePoints.current = [...selectedStroke.points];
+                            resizeStartBounds.current = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+                            resizeStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                            isDragging.current = false;
                             return;
                         }
+                    }
+
+                    // Check side handles (10px hit radius)
+                    const sideHandles = [
+                        { name: 't' as const, x: bounds.minX + bounds.width / 2, y: bounds.minY },
+                        { name: 'b' as const, x: bounds.minX + bounds.width / 2, y: bounds.maxY },
+                        { name: 'l' as const, x: bounds.minX, y: bounds.minY + bounds.height / 2 },
+                        { name: 'r' as const, x: bounds.maxX, y: bounds.minY + bounds.height / 2 },
+                    ];
+
+                    for (const handle of sideHandles) {
+                        if (Math.hypot(clickX - handle.x, clickY - handle.y) <= 10) {
+                            resizeHandle.current = handle.name;
+                            resizeStartPoint.current = point;
+                            resizeStartBounds.current = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
+                            resizeStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                            isDragging.current = false;
+                            return;
+                        }
+                    }
+
+                    // If clicking inside the already selected stroke's bounding box, start dragging
+                    if (clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
+                        isDragging.current = true;
+                        dragStartPoint.current = point;
+                        dragStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                        resizeHandle.current = null;
+                        return;
                     }
                 }
             }
 
+            // 2. Hit detection to select another stroke
             let foundStrokeId: string | null = null;
-
-            // Check strokes in reverse order (top to bottom)
             const strokesArray = Array.from(strokes.current.entries()).reverse();
+            const activeBoard = currentBoardRef.current;
 
             for (const [strokeId, stroke] of strokesArray) {
-                if (stroke.tool === 'image' && stroke.points.length >= 1) {
-                    const x = stroke.points[0].x * rect.width;
-                    const y = stroke.points[0].y * rect.height;
-                    const width = stroke.points.length > 1
-                        ? (stroke.points[1].x - stroke.points[0].x) * rect.width
-                        : 200;
-                    const height = stroke.points.length > 1
-                        ? (stroke.points[1].y - stroke.points[0].y) * rect.height
-                        : 200;
+                const strokeBoard = stroke.board || 1;
+                if (strokeBoard !== activeBoard) {
+                    continue;
+                }
 
-                    if (clickX >= x && clickX <= x + width && clickY >= y && clickY <= y + height) {
+                const bounds = getStrokeBounds(stroke, rect);
+                if (stroke.tool === 'image' || stroke.tool === 'text') {
+                    if (clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
                         foundStrokeId = strokeId;
                         break;
                     }
-                } else if (stroke.tool === 'text' && stroke.text && stroke.points.length >= 1) {
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) continue;
-
-                    const x = stroke.points[0].x * rect.width;
-                    const y = stroke.points[0].y * rect.height;
-                    ctx.font = `${stroke.size * 4}px Arial`;
-                    const metrics = ctx.measureText(stroke.text);
-                    const textWidth = metrics.width;
-                    const textHeight = stroke.size * 4;
-
-                    if (clickX >= x - 4 && clickX <= x + textWidth + 4 &&
-                        clickY >= y - textHeight && clickY <= y + 8) {
+                } else if (['rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+                    if (clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
+                        foundStrokeId = strokeId;
+                        break;
+                    }
+                } else {
+                    if (isStrokeIntersecting(stroke, clickX, clickY, 12, rect)) {
                         foundStrokeId = strokeId;
                         break;
                     }
@@ -595,14 +948,18 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 dragStartPoint.current = point;
                 const stroke = strokes.current.get(foundStrokeId);
                 if (stroke) {
-                    dragStartStrokePoints.current = [...stroke.points];
+                    dragStartStrokePoints.current = stroke.points.map(p => ({ ...p }));
                 }
             } else {
                 setSelectedStrokeId(null);
+                isDragging.current = false;
+                resizeHandle.current = null;
             }
             redrawCanvas();
             return;
         }
+
+        const activeBoard = currentBoardRef.current;
 
         if (currentTool === 'eraser') {
             isDrawing.current = true;
@@ -612,7 +969,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 color: '',
                 size: currentSize,
                 points: [point],
-                board: currentBoard,
+                board: activeBoard,
                 timestamp: Date.now(),
             };
             eraseStrokesAtPoint(point);
@@ -630,14 +987,14 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 color: currentColor,
                 size: currentSize,
                 points: [point, point],
-                board: currentBoard,
+                board: activeBoard,
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
         } else {
             const strokeId = generateStrokeId();
             const color = currentTool === 'rainbow'
-                ? rainbowColors[0] // Start with violet, gradient will be applied during render
+                ? rainbowColors[0]
                 : currentColor;
 
             currentStroke.current = {
@@ -646,57 +1003,108 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 color,
                 size: currentSize,
                 points: [point],
-                board: currentBoard,
+                board: activeBoard,
                 timestamp: Date.now(),
             };
             strokes.current.set(strokeId, currentStroke.current);
         }
 
         redrawCanvas();
-    }, [currentTool, currentColor, currentSize, currentBoard, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint]);
+    }, [currentTool, currentColor, currentSize, currentBoard, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint, deleteSelected]);
 
     const handlePointerMove = useCallback((e: React.PointerEvent) => {
+        // SAFETY GUARD: If mouse button is not held down, reset drag/resize states immediately
+        if (e.buttons === 0) {
+            if (isDragging.current || resizeHandle.current || isDrawing.current) {
+                handlePointerUp();
+            }
+        }
+
         const point = getCanvasPoint(e);
         if (!point) return;
 
-        // Handle resizing
-        if (resizeHandle.current && resizeStartPoint.current && selectedStrokeId) {
+        const rect = canvasRef.current?.getBoundingClientRect();
+        if (!rect) return;
+
+        // Handle resizing (ONLY while mouse button is continuously pressed)
+        if (e.buttons > 0 && resizeHandle.current && resizeStartPoint.current && resizeStartBounds.current && selectedStrokeId) {
             const stroke = strokes.current.get(selectedStrokeId);
-            if (!stroke || stroke.tool !== 'image') return;
+            if (!stroke) return;
 
-            const dx = point.x - resizeStartPoint.current.x;
-            const dy = point.y - resizeStartPoint.current.y;
-            const startPoints = resizeStartStrokePoints.current;
+            const clickX = point.x * rect.width;
+            const clickY = point.y * rect.height;
+            const { minX, minY, maxX, maxY } = resizeStartBounds.current;
+            const origW = Math.max(maxX - minX, 10);
+            const origH = Math.max(maxY - minY, 10);
 
-            if (startPoints.length >= 2) {
-                const newPoints = [...startPoints];
+            let newMinX = minX;
+            let newMaxX = maxX;
+            let newMinY = minY;
+            let newMaxY = maxY;
 
-                switch (resizeHandle.current) {
-                    case 'tl':
-                        newPoints[0] = { x: startPoints[0].x + dx, y: startPoints[0].y + dy };
-                        break;
-                    case 'tr':
-                        newPoints[0] = { x: startPoints[0].x, y: startPoints[0].y + dy };
-                        newPoints[1] = { x: startPoints[1].x + dx, y: newPoints[1].y };
-                        break;
-                    case 'bl':
-                        newPoints[0] = { x: startPoints[0].x + dx, y: startPoints[0].y };
-                        newPoints[1] = { x: newPoints[1].x, y: startPoints[1].y + dy };
-                        break;
-                    case 'br':
-                        newPoints[1] = { x: startPoints[1].x + dx, y: startPoints[1].y + dy };
-                        break;
+            const handle = resizeHandle.current;
+
+            if (stroke.tool === 'image' && ['tl', 'tr', 'bl', 'br'].includes(handle)) {
+                // Symmetrical proportional corner resize following cursor
+                if (handle === 'br') {
+                    const curW = Math.max(clickX - minX, 30);
+                    const curH = Math.max(clickY - minY, 30);
+                    const scale = Math.max((curW / origW + curH / origH) / 2, 0.1);
+                    newMaxX = minX + origW * scale;
+                    newMaxY = minY + origH * scale;
+                } else if (handle === 'bl') {
+                    const curW = Math.max(maxX - clickX, 30);
+                    const curH = Math.max(clickY - minY, 30);
+                    const scale = Math.max((curW / origW + curH / origH) / 2, 0.1);
+                    newMinX = maxX - origW * scale;
+                    newMaxY = minY + origH * scale;
+                } else if (handle === 'tr') {
+                    const curW = Math.max(clickX - minX, 30);
+                    const curH = Math.max(maxY - clickY, 30);
+                    const scale = Math.max((curW / origW + curH / origH) / 2, 0.1);
+                    newMaxX = minX + origW * scale;
+                    newMinY = maxY - origH * scale;
+                } else if (handle === 'tl') {
+                    const curW = Math.max(maxX - clickX, 30);
+                    const curH = Math.max(maxY - clickY, 30);
+                    const scale = Math.max((curW / origW + curH / origH) / 2, 0.1);
+                    newMinX = maxX - origW * scale;
+                    newMinY = maxY - origH * scale;
                 }
+            } else {
+                const dx = (point.x - resizeStartPoint.current.x) * rect.width;
+                const dy = (point.y - resizeStartPoint.current.y) * rect.height;
 
-                stroke.points = newPoints;
-                strokes.current.set(selectedStrokeId, stroke);
-                redrawCanvas();
+                if (handle.includes('l')) newMinX = Math.min(minX + dx, maxX - 25);
+                if (handle.includes('r')) newMaxX = Math.max(maxX + dx, minX + 25);
+                if (handle.includes('t')) newMinY = Math.min(minY + dy, maxY - 25);
+                if (handle.includes('b')) newMaxY = Math.max(maxY + dy, minY + 25);
             }
+
+            if (['image', 'rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+                stroke.points = [
+                    { x: newMinX / rect.width, y: newMinY / rect.height },
+                    { x: newMaxX / rect.width, y: newMaxY / rect.height },
+                ];
+            } else if (['line', 'arrow'].includes(stroke.tool) && resizeStartStrokePoints.current.length >= 2) {
+                const newW = newMaxX - newMinX;
+                const newH = newMaxY - newMinY;
+                stroke.points = resizeStartStrokePoints.current.map(p => ({
+                    x: (newMinX + ((p.x * rect.width - minX) / origW) * newW) / rect.width,
+                    y: (newMinY + ((p.y * rect.height - minY) / origH) * newH) / rect.height,
+                }));
+            } else if (stroke.tool === 'text') {
+                const newH = newMaxY - newMinY;
+                stroke.size = Math.max(1, Math.round(newH / 16));
+            }
+
+            strokes.current.set(selectedStrokeId, stroke);
+            redrawCanvas();
             return;
         }
 
-        // Handle dragging
-        if (isDragging.current && dragStartPoint.current && selectedStrokeId) {
+        // Handle dragging (ONLY while mouse button is continuously pressed)
+        if (e.buttons > 0 && isDragging.current && dragStartPoint.current && selectedStrokeId) {
             const stroke = strokes.current.get(selectedStrokeId);
             if (!stroke) return;
 
@@ -713,8 +1121,52 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             return;
         }
 
-        // Handle drawing
-        if (!isDrawing.current || !currentStroke.current) return;
+        // Dynamic cursor on hover in select mode
+        if (currentTool === 'select') {
+            const canvas = canvasRef.current;
+            if (canvas) {
+                let nextCursor = 'default';
+                if (selectedStrokeId) {
+                    const stroke = strokes.current.get(selectedStrokeId);
+                    if (stroke) {
+                        const bounds = getStrokeBounds(stroke, rect);
+                        const clickX = point.x * rect.width;
+                        const clickY = point.y * rect.height;
+
+                        const deleteBadgeX = bounds.maxX + 12;
+                        const deleteBadgeY = bounds.minY - 12;
+                        if (Math.hypot(clickX - deleteBadgeX, clickY - deleteBadgeY) <= 14) {
+                            nextCursor = 'pointer';
+                        } else {
+                            const handles = [
+                                { x: bounds.minX, y: bounds.minY, cursor: 'nwse-resize' },
+                                { x: bounds.maxX, y: bounds.maxY, cursor: 'nwse-resize' },
+                                { x: bounds.maxX, y: bounds.minY, cursor: 'nesw-resize' },
+                                { x: bounds.minX, y: bounds.maxY, cursor: 'nesw-resize' },
+                                { x: bounds.minX + bounds.width / 2, y: bounds.minY, cursor: 'ns-resize' },
+                                { x: bounds.minX + bounds.width / 2, y: bounds.maxY, cursor: 'ns-resize' },
+                                { x: bounds.minX, y: bounds.minY + bounds.height / 2, cursor: 'ew-resize' },
+                                { x: bounds.maxX, y: bounds.minY + bounds.height / 2, cursor: 'ew-resize' },
+                            ];
+
+                            for (const h of handles) {
+                                if (Math.hypot(clickX - h.x, clickY - h.y) <= 12) {
+                                    nextCursor = h.cursor;
+                                    break;
+                                }
+                            }
+
+                            if (nextCursor === 'default' && clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
+                                nextCursor = 'grab';
+                            }
+                        }
+                    }
+                }
+                canvas.style.cursor = nextCursor;
+            }
+        }
+
+        if (!isDrawing.current || !currentStroke.current || e.buttons === 0) return;
 
         if (currentTool === 'eraser') {
             eraseStrokesAtPoint(point);
@@ -729,45 +1181,31 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         strokes.current.set(currentStroke.current.id, currentStroke.current);
         redrawCanvas();
-    }, [currentTool, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint]);
+    }, [currentTool, getCanvasPoint, redrawCanvas, selectedStrokeId, eraseStrokesAtPoint, canvasRef, handlePointerUp]);
 
-    const handlePointerUp = useCallback(() => {
-        // Send drag/resize updates
-        if ((isDragging.current || resizeHandle.current) && selectedStrokeId) {
-            const stroke = strokes.current.get(selectedStrokeId);
-            if (stroke) {
-                sendMessage({
-                    type: 'stroke',
-                    data: stroke,
-                    timestamp: Date.now(),
-                });
+    // Global pointerup and mouseup listener to always release drag / resize state
+    useEffect(() => {
+        const handleGlobalPointerUp = () => {
+            if (isDragging.current || resizeHandle.current || isDrawing.current) {
+                handlePointerUp();
             }
-        }
-
-        // Don't send eraser strokes - they don't need to be persisted
-        if (currentStroke.current && currentStroke.current.tool !== 'eraser') {
-            sendMessage({
-                type: 'stroke',
-                data: currentStroke.current,
-                timestamp: Date.now(),
-            });
-        }
-
-        isDrawing.current = false;
-        currentStroke.current = null;
-        shapeStartPoint.current = null;
-        isDragging.current = false;
-        dragStartPoint.current = null;
-        dragStartStrokePoints.current = [];
-        resizeHandle.current = null;
-        resizeStartPoint.current = null;
-        resizeStartStrokePoints.current = [];
-    }, [sendMessage, selectedStrokeId]);
+        };
+        window.addEventListener('pointerup', handleGlobalPointerUp);
+        window.addEventListener('mouseup', handleGlobalPointerUp);
+        return () => {
+            window.removeEventListener('pointerup', handleGlobalPointerUp);
+            window.removeEventListener('mouseup', handleGlobalPointerUp);
+        };
+    }, [handlePointerUp]);
 
     const handleRemoteMessage = useCallback((message: WhiteboardMessage) => {
         console.log('[useWhiteboard] 🎨 handleRemoteMessage received:', message.type);
         if (message.type === 'stroke' && message.data) {
             const stroke = message.data as Stroke;
+            const existing = strokes.current.get(stroke.id);
+            if (!stroke.board) {
+                stroke.board = existing?.board || message.board || currentBoardRef.current || 1;
+            }
             strokes.current.set(stroke.id, stroke);
             redrawCanvas();
         } else if (message.type === 'clear') {
@@ -775,10 +1213,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             loadedImages.current.clear();
             redrawCanvas();
         } else if (message.type === 'clear-board' && message.board !== undefined) {
-            // Clear all strokes from the specified board
+            const targetBoard = message.board;
             const strokesArray = Array.from(strokes.current.entries());
             for (const [strokeId, stroke] of strokesArray) {
-                if (stroke.board === message.board || (stroke.board === undefined && message.board === 1)) {
+                const strokeBoard = stroke.board || 1;
+                if (strokeBoard === targetBoard) {
                     strokes.current.delete(strokeId);
                 }
             }
@@ -794,6 +1233,12 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 }
                 redrawCanvas();
             }
+        } else if (message.type === 'change-board' && message.board !== undefined) {
+            console.log('[useWhiteboard] 🔄 Remote change-board to:', message.board);
+            currentBoardRef.current = message.board;
+            setCurrentBoard(message.board);
+            setSelectedStrokeId(null);
+            redrawCanvas();
         } else if (message.type === 'delete-stroke' && (message.strokeId || (typeof message.data === 'string' ? message.data : null))) {
             const idToDelete = message.strokeId || (typeof message.data === 'string' ? message.data : null);
             if (idToDelete) {
@@ -817,11 +1262,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     }, [redrawCanvas, sendMessage]);
 
     const clearBoard = useCallback((board: number) => {
-        // Clear all strokes from the specified board
         const strokesArray = Array.from(strokes.current.entries());
         const deletedIds: string[] = [];
         for (const [strokeId, stroke] of strokesArray) {
-            if (stroke.board === board || (stroke.board === undefined && board === 1)) {
+            const strokeBoard = stroke.board || 1;
+            if (strokeBoard === board) {
                 strokes.current.delete(strokeId);
                 deletedIds.push(strokeId);
             }
@@ -840,59 +1285,92 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
     const addTextStroke = useCallback((text: string, position: Point) => {
         const strokeId = generateStrokeId();
+        const activeBoard = currentBoardRef.current;
         const stroke: Stroke = {
             id: strokeId,
             tool: 'text',
             color: currentColor,
             size: currentSize,
             points: [position],
-            board: currentBoard,
+            board: activeBoard,
             text,
             timestamp: Date.now(),
         };
         strokes.current.set(strokeId, stroke);
+        setSelectedStrokeId(strokeId);
         redrawCanvas();
         sendMessage({
             type: 'stroke',
             data: stroke,
+            board: activeBoard,
             timestamp: Date.now(),
         });
-    }, [currentColor, currentSize, currentBoard, redrawCanvas, sendMessage]);
+    }, [currentColor, currentSize, redrawCanvas, sendMessage]);
 
     const addImageStroke = useCallback((imageUrl: string, position: Point) => {
-        const strokeId = generateStrokeId();
-        const stroke: Stroke = {
-            id: strokeId,
-            tool: 'image',
-            color: '',
-            size: 0,
-            points: [position, { x: position.x + 0.2, y: position.y + 0.15 }],
-            board: currentBoard,
-            imageUrl,
-            timestamp: Date.now(),
-        };
-        strokes.current.set(strokeId, stroke);
-        redrawCanvas();
-        sendMessage({
-            type: 'stroke',
-            data: stroke,
-            timestamp: Date.now(),
-        });
-    }, [currentBoard, redrawCanvas, sendMessage]);
+        const canvas = canvasRef.current;
+        const rect = canvas?.getBoundingClientRect();
+        const canvasWidth = rect?.width || 1000;
+        const canvasHeight = rect?.height || 600;
 
-    const deleteSelected = useCallback(() => {
-        if (selectedStrokeId) {
-            const idToDelete = selectedStrokeId;
-            strokes.current.delete(idToDelete);
-            setSelectedStrokeId(null);
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = imageUrl;
+
+        const applyImage = (imgW: number, imgH: number) => {
+            const strokeId = generateStrokeId();
+            const activeBoard = currentBoardRef.current;
+            loadedImages.current.set(imageUrl, img);
+
+            // Calculate dimensions preserving the image's exact natural aspect ratio
+            const targetPixelWidth = Math.min(360, canvasWidth * 0.45);
+            const targetPixelHeight = targetPixelWidth * (imgH / Math.max(imgW, 1));
+
+            // Convert to normalized coordinates [0, 1]
+            const normW = targetPixelWidth / canvasWidth;
+            const normH = targetPixelHeight / canvasHeight;
+
+            // Position within canvas bounds
+            const p0x = Math.max(0.05, Math.min(position.x, 0.95 - normW));
+            const p0y = Math.max(0.05, Math.min(position.y, 0.95 - normH));
+
+            const stroke: Stroke = {
+                id: strokeId,
+                tool: 'image',
+                color: '',
+                size: 0,
+                points: [
+                    { x: p0x, y: p0y },
+                    { x: p0x + normW, y: p0y + normH },
+                ],
+                board: activeBoard,
+                imageUrl,
+                timestamp: Date.now(),
+            };
+
+            strokes.current.set(strokeId, stroke);
+            setSelectedStrokeId(strokeId);
+            setCurrentTool('select');
             redrawCanvas();
             sendMessage({
-                type: 'delete-strokes',
-                strokeIds: [idToDelete],
+                type: 'stroke',
+                data: stroke,
+                board: activeBoard,
                 timestamp: Date.now(),
             });
+        };
+
+        if (img.complete && img.naturalWidth > 0) {
+            applyImage(img.naturalWidth, img.naturalHeight);
+        } else {
+            img.onload = () => {
+                applyImage(img.naturalWidth, img.naturalHeight);
+            };
+            img.onerror = () => {
+                applyImage(400, 300);
+            };
         }
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [canvasRef, redrawCanvas, sendMessage]);
 
     const setActive = useCallback((active: boolean) => {
         setIsActive(active);
@@ -917,6 +1395,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         if (Array.isArray(loadedStrokes)) {
             loadedStrokes.forEach((stroke) => {
                 if (stroke && stroke.id) {
+                    if (!stroke.board) {
+                        stroke.board = 1;
+                    }
                     strokes.current.set(stroke.id, stroke);
                 }
             });
@@ -940,6 +1421,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             strokes.current.clear();
             initialStrokes.forEach((stroke) => {
                 if (stroke && stroke.id) {
+                    if (!stroke.board) {
+                        stroke.board = 1;
+                    }
                     strokes.current.set(stroke.id, stroke);
                 }
             });
@@ -947,16 +1431,39 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
     }, [initialStrokes, redrawCanvas]);
 
+    // Redraw when currentBoard changes
+    useEffect(() => {
+        redrawCanvas();
+    }, [currentBoard, redrawCanvas]);
+
+    const setBoard = useCallback((board: number, broadcast = true) => {
+        console.log('[useWhiteboard] 🔄 setBoard called:', board, 'broadcast:', broadcast);
+        currentBoardRef.current = board;
+        setCurrentBoard(board);
+        setSelectedStrokeId(null);
+        redrawCanvas();
+        if (broadcast) {
+            sendMessage({
+                type: 'change-board',
+                board,
+                timestamp: Date.now(),
+            });
+        }
+    }, [sendMessage, redrawCanvas]);
+
+    const selectedStroke = selectedStrokeId ? (strokes.current.get(selectedStrokeId) || null) : null;
+
     return {
         currentTool,
         currentColor,
         currentSize,
         currentBoard,
         selectedStrokeId,
+        selectedStroke,
         setTool,
         setColor: setCurrentColor,
         setSize: setCurrentSize,
-        setBoard: setCurrentBoard,
+        setBoard,
         clearCanvas,
         clearBoard,
         handlePointerDown,
@@ -967,8 +1474,15 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         addTextStroke,
         addImageStroke,
         deleteSelected,
+        scaleSelected,
+        rotateSelected,
+        duplicateSelected,
+        bringSelectedToFront,
+        sendSelectedToBack,
+        resetSelectedAspectRatio,
         getStrokes,
         loadStrokes,
         exportImage,
+        getStrokeBoundsForCanvas,
     };
 }

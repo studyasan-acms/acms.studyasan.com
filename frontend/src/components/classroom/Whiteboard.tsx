@@ -28,9 +28,17 @@ import {
     Save,
     Download,
     Loader2,
+    ZoomIn,
+    ZoomOut,
+    RotateCw,
+    Copy,
+    ArrowUp,
+    ArrowDown,
+    Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWhiteboard, PEN_THICKNESS_RANGE, PEN_THICKNESS_PRESETS } from '@/hooks/useWhiteboard';
+import { compressWhiteboardImage } from '@/utils/whiteboardImage';
 import type { WhiteboardMessage } from '@/types/videoRoom';
 
 interface WhiteboardProps {
@@ -101,10 +109,18 @@ export function Whiteboard({
         addTextStroke,
         addImageStroke,
         deleteSelected,
+        scaleSelected,
+        rotateSelected,
+        duplicateSelected,
+        bringSelectedToFront,
+        sendSelectedToBack,
+        resetSelectedAspectRatio,
         selectedStrokeId,
+        selectedStroke,
         getStrokes,
         loadStrokes,
         exportImage,
+        getStrokeBoundsForCanvas,
     } = useWhiteboard({ canvasRef, sendMessage, initialStrokes });
 
     const [textInput, setTextInput] = useState('');
@@ -119,6 +135,7 @@ export function Whiteboard({
     const textInputRef = useRef<HTMLInputElement>(null);
     const shapeSelectorRef = useRef<HTMLDivElement>(null);
     const colorSelectorRef = useRef<HTMLDivElement>(null);
+    const imageSelectorRef = useRef<HTMLDivElement>(null);
 
     // Delete handler
     useEffect(() => {
@@ -166,6 +183,19 @@ export function Whiteboard({
             return () => document.removeEventListener('mousedown', handleClickOutside);
         }
     }, [showColorSelector]);
+
+    // Close image selector popover when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (imageSelectorRef.current && !imageSelectorRef.current.contains(e.target as Node)) {
+                setShowImageDialog(false);
+            }
+        };
+        if (showImageDialog) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showImageDialog]);
 
     const handleCanvasClick = useCallback(
         (e: React.PointerEvent) => {
@@ -233,248 +263,386 @@ export function Whiteboard({
         >
             {/* Toolbar */}
             <div className="flex flex-col md:flex-row md:items-center justify-between p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
-                {canEdit && (
-                    <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
-                    {/* Drawing Tools */}
-                    <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
-                        <Button
-                            variant={currentTool === 'select' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('select')}
-                            title="Select"
-                            className={`h-7 w-7 p-0 ${currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
-                        >
-                            <MousePointer className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'pen' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('pen')}
-                            title="Pen"
-                            className={`h-7 w-7 p-0 ${currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
-                        >
-                            <Pencil className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'eraser' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('eraser')}
-                            title="Eraser"
-                            className={`h-7 w-7 p-0 ${currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}`}
-                        >
-                            <Eraser className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'highlight' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('highlight')}
-                            title="Highlight"
-                            className={`h-7 w-7 p-0 ${currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}`}
-                        >
-                            <Highlighter className="w-3.5 h-3.5" />
-                        </Button>
-                    </div>
-
-                    {/* Shapes Selector */}
-                    <div className="relative" ref={shapeSelectorRef}>
-                        <button
-                            onClick={() => setShowShapeSelector(!showShapeSelector)}
-                            className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
-                                ? 'bg-sky-50 border-sky-300'
-                                : ''
-                                }`}
-                            title="Shapes"
-                        >
-                            {currentTool === 'rect' && <Square className="w-3.5 h-3.5 text-sky-600" />}
-                            {currentTool === 'circle' && <Circle className="w-3.5 h-3.5 text-sky-600" />}
-                            {currentTool === 'line' && <Minus className="w-3.5 h-3.5 text-sky-600" />}
-                            {currentTool === 'arrow' && <ArrowRight className="w-3.5 h-3.5 text-sky-600" />}
-                            {currentTool === 'triangle' && <Triangle className="w-3.5 h-3.5 text-sky-600" />}
-                            {currentTool === 'star' && <Star className="w-3.5 h-3.5 text-sky-600" />}
-                            {!['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool) && (
-                                <Shapes className="w-3.5 h-3.5 text-slate-600" />
-                            )}
-                            <ChevronDown className="w-3 h-3 text-slate-400" />
-                        </button>
-
-                        {showShapeSelector && (
-                            <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] min-w-[120px]">
-                                <button
-                                    onClick={() => {
-                                        setTool('rect');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Rectangle"
-                                >
-                                    <Square className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setTool('circle');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Circle"
-                                >
-                                    <Circle className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setTool('line');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Line"
-                                >
-                                    <Minus className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setTool('arrow');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Arrow"
-                                >
-                                    <ArrowRight className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setTool('triangle');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Triangle"
-                                >
-                                    <Triangle className="w-4 h-4" />
-                                </button>
-                                <button
-                                    onClick={() => {
-                                        setTool('star');
-                                        setShowShapeSelector(false);
-                                    }}
-                                    className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                        }`}
-                                    title="Star"
-                                >
-                                    <Star className="w-4 h-4" />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Text & Image */}
-                    <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
-                        <Button
-                            variant={currentTool === 'text' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('text')}
-                            title="Text"
-                            className={`h-7 w-7 p-0 ${currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
-                        >
-                            <Type className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                            variant={currentTool === 'image' ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => setTool('image')}
-                            title="Image"
-                            className={`h-7 w-7 p-0 ${currentTool === 'image' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
-                        >
-                            <ImageIcon className="w-3.5 h-3.5" />
-                        </Button>
-                    </div>
-
-                    {/* Color Selector */}
-                    <div className="relative" ref={colorSelectorRef}>
-                        <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
-                            {PRIMARY_COLORS.map((color) => (
-                                <button
-                                    key={color}
-                                    onClick={() => {
-                                        setColor(color);
-                                        if (currentTool === 'rainbow') setTool('pen');
-                                    }}
-                                    className={`w-5 h-5 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                        }`}
-                                    style={{ backgroundColor: color }}
-                                    title={color === '#000000' ? 'Black' : color === '#ef4444' ? 'Red' : 'Blue'}
-                                />
-                            ))}
-                            {currentTool === 'rainbow' ? (
-                                <button
-                                    onClick={() => setShowColorSelector(!showColorSelector)}
-                                    className="w-5 h-5 rounded-full border border-slate-200 ring-2 ring-offset-1 ring-sky-400 scale-110 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
-                                    title="Rainbow"
-                                />
-                            ) : (
-                                <button
-                                    onClick={() => setShowColorSelector(!showColorSelector)}
-                                    className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
-                                    title="More colors"
-                                >
-                                    <Palette className="w-3 h-3 text-slate-600" />
-                                </button>
-                            )}
+                <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
+                    {!canEdit && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-lg border border-slate-200 shadow-xs text-slate-600 text-xs font-medium">
+                            <span className="font-semibold text-saBlue">Whiteboard</span>
+                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">View Only</span>
                         </div>
+                    )}
 
-                        {showColorSelector && (
-                            <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] min-w-[140px]">
-                                {COLORS.map((color) => (
-                                    <button
-                                        key={color}
-                                        onClick={() => {
-                                            setColor(color);
-                                            if (currentTool === 'rainbow') setTool('pen');
-                                            setShowColorSelector(false);
-                                        }}
-                                        className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                            }`}
-                                        style={{ backgroundColor: color }}
-                                    />
-                                ))}
-                                <button
-                                    onClick={() => {
-                                        setTool('rainbow');
-                                        setShowColorSelector(false);
-                                    }}
-                                    className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                        }`}
-                                    title="Rainbow"
+                    {canEdit && (
+                        <>
+                            {/* Drawing Tools */}
+                            <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                <Button
+                                    variant={currentTool === 'select' ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setTool('select')}
+                                    title="Select"
+                                    className={`h-7 w-7 p-0 ${currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                                 >
-                                    <Sparkles className="w-3 h-3 text-white drop-shadow" />
-                                </button>
+                                    <MousePointer className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                    variant={currentTool === 'pen' ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setTool('pen')}
+                                    title="Pen"
+                                    className={`h-7 w-7 p-0 ${currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
+                                >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                    variant={currentTool === 'eraser' ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setTool('eraser')}
+                                    title="Eraser"
+                                    className={`h-7 w-7 p-0 ${currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}`}
+                                >
+                                    <Eraser className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                    variant={currentTool === 'highlight' ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => setTool('highlight')}
+                                    title="Highlight"
+                                    className={`h-7 w-7 p-0 ${currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}`}
+                                >
+                                    <Highlighter className="w-3.5 h-3.5" />
+                                </Button>
                             </div>
-                        )}
-                    </div>
 
-                    {/* Size */}
-                    <div className="flex items-center gap-1.5 bg-white px-1.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
-                        <input
-                            type="range"
-                            min={PEN_THICKNESS_RANGE.min}
-                            max={PEN_THICKNESS_RANGE.max}
-                            step={PEN_THICKNESS_RANGE.step}
-                            value={currentSize}
-                            onChange={(e) => setSize(Number(e.target.value))}
-                            className="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
-                            title={`Size: ${currentSize}px`}
-                        />
-                        <span className="text-[10px] text-slate-600 font-medium w-4 text-center">{currentSize}</span>
-                    </div>
+                            {/* Shapes Selector */}
+                            <div className="relative" ref={shapeSelectorRef}>
+                                <button
+                                    onClick={() => setShowShapeSelector(!showShapeSelector)}
+                                    className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
+                                        ? 'bg-sky-50 border-sky-300'
+                                        : ''
+                                        }`}
+                                    title="Shapes"
+                                >
+                                    {currentTool === 'rect' && <Square className="w-3.5 h-3.5 text-sky-600" />}
+                                    {currentTool === 'circle' && <Circle className="w-3.5 h-3.5 text-sky-600" />}
+                                    {currentTool === 'line' && <Minus className="w-3.5 h-3.5 text-sky-600" />}
+                                    {currentTool === 'arrow' && <ArrowRight className="w-3.5 h-3.5 text-sky-600" />}
+                                    {currentTool === 'triangle' && <Triangle className="w-3.5 h-3.5 text-sky-600" />}
+                                    {currentTool === 'star' && <Star className="w-3.5 h-3.5 text-sky-600" />}
+                                    {!['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool) && (
+                                        <Shapes className="w-3.5 h-3.5 text-slate-600" />
+                                    )}
+                                    <ChevronDown className="w-3 h-3 text-slate-400" />
+                                </button>
 
-                    {/* Boards */}
+                                {showShapeSelector && (
+                                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] min-w-[120px]">
+                                        <button
+                                            onClick={() => {
+                                                setTool('rect');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Rectangle"
+                                        >
+                                            <Square className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTool('circle');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Circle"
+                                        >
+                                            <Circle className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTool('line');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Line"
+                                        >
+                                            <Minus className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTool('arrow');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Arrow"
+                                        >
+                                            <ArrowRight className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTool('triangle');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Triangle"
+                                        >
+                                            <Triangle className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setTool('star');
+                                                setShowShapeSelector(false);
+                                            }}
+                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
+                                                }`}
+                                            title="Star"
+                                        >
+                                            <Star className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Text & Image */}
+                            <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                <Button
+                                    variant={currentTool === 'text' ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => {
+                                        setTool('text');
+                                        setShowImageDialog(false);
+                                    }}
+                                    title="Text"
+                                    className={`h-7 w-7 p-0 ${currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
+                                >
+                                    <Type className="w-3.5 h-3.5" />
+                                </Button>
+
+                                {/* Image Tool with Tooltip Popover */}
+                                <div className="relative" ref={imageSelectorRef}>
+                                    <Button
+                                        variant={showImageDialog || currentTool === 'image' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => {
+                                            setShowImageDialog(!showImageDialog);
+                                            if (!showImageDialog) {
+                                                setTool('image');
+                                            }
+                                        }}
+                                        title="Add Image"
+                                        className={`h-7 w-7 p-0 ${showImageDialog || currentTool === 'image' ? 'bg-sky-500 hover:bg-sky-600 text-white' : ''}`}
+                                    >
+                                        <ImageIcon className="w-3.5 h-3.5" />
+                                    </Button>
+
+                                    {showImageDialog && (
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl p-3 z-[100] w-[270px] animate-in fade-in zoom-in-95 duration-150">
+                                            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
+                                                <div className="flex items-center gap-1.5">
+                                                    <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
+                                                    <span className="text-xs font-bold text-slate-800">Add Image</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowImageDialog(false);
+                                                        setImageUrlInput('');
+                                                        setImageFile(null);
+                                                        setTool('pen');
+                                                    }}
+                                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            <div className="space-y-2.5">
+                                                {/* File upload input & button */}
+                                                <input
+                                                    ref={fileInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            try {
+                                                                const compressedUrl = await compressWhiteboardImage(file);
+                                                                if (compressedUrl) {
+                                                                    addImageStroke(compressedUrl, { x: 0.25, y: 0.2 });
+                                                                    setShowImageDialog(false);
+                                                                    setImageFile(null);
+                                                                    setImageUrlInput('');
+                                                                    setTool('select');
+                                                                }
+                                                            } catch (err) {
+                                                                console.error('[Whiteboard] Image upload error:', err);
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="hidden"
+                                                    id="whiteboard-image-upload-input"
+                                                />
+
+                                                <label
+                                                    htmlFor="whiteboard-image-upload-input"
+                                                    className="flex items-center justify-center gap-2 w-full py-2 px-3 border border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/70 hover:bg-sky-50 text-sky-700 text-xs font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
+                                                >
+                                                    <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                                                    <span>Upload from device</span>
+                                                </label>
+
+                                                <div className="relative flex items-center justify-center my-1">
+                                                    <div className="w-full border-t border-slate-200" />
+                                                    <span className="absolute bg-white px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                                        or URL
+                                                    </span>
+                                                </div>
+
+                                                {/* Image URL input */}
+                                                <div className="flex gap-1.5">
+                                                    <input
+                                                        type="url"
+                                                        value={imageUrlInput}
+                                                        onChange={(e) => {
+                                                            setImageUrlInput(e.target.value);
+                                                            setImageFile(null);
+                                                        }}
+                                                        onKeyDown={async (e) => {
+                                                            if (e.key === 'Enter' && imageUrlInput.trim()) {
+                                                                e.preventDefault();
+                                                                const url = imageUrlInput.trim();
+                                                                setShowImageDialog(false);
+                                                                setImageUrlInput('');
+                                                                setTool('select');
+                                                                if (url.startsWith('data:image')) {
+                                                                    const compressed = await compressWhiteboardImage(url);
+                                                                    addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
+                                                                } else {
+                                                                    addImageStroke(url, { x: 0.25, y: 0.2 });
+                                                                }
+                                                            }
+                                                        }}
+                                                        placeholder="Paste image URL..."
+                                                        className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1.5 focus:ring-sky-500 focus:border-sky-500"
+                                                        autoFocus
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={async () => {
+                                                            if (imageUrlInput.trim()) {
+                                                                const url = imageUrlInput.trim();
+                                                                setShowImageDialog(false);
+                                                                setImageUrlInput('');
+                                                                setTool('select');
+                                                                if (url.startsWith('data:image')) {
+                                                                    const compressed = await compressWhiteboardImage(url);
+                                                                    addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
+                                                                } else {
+                                                                    addImageStroke(url, { x: 0.25, y: 0.2 });
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={!imageUrlInput.trim()}
+                                                        className="h-auto py-1 px-2.5 text-xs bg-sky-500 hover:bg-sky-600 text-white rounded-lg shrink-0 font-semibold"
+                                                    >
+                                                        Add
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Color Selector */}
+                            <div className="relative" ref={colorSelectorRef}>
+                                <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                    {PRIMARY_COLORS.map((color) => (
+                                        <button
+                                            key={color}
+                                            onClick={() => {
+                                                setColor(color);
+                                                if (currentTool === 'rainbow') setTool('pen');
+                                            }}
+                                            className={`w-5 h-5 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                                }`}
+                                            style={{ backgroundColor: color }}
+                                            title={color === '#000000' ? 'Black' : color === '#ef4444' ? 'Red' : 'Blue'}
+                                        />
+                                    ))}
+                                    {currentTool === 'rainbow' ? (
+                                        <button
+                                            onClick={() => setShowColorSelector(!showColorSelector)}
+                                            className="w-5 h-5 rounded-full border border-slate-200 ring-2 ring-offset-1 ring-sky-400 scale-110 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
+                                            title="Rainbow"
+                                        />
+                                    ) : (
+                                        <button
+                                            onClick={() => setShowColorSelector(!showColorSelector)}
+                                            className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
+                                            title="More colors"
+                                        >
+                                            <Palette className="w-3 h-3 text-slate-600" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {showColorSelector && (
+                                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] min-w-[140px]">
+                                        {COLORS.map((color) => (
+                                            <button
+                                                key={color}
+                                                onClick={() => {
+                                                    setColor(color);
+                                                    if (currentTool === 'rainbow') setTool('pen');
+                                                    setShowColorSelector(false);
+                                                }}
+                                                className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                                    }`}
+                                                style={{ backgroundColor: color }}
+                                            />
+                                        ))}
+                                        <button
+                                            onClick={() => {
+                                                setTool('rainbow');
+                                                setShowColorSelector(false);
+                                            }}
+                                            className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
+                                                }`}
+                                            title="Rainbow"
+                                        >
+                                            <Sparkles className="w-3 h-3 text-white drop-shadow" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Size */}
+                            <div className="flex items-center gap-1.5 bg-white px-1.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                <input
+                                    type="range"
+                                    min={PEN_THICKNESS_RANGE.min}
+                                    max={PEN_THICKNESS_RANGE.max}
+                                    step={PEN_THICKNESS_RANGE.step}
+                                    value={currentSize}
+                                    onChange={(e) => setSize(Number(e.target.value))}
+                                    className="w-16 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-500"
+                                    title={`Size: ${currentSize}px`}
+                                />
+                                <span className="text-[10px] text-slate-600 font-medium w-4 text-center">{currentSize}</span>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Boards (Available to both Editor and Viewer) */}
                     <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                         {[1, 2, 3, 4, 5].map((board) => (
                             <div key={board} className="relative group">
                                 <button
-                                    onClick={() => setBoard(board)}
+                                    onClick={() => setBoard(board, canEdit)}
                                     className={`flex items-center justify-center w-6 h-6 rounded transition-all ${currentBoard === board
                                         ? 'bg-sky-500 text-white shadow-sm'
                                         : 'hover:bg-slate-100 text-slate-600'
@@ -483,7 +651,7 @@ export function Whiteboard({
                                 >
                                     <span className="text-[10px] font-semibold">{board}</span>
                                 </button>
-                                {currentBoard === board && (
+                                {canEdit && currentBoard === board && (
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation();
@@ -501,23 +669,25 @@ export function Whiteboard({
                         ))}
                     </div>
 
-                    {/* Clear All */}
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                            if (window.confirm('Clear all boards?')) {
-                                clearCanvas();
-                            }
-                        }}
-                        className="text-red-500 hover:bg-red-50 h-7 w-7 p-0"
-                        title="Clear All"
-                    >
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    {/* Clear All (Edit only) */}
+                    {canEdit && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                if (window.confirm('Clear all boards?')) {
+                                    clearCanvas();
+                                }
+                            }}
+                            className="text-red-500 hover:bg-red-50 h-7 w-7 p-0"
+                            title="Clear All"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
 
-                    {/* Delete Selected (shows when image/text selected) */}
-                    {selectedStrokeId && (
+                    {/* Delete Selected (shows when image/text selected and canEdit is true) */}
+                    {canEdit && selectedStrokeId && (
                         <Button
                             variant="ghost"
                             size="sm"
@@ -538,7 +708,7 @@ export function Whiteboard({
                             const dataUrl = exportImage();
                             if (dataUrl) {
                                 const link = document.createElement('a');
-                                link.download = `whiteboard-${Date.now()}.png`;
+                                link.download = `whiteboard-board${currentBoard}-${Date.now()}.png`;
                                 link.href = dataUrl;
                                 link.click();
                             }
@@ -551,7 +721,7 @@ export function Whiteboard({
                     </Button>
 
                     {/* Save Whiteboard button */}
-                    {onSave && (
+                    {canEdit && onSave && (
                         <Button
                             variant="default"
                             size="sm"
@@ -573,7 +743,6 @@ export function Whiteboard({
                         </Button>
                     )}
                 </div>
-                )}
 
                 {/* Close button */}
                 <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-2 top-2 md:static md:ml-2">
@@ -582,7 +751,7 @@ export function Whiteboard({
             </div>
 
             {/* Canvas */}
-            <div className="flex-1 relative bg-white cursor-crosshair">
+            <div className={`flex-1 relative bg-white ${currentTool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}>
                 <canvas
                     ref={canvasRef}
                     onPointerDown={(e) => {
@@ -601,6 +770,113 @@ export function Whiteboard({
                     className="absolute inset-0 touch-none"
                     style={{ touchAction: 'none', pointerEvents: !canEdit ? 'none' : (showTextInput ? 'none' : 'auto') }}
                 />
+
+                {/* Floating Context Toolbar for Selected Stroke */}
+                {canEdit && currentTool === 'select' && selectedStroke && (() => {
+                    const bounds = getStrokeBoundsForCanvas(selectedStroke);
+                    if (!bounds) return null;
+                    const containerW = containerRef.current?.clientWidth || 800;
+                    const toolbarTop = Math.max(bounds.minY - 44, 8);
+                    const toolbarLeft = Math.min(Math.max(bounds.minX + bounds.width / 2, 160), containerW - 160);
+
+                    return (
+                        <div
+                            className="absolute z-40 flex items-center gap-0.5 bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl rounded-xl px-1 py-0.5 text-slate-700 animate-in fade-in zoom-in-95 duration-150 select-none pointer-events-auto"
+                            style={{
+                                top: `${toolbarTop}px`,
+                                left: `${toolbarLeft}px`,
+                                transform: 'translateX(-50%)',
+                            }}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            {/* Scale Up */}
+                            <button
+                                type="button"
+                                onClick={() => scaleSelected(1.15)}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Increase Size (+15%)"
+                            >
+                                <ZoomIn className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Scale Down */}
+                            <button
+                                type="button"
+                                onClick={() => scaleSelected(0.85)}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Decrease Size (-15%)"
+                            >
+                                <ZoomOut className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Reset Aspect Ratio (Only for images) */}
+                            {selectedStroke.tool === 'image' && (
+                                <button
+                                    type="button"
+                                    onClick={() => resetSelectedAspectRatio()}
+                                    className="p-1 hover:bg-sky-50 text-sky-600 hover:text-sky-700 rounded-lg transition-colors"
+                                    title="Reset Image Aspect Ratio"
+                                >
+                                    <Maximize2 className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+
+                            {/* Rotate 90° */}
+                            <button
+                                type="button"
+                                onClick={() => rotateSelected(90)}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Rotate 90° Clockwise"
+                            >
+                                <RotateCw className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="w-[1px] h-3.5 bg-slate-200 my-auto mx-0.5" />
+
+                            {/* Duplicate */}
+                            <button
+                                type="button"
+                                onClick={() => duplicateSelected()}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Duplicate (Clone)"
+                            >
+                                <Copy className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Bring to Front */}
+                            <button
+                                type="button"
+                                onClick={() => bringSelectedToFront()}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Bring to Front (Layer Up)"
+                            >
+                                <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Send to Back */}
+                            <button
+                                type="button"
+                                onClick={() => sendSelectedToBack()}
+                                className="p-1 hover:bg-slate-100 hover:text-sky-600 rounded-lg transition-colors"
+                                title="Send to Back (Layer Down)"
+                            >
+                                <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+
+                            <div className="w-[1px] h-3.5 bg-slate-200 my-auto mx-0.5" />
+
+                            {/* Delete */}
+                            <button
+                                type="button"
+                                onClick={() => deleteSelected()}
+                                className="p-1 hover:bg-red-50 text-red-500 hover:text-red-600 rounded-lg transition-colors"
+                                title="Delete (Delete / Backspace key)"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    );
+                })()}
 
                 {/* Text Input */}
                 {showTextInput && textPosition && (
@@ -652,90 +928,6 @@ export function Whiteboard({
                             style={{ fontSize: `${Math.max(currentSize * 4, 16)}px`, color: currentColor }}
                             placeholder="Type here..."
                         />
-                    </div>
-                )}
-
-                {/* Image Dialog */}
-                {showImageDialog && (
-                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50">
-                        <div className="bg-white rounded-xl p-6 shadow-2xl max-w-md w-full mx-4">
-                            <h3 className="text-lg font-semibold text-slate-900 mb-4">Add Image</h3>
-
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        setImageFile(file);
-                                        setImageUrlInput('');
-                                    }
-                                }}
-                                className="block w-full text-sm text-slate-500 mb-4 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-sky-50 file:text-sky-700"
-                            />
-
-                            <div className="relative mb-4">
-                                <div className="absolute inset-0 flex items-center">
-                                    <div className="w-full border-t border-slate-300" />
-                                </div>
-                                <div className="relative flex justify-center">
-                                    <span className="px-2 bg-white text-slate-500 text-sm">OR</span>
-                                </div>
-                            </div>
-
-                            <input
-                                type="url"
-                                value={imageUrlInput}
-                                onChange={(e) => {
-                                    setImageUrlInput(e.target.value);
-                                    setImageFile(null);
-                                }}
-                                placeholder="https://example.com/image.jpg"
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-6 focus:ring-2 focus:ring-sky-500"
-                            />
-
-                            <div className="flex gap-3 justify-end">
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => {
-                                        setShowImageDialog(false);
-                                        setImageUrlInput('');
-                                        setImageFile(null);
-                                        setTool('pen');
-                                    }}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    onClick={() => {
-                                        const pos = { x: 0.1, y: 0.1 };
-                                        if (imageFile) {
-                                            const reader = new FileReader();
-                                            reader.onload = (e) => {
-                                                const dataUrl = e.target?.result as string;
-                                                if (dataUrl) {
-                                                    addImageStroke(dataUrl, pos);
-                                                    setShowImageDialog(false);
-                                                    setImageFile(null);
-                                                    setTool('select');
-                                                }
-                                            };
-                                            reader.readAsDataURL(imageFile);
-                                        } else if (imageUrlInput.trim()) {
-                                            addImageStroke(imageUrlInput.trim(), pos);
-                                            setShowImageDialog(false);
-                                            setImageUrlInput('');
-                                            setTool('select');
-                                        }
-                                    }}
-                                    disabled={!imageFile && !imageUrlInput.trim()}
-                                    className="bg-sky-500 hover:bg-sky-600"
-                                >
-                                    Add Image
-                                </Button>
-                            </div>
-                        </div>
                     </div>
                 )}
             </div>

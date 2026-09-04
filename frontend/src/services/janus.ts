@@ -663,12 +663,22 @@ export class JanusClient {
 
     sendData(message: DataChannelMessage): void {
         if (this.dataChannel && this.dataChannel.readyState === 'open') {
-            const messageWithSender = {
-                ...message,
-                senderId: this.localUniqueId,
-                janusId: this.myId,
-            };
-            this.dataChannel.send(JSON.stringify(messageWithSender));
+            try {
+                const messageWithSender = {
+                    ...message,
+                    senderId: this.localUniqueId,
+                    janusId: this.myId,
+                };
+                const serialized = JSON.stringify(messageWithSender);
+                // Safe WebRTC limit for standard DataChannel packet
+                if (serialized.length < 60000) {
+                    this.dataChannel.send(serialized);
+                } else {
+                    console.warn('[Janus] Message size (' + serialized.length + ' bytes) exceeds DataChannel safe packet limit; syncing via API instead');
+                }
+            } catch (err) {
+                console.error('[Janus] Error sending data via DataChannel:', err);
+            }
         }
     }
 

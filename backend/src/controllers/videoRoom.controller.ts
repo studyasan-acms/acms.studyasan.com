@@ -464,7 +464,9 @@ export const getWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
         points: s.points,
         text: s.text,
         imageUrl: s.image_url,
+        board: s.board,
         timestamp: s.created_at.getTime(),
+        updatedAt: s.updated_at.getTime(),
       })),
     });
   } catch (error: any) {
@@ -520,6 +522,7 @@ export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
         points: stroke.points,
         text: stroke.text,
         image_url: stroke.imageUrl,
+        board: stroke.board || 1,
       },
       create: {
         room_id: videoRoom.id,
@@ -530,6 +533,7 @@ export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
         points: stroke.points,
         text: stroke.text,
         image_url: stroke.imageUrl,
+        board: stroke.board || 1,
       },
     });
 

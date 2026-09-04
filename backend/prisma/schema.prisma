@@ -1134,7 +1134,9 @@ model WhiteboardStroke {
   points     Json
   text       String?
   image_url  String?
+  board      Int       @default(1)
   created_at DateTime  @default(now())
+  updated_at DateTime  @default(now()) @updatedAt
   room       VideoRoom @relation(fields: [room_id], references: [id], onDelete: Cascade)
 
   @@unique([room_id, stroke_id])

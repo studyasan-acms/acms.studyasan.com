@@ -208,15 +208,21 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     }, [apiSync]);
 
     const sendWhiteboardMessage = useCallback((message: WhiteboardMessage) => {
-        // Send instantly via WebRTC data channel
-        console.log('[useJanus] sendWhiteboardMessage triggered:', message);
-        janusClientRef.current?.sendData({
-            type: 'whiteboard',
-            whiteboard: message,
-        });
+        console.log('[useJanus] sendWhiteboardMessage triggered:', message.type);
+        try {
+            janusClientRef.current?.sendData({
+                type: 'whiteboard',
+                whiteboard: message,
+            });
+        } catch (err) {
+            console.error('[useJanus] Error sending whiteboard via dataChannel:', err);
+        }
 
-        // Persist via API for late-joiners
-        apiSync.sendWhiteboardMessage(message);
+        try {
+            apiSync.sendWhiteboardMessage(message);
+        } catch (err) {
+            console.error('[useJanus] Error sending whiteboard via API:', err);
+        }
     }, [apiSync]);
 
     const disconnect = useCallback(async () => {
