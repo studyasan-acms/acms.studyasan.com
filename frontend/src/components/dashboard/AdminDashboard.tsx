@@ -208,6 +208,8 @@ export default function AdminDashboard() {
                     type="area"
                     dataKey="revenue"
                     xAxisKey="date"
+                    seriesName="Revenue"
+                    valuePrefix="₹"
                   />
                 </div>
               </CardContent>

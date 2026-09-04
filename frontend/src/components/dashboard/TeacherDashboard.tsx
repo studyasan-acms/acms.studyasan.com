@@ -304,6 +304,8 @@ export default function TeacherDashboard() {
                                     type="bar"
                                     dataKey="testScore"
                                     xAxisKey="name"
+                                    seriesName="Test Score"
+                                    valueSuffix="%"
                                 />
                             </CardContent>
                         </Card>

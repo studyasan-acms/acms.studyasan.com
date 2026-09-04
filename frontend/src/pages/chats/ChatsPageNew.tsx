@@ -206,10 +206,10 @@ const ChatsPageNew = () => {
     try {
       setLoadingContacts(true);
       if (user?.role === 'STUDENT') {
-        const response = await teacherService.getAll();
+        const response = await teacherService.getAll({ user_id: user.id, role: 'STUDENT', limit: 100 });
         setTeachers(response.data.data);
       } else if (user?.role === 'TEACHER') {
-        const response = await studentService.getAll();
+        const response = await studentService.getAll({ user_id: user.id, role: 'TEACHER', limit: 100 });
         setStudents(response.data.data);
       }
     } catch (error: unknown) {
@@ -533,14 +533,18 @@ const ChatsPageNew = () => {
 
   const filteredTeachers = (teachers || []).filter(
     (t) =>
-      t.user.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-      t.user.email.toLowerCase().includes(contactSearch.toLowerCase())
+      t.user?.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+      t.teacher_subject_junctions?.some((j: any) =>
+        j.subject?.name?.toLowerCase().includes(contactSearch.toLowerCase())
+      ) ||
+      t.role?.name?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
   const filteredStudents = (students || []).filter(
     (s) =>
-      s.user.name.toLowerCase().includes(contactSearch.toLowerCase()) ||
-      s.user.email.toLowerCase().includes(contactSearch.toLowerCase())
+      s.user?.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+      s.class?.name?.toLowerCase().includes(contactSearch.toLowerCase()) ||
+      s.board?.name?.toLowerCase().includes(contactSearch.toLowerCase())
   );
 
   const handleBackToChats = () => {
@@ -1052,51 +1056,65 @@ const ChatsPageNew = () => {
                 ) : (
                   <div className="divide-y divide-slate-100 p-2">
                     {user?.role === 'STUDENT' ? (
-                      filteredTeachers.map((teacher) => (
-                        <div
-                          key={teacher.id}
-                          className="p-3 hover:bg-slate-50 rounded-2xl transition-colors flex items-center justify-between cursor-pointer"
-                          onClick={() => startNewChat(teacher.user.id)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 border border-slate-200">
-                              <AvatarFallback className="bg-saBlue/10 text-saBlue font-bold">
-                                {teacher.user.name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-bold text-sm text-slate-800">{teacher.user.name}</p>
-                              <p className="text-xs text-slate-400">{teacher.user.email}</p>
+                      filteredTeachers.map((teacher) => {
+                        const subjectNames = teacher.teacher_subject_junctions
+                          ?.map((j: any) => j.subject?.name)
+                          .filter(Boolean)
+                          .join(', ');
+                        const subtitle = subjectNames || teacher.role?.name || 'Teacher';
+
+                        return (
+                          <div
+                            key={teacher.id}
+                            className="p-3 hover:bg-slate-50 rounded-2xl transition-colors flex items-center justify-between cursor-pointer"
+                            onClick={() => startNewChat(teacher.user.id)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="h-10 w-10 border border-slate-200">
+                                <AvatarFallback className="bg-saBlue/10 text-saBlue font-bold">
+                                  {teacher.user.name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-bold text-sm text-slate-800">{teacher.user.name}</p>
+                                <p className="text-xs text-slate-500 font-medium">{subtitle}</p>
+                              </div>
                             </div>
+                            <Button size="sm" variant="ghost" className="rounded-xl text-saBlue hover:bg-saBlue/10">
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button size="sm" variant="ghost" className="rounded-xl text-saBlue hover:bg-saBlue/10">
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
-                      filteredStudents.map((student) => (
-                        <div
-                          key={student.id}
-                          className="p-3 hover:bg-slate-50 rounded-2xl transition-colors flex items-center justify-between cursor-pointer"
-                          onClick={() => startNewChat(student.user.id)}
-                        >
-                          <div className="flex items-center space-x-3">
-                            <Avatar className="h-10 w-10 border border-slate-200">
-                              <AvatarFallback className="bg-emerald-50 text-emerald-600 font-bold">
-                                {student.user.name[0]}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-bold text-sm text-slate-800">{student.user.name}</p>
-                              <p className="text-xs text-slate-400">{student.user.email}</p>
+                      filteredStudents.map((student) => {
+                        const subtitle = student.class?.name
+                          ? `${student.class.name}${student.board?.name ? ` • ${student.board.name}` : ''}`
+                          : 'Student';
+
+                        return (
+                          <div
+                            key={student.id}
+                            className="p-3 hover:bg-slate-50 rounded-2xl transition-colors flex items-center justify-between cursor-pointer"
+                            onClick={() => startNewChat(student.user.id)}
+                          >
+                            <div className="flex items-center space-x-3">
+                              <Avatar className="h-10 w-10 border border-slate-200">
+                                <AvatarFallback className="bg-emerald-50 text-emerald-600 font-bold">
+                                  {student.user.name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-bold text-sm text-slate-800">{student.user.name}</p>
+                                <p className="text-xs text-slate-500 font-medium">{subtitle}</p>
+                              </div>
                             </div>
+                            <Button size="sm" variant="ghost" className="rounded-xl text-saBlue hover:bg-saBlue/10">
+                              <MessageCircle className="h-4 w-4" />
+                            </Button>
                           </div>
-                          <Button size="sm" variant="ghost" className="rounded-xl text-saBlue hover:bg-saBlue/10">
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                     {((user?.role === 'STUDENT' && filteredTeachers.length === 0) ||
                       (user?.role !== 'STUDENT' && filteredStudents.length === 0)) && (

@@ -342,6 +342,7 @@ export default function AdminAnalyticsPage() {
                                     type="line"
                                     dataKey="count"
                                     xAxisKey="date"
+                                    seriesName="New Students"
                                 />
                                 <AnalyticsChart
                                     title="Revenue (Last 30 Days)"
@@ -352,6 +353,8 @@ export default function AdminAnalyticsPage() {
                                     type="bar"
                                     dataKey="revenue"
                                     xAxisKey="date"
+                                    seriesName="Revenue"
+                                    valuePrefix="₹"
                                 />
                             </div>
 

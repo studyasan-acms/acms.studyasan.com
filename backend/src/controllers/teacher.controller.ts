@@ -36,10 +36,15 @@ export const getAllTeachers = async (req: Request, res: Response) => {
 
     if (gender) where.gender = gender;
 
-    // Filter by student's enrolled subjects if user_id and role are provided
-    if (user_id && role === 'STUDENT') {
+    // Automatically enforce enrolled subject filtering if requester is a student or user_id + role=STUDENT is passed
+    const isStudentRequester = (req as any).user?.role === 'STUDENT' || role === 'STUDENT';
+    const studentUserId = (req as any).user?.role === 'STUDENT'
+      ? (req as any).user.id
+      : (user_id && role === 'STUDENT' ? parseInt(user_id as string) : null);
+
+    if (isStudentRequester && studentUserId) {
       const student = await prisma.student.findUnique({
-        where: { user_id: parseInt(user_id as string) },
+        where: { user_id: studentUserId },
         include: {
           enrollments: {
             select: { subject_id: true },
@@ -123,7 +128,25 @@ export const getAllTeachers = async (req: Request, res: Response) => {
       prisma.teacher.count({ where }),
     ]);
 
-    const response = createPaginatedResponse(teachers, total, page, limit);
+    // Redact sensitive details (email, phone, salary, address) if requester is a student
+    const sanitizedTeachers = isStudentRequester
+      ? teachers.map((t) => ({
+          ...t,
+          salary: undefined,
+          salary_currency: undefined,
+          salary_currency_id: undefined,
+          address: undefined,
+          user: {
+            id: t.user.id,
+            name: t.user.name,
+            profile_url: t.user.profile_url,
+            email: undefined,
+            phone: undefined,
+          },
+        }))
+      : teachers;
+
+    const response = createPaginatedResponse(sanitizedTeachers as any, total, page, limit);
     return sendSuccess(res, response);
   } catch (error) {
     console.error('Error in getAllTeachers:', error);
@@ -203,7 +226,25 @@ export const getTeacherById = async (req: Request, res: Response) => {
       return sendError(res, 'Teacher not found', 404);
     }
 
-    sendSuccess(res, teacher);
+    const isStudentRequester = (req as any).user?.role === 'STUDENT';
+    const sanitizedTeacher = isStudentRequester
+      ? {
+          ...teacher,
+          salary: undefined,
+          salary_currency: undefined,
+          salary_currency_id: undefined,
+          address: undefined,
+          user: {
+            id: teacher.user.id,
+            name: teacher.user.name,
+            profile_url: teacher.user.profile_url,
+            email: undefined,
+            phone: undefined,
+          },
+        }
+      : teacher;
+
+    sendSuccess(res, sanitizedTeacher);
   } catch (error: any) {
     sendError(res, error.message, 500);
   }
@@ -761,7 +802,24 @@ export const getTeachersBySubject = async (req: Request, res: Response) => {
       },
     });
 
-    sendSuccess(res, teachers, 'Teachers fetched successfully');
+    const isStudentRequester = (req as any).user?.role === 'STUDENT';
+    const sanitizedTeachers = isStudentRequester
+      ? teachers.map((t) => ({
+          ...t,
+          salary_currency: undefined,
+          salary_currency_id: undefined,
+          address: undefined,
+          user: {
+            id: t.user.id,
+            name: t.user.name,
+            profile_url: t.user.profile_url,
+            email: undefined,
+            phone: undefined,
+          },
+        }))
+      : teachers;
+
+    sendSuccess(res, sanitizedTeachers, 'Teachers fetched successfully');
   } catch (error: any) {
     sendError(res, error.message, 500);
   }

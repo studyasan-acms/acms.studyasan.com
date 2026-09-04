@@ -18,13 +18,17 @@ import {
 } from 'recharts';
 
 interface AnalyticsChartProps {
-    title: string;
+    title?: string;
     data: any[];
     type: 'bar' | 'line' | 'pie' | 'area';
     dataKey?: string;
     xAxisKey?: string;
     colors?: string[];
     className?: string;
+    valueFormatter?: (value: any, name?: string) => [string, string] | string;
+    valuePrefix?: string;
+    valueSuffix?: string;
+    seriesName?: string;
 }
 
 const DEFAULT_COLORS = [
@@ -43,8 +47,52 @@ export function AnalyticsChart({
     dataKey = 'value',
     xAxisKey = 'name',
     colors = DEFAULT_COLORS,
-    className = ''
+    className = '',
+    valueFormatter,
+    valuePrefix = '',
+    valueSuffix = '',
+    seriesName
 }: AnalyticsChartProps) {
+    const formatTooltipValue = (val: any, name?: any) => {
+        if (valueFormatter) {
+            return valueFormatter(val, name);
+        }
+        const formattedVal = typeof val === 'number' ? Number(val).toLocaleString() : (val ?? '');
+        const displayVal = `${valuePrefix}${formattedVal}${valueSuffix}`;
+
+        let displayName = seriesName;
+        if (!displayName) {
+            if (name && name !== 'value' && name !== dataKey) {
+                displayName = String(name);
+            } else if (dataKey === 'score') {
+                displayName = 'Score';
+            } else if (dataKey === 'testScore') {
+                displayName = 'Test Score';
+            } else if (dataKey === 'activityScore') {
+                displayName = 'Activity Score';
+            } else if (dataKey === 'revenue') {
+                displayName = 'Revenue';
+            } else if (dataKey === 'count') {
+                displayName = 'Count';
+            } else if (dataKey === 'value') {
+                displayName = 'Score';
+            } else {
+                displayName = dataKey ? dataKey.charAt(0).toUpperCase() + dataKey.slice(1) : '';
+            }
+        }
+        return [displayVal, displayName];
+    };
+
+    const tooltipContentStyle = {
+        borderRadius: '12px',
+        border: '1px solid #e2e8f0',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        backgroundColor: '#ffffff',
+        color: '#1e293b',
+        fontSize: '12px',
+        fontWeight: 500
+    };
+
     const renderChart = () => {
         // Fallback for empty data array
         const hasData = Array.isArray(data) && data.length > 0;
@@ -57,8 +105,9 @@ export function AnalyticsChart({
                         <XAxis dataKey={xAxisKey} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                            contentStyle={tooltipContentStyle}
                             cursor={{ fill: 'rgba(0,0,0,0.02)' }}
+                            formatter={formatTooltipValue as any}
                         />
                         <Bar dataKey={dataKey} radius={[6, 6, 0, 0]}>
                             {data.map((entry, index) => (
@@ -74,7 +123,8 @@ export function AnalyticsChart({
                         <XAxis dataKey={xAxisKey} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                            contentStyle={tooltipContentStyle}
+                            formatter={formatTooltipValue as any}
                         />
                         <Line type="monotone" dataKey={dataKey} stroke={colors[0]} strokeWidth={3} dot={{ r: 4, strokeWidth: 2, fill: '#0276D3' }} activeDot={{ r: 6 }} />
                     </LineChart>
@@ -92,8 +142,8 @@ export function AnalyticsChart({
                         <XAxis dataKey={xAxisKey} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} />
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
-                            formatter={(val: any) => [`₹${Number(val).toLocaleString()}`, 'Revenue']}
+                            contentStyle={tooltipContentStyle}
+                            formatter={formatTooltipValue as any}
                         />
                         <Area
                             type="monotone"
@@ -124,7 +174,8 @@ export function AnalyticsChart({
                             ))}
                         </Pie>
                         <Tooltip
-                            contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+                            contentStyle={tooltipContentStyle}
+                            formatter={formatTooltipValue as any}
                         />
                         <Legend iconType="circle" />
                     </PieChart>

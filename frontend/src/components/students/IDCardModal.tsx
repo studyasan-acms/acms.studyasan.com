@@ -3,7 +3,7 @@ import html2canvas from 'html2canvas';
 import { resolveImageUrl } from "@/lib/utils";
 import jsPDF from 'jspdf';
 import { Button } from "@/components/ui/button";
-import { Download, Mail, X, Check } from "lucide-react";
+import { Download, Mail, X, User } from "lucide-react";
 import { idCardService } from "@/services/api";
 import { toast } from "sonner";
 import { formatStudentId, formatEmployeeId } from "@/utils/idUtils";
@@ -19,10 +19,24 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
   const cardRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(false);
   const [logoBase64, setLogoBase64] = useState<string>("");
+  const [imgError, setImgError] = useState(false);
 
-  // Extract data based on type
-  const name = data?.user?.name || data?.name || 'Student Name';
-  const roleText = type === 'STUDENT' ? 'STUDENT' : 'EMPLOYEE';
+  // Extract name
+  const name = data?.user?.name || data?.name || 'Name';
+
+  // Dynamic role determination: prioritize assigned role name (Faculty, Accountant, etc.)
+  const getRoleText = () => {
+    if (type === 'STUDENT') return 'STUDENT';
+    if (data?.role?.name) return String(data.role.name).trim().toUpperCase();
+    if (typeof data?.role === 'string' && data.role.trim() && data.role !== 'TEACHER' && data.role !== 'EMPLOYEE') {
+      return data.role.trim().toUpperCase();
+    }
+    if (data?.role_name) return String(data.role_name).trim().toUpperCase();
+    if (data?.designation) return String(data.designation).trim().toUpperCase();
+    return 'FACULTY';
+  };
+
+  const roleText = getRoleText();
 
   const formattedId = type === 'STUDENT'
     ? formatStudentId(data?.id)
@@ -30,39 +44,103 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
 
   const dob = data?.date_of_birth
     ? new Date(data.date_of_birth).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
     : '-';
 
   const gender = data?.gender === 'M'
     ? 'Male'
     : data?.gender === 'F'
-    ? 'Female'
-    : data?.gender || '-';
+      ? 'Female'
+      : data?.gender || '-';
 
   const phone = data?.user?.phone || data?.phone || '-';
   const email = data?.user?.email || data?.email || '-';
 
   const validThrough = data?.id_valid_through
     ? new Date(data.id_valid_through).toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      })
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
     : '01/02/2027';
 
-  // Profile image with CORS safe fallback
-  const rawPhotoUrl = data ? resolveImageUrl(data.user?.profile_url || data.profile_url) : '';
-  const photoUrl = rawPhotoUrl
-    ? `${rawPhotoUrl}?t=${new Date().getTime()}`
-    : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0080ff&color=fff&size=256`;
+  // Extract initials for fallback avatar
+  const getInitials = (fullName: string) => {
+    if (!fullName) return 'U';
+    const parts = fullName.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const [photoBase64, setPhotoBase64] = useState<string>("");
+
+  // Extract all possible image fields
+  const rawPhoto = data?.user?.profile_url || data?.profile_url || data?.user?.photo || data?.photo || data?.user?.avatar || data?.avatar || data?.user?.image || data?.image || data?.profile_image || data?.user?.profile_image;
+  const photoUrl = rawPhoto ? resolveImageUrl(rawPhoto) : '';
+
+  useEffect(() => {
+    setImgError(false);
+    if (!photoUrl) {
+      setPhotoBase64('');
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadPhoto = async () => {
+      // If already a base64 or blob URL, use directly
+      if (photoUrl.startsWith('data:') || photoUrl.startsWith('blob:')) {
+        setPhotoBase64(photoUrl);
+        return;
+      }
+
+      try {
+        // Try direct fetch first
+        let res = await fetch(photoUrl).catch(() => null);
+
+        // If direct fetch blocked (e.g. S3 CORS), route through the backend proxy
+        if (!res || !res.ok) {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/';
+          const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+          const proxyUrl = `${cleanApiUrl}/upload/proxy-file?url=${encodeURIComponent(photoUrl)}`;
+          res = await fetch(proxyUrl).catch(() => null);
+        }
+
+        if (res && res.ok) {
+          const blob = await res.blob();
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            if (isMounted && typeof reader.result === 'string') {
+              setPhotoBase64(reader.result);
+            }
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to convert photo to base64:', err);
+      }
+
+      // Fallback: use raw photoUrl
+      if (isMounted) {
+        setPhotoBase64(photoUrl);
+      }
+    };
+
+    loadPhoto();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [photoUrl]);
 
   useEffect(() => {
     if (!isOpen || !data) return;
 
-    // Preload logo as base64 to ensure crisp rendering during canvas export
+    // Preload logo as base64 to ensure crisp offline rendering during canvas export
     const loadLogo = async () => {
       try {
         const response = await fetch('/studyasan-logo.png');
@@ -75,7 +153,7 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
       }
     };
     loadLogo();
-  }, [isOpen, photoUrl]);
+  }, [isOpen, data]);
 
   if (!isOpen || !data) return null;
 
@@ -83,16 +161,17 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
     if (!cardRef.current) return;
     setLoading(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const canvas = await html2canvas(cardRef.current, {
-        scale: 4,
+        scale: 3,
         useCORS: true,
         allowTaint: true,
         backgroundColor: '#ffffff',
         logging: false,
-        scrollX: 0,
-        scrollY: -window.scrollY,
       });
       const image = canvas.toDataURL("image/png");
       const link = document.createElement("a");
@@ -114,10 +193,17 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
     if (!cardRef.current) return;
     setLoading(true);
     try {
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const canvas = await html2canvas(cardRef.current, {
         scale: 3,
         useCORS: true,
         allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
       });
       const imgData = canvas.toDataURL('image/png');
 
@@ -149,9 +235,17 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
     if (!cardRef.current) return;
     setLoading(true);
     try {
+      if (document.fonts) {
+        await document.fonts.ready;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const canvas = await html2canvas(cardRef.current, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
       });
       const imageData = canvas.toDataURL("image/png");
 
@@ -171,125 +265,158 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row max-h-[92vh] border border-slate-200">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col md:flex-row max-h-[94vh] border border-slate-200">
         {/* PREVIEW AREA */}
-        <div className="flex-1 overflow-auto p-6 sm:p-8 flex items-center justify-center bg-slate-100/80">
+        <div className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center bg-slate-100/90">
+
+          {/* ── 3-strip background + floating white card ── */}
           <div
             ref={cardRef}
-            className="w-[320px] bg-white relative shadow-2xl rounded-2xl overflow-hidden flex flex-col items-center select-none border border-slate-200"
-            style={{ fontFamily: "'Inter', sans-serif" }}
+            className="relative select-none overflow-hidden shadow-2xl"
+            style={{
+              width: '300px',
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+            }}
           >
-            {/* Top Orange Arch & Accent Frame */}
-            <div className="w-full bg-[#f39c12] pt-2 px-2 pb-0">
-              {/* Blue Header Section with StudyAsan Logo */}
-              <div className="w-full bg-[#0066d6] rounded-t-xl py-3 px-4 flex flex-col items-center justify-center relative overflow-hidden">
-                {/* Subtle light glow behind logo */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+            {/* Strip 1 — Orange (top 35%) */}
+            <div className="absolute top-0 left-0 right-0 bg-[#ea8e16]" style={{ height: '30%' }} />
 
-                <div className="relative z-10 flex flex-col items-center">
-                  {logoBase64 ? (
-                    <img
-                      src={logoBase64}
-                      alt="StudyAsan Logo"
-                      className="h-9 object-contain drop-shadow-sm filter brightness-0 invert"
-                      crossOrigin="anonymous"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center text-white">
-                      <span className="text-lg font-black tracking-tight leading-none">
-                        Study<span className="text-[#f39c12]">Asan</span>
-                      </span>
-                      <span className="text-[8px] font-semibold tracking-widest opacity-90 mt-0.5 uppercase">
-                        The Path To Success
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* Strip 2 — Dotted grey (middle 50%) */}
+            <div
+              className="absolute left-0 right-0 overflow-hidden"
+              style={{
+                top: '30%',
+                height: '50%',
+                backgroundColor: '#dde3ea',
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='12' viewBox='0 0 12 12' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='6' cy='6' r='1.5' fill='%238fa3b1'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'repeat',
+              }}
+            />
 
-            {/* Card Body with Dot Pattern Background */}
-            <div className="w-full px-6 pt-5 pb-4 flex flex-col items-center relative bg-white">
-              {/* Background subtle micro dot pattern */}
-              <div
-                className="absolute inset-0 opacity-[0.03] pointer-events-none"
-                style={{
-                  backgroundImage: `radial-gradient(#0066d6 1.5px, transparent 1.5px)`,
-                  backgroundSize: '12px 12px',
-                }}
-              ></div>
+            {/* Strip 3 — Blue (bottom 20%) */}
+            <div className="absolute bottom-0 left-0 right-0 bg-[#1053db]" style={{ height: '20%' }} />
 
-              {/* Photo - Rounded Rectangle with Blue Border */}
-              <div className="relative z-10 w-32 h-40 rounded-2xl border-[3.5px] border-[#0066d6] overflow-hidden shadow-md bg-slate-100 shrink-0">
+            {/* White card — floats over all 3 strips with margin on all sides */}
+            <div
+              className="relative z-10 bg-white rounded-lg overflow-hidden flex flex-col shadow-xl"
+              style={{ margin: '16px' }}
+            >
+              {/* Blue header with logo */}
+              <div className="w-full bg-[#1053db] py-2 px-2 flex items-center justify-center relative overflow-hidden shrink-0">
                 <img
-                  src={photoUrl}
-                  alt={name}
-                  className="w-full h-full object-cover"
+                  src={logoBase64 || '/studyasan-logo.png'}
+                  alt="StudyAsan Logo"
+                  className="relative z-10 w-[96%] h-auto max-h-16 object-contain"
                   crossOrigin="anonymous"
                 />
               </div>
 
-              {/* Person Name */}
-              <h2 className="relative z-10 text-xl font-extrabold text-slate-900 tracking-tight mt-3 text-center truncate max-w-[260px]">
-                {name}
-              </h2>
+              {/* White body */}
+              <div
+                className="w-full bg-white px-4 pt-3.5 pb-3.5 flex flex-col items-center overflow-hidden"
+                style={{ boxSizing: 'border-box' }}
+              >
 
-              {/* Role Badge (Solid Blue Bar with Uppercase Text) */}
-              <div className="relative z-10 mt-2 bg-[#0066d6] text-white py-1 px-8 rounded-sm shadow-xs">
-                <span className="text-xs font-black tracking-widest uppercase">
-                  {roleText}
-                </span>
+                {/* Photo */}
+                <div className="w-[118px] h-[146px] rounded-[16px] border-[3px] border-[#3b82f6] overflow-hidden shadow-sm bg-slate-100 shrink-0">
+                  {(photoBase64 || photoUrl) && !imgError ? (
+                    <img
+                      src={photoBase64 || photoUrl}
+                      alt={name}
+                      className="w-full h-full object-cover"
+                      onError={() => {
+                        console.error("ID Card photo failed to load:", photoBase64 || photoUrl);
+                        setImgError(true);
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-slate-100 to-blue-100">
+                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center border border-blue-200">
+                        <User className="w-7 h-7 text-[#1053db]" />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Name */}
+                <h2
+                  className="w-full font-black text-slate-900 text-center px-1 mt-3.5 break-words"
+                  style={{ fontSize: '18px', lineHeight: '22px', textAlign: 'center' }}
+                >
+                  {name}
+                </h2>
+
+                {/* Role badge (with left & right padding from card container, perfectly centered text) */}
+                <div
+                  className="w-full mt-2.5 bg-[#4175fc] text-white shrink-0 rounded-none"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    textAlign: 'center',
+                    paddingTop: '6px',
+                    paddingBottom: '6px',
+                    paddingLeft: '0px',
+                    paddingRight: '0px',
+                    display: 'block',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '100%',
+                      textAlign: 'center',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      color: '#ffffff',
+                      lineHeight: '16px',
+                      letterSpacing: '0px',
+                      margin: 0,
+                      padding: 0,
+                      paddingBottom: '6px',
+                      display: 'block',
+                    }}
+                  >
+                    {roleText}
+                  </div>
+                </div>
+
+                {/* Details table */}
+                <table className="w-full mt-3.5 border-collapse text-xs">
+                  <tbody>
+                    <tr>
+                      <td className="py-1 font-bold text-slate-900 whitespace-nowrap w-[62px] align-middle">ID No</td>
+                      <td className="py-1 font-bold text-slate-900 text-center w-[12px] align-middle">:</td>
+                      <td className="py-1 text-slate-800 font-medium pl-2 align-middle truncate max-w-[150px]">{formattedId}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 font-bold text-slate-900 whitespace-nowrap align-middle">DOB</td>
+                      <td className="py-1 font-bold text-slate-900 text-center align-middle">:</td>
+                      <td className="py-1 text-slate-800 font-medium pl-2 align-middle truncate max-w-[150px]">{dob}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 font-bold text-slate-900 whitespace-nowrap align-middle">Gender</td>
+                      <td className="py-1 font-bold text-slate-900 text-center align-middle">:</td>
+                      <td className="py-1 text-slate-800 font-medium pl-2 align-middle truncate max-w-[150px]">{gender}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 font-bold text-slate-900 whitespace-nowrap align-middle">Phone</td>
+                      <td className="py-1 font-bold text-slate-900 text-center align-middle">:</td>
+                      <td className="py-1 text-slate-800 font-medium pl-2 align-middle truncate max-w-[150px]">{phone}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 font-bold text-slate-900 whitespace-nowrap align-top">Email</td>
+                      <td className="py-1 font-bold text-slate-900 text-center align-top">:</td>
+                      <td className="py-1 text-slate-800 font-medium pl-2 align-top break-all text-[11px] leading-tight">{email}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {/* Valid Through */}
+                <div className="w-full flex flex-col items-end mt-2.5 shrink-0">
+                  <span className="text-[9.5px] font-bold italic text-slate-700 leading-snug">Valid Through</span>
+                  <span className="text-[11.5px] font-black italic text-[#ea8e16] leading-snug mt-0.5">{validThrough}</span>
+                </div>
               </div>
-
-              {/* Details Table */}
-              <div className="relative z-10 w-full mt-4 space-y-1.5 text-xs">
-                <div className="grid grid-cols-[70px_10px_1fr] items-center">
-                  <span className="font-bold text-slate-800">ID No</span>
-                  <span className="font-bold text-slate-800 text-center">:</span>
-                  <span className="font-bold text-slate-900 tracking-wide">{formattedId}</span>
-                </div>
-
-                <div className="grid grid-cols-[70px_10px_1fr] items-center">
-                  <span className="font-bold text-slate-800">DOB</span>
-                  <span className="font-bold text-slate-800 text-center">:</span>
-                  <span className="text-slate-700 font-medium">{dob}</span>
-                </div>
-
-                <div className="grid grid-cols-[70px_10px_1fr] items-center">
-                  <span className="font-bold text-slate-800">Gender</span>
-                  <span className="font-bold text-slate-800 text-center">:</span>
-                  <span className="text-slate-700 font-medium">{gender}</span>
-                </div>
-
-                <div className="grid grid-cols-[70px_10px_1fr] items-center">
-                  <span className="font-bold text-slate-800">Phone</span>
-                  <span className="font-bold text-slate-800 text-center">:</span>
-                  <span className="text-slate-700 font-medium truncate">{phone}</span>
-                </div>
-
-                <div className="grid grid-cols-[70px_10px_1fr] items-start">
-                  <span className="font-bold text-slate-800 mt-0.5">Email</span>
-                  <span className="font-bold text-slate-800 text-center mt-0.5">:</span>
-                  <span className="text-slate-700 font-medium break-all leading-tight">
-                    {email}
-                  </span>
-                </div>
-              </div>
-
-              {/* Valid Through in Bottom Right */}
-              <div className="relative z-10 w-full flex flex-col items-end mt-4 pt-1">
-                <span className="text-[10px] font-bold italic text-[#f39c12] tracking-tight">
-                  Valid Through
-                </span>
-                <span className="text-[11px] font-bold text-slate-800">
-                  {validThrough}
-                </span>
-              </div>
-            </div>
-
-            {/* Bottom Accent Graphic Bar */}
-            <div className="w-full bg-[#0066d6] h-4 rounded-b-xl relative overflow-hidden flex items-center justify-center">
-              <div className="w-12 h-1 bg-white/40 rounded-full"></div>
             </div>
           </div>
         </div>

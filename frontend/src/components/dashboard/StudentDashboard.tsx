@@ -1047,6 +1047,8 @@ export default function StudentDashboard() {
                                     dataKey="score"
                                     xAxisKey="label"
                                     colors={['#0276D3']}
+                                    seriesName="Score"
+                                    valueSuffix="%"
                                 />
                             </div>
                         </CardContent>
@@ -1069,6 +1071,8 @@ export default function StudentDashboard() {
                                 dataKey="value"
                                 xAxisKey="name"
                                 colors={['#3b82f6', '#f59e0b', '#10b981']}
+                                seriesName="Proficiency"
+                                valueSuffix="%"
                             />
                         </CardContent>
                     </Card>

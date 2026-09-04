@@ -179,6 +179,8 @@ export default function TeacherAnalyticsPage() {
                     type="bar"
                     dataKey="testScore"
                     xAxisKey="name"
+                    seriesName="Test Score"
+                    valueSuffix="%"
                 />
             )}
 

@@ -177,6 +177,8 @@ export default function StudentAnalyticsPage() {
                     type="bar"
                     dataKey="score"
                     xAxisKey="name"
+                    seriesName="Average Score"
+                    valueSuffix="%"
                 />
                 <AnalyticsChart
                     title="Time Distribution"
@@ -184,6 +186,8 @@ export default function StudentAnalyticsPage() {
                     type="pie"
                     dataKey="value"
                     xAxisKey="name"
+                    seriesName="Study Hours"
+                    valueSuffix=" hrs"
                 />
             </div>
 

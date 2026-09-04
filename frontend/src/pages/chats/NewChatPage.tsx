@@ -182,9 +182,11 @@ const NewChatPage = () => {
                               </Avatar>
                               <div>
                                 <p className="font-medium">{teacher.user.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {teacher.user.email}
-                                </p>
+                                {teacher.role?.name && (
+                                  <p className="text-xs text-muted-foreground font-medium">
+                                    {teacher.role.name}
+                                  </p>
+                                )}
                                 {teacher.qualification && (
                                   <p className="text-xs text-muted-foreground">
                                     {teacher.qualification}

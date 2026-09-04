@@ -142,6 +142,31 @@ export const startChat = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'One or more participants not found', 404);
     }
 
+    const userRole = (req as any).user!.role;
+
+    // Check enrollment permission for Student-Teacher direct chats
+    if (userRole === 'STUDENT') {
+      for (const pId of participantIds) {
+        const otherUser = participants.find(p => p.id === pId);
+        if (otherUser && otherUser.role === 'TEACHER') {
+          const perm = await canStudentMessageTeacher(userId, pId);
+          if (!perm.allowed) {
+            return sendError(res, perm.reason || 'You can only message teachers of subjects you are currently enrolled in.', 403);
+          }
+        }
+      }
+    } else if (userRole === 'TEACHER') {
+      for (const pId of participantIds) {
+        const otherUser = participants.find(p => p.id === pId);
+        if (otherUser && otherUser.role === 'STUDENT') {
+          const perm = await canTeacherMessageStudent(userId, pId);
+          if (!perm.allowed) {
+            return sendError(res, perm.reason || 'You can only message students enrolled in your assigned subjects.', 403);
+          }
+        }
+      }
+    }
+
     // Check if a chat already exists between these exact participants
     const existingChats = await prisma.chat.findMany({
       include: {
@@ -157,6 +182,22 @@ export const startChat = async (req: AuthRequest, res: Response) => {
       return chatUserIds.length === requestedUserIds.length &&
         chatUserIds.every(id => requestedUserIds.includes(id));
     });
+
+    const sanitizeChatForStudent = (c: any) => {
+      if (userRole !== 'STUDENT' || !c || !c.participants) return c;
+      return {
+        ...c,
+        participants: c.participants.map((p: any) => ({
+          ...p,
+          user: p.user_id === userId ? p.user : {
+            id: p.user?.id,
+            name: p.user?.name,
+            role: p.user?.role,
+            email: undefined,
+          },
+        })),
+      };
+    };
 
     if (existingChat) {
       // Return existing chat with full participant details
@@ -177,7 +218,7 @@ export const startChat = async (req: AuthRequest, res: Response) => {
           },
         },
       });
-      return sendSuccess(res, fullChat, 'Chat already exists', 200);
+      return sendSuccess(res, sanitizeChatForStudent(fullChat), 'Chat already exists', 200);
     }
 
     // Create new chat
@@ -205,7 +246,7 @@ export const startChat = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    return sendSuccess(res, chat, 'Chat started successfully', 201);
+    return sendSuccess(res, sanitizeChatForStudent(chat), 'Chat started successfully', 201);
   } catch (error) {
     console.error('Error starting chat:', error);
     return sendError(res, 'Failed to start chat');
@@ -628,7 +669,24 @@ export const getUserChats = async (req: AuthRequest, res: Response) => {
       },
     });
 
-    return sendSuccess(res, chats, 'Chats fetched successfully');
+    const userRole = (req as any).user!.role;
+
+    const sanitizedChats = userRole === 'STUDENT'
+      ? chats.map((c) => ({
+          ...c,
+          participants: c.participants.map((p) => ({
+            ...p,
+            user: p.user_id === userId ? p.user : {
+              id: p.user?.id,
+              name: p.user?.name,
+              role: p.user?.role,
+              email: undefined,
+            },
+          })),
+        }))
+      : chats;
+
+    return sendSuccess(res, sanitizedChats, 'Chats fetched successfully');
   } catch (error) {
     console.error('Error fetching chats:', error);
     return sendError(res, 'Failed to fetch chats');
