@@ -732,6 +732,7 @@ router.post('/video-rooms/:janusRoomId/participants/:participantId/kick', authen
 router.post('/video-rooms/:janusRoomId/join', authenticate, videoRoomController.recordJoin);
 router.post('/video-rooms/:janusRoomId/leave', authenticate, videoRoomController.recordLeave);
 router.get('/class-sessions/:sessionId/attendance', authenticate, videoRoomController.getSessionAttendance);
+router.post('/class-sessions/:sessionId/attendance/mark-all-left', authenticate, videoRoomController.markAllAsLeft);
 
 // ================== INVOICE & BILLING ROUTES ==================
 router.get('/invoices/settings', authenticate, invoiceController.getInvoiceSettings);

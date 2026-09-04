@@ -48,11 +48,12 @@ interface WhiteboardProps {
     isActive: boolean;
     onClose: () => void;
     sendMessage: (message: WhiteboardMessage) => void;
-    onRemoteMessage?: (handler: (message: WhiteboardMessage) => void) => void;
+    onRemoteMessage?: (handler: (message: WhiteboardMessage) => void) => (() => void) | void;
     canEdit?: boolean;
     initialStrokes?: any;
     onSave?: (strokes: any[], thumbnail?: string) => void;
     isSaving?: boolean;
+    showCloseButton?: boolean;
 }
 
 const COLORS = [
@@ -85,6 +86,7 @@ export function Whiteboard({
     initialStrokes,
     onSave,
     isSaving = false,
+    showCloseButton = true,
 }: WhiteboardProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -436,13 +438,13 @@ export function Whiteboard({
             ref={containerRef}
             className="absolute inset-0 flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         >
-            {/* Toolbar */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between p-2 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative z-10">
-                <div className="flex flex-wrap items-center gap-2 overflow-visible pr-8 md:pr-0">
+            {/* Toolbar - Single compact row */}
+            <div className="flex items-center justify-between p-1 md:p-1.5 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative shrink-0 z-20 gap-1.5">
+                <div className="flex items-center gap-1 md:gap-1.5 shrink-0 overflow-visible">
                     {!canEdit && (
-                        <div className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-lg border border-slate-200 shadow-xs text-slate-600 text-xs font-medium">
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white rounded-lg border border-slate-200 shadow-xs text-slate-600 text-xs font-medium">
                             <span className="font-semibold text-saBlue">Whiteboard</span>
-                            <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">View Only</span>
+                            <span className="text-[9px] text-slate-500 bg-slate-100 px-1 py-0.5 rounded font-medium">View Only</span>
                         </div>
                     )}
 
@@ -453,7 +455,13 @@ export function Whiteboard({
                                 <Button
                                     variant={currentTool === 'select' ? 'default' : 'ghost'}
                                     size="sm"
-                                    onClick={() => setTool('select')}
+                                    onClick={() => {
+                                        setTool('select');
+                                        setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowShapeSelector(false);
+                                        setShowColorSelector(false);
+                                    }}
                                     title="Select"
                                     className={`h-7 w-7 p-0 ${currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                                 >
@@ -462,7 +470,13 @@ export function Whiteboard({
                                 <Button
                                     variant={currentTool === 'pen' ? 'default' : 'ghost'}
                                     size="sm"
-                                    onClick={() => setTool('pen')}
+                                    onClick={() => {
+                                        setTool('pen');
+                                        setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowShapeSelector(false);
+                                        setShowColorSelector(false);
+                                    }}
                                     title="Pen"
                                     className={`h-7 w-7 p-0 ${currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                                 >
@@ -471,7 +485,13 @@ export function Whiteboard({
                                 <Button
                                     variant={currentTool === 'eraser' ? 'default' : 'ghost'}
                                     size="sm"
-                                    onClick={() => setTool('eraser')}
+                                    onClick={() => {
+                                        setTool('eraser');
+                                        setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowShapeSelector(false);
+                                        setShowColorSelector(false);
+                                    }}
                                     title="Eraser"
                                     className={`h-7 w-7 p-0 ${currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}`}
                                 >
@@ -480,7 +500,13 @@ export function Whiteboard({
                                 <Button
                                     variant={currentTool === 'highlight' ? 'default' : 'ghost'}
                                     size="sm"
-                                    onClick={() => setTool('highlight')}
+                                    onClick={() => {
+                                        setTool('highlight');
+                                        setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowShapeSelector(false);
+                                        setShowColorSelector(false);
+                                    }}
                                     title="Highlight"
                                     className={`h-7 w-7 p-0 ${currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}`}
                                 >
@@ -491,7 +517,12 @@ export function Whiteboard({
                             {/* Shapes Selector */}
                             <div className="relative" ref={shapeSelectorRef}>
                                 <button
-                                    onClick={() => setShowShapeSelector(!showShapeSelector)}
+                                    onClick={() => {
+                                        setShowShapeSelector(!showShapeSelector);
+                                        setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowColorSelector(false);
+                                    }}
                                     className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
                                         ? 'bg-sky-50 border-sky-300'
                                         : ''
@@ -590,6 +621,9 @@ export function Whiteboard({
                                     onClick={() => {
                                         setTool('text');
                                         setShowImageDialog(false);
+                                        setShowTableDialog(false);
+                                        setShowShapeSelector(false);
+                                        setShowColorSelector(false);
                                     }}
                                     title="Text"
                                     className={`h-7 w-7 p-0 ${currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
@@ -603,8 +637,12 @@ export function Whiteboard({
                                         variant={showImageDialog || currentTool === 'image' ? 'default' : 'ghost'}
                                         size="sm"
                                         onClick={() => {
-                                            setShowImageDialog(!showImageDialog);
-                                            if (!showImageDialog) {
+                                            const nextState = !showImageDialog;
+                                            setShowImageDialog(nextState);
+                                            setShowTableDialog(false);
+                                            setShowShapeSelector(false);
+                                            setShowColorSelector(false);
+                                            if (nextState) {
                                                 setTool('image');
                                             }
                                         }}
@@ -937,13 +975,23 @@ export function Whiteboard({
                                     ))}
                                     {currentTool === 'rainbow' ? (
                                         <button
-                                            onClick={() => setShowColorSelector(!showColorSelector)}
+                                            onClick={() => {
+                                                setShowColorSelector(!showColorSelector);
+                                                setShowImageDialog(false);
+                                                setShowTableDialog(false);
+                                                setShowShapeSelector(false);
+                                            }}
                                             className="w-5 h-5 rounded-full border border-slate-200 ring-2 ring-offset-1 ring-sky-400 scale-110 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
                                             title="Rainbow"
                                         />
                                     ) : (
                                         <button
-                                            onClick={() => setShowColorSelector(!showColorSelector)}
+                                            onClick={() => {
+                                                setShowColorSelector(!showColorSelector);
+                                                setShowImageDialog(false);
+                                                setShowTableDialog(false);
+                                                setShowShapeSelector(false);
+                                            }}
                                             className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
                                             title="More colors"
                                         >
@@ -1075,11 +1123,11 @@ export function Whiteboard({
                                 link.click();
                             }
                         }}
-                        className="text-slate-600 hover:bg-slate-100 h-7 px-2 text-xs font-medium"
+                        className="text-slate-600 hover:bg-slate-100 h-7 w-7 p-0 sm:w-auto sm:px-2 text-xs font-medium"
                         title="Download as Image"
                     >
-                        <Download className="w-3.5 h-3.5 mr-1" />
-                        Export
+                        <Download className="w-3.5 h-3.5 sm:mr-1" />
+                        <span className="hidden sm:inline">Export</span>
                     </Button>
 
                     {/* Save Whiteboard button */}
@@ -1106,10 +1154,12 @@ export function Whiteboard({
                     )}
                 </div>
 
-                {/* Close button */}
-                <Button variant="ghost" size="icon" onClick={onClose} className="absolute right-2 top-2 md:static md:ml-2">
-                    <X className="w-4 h-4" />
-                </Button>
+                {/* Close button (Hidden on phone or when showCloseButton is false) */}
+                {showCloseButton && (
+                    <Button variant="ghost" size="icon" onClick={onClose} className="hidden md:flex h-7 w-7 p-0 shrink-0 text-slate-500 hover:text-slate-800 ml-1" title="Close Whiteboard">
+                        <X className="w-4 h-4" />
+                    </Button>
+                )}
             </div>
 
             {/* Canvas */}

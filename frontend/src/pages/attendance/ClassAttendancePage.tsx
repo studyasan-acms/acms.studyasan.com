@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +26,7 @@ import {
   BookOpen,
   X,
   FileSpreadsheet,
+  LogOut,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -80,6 +81,8 @@ export default function ClassAttendancePage() {
   const [data, setData] = useState<AttendanceData | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
+  const [markingLeft, setMarkingLeft] = useState(false);
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'ALL' | 'STUDENT' | 'TEACHER'>('ALL');
@@ -113,6 +116,35 @@ export default function ClassAttendancePage() {
       setError(err.message || 'Failed to fetch attendance');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleMarkAllAsLeft = async () => {
+    try {
+      setMarkingLeft(true);
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/${sessionId}/attendance/mark-all-left`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success(result.message || 'All participants marked as left');
+        await fetchAttendance();
+      } else {
+        toast.error(result.message || 'Failed to mark attendees as left');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to mark attendees as left');
+    } finally {
+      setMarkingLeft(false);
     }
   };
 
@@ -279,6 +311,19 @@ export default function ClassAttendancePage() {
 
         {/* Action Toolbar */}
         <div className="flex items-center gap-2 flex-wrap">
+          {canViewAll && stats.activeNow > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllAsLeft}
+              disabled={markingLeft}
+              className="rounded-xl border-amber-300 bg-amber-50/80 text-amber-800 hover:bg-amber-100 hover:text-amber-900 text-xs font-bold gap-1.5 transition-all shadow-xs"
+            >
+              <LogOut className="w-3.5 h-3.5 text-amber-600" />
+              {markingLeft ? 'Marking...' : 'Mark All as Left'}
+            </Button>
+          )}
+
           <Button
             variant="outline"
             size="sm"
@@ -485,26 +530,26 @@ export default function ClassAttendancePage() {
               <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-100">
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 pl-6">
+                    <TableRow className="bg-slate-50/80 hover:bg-slate-50/80 border-b border-slate-200">
+                      <TableHead className="w-[30%] min-w-[200px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 pl-6">
                         Participant
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
+                      <TableHead className="w-[12%] min-w-[90px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
                         Role
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
+                      <TableHead className="w-[13%] min-w-[100px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
                         First Joined
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
+                      <TableHead className="w-[15%] min-w-[110px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
                         Last Leave
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 text-center">
+                      <TableHead className="w-[10%] min-w-[85px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 text-center">
                         Joins Count
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
+                      <TableHead className="w-[10%] min-w-[95px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5">
                         Total Time
                       </TableHead>
-                      <TableHead className="text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 text-right pr-6">
+                      <TableHead className="w-[10%] min-w-[110px] text-xs font-black text-slate-700 uppercase tracking-wider py-3.5 text-right pr-6">
                         Log History
                       </TableHead>
                     </TableRow>
@@ -517,8 +562,8 @@ export default function ClassAttendancePage() {
                       const isStillInClass = !record.left_at;
 
                       return (
-                        <tbody key={record.id} className="border-b border-slate-100">
-                          <TableRow className="hover:bg-saBlueSubtle/30 transition-colors">
+                        <Fragment key={record.id}>
+                          <TableRow className="border-b border-slate-100 hover:bg-saBlueSubtle/30 transition-colors">
                             {/* Participant */}
                             <TableCell className="py-4 pl-6">
                               <div className="flex items-center gap-3">
@@ -615,7 +660,7 @@ export default function ClassAttendancePage() {
 
                           {/* Expanded History Row */}
                           {isExpanded && (
-                            <TableRow className="bg-slate-50/70 hover:bg-slate-50/70">
+                            <TableRow className="border-b border-slate-100 bg-slate-50/70 hover:bg-slate-50/70">
                               <TableCell colSpan={7} className="p-4 sm:p-5 pl-14">
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-between">
@@ -660,7 +705,7 @@ export default function ClassAttendancePage() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </tbody>
+                        </Fragment>
                       );
                     })}
                   </TableBody>

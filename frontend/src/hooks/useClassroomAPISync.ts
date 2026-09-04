@@ -18,7 +18,7 @@ interface UseClassroomAPISyncReturn {
     chatMessages: ChatMessage[];
     sendChatMessage: (text: string) => void;
     sendWhiteboardMessage: (message: WhiteboardMessage) => void;
-    setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
+    setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => (() => void);
 }
 
 export function useClassroomAPISync({
@@ -27,7 +27,7 @@ export function useClassroomAPISync({
     enabled
 }: UseClassroomAPISyncOptions): UseClassroomAPISyncReturn {
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-    const whiteboardHandlerRef = useRef<((message: WhiteboardMessage) => void) | null>(null);
+    const whiteboardHandlersRef = useRef<Set<(message: WhiteboardMessage) => void>>(new Set());
     const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
     const processedChatIds = useRef<Set<string>>(new Set());
     const processedStrokeVersions = useRef<Map<string, number>>(new Map());
@@ -67,9 +67,15 @@ export function useClassroomAPISync({
                     if (strokes.length === 0 && processedStrokeVersions.current.size > 0) {
                         console.log('[APISync] Whiteboard was cleared');
                         processedStrokeVersions.current.clear();
-                        whiteboardHandlerRef.current?.({
-                            type: 'clear',
-                            timestamp: Date.now(),
+                        whiteboardHandlersRef.current.forEach(fn => {
+                            try {
+                                fn({
+                                    type: 'clear',
+                                    timestamp: Date.now(),
+                                });
+                            } catch (e) {
+                                console.error('[APISync] Error in whiteboard handler:', e);
+                            }
                         });
                     } else {
                         // Detect deleted strokes that were previously present in client state
@@ -82,10 +88,16 @@ export function useClassroomAPISync({
                         }
                         if (deletedIds.length > 0) {
                             deletedIds.forEach((id) => processedStrokeVersions.current.delete(id));
-                            whiteboardHandlerRef.current?.({
-                                type: 'delete-strokes',
-                                strokeIds: deletedIds,
-                                timestamp: Date.now(),
+                            whiteboardHandlersRef.current.forEach(fn => {
+                                try {
+                                    fn({
+                                        type: 'delete-strokes',
+                                        strokeIds: deletedIds,
+                                        timestamp: Date.now(),
+                                    });
+                                } catch (e) {
+                                    console.error('[APISync] Error in whiteboard handler:', e);
+                                }
                             });
                         }
 
@@ -106,10 +118,16 @@ export function useClassroomAPISync({
                             if (storedVersion === undefined || storedVersion < strokeVersion) {
                                 // New stroke or updated stroke
                                 processedStrokeVersions.current.set(stroke.id, strokeVersion);
-                                whiteboardHandlerRef.current?.({
-                                    type: 'stroke',
-                                    data: stroke,
-                                    timestamp: Date.now(),
+                                whiteboardHandlersRef.current.forEach(fn => {
+                                    try {
+                                        fn({
+                                            type: 'stroke',
+                                            data: stroke,
+                                            timestamp: Date.now(),
+                                        });
+                                    } catch (e) {
+                                        console.error('[APISync] Error in whiteboard handler:', e);
+                                    }
                                 });
                             }
                         }
@@ -192,7 +210,10 @@ export function useClassroomAPISync({
     }, [roomCode]);
 
     const setWhiteboardMessageHandler = useCallback((handler: (message: WhiteboardMessage) => void) => {
-        whiteboardHandlerRef.current = handler;
+        whiteboardHandlersRef.current.add(handler);
+        return () => {
+            whiteboardHandlersRef.current.delete(handler);
+        };
     }, []);
 
     return {

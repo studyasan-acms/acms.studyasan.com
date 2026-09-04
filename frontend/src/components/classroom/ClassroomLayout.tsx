@@ -1,10 +1,22 @@
 /**
  * ClassroomLayout Component
  * 
- * Main layout orchestrator for the classroom view.
+ * Main layout orchestrator for the classroom view, faithfully matching
+ * the wireframe designs for Desktop / Tablet and Mobile Phone.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    Clock,
+    GraduationCap,
+    ChevronLeft,
+    ChevronRight,
+    Pause,
+    Play,
+    Users,
+    Monitor,
+    PenTool,
+} from 'lucide-react';
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { Whiteboard } from './Whiteboard';
@@ -27,6 +39,7 @@ interface ClassroomLayoutProps {
 
     // Local user
     localStream: MediaStream | null;
+    screenStream?: MediaStream | null;
     localUser: LocalUserState;
 
     // Remote participants
@@ -48,6 +61,7 @@ interface ClassroomLayoutProps {
 
     // Teacher controls
     isTeacher: boolean;
+    teacherName?: string | null;
     onMuteParticipant?: (participantId: string | number) => void;
     onKickParticipant?: (participantId: string | number) => void;
     onToggleWhiteboardAccess?: (participantId: string | number) => void;
@@ -73,10 +87,10 @@ export function ClassroomLayout({
     onStartRecording,
     onStopRecording,
     localStream,
+    screenStream,
     localUser,
     participants,
     remoteStreams,
-    mainParticipantId,
     isScreenSharing,
     isBackgroundActive,
     onToggleBackground,
@@ -84,6 +98,7 @@ export function ClassroomLayout({
     onToggleHandRaise,
     onSendReaction,
     isTeacher,
+    teacherName,
     onMuteParticipant,
     onKickParticipant,
     onToggleWhiteboardAccess,
@@ -91,14 +106,27 @@ export function ClassroomLayout({
     onToggleCamera,
     onToggleScreenShare,
     onLeave,
-    onSetMainParticipant,
     sendWhiteboardMessage,
     setWhiteboardMessageHandler,
 }: ClassroomLayoutProps) {
-    const [isWhiteboardActive, setIsWhiteboardActive] = useState(false);
+    // Whiteboard is open by default per wireframe design
+    const [isWhiteboardActive, setIsWhiteboardActive] = useState(true);
+    const [stageView, setStageView] = useState<'whiteboard' | 'screen'>('whiteboard');
 
-    // Build participant list including local user
-    const localParticipant: Participant = {
+    // Real-time digital clock for header
+    const [currentTime, setCurrentTime] = useState<string>('');
+    useEffect(() => {
+        const updateTime = () => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        };
+        updateTime();
+        const timer = setInterval(updateTime, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Build complete participant list including local user
+    const localParticipant: Participant = useMemo(() => ({
         id: 'local',
         displayName: localUser.displayName,
         stream: localStream || undefined,
@@ -109,143 +137,493 @@ export function ClassroomLayout({
         isSpeaking: false,
         hasWhiteboardAccess: localUser.hasWhiteboardAccess,
         isHandRaised: localUser.isHandRaised,
-    };
+        isTeacher: isTeacher,
+    }), [localUser, localStream, isTeacher]);
 
-    const allParticipants = [localParticipant, ...Array.from(participants.values())];
+    const allParticipants = useMemo(() => {
+        return [localParticipant, ...Array.from(participants.values())];
+    }, [localParticipant, participants]);
 
-    // Determine main participant (first remote or self if alone)
-    const mainParticipant = mainParticipantId
-        ? participants.get(mainParticipantId) || localParticipant
-        : participants.size > 0
-            ? Array.from(participants.values())[0]
-            : localParticipant;
+    // Identify Teacher Participant:
+    // If local user is the teacher, teacher is localParticipant.
+    // Otherwise, find remote participant whose displayName matches teacherName or has whiteboard permissions.
+    const teacherParticipant = useMemo<Participant | null>(() => {
+        if (isTeacher) {
+            return localParticipant;
+        }
+        if (teacherName) {
+            const match = allParticipants.find(
+                p => !p.isLocal && p.displayName?.trim().toLowerCase() === teacherName.trim().toLowerCase()
+            );
+            if (match) return match;
+        }
+        const roleMatch = allParticipants.find(
+            p => !p.isLocal && (
+                p.displayName?.toLowerCase().includes('teacher') ||
+                p.displayName?.toLowerCase().includes('instructor') ||
+                p.hasWhiteboardAccess
+            )
+        );
+        if (roleMatch) return roleMatch;
 
-    const mainStream = mainParticipant.isLocal
-        ? localStream
-        : remoteStreams.get(mainParticipant.id);
+        // Fallback to first remote participant if not explicitly found
+        const firstRemote = Array.from(participants.values())[0];
+        return firstRemote || null;
+    }, [isTeacher, teacherName, localParticipant, allParticipants, participants]);
 
-    // Strip participants (exclude main)
-    const stripParticipants = allParticipants.filter((p) => p.id !== mainParticipant.id);
+    // Student participants: all participants except the pinned teacher and separate screen feeds
+    const studentParticipants = useMemo(() => {
+        return allParticipants.filter(p => 
+            (!teacherParticipant || p.id !== teacherParticipant.id) &&
+            !p.displayName?.endsWith(' (Screen)')
+        );
+    }, [allParticipants, teacherParticipant]);
+
+    // Active Screen Share detection (local or any remote participant)
+    const screenShareParticipant = useMemo(() => {
+        if (isScreenSharing && localParticipant.isScreenSharing) {
+            return localParticipant;
+        }
+        return allParticipants.find(p => p.displayName?.endsWith(' (Screen)') || p.isScreenSharing) || null;
+    }, [isScreenSharing, localParticipant, allParticipants]);
+
+    const isScreenShareActive = !!screenShareParticipant;
+
+    // Automatically switch stage to screen share when screen sharing begins
+    useEffect(() => {
+        if (isScreenShareActive) {
+            setStageView('screen');
+        } else {
+            setStageView('whiteboard');
+        }
+    }, [isScreenShareActive]);
+
+
 
     return (
-        <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden">
-            {/* Header */}
-            <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0 shadow-md">
-                <div className="flex items-center gap-1">
-                    <img src="/studyasan-logo.png" alt="StudyAsan" className="h-12" />
+        <div className="relative w-full h-full bg-slate-100 flex flex-col overflow-hidden select-none">
+            {/* ========================================================= */}
+            {/* TOP HEADER: Logo | TIME & Recording Status               */}
+            {/* ========================================================= */}
+            <header className="h-14 bg-blue-700 border-b border-blue-800 px-4 flex items-center justify-between shrink-0 shadow-md z-20">
+                {/* Logo (Left) */}
+                <div className="flex items-center gap-2">
+                    <img
+                        src="/studyasan-logo.png"
+                        alt="StudyAsan Logo"
+                        className="h-10 md:h-11 object-contain"
+                        onError={(e) => {
+                            (e.target as HTMLElement).style.display = 'none';
+                        }}
+                    />
                 </div>
-                <div className="flex items-center gap-3">
-                    {/* 360p Classroom Recording Controls */}
+
+                {/* Right: TIME & Recording Status */}
+                <div className="flex items-center gap-2 md:gap-3">
+                    {/* Real-time Clock */}
+                    {currentTime && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-800/80 border border-blue-600/60 rounded-lg text-white text-xs font-semibold shadow-xs">
+                            <Clock className="w-3.5 h-3.5 text-blue-200" />
+                            <span>{currentTime}</span>
+                        </div>
+                    )}
+
+                    <div className="hidden sm:block w-px h-4 bg-blue-600/60 my-auto" />
+
+                    {/* Universal Recording Indicator */}
                     <RecordingControls
                         isTeacher={isTeacher}
                         isRecording={isRecording}
                         formattedDuration={formattedDuration}
                         isUploading={isUploading}
                         uploadProgress={uploadProgress}
-                        onStartRecording={onStartRecording || (() => {})}
-                        onStopRecording={onStopRecording || (() => {})}
+                        onStartRecording={onStartRecording || (() => { })}
+                        onStopRecording={onStopRecording || (() => { })}
                     />
-                    <div className="flex items-center gap-2 text-sm text-blue-200 pl-2 border-l border-blue-600/50">
-                        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-                        <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
+
+                    {/* Connection status indicator */}
+                    <div className="flex items-center gap-1.5 text-xs text-blue-100 pl-1 border-l border-blue-600/60">
+                        <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+                        <span className="hidden lg:inline font-medium">{isConnected ? 'Connected' : 'Offline'}</span>
                     </div>
                 </div>
             </header>
 
-            {/* Floating Reactions Animated Overlay */}
+            {/* Floating Animated Reaction Emojis */}
             <ReactionOverlay reactions={reactions} />
 
-            {/* Main content area */}
-            <div className="flex-1 relative flex flex-col md:flex-row overflow-hidden bg-slate-900">
-                {/* Participant strip - Top on mobile, Left on desktop */}
-                <div className="w-full h-24 md:w-32 lg:w-40 md:h-full bg-slate-800 md:bg-slate-50 border-b md:border-b-0 md:border-r border-slate-700 md:border-slate-200 p-2 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto shrink-0">
-                    {stripParticipants.length === 0 && localParticipant && (
-                        <div className="h-full aspect-video md:w-full md:h-auto md:aspect-video shrink-0">
-                            <VideoTile
-                                participant={localParticipant}
-                                stream={localStream || undefined}
-                                isLocal
-                                onClick={() => onSetMainParticipant(localParticipant.id)}
-                                isTeacher={isTeacher}
-                                className="w-full h-full"
-                            />
-                        </div>
-                    )}
-                    {stripParticipants.map((participant, index) => {
-                        const stream = participant.isLocal
-                            ? localStream
-                            : remoteStreams.get(participant.id);
-                        const maxShow = 5;
-                        const overflow = index === maxShow - 1 && stripParticipants.length > maxShow
-                            ? stripParticipants.length - maxShow
-                            : undefined;
-
-                        if (index >= maxShow) return null;
-
-                        return (
-                            <div key={String(participant.id)} className="h-full aspect-video md:w-full md:h-auto md:aspect-video shrink-0">
+            {/* ========================================================= */}
+            {/* DESKTOP / TABLET LAYOUT (`computer / tablet`)            */}
+            {/* ========================================================= */}
+            <div className="hidden md:flex flex-1 flex-row p-3 gap-3 overflow-hidden bg-slate-100 min-h-0">
+                {/* LEFT SECTION: Main Stage (Whiteboard / Screen Share) + Controls */}
+                <div className="flex-1 flex flex-col gap-2.5 min-w-0 h-full">
+                    {/* Main Stage */}
+                    <div className="flex-1 relative rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm min-h-0">
+                        {/* 1. Active Screen Share Stage */}
+                        {stageView === 'screen' && screenShareParticipant ? (
+                            <div className="w-full h-full relative bg-slate-950 flex flex-col items-center justify-center">
                                 <VideoTile
-                                    participant={participant}
-                                    stream={stream || undefined}
-                                    isLocal={participant.isLocal}
-                                    showOverflow={overflow}
-                                    onClick={() => onSetMainParticipant(participant.id)}
+                                    participant={screenShareParticipant}
+                                    stream={screenShareParticipant.isLocal ? (screenStream || undefined) : (remoteStreams.get(screenShareParticipant.id) || screenShareParticipant.stream)}
+                                    isLocal={screenShareParticipant.isLocal}
+                                    isMain
+                                    isScreenShare
                                     isTeacher={isTeacher}
-                                    onMuteParticipant={onMuteParticipant}
-                                    onKickParticipant={onKickParticipant}
-                                    onToggleWhiteboardAccess={onToggleWhiteboardAccess}
                                     className="w-full h-full"
                                 />
-                            </div>
-                        );
-                    })}
-                </div>
 
-                {/* Main video area */}
-                <div className="flex-1 relative p-0 md:p-4 bg-black md:bg-slate-100">
-                    <div className="w-full h-full rounded-none md:rounded-2xl overflow-hidden bg-slate-900 shadow-lg relative">
-                        <VideoTile
-                            participant={mainParticipant}
-                            stream={mainStream || undefined}
-                            isLocal={mainParticipant.isLocal}
-                            isMain
-                            isTeacher={isTeacher}
-                            onMuteParticipant={onMuteParticipant}
-                            onKickParticipant={onKickParticipant}
-                            onToggleWhiteboardAccess={onToggleWhiteboardAccess}
-                        />
+                                {/* Top switcher floating pill */}
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
+                                    <Monitor className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>
+                                        Screen Share: <strong>{screenShareParticipant.displayName}</strong>
+                                    </span>
+                                    <button
+                                        onClick={() => setStageView('whiteboard')}
+                                        className="ml-2 px-2.5 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[11px] font-semibold transition-colors shadow-xs"
+                                    >
+                                        View Whiteboard
+                                    </button>
+                                </div>
+                            </div>
+                        ) : isWhiteboardActive ? (
+                            /* 2. Whiteboard Stage (Open by default) */
+                            <div className="w-full h-full relative">
+                                <Whiteboard
+                                    isActive={isWhiteboardActive}
+                                    onClose={() => setIsWhiteboardActive(false)}
+                                    sendMessage={sendWhiteboardMessage}
+                                    onRemoteMessage={setWhiteboardMessageHandler}
+                                    canEdit={localUser.hasWhiteboardAccess ?? false}
+                                />
+
+                                {/* Switch to active screen share if one is ongoing */}
+                                {isScreenShareActive && screenShareParticipant && (
+                                    <div className="absolute top-3 right-16 z-30 flex items-center gap-1.5 px-3 py-1 bg-slate-900/85 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                                        <span>Screen Share Active</span>
+                                        <button
+                                            onClick={() => setStageView('screen')}
+                                            className="ml-1.5 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-[11px] font-semibold transition-colors"
+                                        >
+                                            View Screen
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            /* 3. Whiteboard Minimized Placeholder Stage */
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-600 p-6">
+                                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center mb-3">
+                                    <PenTool className="w-7 h-7 text-sky-600" />
+                                </div>
+                                <h3 className="text-base font-semibold text-slate-800 mb-1">Whiteboard is Hidden</h3>
+                                <p className="text-xs text-slate-500 mb-4 text-center max-w-sm">
+                                    Open the interactive whiteboard to draw, collaborate, or take notes.
+                                </p>
+                                <button
+                                    onClick={() => setIsWhiteboardActive(true)}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+                                >
+                                    <PenTool className="w-3.5 h-3.5" />
+                                    <span>Open Whiteboard</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Whiteboard overlay */}
-                    <Whiteboard
-                        isActive={isWhiteboardActive}
-                        onClose={() => setIsWhiteboardActive(false)}
-                        sendMessage={sendWhiteboardMessage}
-                        onRemoteMessage={setWhiteboardMessageHandler}
-                        canEdit={localUser.hasWhiteboardAccess ?? false}
-                    />
+                    {/* Controls (Positioned directly below whiteboard in left column) */}
+                    <div className="w-full flex items-center justify-center shrink-0">
+                        <ControlBar
+                            isMuted={localUser.isMuted}
+                            isVideoOff={localUser.isVideoOff}
+                            isScreenSharing={isScreenSharing}
+                            isWhiteboardActive={isWhiteboardActive}
+                            isHandRaised={localUser.isHandRaised ?? false}
+                            isBackgroundActive={isBackgroundActive}
+                            isConnected={isConnected}
+                            onToggleMic={onToggleMic}
+                            onToggleCamera={onToggleCamera}
+                            onToggleScreenShare={onToggleScreenShare}
+                            onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
+                            onToggleHandRaise={onToggleHandRaise}
+                            onSendReaction={onSendReaction}
+                            onToggleBackground={onToggleBackground}
+                            onLeave={onLeave}
+                        />
+                    </div>
+                </div>
+
+                {/* RIGHT SECTION: Video Gallery (Teacher Pinned + Scrollable Square Student Grid) */}
+                <div className="w-72 lg:w-80 xl:w-96 flex flex-col gap-2 h-full shrink-0 min-h-0">
+                    {/* Top Card: Teacher always pinned */}
+                    <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border-2 border-sky-400/80 shadow-md relative shrink-0">
+                        {teacherParticipant ? (
+                            <VideoTile
+                                participant={teacherParticipant}
+                                stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                isLocal={teacherParticipant.isLocal}
+                                isMain={false}
+                                isTeacher={isTeacher}
+                                onMuteParticipant={onMuteParticipant}
+                                onKickParticipant={onKickParticipant}
+                                onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                className="w-full h-full"
+                            />
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-4">
+                                <GraduationCap className="w-10 h-10 text-sky-400/70 mb-2 animate-pulse" />
+                                <span className="text-xs font-semibold text-slate-300">Teacher</span>
+                                <span className="text-[11px] text-slate-400">Waiting to join...</span>
+                            </div>
+                        )}
+
+                        {/* Pinned Teacher Badge */}
+                        <div className="absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-0.5 bg-sky-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold shadow-md border border-sky-300/40 pointer-events-none">
+                            <GraduationCap className="w-3 h-3" />
+                            <span>Teacher (Pinned)</span>
+                        </div>
+                    </div>
+
+                    {/* Middle Header: Student Count & Scroll Info */}
+                    <div className="flex items-center justify-between px-1 text-xs text-slate-600 font-semibold shrink-0">
+                        <span className="flex items-center gap-1.5">
+                            <Users className="w-4 h-4 text-sky-500" />
+                            <span>Students ({studentParticipants.length})</span>
+                        </span>
+                        {studentParticipants.length > 4 && (
+                            <span className="text-[10px] font-normal text-slate-400">Scroll for more ↓</span>
+                        )}
+                    </div>
+
+                    {/* Middle Grid: Square Student Grid (Scrollable) */}
+                    <div className="grid grid-cols-2 gap-2 flex-1 min-h-0 overflow-y-auto pr-0.5 content-start scrollbar-thin">
+                        {studentParticipants.map((participant) => {
+                            const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                            return (
+                                <div key={String(participant.id)} className="aspect-square w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200">
+                                    <VideoTile
+                                        participant={participant}
+                                        stream={stream || undefined}
+                                        isLocal={participant.isLocal}
+                                        isTeacher={isTeacher}
+                                        onMuteParticipant={onMuteParticipant}
+                                        onKickParticipant={onKickParticipant}
+                                        onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                        className="w-full h-full aspect-square"
+                                    />
+                                </div>
+                            );
+                        })}
+
+                        {studentParticipants.length === 0 && (
+                            <div className="col-span-2 py-8 flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-slate-200 text-slate-400">
+                                <Users className="w-8 h-8 text-slate-300 mb-1.5" />
+                                <span className="text-xs font-semibold text-slate-500">No Students Yet</span>
+                                <span className="text-[11px] text-slate-400">Waiting for participants to join...</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {/* Control bar - bottom center */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50">
-                <ControlBar
-                    isMuted={localUser.isMuted}
-                    isVideoOff={localUser.isVideoOff}
-                    isScreenSharing={isScreenSharing}
-                    isWhiteboardActive={isWhiteboardActive}
-                    isHandRaised={localUser.isHandRaised ?? false}
-                    isBackgroundActive={isBackgroundActive}
-                    isConnected={isConnected}
-                    onToggleMic={onToggleMic}
-                    onToggleCamera={onToggleCamera}
-                    onToggleScreenShare={onToggleScreenShare}
-                    onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
-                    onToggleHandRaise={onToggleHandRaise}
-                    onSendReaction={onSendReaction}
-                    onToggleBackground={onToggleBackground}
-                    onLeave={onLeave}
-                />
+            {/* ========================================================= */}
+            {/* MOBILE PHONE LAYOUT (`mobile phone`)                     */}
+            {/* ========================================================= */}
+            <div className="flex md:hidden flex-1 flex-col p-1.5 gap-1.5 overflow-hidden bg-slate-100 min-h-0">
+                {/* Top Stage: Whiteboard / Screen Share (Fills remaining height) */}
+                <div className="w-full rounded-xl overflow-hidden bg-white border border-slate-200 shadow-xs relative flex flex-col flex-1 min-h-[220px]">
+                    {stageView === 'screen' && screenShareParticipant ? (
+                        <div className="w-full h-full relative bg-slate-950 flex flex-col items-center justify-center">
+                            <VideoTile
+                                participant={screenShareParticipant}
+                                stream={screenShareParticipant.isLocal ? (screenStream || undefined) : (remoteStreams.get(screenShareParticipant.id) || screenShareParticipant.stream)}
+                                isLocal={screenShareParticipant.isLocal}
+                                isMain
+                                isScreenShare
+                                isTeacher={isTeacher}
+                                className="w-full h-full"
+                            />
+                            {/* Switcher pill on top of screen share on mobile */}
+                            <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-md">
+                                <Monitor className="w-3.5 h-3.5 text-emerald-400" />
+                                <span className="font-medium">Screen Share</span>
+                                <button
+                                    onClick={() => setStageView('whiteboard')}
+                                    className="ml-1 px-2 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[10px] font-bold text-white transition-colors"
+                                >
+                                    View Board
+                                </button>
+                            </div>
+                        </div>
+                    ) : isWhiteboardActive ? (
+                        <div className="w-full h-full relative flex-1 min-h-0">
+                            <Whiteboard
+                                isActive={isWhiteboardActive}
+                                onClose={() => setIsWhiteboardActive(false)}
+                                sendMessage={sendWhiteboardMessage}
+                                onRemoteMessage={setWhiteboardMessageHandler}
+                                canEdit={localUser.hasWhiteboardAccess ?? false}
+                                showCloseButton={false}
+                            />
+
+                            {/* Switch to active screen share pill on mobile */}
+                            {isScreenShareActive && screenShareParticipant && (
+                                <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                                    <Monitor className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span className="font-medium">Screen Active</span>
+                                    <button
+                                        onClick={() => setStageView('screen')}
+                                        className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-[10px] font-bold text-white transition-colors"
+                                    >
+                                        View Screen
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-600 p-4">
+                            <PenTool className="w-6 h-6 text-sky-600 mb-1" />
+                            <button
+                                onClick={() => setIsWhiteboardActive(true)}
+                                className="px-3 py-1.5 bg-sky-500 text-white rounded-lg text-xs font-semibold"
+                            >
+                                Open Whiteboard
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Middle: Video Grid (1-row for <= 2 participants, 2-row max 4 visible with scroll for 3+) */}
+                <div className="shrink-0 w-full">
+                    <div className="flex items-center justify-between px-1 mb-1 text-[11px] text-slate-600 font-medium">
+                        <span className="flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-sky-500" />
+                            <span>Participants ({allParticipants.length})</span>
+                        </span>
+                        {allParticipants.length > 4 && (
+                            <span className="text-[10px] text-slate-400">Scroll right for more →</span>
+                        )}
+                    </div>
+
+                    {allParticipants.length <= 2 ? (
+                        /* Case 1: 1 or 2 participants - 1 row side-by-side (no empty slots) */
+                        <div className={`grid ${allParticipants.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'} gap-1.5 w-full`}>
+                            {teacherParticipant && (
+                                <div className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative">
+                                    <VideoTile
+                                        participant={teacherParticipant}
+                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                        isLocal={teacherParticipant.isLocal}
+                                        isTeacher={isTeacher}
+                                        onMuteParticipant={onMuteParticipant}
+                                        onKickParticipant={onKickParticipant}
+                                        onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                        className="w-full h-full"
+                                    />
+                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-600/90 text-white rounded-full text-[8px] font-bold shadow-xs pointer-events-none">
+                                        <GraduationCap className="w-2.5 h-2.5" />
+                                        <span>Teacher</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {studentParticipants.map((participant) => {
+                                const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                                return (
+                                    <div
+                                        key={`mobile-${participant.id}`}
+                                        className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200"
+                                    >
+                                        <VideoTile
+                                            participant={participant}
+                                            stream={stream || undefined}
+                                            isLocal={participant.isLocal}
+                                            isTeacher={isTeacher}
+                                            onMuteParticipant={onMuteParticipant}
+                                            onKickParticipant={onKickParticipant}
+                                            onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                            className="w-full h-full"
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        /* Case 2: 3+ participants - 2-row horizontal-scrolling grid with max 4 visible at a time */
+                        <div className="grid grid-rows-2 grid-flow-col auto-cols-[calc(50%-3px)] gap-1.5 overflow-x-auto scrollbar-hide no-scrollbar pb-0.5 px-0.5 snap-x">
+                            {/* Teacher Tile */}
+                            {teacherParticipant ? (
+                                <div className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative snap-start">
+                                    <VideoTile
+                                        participant={teacherParticipant}
+                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                        isLocal={teacherParticipant.isLocal}
+                                        isTeacher={isTeacher}
+                                        onMuteParticipant={onMuteParticipant}
+                                        onKickParticipant={onKickParticipant}
+                                        onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                        className="w-full h-full"
+                                    />
+                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-600/90 text-white rounded-full text-[8px] font-bold shadow-xs pointer-events-none">
+                                        <GraduationCap className="w-2.5 h-2.5" />
+                                        <span>Teacher</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl bg-slate-800 border-2 border-dashed border-sky-400/50 flex flex-col items-center justify-center text-slate-400 text-[9px] snap-start">
+                                    <GraduationCap className="w-3.5 h-3.5 text-sky-400 mb-0.5" />
+                                    <span>Teacher</span>
+                                </div>
+                            )}
+
+                            {/* Student Participants */}
+                            {studentParticipants.map((participant) => {
+                                const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                                return (
+                                    <div
+                                        key={`mobile-${participant.id}`}
+                                        className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200 snap-start"
+                                    >
+                                        <VideoTile
+                                            participant={participant}
+                                            stream={stream || undefined}
+                                            isLocal={participant.isLocal}
+                                            isTeacher={isTeacher}
+                                            onMuteParticipant={onMuteParticipant}
+                                            onKickParticipant={onKickParticipant}
+                                            onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                            className="w-full h-full"
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* Docked ControlBar at the bottom */}
+                <div className="shrink-0 flex justify-center items-center">
+                    <ControlBar
+                        isMuted={localUser.isMuted}
+                        isVideoOff={localUser.isVideoOff}
+                        isScreenSharing={isScreenSharing}
+                        isWhiteboardActive={isWhiteboardActive}
+                        isHandRaised={localUser.isHandRaised ?? false}
+                        isBackgroundActive={isBackgroundActive}
+                        isConnected={isConnected}
+                        onToggleMic={onToggleMic}
+                        onToggleCamera={onToggleCamera}
+                        onToggleScreenShare={onToggleScreenShare}
+                        onToggleWhiteboard={() => setIsWhiteboardActive(!isWhiteboardActive)}
+                        onToggleHandRaise={onToggleHandRaise}
+                        onSendReaction={onSendReaction}
+                        onToggleBackground={onToggleBackground}
+                        onLeave={onLeave}
+                    />
+                </div>
             </div>
         </div>
     );

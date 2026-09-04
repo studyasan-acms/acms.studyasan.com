@@ -44,6 +44,228 @@ interface PendingTransaction {
 }
 
 /**
+ * Isolated Janus publisher connection dedicated strictly to Screen Sharing.
+ * Runs on its own separate WebSocket connection to guarantee zero interference
+ * with the primary camera/mic publisher and subscriber sessions.
+ */
+class ScreenJanusPublisher {
+    private ws: WebSocket | null = null;
+    private sessionId: number | null = null;
+    private handleId: number | null = null;
+    private pc: RTCPeerConnection | null = null;
+    private keepaliveInterval: ReturnType<typeof setInterval> | null = null;
+    private pendingTransactions: Map<string, { resolve: (val: any) => void; reject: (err: Error) => void; timeout: ReturnType<typeof setTimeout> }> = new Map();
+    private serverUrl: string;
+    private roomId: string;
+    private displayName: string;
+    private iceServers: RTCIceServer[];
+
+    constructor(serverUrl: string, roomId: string, displayName: string, iceServers: RTCIceServer[]) {
+        this.serverUrl = serverUrl;
+        this.roomId = roomId;
+        this.displayName = displayName;
+        this.iceServers = iceServers;
+    }
+
+    private sendMessage(message: Record<string, unknown>): Promise<any> {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return Promise.reject(new Error('Screen WebSocket not connected'));
+        }
+        const transaction = generateTransactionId();
+        const fullMessage = { ...message, transaction };
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                this.pendingTransactions.delete(transaction);
+                reject(new Error(`Screen transaction ${transaction} timed out`));
+            }, TRANSACTION_TIMEOUT);
+
+            this.pendingTransactions.set(transaction, { resolve, reject, timeout });
+            this.ws!.send(JSON.stringify(fullMessage));
+        });
+    }
+
+    async start(stream: MediaStream): Promise<void> {
+        return new Promise((resolve) => {
+            try {
+                this.ws = new WebSocket(this.serverUrl, 'janus-protocol');
+
+                this.ws.onopen = async () => {
+                    try {
+                        // 1. Create session
+                        const sessionRes = await this.sendMessage({ janus: 'create' });
+                        this.sessionId = sessionRes.data.id;
+
+                        // Start keepalive
+                        this.keepaliveInterval = setInterval(() => {
+                            if (this.sessionId && this.ws?.readyState === WebSocket.OPEN) {
+                                this.ws.send(JSON.stringify({
+                                    janus: 'keepalive',
+                                    session_id: this.sessionId,
+                                    transaction: generateTransactionId(),
+                                }));
+                            }
+                        }, KEEPALIVE_INTERVAL);
+
+                        // 2. Attach plugin
+                        const attachRes = await this.sendMessage({
+                            janus: 'attach',
+                            session_id: this.sessionId,
+                            plugin: 'janus.plugin.videoroom',
+                        });
+                        this.handleId = attachRes.data.id;
+
+                        // 3. Create PeerConnection
+                        this.pc = new RTCPeerConnection({ iceServers: this.iceServers });
+                        this.pc.onicecandidate = (event) => {
+                            if (event.candidate && this.sessionId && this.handleId && this.ws?.readyState === WebSocket.OPEN) {
+                                this.ws.send(JSON.stringify({
+                                    janus: 'trickle',
+                                    session_id: this.sessionId,
+                                    handle_id: this.handleId,
+                                    transaction: generateTransactionId(),
+                                    candidate: event.candidate,
+                                }));
+                            }
+                        };
+
+                        stream.getTracks().forEach(track => this.pc!.addTrack(track, stream));
+
+                        const offer = await this.pc.createOffer({
+                            offerToReceiveAudio: false,
+                            offerToReceiveVideo: false,
+                        });
+                        await this.pc.setLocalDescription(offer);
+
+                        // 4. Join and configure
+                        try {
+                            await this.sendMessage({
+                                janus: 'message',
+                                session_id: this.sessionId,
+                                handle_id: this.handleId,
+                                body: {
+                                    request: 'joinandconfigure',
+                                    ptype: 'publisher',
+                                    room: this.roomId,
+                                    display: `${this.displayName} (Screen)`,
+                                    audio: false,
+                                    video: true,
+                                },
+                                jsep: offer,
+                            });
+                        } catch (e) {
+                            await this.sendMessage({
+                                janus: 'message',
+                                session_id: this.sessionId,
+                                handle_id: this.handleId,
+                                body: {
+                                    request: 'join',
+                                    ptype: 'publisher',
+                                    room: this.roomId,
+                                    display: `${this.displayName} (Screen)`,
+                                },
+                            });
+                            await this.sendMessage({
+                                janus: 'message',
+                                session_id: this.sessionId,
+                                handle_id: this.handleId,
+                                body: {
+                                    request: 'configure',
+                                    audio: false,
+                                    video: true,
+                                },
+                                jsep: offer,
+                            });
+                        }
+
+                        console.log('[ScreenJanusPublisher] Screen share published successfully');
+                        resolve();
+                    } catch (err: any) {
+                        console.warn('[ScreenJanusPublisher] Error establishing screen publisher:', err);
+                        resolve(); // Non-blocking
+                    }
+                };
+
+                this.ws.onmessage = async (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+                        const { transaction, janus } = message;
+
+                        if (transaction && this.pendingTransactions.has(transaction)) {
+                            const pending = this.pendingTransactions.get(transaction)!;
+                            clearTimeout(pending.timeout);
+                            this.pendingTransactions.delete(transaction);
+                            if (janus === 'error') {
+                                pending.reject(new Error(message.error?.reason || 'Janus error'));
+                            } else {
+                                pending.resolve(message);
+                            }
+                            return;
+                        }
+
+                        const jsep = message.jsep as RTCSessionDescriptionInit | undefined;
+                        if (jsep && jsep.type === 'answer' && this.pc) {
+                            console.log('[ScreenJanusPublisher] Setting remote answer on screen PC');
+                            await this.pc.setRemoteDescription(new RTCSessionDescription(jsep));
+                        }
+                    } catch (e) {
+                        console.warn('[ScreenJanusPublisher] Error processing message:', e);
+                    }
+                };
+
+                this.ws.onerror = (e) => {
+                    console.warn('[ScreenJanusPublisher] WebSocket error (non-fatal):', e);
+                    resolve();
+                };
+
+                this.ws.onclose = () => {
+                    console.log('[ScreenJanusPublisher] WebSocket closed');
+                };
+            } catch (outerErr) {
+                console.warn('[ScreenJanusPublisher] Outer error starting screen publisher:', outerErr);
+                resolve();
+            }
+        });
+    }
+
+    stop(): void {
+        if (this.keepaliveInterval) {
+            clearInterval(this.keepaliveInterval);
+            this.keepaliveInterval = null;
+        }
+
+        if (this.pc) {
+            this.pc.close();
+            this.pc = null;
+        }
+
+        if (this.ws) {
+            if (this.ws.readyState === WebSocket.OPEN) {
+                try {
+                    if (this.sessionId) {
+                        this.ws.send(JSON.stringify({
+                            janus: 'destroy',
+                            session_id: this.sessionId,
+                            transaction: generateTransactionId(),
+                        }));
+                    }
+                } catch (e) {}
+                this.ws.close();
+            }
+            this.ws = null;
+        }
+
+        this.pendingTransactions.forEach(({ timeout, reject }) => {
+            clearTimeout(timeout);
+            reject(new Error('Screen publisher stopped'));
+        });
+        this.pendingTransactions.clear();
+        this.sessionId = null;
+        this.handleId = null;
+    }
+}
+
+/**
  * JanusClient class - manages connection and communication with Janus Gateway
  */
 export class JanusClient {
@@ -58,6 +280,7 @@ export class JanusClient {
     private reconnectAttempts = 0;
     private localStream: MediaStream | null = null;
     private screenStream: MediaStream | null = null;
+    private screenPublisher: ScreenJanusPublisher | null = null;
     private peerConnections: Map<string | number, RTCPeerConnection> = new Map();
     private publisherPc: RTCPeerConnection | null = null;
     private dataChannel: RTCDataChannel | null = null;
@@ -84,6 +307,10 @@ export class JanusClient {
 
     getMyId(): string | number | null {
         return this.myId;
+    }
+
+    getScreenStream(): MediaStream | null {
+        return this.screenStream;
     }
 
     getLocalUniqueId(): string {
@@ -250,21 +477,36 @@ export class JanusClient {
                     this.subscribeToPublishers(newPublishers);
                 }
 
-                if (data.unpublished) {
+                if (data.unpublished && typeof data.unpublished === 'number') {
                     const unpublishedId = data.unpublished as number;
-                    console.log(`[Janus] Publisher left: ${unpublishedId}`);
+                    console.log(`[Janus] Publisher unpublished: ${unpublishedId}`);
                     this.handlePublisherLeft(unpublishedId);
                 }
 
-                if (data.leaving) {
+                if (data.leaving && typeof data.leaving === 'number') {
                     const leavingId = data.leaving as number;
                     console.log(`[Janus] Participant leaving: ${leavingId}`);
                     this.handlePublisherLeft(leavingId);
                 }
 
+                if (data.kicked === true) {
+                    console.warn('[Janus] Current user kicked from room');
+                    this.config.onKicked?.();
+                }
+
                 if (data.configured === 'ok') {
                     console.log('[Janus] Publisher stream configured');
                 }
+                break;
+
+            case 'kicked':
+                console.warn('[Janus] Received kicked event from VideoRoom');
+                this.config.onKicked?.();
+                break;
+
+            case 'destroyed':
+                console.warn('[Janus] Room destroyed by admin');
+                this.config.onKicked?.();
                 break;
 
             case 'attached':
@@ -426,16 +668,18 @@ export class JanusClient {
     private async subscribeToPublishers(publishers: Publisher[]): Promise<void> {
         for (const publisher of publishers) {
             if (publisher.id === this.myId) continue;
+            if (publisher.display === `${this.config.displayName} (Screen)`) continue;
 
             console.log(`[Janus] Subscribing to publisher ${publisher.id} (${publisher.display})`);
 
+            const isScreenFeed = publisher.display?.endsWith(' (Screen)');
             const participant: Participant = {
                 id: publisher.id,
                 displayName: publisher.display || `User ${publisher.id}`,
                 isLocal: false,
                 isMuted: false,
                 isVideoOff: false,
-                isScreenSharing: false,
+                isScreenSharing: !!isScreenFeed,
                 isSpeaking: false,
             };
             this.config.onParticipantJoined?.(participant);
@@ -615,7 +859,9 @@ export class JanusClient {
     async shareScreen(): Promise<MediaStream> {
         try {
             const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
+                video: {
+                    frameRate: { ideal: 30, max: 60 },
+                },
                 audio: false,
             });
 
@@ -625,14 +871,26 @@ export class JanusClient {
                 this.stopScreenShare();
             };
 
-            if (this.publisherPc && this.localStream) {
-                const videoSender = this.publisherPc.getSenders().find(
-                    s => s.track?.kind === 'video'
+            // Publish via isolated ScreenJanusPublisher WebSocket
+            try {
+                this.screenPublisher = new ScreenJanusPublisher(
+                    this.config.serverUrl,
+                    this.getRoomId(),
+                    this.config.displayName,
+                    this.iceServers
                 );
-                if (videoSender) {
-                    await videoSender.replaceTrack(screenStream.getVideoTracks()[0]);
-                }
+                await this.screenPublisher.start(screenStream);
+            } catch (screenPubErr) {
+                console.warn('[Janus] ScreenJanusPublisher error (using local stream fallback):', screenPubErr);
             }
+
+            // Broadcast screen-share event via main data channel
+            this.sendData({
+                type: 'screen-share',
+                isSharing: true,
+                participantId: this.myId ?? undefined,
+                displayName: this.config.displayName,
+            });
 
             console.log('[Janus] Screen sharing started');
             return screenStream;
@@ -646,19 +904,23 @@ export class JanusClient {
         if (this.screenStream) {
             this.screenStream.getTracks().forEach(track => track.stop());
             this.screenStream = null;
-
-            if (this.publisherPc && this.localStream) {
-                const videoTrack = this.localStream.getVideoTracks()[0];
-                const videoSender = this.publisherPc.getSenders().find(
-                    s => s.track?.kind === 'video'
-                );
-                if (videoSender && videoTrack) {
-                    await videoSender.replaceTrack(videoTrack);
-                }
-            }
-
-            console.log('[Janus] Screen sharing stopped');
         }
+
+        if (this.screenPublisher) {
+            this.screenPublisher.stop();
+            this.screenPublisher = null;
+        }
+
+        // Broadcast screen-share stopped
+        this.sendData({
+            type: 'screen-share',
+            isSharing: false,
+            participantId: this.myId ?? undefined,
+            displayName: this.config.displayName,
+        });
+
+        this.config.onScreenShareEnded?.();
+        console.log('[Janus] Screen sharing stopped');
     }
 
     sendData(message: DataChannelMessage): void {
@@ -708,6 +970,11 @@ export class JanusClient {
         if (this.publisherPc) {
             this.publisherPc.close();
             this.publisherPc = null;
+        }
+
+        if (this.screenPublisher) {
+            this.screenPublisher.stop();
+            this.screenPublisher = null;
         }
 
         if (this.localStream) {
@@ -858,14 +1125,6 @@ export class JanusClient {
         };
 
         window.addEventListener('beforeunload', this.boundBeforeUnload);
-
-        // Also handle visibility change (tab hidden/app backgrounded on mobile)
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden' && this.attendanceTracked) {
-                console.log('[Janus] Tab hidden, recording leave attendance');
-                this.recordLeaveAttendanceSync();
-            }
-        });
     }
 
     /**

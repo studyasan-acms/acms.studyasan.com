@@ -225,6 +225,7 @@ export function ClassroomPage() {
                 onStartRecording={recorder.startRecording}
                 onStopRecording={recorder.stopRecording}
                 localStream={janus.localStream}
+                screenStream={janus.screenStream}
                 localUser={janus.localUser}
                 participants={janus.participants}
                 remoteStreams={janus.remoteStreams}
@@ -236,6 +237,7 @@ export function ClassroomPage() {
                 onToggleHandRaise={janus.toggleHandRaise}
                 onSendReaction={janus.sendReaction}
                 isTeacher={roomInfo?.isTeacher || false}
+                teacherName={roomInfo?.teacherName || null}
                 onMuteParticipant={janus.muteParticipant}
                 onKickParticipant={janus.kickParticipant}
                 onToggleWhiteboardAccess={janus.toggleWhiteboardAccess}

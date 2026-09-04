@@ -28,6 +28,8 @@ export interface JanusConfig {
     onParticipantLeft?: (participantId: string | number) => void;
     onConnectionStateChange?: (state: ConnectionState) => void;
     onDataMessage?: (message: DataChannelMessage) => void;
+    onScreenShareEnded?: () => void;
+    onKicked?: () => void;
     onError?: (error: Error) => void;
 }
 
@@ -47,6 +49,7 @@ export interface Participant {
     isSpeaking: boolean;
     hasWhiteboardAccess?: boolean;
     isHandRaised?: boolean;
+    isTeacher?: boolean;
 }
 
 /**
@@ -176,7 +179,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction' | 'screen-share';
 
 /**
  * Generic DataChannel message
@@ -193,6 +196,8 @@ export interface DataChannelMessage {
     whiteboardAccess?: boolean;
     isHandRaised?: boolean;
     emoji?: string;
+    isSharing?: boolean;
+    screenFeedId?: string | number;
 }
 
 // ============ Room Types ============
@@ -206,6 +211,8 @@ export interface VideoRoomInfo {
     isTeacher: boolean;
     isCreated: boolean;   // Whether room was already created on Janus
     subject: number;
+    teacherName?: string | null;
+    teacherUserId?: number | null;
 }
 
 /**

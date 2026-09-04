@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from 'sonner';
 import { JanusClient, destroyJanusClient } from '@/services/janus';
+import api from '@/services/api';
 import type { FloatingReaction } from '@/components/classroom/ReactionOverlay';
 
 function createFallbackMediaStream(): MediaStream {
@@ -83,6 +84,7 @@ interface UseJanusReturn {
 
     // Local user
     localStream: MediaStream | null;
+    screenStream: MediaStream | null;
     localUser: LocalUserState;
 
     // Remote participants
@@ -108,7 +110,7 @@ interface UseJanusReturn {
 
     // Whiteboard
     sendWhiteboardMessage: (message: WhiteboardMessage) => void;
-    setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
+    setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => (() => void);
 
     // Background
     isBackgroundActive: boolean;
@@ -181,16 +183,18 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     // Main view state
     const [mainParticipantId, setMainParticipantId] = useState<string | number | null>(null);
     const [isScreenSharing, setIsScreenSharing] = useState(false);
+    const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
 
     // Local stream reference
     const localStreamRef = useRef<MediaStream | null>(null);
+    const screenStreamRef = useRef<MediaStream | null>(null);
     const rawStreamRef = useRef<MediaStream | null>(null);
 
     // Background processor
     const backgroundProcessor = useBackgroundProcessor();
 
-    // Whiteboard message handler
-    const whiteboardHandlerRef = useRef<((message: WhiteboardMessage) => void) | null>(null);
+    // Whiteboard message handlers (Set supports multiple mounted whiteboard instances)
+    const whiteboardHandlersRef = useRef<Set<(message: WhiteboardMessage) => void>>(new Set());
 
     // Janus client reference
     const janusClientRef = useRef<JanusClient | null>(null);
@@ -203,8 +207,14 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     });
 
     const setWhiteboardMessageHandler = useCallback((handler: (message: WhiteboardMessage) => void) => {
-        whiteboardHandlerRef.current = handler;
-        apiSync.setWhiteboardMessageHandler(handler);
+        whiteboardHandlersRef.current.add(handler);
+        const unregisterApi = apiSync.setWhiteboardMessageHandler(handler);
+        return () => {
+            whiteboardHandlersRef.current.delete(handler);
+            if (typeof unregisterApi === 'function') {
+                unregisterApi();
+            }
+        };
     }, [apiSync]);
 
     const sendWhiteboardMessage = useCallback((message: WhiteboardMessage) => {
@@ -237,6 +247,12 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             localStreamRef.current.getTracks().forEach(track => track.stop());
             localStreamRef.current = null;
             setLocalStream(null);
+        }
+
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+            setScreenStream(null);
         }
 
         setParticipants(new Map());
@@ -373,11 +389,45 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
 
                     setMainParticipantId(prevId => prevId === participantId ? null : prevId);
                 },
+                onKicked: () => {
+                    console.warn('[useJanus] onKicked event received from Janus client');
+                    toast.error('You have been removed from the classroom by the teacher.', { duration: 5000 });
+                    onKickedCallbackRef.current?.();
+                },
+                onScreenShareEnded: () => {
+                    console.log('[useJanus] Screen share ended event');
+                    screenStreamRef.current = null;
+                    setScreenStream(null);
+                    setIsScreenSharing(false);
+                    setLocalUser(prev => ({ ...prev, isScreenSharing: false }));
+                },
                 onDataMessage: (message: DataChannelMessage) => {
+                    // Handle screen share broadcast message
+                    if (message.type === 'screen-share' && message.participantId) {
+                        const targetId = message.participantId;
+                        const isSharing = !!message.isSharing;
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            for (const [id, p] of next.entries()) {
+                                if (String(id) === String(targetId)) {
+                                    next.set(id, { ...p, isScreenSharing: isSharing });
+                                    break;
+                                }
+                            }
+                            return next;
+                        });
+                    }
+
                     // Handle whiteboard messages
                     if (message.type === 'whiteboard' && message.whiteboard) {
                         console.log('[useJanus] ✏️ Received remote whiteboard stroke via data channel:', message.whiteboard);
-                        whiteboardHandlerRef.current?.(message.whiteboard);
+                        whiteboardHandlersRef.current.forEach(fn => {
+                            try {
+                                fn(message.whiteboard);
+                            } catch (err) {
+                                console.error('[useJanus] Error in whiteboard handler:', err);
+                            }
+                        });
                     }
 
                     // Handle raise-hand message
@@ -410,11 +460,12 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     }
 
                     // Handle kick message - disconnect if we are the target
-                    if (message.type === 'kick' && message.participantId) {
+                    if (message.type === 'kick' && message.participantId !== undefined) {
                         const myId = janusClientRef.current?.getMyId();
-                        if (myId && message.participantId === myId) {
+                        console.log(`[useJanus] Received kick message. Target: ${message.participantId}, MyId: ${myId}`);
+                        if (myId && String(message.participantId) === String(myId)) {
                             console.warn('[useJanus] 🚨 You have been removed from the call by the teacher');
-                            alert('You have been removed from the call by the teacher.');
+                            toast.error('You have been removed from the classroom by the teacher.', { duration: 5000 });
                             onKickedCallbackRef.current?.();
                         }
                     }
@@ -562,12 +613,18 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         try {
             if (isScreenSharing) {
                 await janusClientRef.current?.stopScreenShare();
+                screenStreamRef.current = null;
+                setScreenStream(null);
                 setIsScreenSharing(false);
                 setLocalUser(prev => ({ ...prev, isScreenSharing: false }));
             } else {
-                await janusClientRef.current?.shareScreen();
-                setIsScreenSharing(true);
-                setLocalUser(prev => ({ ...prev, isScreenSharing: true }));
+                const stream = await janusClientRef.current?.shareScreen();
+                if (stream) {
+                    screenStreamRef.current = stream;
+                    setScreenStream(stream);
+                    setIsScreenSharing(true);
+                    setLocalUser(prev => ({ ...prev, isScreenSharing: true }));
+                }
             }
         } catch (err) {
             console.error('Screen share error:', err);
@@ -595,14 +652,26 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     }, []);
 
     // Kick a participant (teacher only)
-    const kickParticipant = useCallback((participantId: string | number) => {
+    const kickParticipant = useCallback(async (participantId: string | number) => {
         console.log('[useJanus] Kicking participant:', participantId);
+
+        // 1. Broadcast kick event via DataChannel so student disconnects immediately
         janusClientRef.current?.sendData({
             type: 'kick',
             participantId,
         });
 
-        // Remove from local state
+        // 2. Call backend kick endpoint to enforce kick on Janus gateway & database
+        try {
+            const numericId = typeof participantId === 'number' ? participantId : parseInt(String(participantId), 10);
+            if (roomCode && !isNaN(numericId)) {
+                await api.post(`/video-rooms/${roomCode}/participants/${numericId}/kick`);
+            }
+        } catch (apiErr) {
+            console.warn('[useJanus] Backend kick API call error:', apiErr);
+        }
+
+        // 3. Remove from local state
         setParticipants(prev => {
             const next = new Map(prev);
             next.delete(participantId);
@@ -614,7 +683,7 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             next.delete(participantId);
             return next;
         });
-    }, []);
+    }, [roomCode]);
 
     // Toggle a participant's whiteboard access (teacher only)
     const toggleWhiteboardAccess = useCallback((participantId: string | number) => {
@@ -667,25 +736,24 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         addFloatingReaction(emoji, `${localUser.displayName} (You)`);
     }, [localUser.displayName, addFloatingReaction]);
 
-    // Set up the kicked callback to disconnect
+    // Cleanup on unmount ONLY
+    const disconnectRef = useRef(disconnect);
     useEffect(() => {
-        onKickedCallbackRef.current = () => {
-            disconnect();
-        };
+        disconnectRef.current = disconnect;
     }, [disconnect]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
-            disconnect();
+            disconnectRef.current();
         };
-    }, [disconnect]);
+    }, []);
 
     return {
         connectionState,
         isConnected: connectionState === 'connected',
         error,
         localStream,
+        screenStream,
         localUser,
         participants,
         remoteStreams,

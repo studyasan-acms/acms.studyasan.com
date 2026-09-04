@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import type { AuthRequest } from '../types/index.js';
+import janusAdmin from '../services/janusAdmin.service.js';
 
 const prisma = new PrismaClient();
 
@@ -201,7 +202,14 @@ export const getOrCreateRoom = async (req: AuthRequest, res: Response) => {
     // Get class session
     const classSession = await prisma.classSession.findUnique({
       where: { id: parseInt(sessionId) },
-      include: { video_room: true },
+      include: {
+        video_room: true,
+        teacher: {
+          include: {
+            user: { select: { id: true, name: true } }
+          }
+        }
+      },
     });
 
     if (!classSession) {
@@ -238,6 +246,8 @@ export const getOrCreateRoom = async (req: AuthRequest, res: Response) => {
       isTeacher: access.isTeacher,
       isCreated: videoRoom.is_created,
       subject: classSession.subject_id,
+      teacherName: classSession.teacher?.user?.name || null,
+      teacherUserId: classSession.teacher?.user?.id || null,
     });
   } catch (error: any) {
     sendError(res, error.message, 500);
@@ -702,6 +712,13 @@ export const kickParticipant = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Only the teacher can remove participants', 403);
     }
 
+    // Call Janus to actually kick participant from the VideoRoom plugin
+    try {
+      await janusAdmin.kickParticipantFromRoom(videoRoom.janus_room_id.toString(), parseInt(participantId));
+    } catch (janusErr) {
+      console.warn('[VideoRoom] Error kicking participant via Janus admin:', janusErr);
+    }
+
     // Return action for frontend to send via Janus
     sendSuccess(res, {
       action: 'kick',
@@ -896,6 +913,59 @@ export const getSessionAttendance = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
+    // Auto-mark all participants as left if the class session has ended
+    const isClassOver = new Date(classSession.end_time) <= new Date();
+    if (isClassOver) {
+      const sessionEndTime = new Date(classSession.end_time);
+
+      // 1. Close open logs
+      const openLogs = await prisma.videoRoomAttendanceLog.findMany({
+        where: {
+          attendance: { class_session_id: parseInt(sessionId) },
+          left_at: null,
+        },
+      });
+
+      for (const log of openLogs) {
+        const leaveTime = sessionEndTime > log.joined_at ? sessionEndTime : new Date();
+        const durationMins = Math.max(1, Math.floor((leaveTime.getTime() - log.joined_at.getTime()) / 60000));
+        await prisma.videoRoomAttendanceLog.update({
+          where: { id: log.id },
+          data: {
+            left_at: leaveTime,
+            duration_minutes: durationMins,
+          },
+        });
+      }
+
+      // 2. Close open attendance records
+      const openAttendances = await prisma.classSessionAttendance.findMany({
+        where: {
+          class_session_id: parseInt(sessionId),
+          left_at: null,
+        },
+        include: {
+          attendance_logs: true,
+        },
+      });
+
+      for (const att of openAttendances) {
+        const leaveTime = sessionEndTime > (att.joined_at || sessionEndTime) ? sessionEndTime : new Date();
+        const totalDuration = att.attendance_logs.reduce((sum, l) => sum + (l.duration_minutes || 0), 0);
+        const fallbackDuration = att.joined_at
+          ? Math.max(1, Math.floor((leaveTime.getTime() - new Date(att.joined_at).getTime()) / 60000))
+          : 0;
+
+        await prisma.classSessionAttendance.update({
+          where: { id: att.id },
+          data: {
+            left_at: leaveTime,
+            duration_minutes: totalDuration > 0 ? totalDuration : fallbackDuration,
+          },
+        });
+      }
+    }
+
     // Check access permissions
     const access = await checkRoomAccess(userId, userRole, classSession);
     const isTeacher = access.isTeacher;
@@ -973,6 +1043,93 @@ export const getSessionAttendance = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('[Attendance] Error fetching session attendance:', error);
+    sendError(res, error.message, 500);
+  }
+};
+
+/**
+ * Explicitly mark all active participants in a class session as left
+ */
+export const markAllAsLeft = async (req: AuthRequest, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+
+    if (!sessionId) {
+      return sendError(res, 'Session ID is required', 400);
+    }
+
+    const classSession = await prisma.classSession.findUnique({
+      where: { id: parseInt(sessionId) },
+      include: {
+        teacher: { include: { user: true } },
+      },
+    });
+
+    if (!classSession) {
+      return sendError(res, 'Class session not found', 404);
+    }
+
+    const access = await checkRoomAccess(userId, userRole, classSession);
+    if (!access.hasAccess || !access.isTeacher) {
+      return sendError(res, 'Only teachers or admins can mark attendance as left', 403);
+    }
+
+    const now = new Date();
+    const sessionEndTime = new Date(classSession.end_time);
+    const effectiveLeaveTime = sessionEndTime < now ? sessionEndTime : now;
+
+    // 1. Close open logs
+    const openLogs = await prisma.videoRoomAttendanceLog.findMany({
+      where: {
+        attendance: { class_session_id: parseInt(sessionId) },
+        left_at: null,
+      },
+    });
+
+    for (const log of openLogs) {
+      const leaveTime = effectiveLeaveTime > log.joined_at ? effectiveLeaveTime : now;
+      const durationMins = Math.max(1, Math.floor((leaveTime.getTime() - log.joined_at.getTime()) / 60000));
+      await prisma.videoRoomAttendanceLog.update({
+        where: { id: log.id },
+        data: {
+          left_at: leaveTime,
+          duration_minutes: durationMins,
+        },
+      });
+    }
+
+    // 2. Close open attendance records
+    const openAttendances = await prisma.classSessionAttendance.findMany({
+      where: {
+        class_session_id: parseInt(sessionId),
+        left_at: null,
+      },
+      include: {
+        attendance_logs: true,
+      },
+    });
+
+    for (const att of openAttendances) {
+      const leaveTime = effectiveLeaveTime > (att.joined_at || effectiveLeaveTime) ? effectiveLeaveTime : now;
+      const totalDuration = att.attendance_logs.reduce((sum, l) => sum + (l.duration_minutes || 0), 0);
+      const fallbackDuration = att.joined_at
+        ? Math.max(1, Math.floor((leaveTime.getTime() - new Date(att.joined_at).getTime()) / 60000))
+        : 0;
+
+      await prisma.classSessionAttendance.update({
+        where: { id: att.id },
+        data: {
+          left_at: leaveTime,
+          duration_minutes: totalDuration > 0 ? totalDuration : fallbackDuration,
+        },
+      });
+    }
+
+    sendSuccess(res, { count: openAttendances.length }, 'All active participants marked as left');
+  } catch (error: any) {
+    console.error('[Attendance] Error marking all as left:', error);
     sendError(res, error.message, 500);
   }
 };

@@ -14,6 +14,7 @@ interface VideoTileProps {
     stream?: MediaStream;
     isLocal?: boolean;
     isMain?: boolean;
+    isScreenShare?: boolean;
     showOverflow?: number;
     onClick?: () => void;
     className?: string;
@@ -29,6 +30,7 @@ export function VideoTile({
     stream,
     isLocal = false,
     isMain = false,
+    isScreenShare = false,
     showOverflow,
     onClick,
     className = '',
@@ -49,6 +51,8 @@ export function VideoTile({
     const hasVideo = stream?.getVideoTracks().some(t => t.enabled) ?? false;
     const hasAudio = stream?.getAudioTracks().some(t => t.enabled) ?? false;
     const shouldShowVideo = stream && hasVideo && !participant.isVideoOff;
+    const isScreen = isScreenShare || isMain || participant.displayName?.endsWith(' (Screen)');
+    const shouldMirror = isLocal && !isScreen;
 
     // Show teacher controls only for non-local participants when user is teacher
     const canShowTeacherControls = isTeacher && !isLocal && !participant.isLocal;
@@ -86,7 +90,7 @@ export function VideoTile({
             onClick={onClick}
             className={`
         relative rounded-xl border border-slate-200
-        ${isMain ? 'w-full h-full bg-slate-900' : 'aspect-video bg-slate-100'}
+        ${isMain ? 'w-full h-full bg-slate-900' : 'bg-slate-900'}
         ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-sky-400 transition-all' : ''}
         ${className}
       `}
@@ -100,13 +104,13 @@ export function VideoTile({
                         autoPlay
                         playsInline
                         muted={isLocal}
-                        className={`w-full h-full object-contain bg-slate-900 ${isLocal ? 'scale-x-[-1]' : ''}`}
+                        className={`w-full h-full bg-slate-900 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''}`}
                     />
                 ) : (
                     /* Avatar placeholder when no video */
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200">
-                        <div className="w-16 h-16 md:w-24 md:h-24 rounded-full bg-sky-100 flex items-center justify-center">
-                            <User className="w-8 h-8 md:w-12 md:h-12 text-sky-500" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
+                        <div className="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 rounded-full bg-sky-500/20 border border-sky-400/30 flex items-center justify-center shadow-inner">
+                            <User className="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7 text-sky-400" />
                         </div>
                     </div>
                 )}
@@ -120,28 +124,28 @@ export function VideoTile({
 
                 {/* Hand Raised Badge */}
                 {participant.isHandRaised && (
-                    <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 bg-amber-500/90 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-xs font-bold shadow-lg border border-amber-300/40 animate-bounce">
-                        <span>✋ Hand Raised</span>
+                    <div className="absolute top-1 left-1 md:top-1.5 md:left-1.5 z-20 flex items-center gap-0.5 md:gap-1 bg-amber-500/95 backdrop-blur-md text-white px-1.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold shadow-md border border-amber-300/40 animate-bounce pointer-events-none">
+                        <span>✋ Raised</span>
                     </div>
                 )}
 
                 {/* Bottom overlay with name and status */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 md:p-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-white text-sm font-medium truncate max-w-[70%]">
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1.5 md:p-2 pointer-events-none">
+                    <div className="flex items-center justify-between gap-1">
+                        <span className="text-white text-[10px] xs:text-[11px] md:text-xs font-semibold truncate flex-1">
                             {participant.displayName}
                             {isLocal && ' (You)'}
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-0.5 shrink-0">
                             {participant.isMuted || !hasAudio ? (
-                                <MicOff className="w-4 h-4 text-red-400" />
+                                <MicOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
                             ) : (
-                                <Mic className="w-4 h-4 text-white" />
+                                <Mic className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400" />
                             )}
                             {participant.isVideoOff || !hasVideo ? (
-                                <VideoOff className="w-4 h-4 text-red-400" />
+                                <VideoOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
                             ) : (
-                                <Video className="w-4 h-4 text-white" />
+                                <Video className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />
                             )}
                         </div>
                     </div>
