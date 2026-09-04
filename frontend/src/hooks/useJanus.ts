@@ -420,10 +420,11 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
 
                     // Handle whiteboard messages
                     if (message.type === 'whiteboard' && message.whiteboard) {
-                        console.log('[useJanus] ✏️ Received remote whiteboard stroke via data channel:', message.whiteboard);
+                        const whiteboardMsg = message.whiteboard;
+                        console.log('[useJanus] ✏️ Received remote whiteboard stroke via data channel:', whiteboardMsg);
                         whiteboardHandlersRef.current.forEach(fn => {
                             try {
-                                fn(message.whiteboard);
+                                fn(whiteboardMsg);
                             } catch (err) {
                                 console.error('[useJanus] Error in whiteboard handler:', err);
                             }
