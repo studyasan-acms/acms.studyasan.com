@@ -92,6 +92,14 @@ export function useClassroomAPISync({
                         // Process new and updated strokes
                         for (const stroke of strokes) {
                             if (!stroke.board) stroke.board = 1;
+                            if (stroke.tool === 'table' && stroke.text && (!stroke.tableRows || !stroke.tableData)) {
+                                try {
+                                    const parsed = JSON.parse(stroke.text);
+                                    if (parsed.rows) stroke.tableRows = parsed.rows;
+                                    if (parsed.cols) stroke.tableCols = parsed.cols;
+                                    if (parsed.data) stroke.tableData = parsed.data;
+                                } catch {}
+                            }
                             const storedVersion = processedStrokeVersions.current.get(stroke.id);
                             const strokeVersion = stroke.updatedAt || stroke.timestamp || 0;
 

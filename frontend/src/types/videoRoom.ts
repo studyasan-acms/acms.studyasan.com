@@ -92,7 +92,8 @@ export type DrawingTool =
     | 'star'
     | 'text'
     | 'highlight'
-    | 'image';
+    | 'image'
+    | 'table';
 
 /**
  * A single point on the canvas
@@ -116,6 +117,9 @@ export interface Stroke {
     text?: string;
     imageUrl?: string;
     rotation?: number; // Optional rotation in degrees (0, 90, 180, 270)
+    tableRows?: number; // Number of rows for table tool
+    tableCols?: number; // Number of columns for table tool
+    tableData?: string[][]; // 2D matrix of cell text contents
 }
 
 /**

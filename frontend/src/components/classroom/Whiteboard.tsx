@@ -35,6 +35,9 @@ import {
     ArrowUp,
     ArrowDown,
     Maximize2,
+    Table as TableIcon,
+    Plus,
+    Grid,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWhiteboard, PEN_THICKNESS_RANGE, PEN_THICKNESS_PRESETS } from '@/hooks/useWhiteboard';
@@ -108,6 +111,12 @@ export function Whiteboard({
         setActive,
         addTextStroke,
         addImageStroke,
+        addTableStroke,
+        updateTableCell,
+        addTableRow,
+        removeTableRow,
+        addTableCol,
+        removeTableCol,
         deleteSelected,
         scaleSelected,
         rotateSelected,
@@ -131,25 +140,40 @@ export function Whiteboard({
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [showShapeSelector, setShowShapeSelector] = useState(false);
     const [showColorSelector, setShowColorSelector] = useState(false);
+    const [showTableDialog, setShowTableDialog] = useState(false);
+    const [tableRows, setTableRows] = useState(3);
+    const [tableCols, setTableCols] = useState(3);
+    const [hoverGridRows, setHoverGridRows] = useState(3);
+    const [hoverGridCols, setHoverGridCols] = useState(3);
+    const [editingCell, setEditingCell] = useState<{
+        strokeId: string;
+        row: number;
+        col: number;
+        text: string;
+        rect: { x: number; y: number; width: number; height: number };
+    } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const textInputRef = useRef<HTMLInputElement>(null);
+    const cellInputRef = useRef<HTMLInputElement>(null);
+    const isAdvancingRef = useRef(false);
     const shapeSelectorRef = useRef<HTMLDivElement>(null);
     const colorSelectorRef = useRef<HTMLDivElement>(null);
     const imageSelectorRef = useRef<HTMLDivElement>(null);
+    const tableSelectorRef = useRef<HTMLDivElement>(null);
 
     // Delete handler
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (!canEdit) return;
             if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (!showTextInput && !showImageDialog) {
+                if (!showTextInput && !showImageDialog && !showTableDialog && !editingCell) {
                     deleteSelected();
                 }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [deleteSelected, showTextInput, showImageDialog]);
+    }, [deleteSelected, showTextInput, showImageDialog, showTableDialog, editingCell, canEdit]);
 
     // Focus text input when it appears
     useEffect(() => {
@@ -157,6 +181,28 @@ export function Whiteboard({
             setTimeout(() => textInputRef.current?.focus(), 50);
         }
     }, [showTextInput]);
+
+    // Focus cell input when editing a table cell without selecting all text on keystroke
+    const editingCellKey = editingCell ? `${editingCell.strokeId}-${editingCell.row}-${editingCell.col}` : null;
+    const prevCellKeyRef = useRef<string | null>(null);
+
+    useEffect(() => {
+        if (editingCellKey && editingCellKey !== prevCellKeyRef.current) {
+            prevCellKeyRef.current = editingCellKey;
+            const timer = setTimeout(() => {
+                const input = cellInputRef.current;
+                if (input) {
+                    input.focus();
+                    // Place cursor at the end of text instead of selecting all
+                    const len = input.value.length;
+                    input.setSelectionRange(len, len);
+                }
+            }, 30);
+            return () => clearTimeout(timer);
+        } else if (!editingCellKey) {
+            prevCellKeyRef.current = null;
+        }
+    }, [editingCellKey]);
 
     // Close shape selector when clicking outside
     useEffect(() => {
@@ -197,6 +243,134 @@ export function Whiteboard({
         }
     }, [showImageDialog]);
 
+    // Close table selector popover when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (tableSelectorRef.current && !tableSelectorRef.current.contains(e.target as Node)) {
+                setShowTableDialog(false);
+            }
+        };
+        if (showTableDialog) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showTableDialog]);
+
+    // Handle canvas double-click to edit table cells inline
+    const handleCanvasDoubleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (!canEdit) return;
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+
+        // Check active table strokes
+        const strokesList = getStrokes().filter(s => (s.board || 1) === currentBoard && s.tool === 'table');
+        for (const stroke of strokesList.reverse()) {
+            const bounds = getStrokeBoundsForCanvas(stroke);
+            if (!bounds) continue;
+
+            if (clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
+                const rows = Math.max(1, stroke.tableRows || 3);
+                const cols = Math.max(1, stroke.tableCols || 3);
+                const colW = bounds.width / cols;
+                const rowH = bounds.height / rows;
+
+                const c = Math.min(cols - 1, Math.max(0, Math.floor((clickX - bounds.minX) / colW)));
+                const r = Math.min(rows - 1, Math.max(0, Math.floor((clickY - bounds.minY) / rowH)));
+
+                const cellText = stroke.tableData?.[r]?.[c] || '';
+                const cellRect = {
+                    x: bounds.minX + c * colW,
+                    y: bounds.minY + r * rowH,
+                    width: colW,
+                    height: rowH,
+                };
+
+                setEditingCell({
+                    strokeId: stroke.id,
+                    row: r,
+                    col: c,
+                    text: cellText,
+                    rect: cellRect,
+                });
+                return;
+            }
+        }
+    }, [canEdit, currentBoard, getStrokes, getStrokeBoundsForCanvas]);
+
+    // Save cell text and optionally advance focus
+    const saveAndAdvanceCell = useCallback((direction: 'next' | 'prev' | 'stay') => {
+        if (!editingCell) return;
+        updateTableCell(editingCell.strokeId, editingCell.row, editingCell.col, editingCell.text);
+
+        if (direction === 'stay') {
+            setEditingCell(null);
+            setTimeout(() => {
+                isAdvancingRef.current = false;
+            }, 50);
+            return;
+        }
+
+        const stroke = getStrokes().find(s => s.id === editingCell.strokeId);
+        if (!stroke || stroke.tool !== 'table') {
+            setEditingCell(null);
+            return;
+        }
+
+        const rows = stroke.tableRows || 3;
+        const cols = stroke.tableCols || 3;
+        let nextR = editingCell.row;
+        let nextC = editingCell.col;
+
+        if (direction === 'next') {
+            nextC += 1;
+            if (nextC >= cols) {
+                nextC = 0;
+                nextR += 1;
+            }
+            if (nextR >= rows) {
+                setEditingCell(null);
+                return;
+            }
+        } else if (direction === 'prev') {
+            nextC -= 1;
+            if (nextC < 0) {
+                nextC = cols - 1;
+                nextR -= 1;
+            }
+            if (nextR < 0) {
+                setEditingCell(null);
+                return;
+            }
+        }
+
+        const bounds = getStrokeBoundsForCanvas(stroke);
+        if (!bounds) {
+            setEditingCell(null);
+            return;
+        }
+
+        const colW = bounds.width / cols;
+        const rowH = bounds.height / rows;
+        const cellText = stroke.tableData?.[nextR]?.[nextC] || '';
+
+        setEditingCell({
+            strokeId: stroke.id,
+            row: nextR,
+            col: nextC,
+            text: cellText,
+            rect: {
+                x: bounds.minX + nextC * colW,
+                y: bounds.minY + nextR * rowH,
+                width: colW,
+                height: rowH,
+            },
+        });
+    }, [editingCell, updateTableCell, getStrokes, getStrokeBoundsForCanvas]);
+
     const handleCanvasClick = useCallback(
         (e: React.PointerEvent) => {
             const canvas = canvasRef.current;
@@ -234,7 +408,8 @@ export function Whiteboard({
             if (!canvas || !container) return;
 
             const dpr = window.devicePixelRatio || 1;
-            const rect = container.getBoundingClientRect();
+            const canvasWrapper = canvas.parentElement || container;
+            const rect = canvasWrapper.getBoundingClientRect();
 
             canvas.width = rect.width * dpr;
             canvas.height = rect.height * dpr;
@@ -243,7 +418,7 @@ export function Whiteboard({
 
             const ctx = canvas.getContext('2d');
             if (ctx) {
-                ctx.scale(dpr, dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, rect.width, rect.height);
             }
@@ -555,6 +730,193 @@ export function Whiteboard({
                                         </div>
                                     )}
                                 </div>
+
+                                {/* Table Tool with Dimensions Popover */}
+                                <div className="relative" ref={tableSelectorRef}>
+                                    <Button
+                                        variant={showTableDialog || currentTool === 'table' ? 'default' : 'ghost'}
+                                        size="sm"
+                                        onClick={() => {
+                                            setShowTableDialog(!showTableDialog);
+                                            setShowImageDialog(false);
+                                            setShowShapeSelector(false);
+                                            setShowColorSelector(false);
+                                        }}
+                                        title="Insert Table"
+                                        className={`h-7 w-7 p-0 ${showTableDialog || currentTool === 'table' ? 'bg-sky-500 hover:bg-sky-600 text-white' : ''}`}
+                                    >
+                                        <TableIcon className="w-3.5 h-3.5" />
+                                    </Button>
+
+                                    {showTableDialog && (
+                                        <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl p-3.5 z-[100] w-[290px] animate-in fade-in zoom-in-95 duration-150">
+                                            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
+                                                <div className="flex items-center gap-1.5">
+                                                    <TableIcon className="w-3.5 h-3.5 text-sky-500" />
+                                                    <span className="text-xs font-bold text-slate-800">Insert Table</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => setShowTableDialog(false)}
+                                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+
+                                            {/* Dynamic Hover Matrix (up to 8 cols x 6 rows) */}
+                                            <div className="mb-3">
+                                                <div className="flex items-center justify-between mb-1.5 text-[11px] text-slate-500 font-medium">
+                                                    <span>Select Dimensions:</span>
+                                                    <span className="font-semibold text-sky-600 px-1.5 py-0.5 bg-sky-50 rounded">
+                                                        {hoverGridRows} × {hoverGridCols}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    className="grid grid-cols-8 gap-1 p-2 bg-slate-50 rounded-lg border border-slate-100 cursor-pointer"
+                                                    onMouseLeave={() => {
+                                                        setHoverGridRows(tableRows);
+                                                        setHoverGridCols(tableCols);
+                                                    }}
+                                                >
+                                                    {Array.from({ length: 6 }).map((_, rIdx) =>
+                                                        Array.from({ length: 8 }).map((_, cIdx) => {
+                                                            const isHighlighted = rIdx < hoverGridRows && cIdx < hoverGridCols;
+                                                            return (
+                                                                <div
+                                                                    key={`${rIdx}-${cIdx}`}
+                                                                    onMouseEnter={() => {
+                                                                        setHoverGridRows(rIdx + 1);
+                                                                        setHoverGridCols(cIdx + 1);
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        const r = rIdx + 1;
+                                                                        const c = cIdx + 1;
+                                                                        setTableRows(r);
+                                                                        setTableCols(c);
+                                                                        addTableStroke(r, c);
+                                                                        setShowTableDialog(false);
+                                                                    }}
+                                                                    className={`w-5 h-5 rounded-[3px] border transition-all ${
+                                                                        isHighlighted
+                                                                            ? 'bg-sky-500 border-sky-600 shadow-xs scale-105'
+                                                                            : 'bg-white border-slate-200 hover:border-slate-300'
+                                                                    }`}
+                                                                />
+                                                            );
+                                                        })
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Stepper Inputs for Rows & Columns */}
+                                            <div className="grid grid-cols-2 gap-2 mb-3">
+                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                                        Rows (1-15)
+                                                    </label>
+                                                    <div className="flex items-center justify-between">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newR = Math.max(1, tableRows - 1);
+                                                                setTableRows(newR);
+                                                                setHoverGridRows(newR);
+                                                            }}
+                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                                        >
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                        <span className="text-xs font-bold text-slate-800">{tableRows}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newR = Math.min(15, tableRows + 1);
+                                                                setTableRows(newR);
+                                                                setHoverGridRows(newR);
+                                                            }}
+                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                                        Columns (1-15)
+                                                    </label>
+                                                    <div className="flex items-center justify-between">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newC = Math.max(1, tableCols - 1);
+                                                                setTableCols(newC);
+                                                                setHoverGridCols(newC);
+                                                            }}
+                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                                        >
+                                                            <Minus className="w-3 h-3" />
+                                                        </button>
+                                                        <span className="text-xs font-bold text-slate-800">{tableCols}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                const newC = Math.min(15, tableCols + 1);
+                                                                setTableCols(newC);
+                                                                setHoverGridCols(newC);
+                                                            }}
+                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                                        >
+                                                            <Plus className="w-3 h-3" />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Quick Presets */}
+                                            <div className="flex items-center gap-1.5 mb-3">
+                                                <span className="text-[10px] text-slate-400 font-medium mr-0.5">Presets:</span>
+                                                {[
+                                                    { r: 2, c: 2 },
+                                                    { r: 3, c: 3 },
+                                                    { r: 4, c: 3 },
+                                                    { r: 5, c: 4 },
+                                                ].map(p => (
+                                                    <button
+                                                        key={`${p.r}x${p.c}`}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setTableRows(p.r);
+                                                            setTableCols(p.c);
+                                                            setHoverGridRows(p.r);
+                                                            setHoverGridCols(p.c);
+                                                        }}
+                                                        className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                                                            tableRows === p.r && tableCols === p.c
+                                                                ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
+                                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        {p.r}×{p.c}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            {/* Insert Action Button */}
+                                            <Button
+                                                size="sm"
+                                                onClick={() => {
+                                                    addTableStroke(tableRows, tableCols);
+                                                    setShowTableDialog(false);
+                                                }}
+                                                className="w-full h-8 text-xs bg-sky-500 hover:bg-sky-600 text-white font-medium flex items-center justify-center gap-1.5 shadow-sm"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                Insert {tableRows} × {tableCols} Table
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Color Selector */}
@@ -767,6 +1129,7 @@ export function Whiteboard({
                     onPointerMove={handlePointerMove}
                     onPointerUp={handlePointerUp}
                     onPointerLeave={handlePointerUp}
+                    onDoubleClick={handleCanvasDoubleClick}
                     className="absolute inset-0 touch-none"
                     style={{ touchAction: 'none', pointerEvents: !canEdit ? 'none' : (showTextInput ? 'none' : 'auto') }}
                 />
@@ -789,6 +1152,58 @@ export function Whiteboard({
                             }}
                             onPointerDown={(e) => e.stopPropagation()}
                         >
+                            {/* Table-specific Controls */}
+                            {selectedStroke.tool === 'table' && (
+                                <>
+                                    <div className="flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-bold text-slate-700">
+                                        <TableIcon className="w-3 h-3 text-sky-500" />
+                                        <span>{selectedStroke.tableRows || 3}×{selectedStroke.tableCols || 3}</span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => addTableRow(selectedStroke.id)}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 hover:bg-slate-100 hover:text-sky-600 rounded text-[10px] font-semibold text-slate-600 transition-colors"
+                                        title="Add Row to Table"
+                                    >
+                                        <Plus className="w-2.5 h-2.5 text-sky-500" />
+                                        <span>Row</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => removeTableRow(selectedStroke.id)}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 hover:bg-slate-100 hover:text-red-600 rounded text-[10px] font-semibold text-slate-600 transition-colors"
+                                        title="Remove Last Row from Table"
+                                    >
+                                        <Minus className="w-2.5 h-2.5 text-red-500" />
+                                        <span>Row</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => addTableCol(selectedStroke.id)}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 hover:bg-slate-100 hover:text-sky-600 rounded text-[10px] font-semibold text-slate-600 transition-colors"
+                                        title="Add Column to Table"
+                                    >
+                                        <Plus className="w-2.5 h-2.5 text-sky-500" />
+                                        <span>Col</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => removeTableCol(selectedStroke.id)}
+                                        className="flex items-center gap-0.5 px-1.5 py-0.5 hover:bg-slate-100 hover:text-red-600 rounded text-[10px] font-semibold text-slate-600 transition-colors"
+                                        title="Remove Last Column from Table"
+                                    >
+                                        <Minus className="w-2.5 h-2.5 text-red-500" />
+                                        <span>Col</span>
+                                    </button>
+
+                                    <div className="w-[1px] h-3.5 bg-slate-200 my-auto mx-0.5" />
+                                </>
+                            )}
+
                             {/* Scale Up */}
                             <button
                                 type="button"
@@ -927,6 +1342,53 @@ export function Whiteboard({
                             className="bg-white border-2 border-sky-500 rounded px-2 py-1 shadow-lg min-w-[200px]"
                             style={{ fontSize: `${Math.max(currentSize * 4, 16)}px`, color: currentColor }}
                             placeholder="Type here..."
+                        />
+                    </div>
+                )}
+
+                {/* Inline Table Cell Editor */}
+                {editingCell && (
+                    <div
+                        className="absolute z-50 animate-in fade-in zoom-in-95 duration-75"
+                        style={{
+                            left: `${editingCell.rect.x}px`,
+                            top: `${editingCell.rect.y}px`,
+                            width: `${editingCell.rect.width}px`,
+                            height: `${editingCell.rect.height}px`,
+                        }}
+                    >
+                        <input
+                            ref={cellInputRef}
+                            type="text"
+                            value={editingCell.text}
+                            onChange={(e) => setEditingCell({ ...editingCell, text: e.target.value })}
+                            onBlur={() => {
+                                if (isAdvancingRef.current) return;
+                                saveAndAdvanceCell('stay');
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    isAdvancingRef.current = true;
+                                    saveAndAdvanceCell('stay');
+                                } else if (e.key === 'Tab') {
+                                    e.preventDefault();
+                                    isAdvancingRef.current = true;
+                                    saveAndAdvanceCell(e.shiftKey ? 'prev' : 'next');
+                                } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setEditingCell(null);
+                                }
+                            }}
+                            className={`w-full h-full border-2 border-sky-500 rounded-none px-2 shadow-sm focus:outline-none focus:ring-1 focus:ring-sky-400 ${
+                                editingCell.row === 0
+                                    ? 'bg-slate-100 font-semibold text-slate-900'
+                                    : 'bg-white font-normal text-slate-800'
+                            }`}
+                            style={{
+                                fontSize: `${Math.min(Math.max(11, Math.round(editingCell.rect.height * 0.38)), 20)}px`,
+                            }}
+                            placeholder="Type..."
                         />
                     </div>
                 )}

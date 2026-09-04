@@ -58,6 +58,12 @@ interface UseWhiteboardReturn {
     setActive: (active: boolean) => void;
     addTextStroke: (text: string, position: Point) => void;
     addImageStroke: (imageUrl: string, position: Point) => void;
+    addTableStroke: (rows?: number, cols?: number, position?: Point) => void;
+    updateTableCell: (strokeId: string, row: number, col: number, text: string) => void;
+    addTableRow: (strokeId?: string) => void;
+    removeTableRow: (strokeId?: string) => void;
+    addTableCol: (strokeId?: string) => void;
+    removeTableCol: (strokeId?: string) => void;
     deleteSelected: () => void;
     scaleSelected: (factor: number) => void;
     rotateSelected: (degrees?: number) => void;
@@ -108,7 +114,7 @@ export function getStrokeBounds(stroke: Stroke, rect: DOMRect): StrokeBounds {
         return { minX: 0, minY: 0, maxX: 0, maxY: 0, width: 0, height: 0 };
     }
 
-    if (stroke.tool === 'image') {
+    if (stroke.tool === 'image' || stroke.tool === 'table') {
         const p0 = stroke.points[0];
         const p1 = stroke.points[1] || { x: p0.x + 0.3, y: p0.y + 0.2 };
         const minX = Math.min(p0.x, p1.x) * rect.width;
@@ -236,7 +242,7 @@ function isStrokeIntersecting(
         );
     }
 
-    if (stroke.tool === 'image' && stroke.points.length >= 1) {
+    if ((stroke.tool === 'image' || stroke.tool === 'table') && stroke.points.length >= 1) {
         const bounds = getStrokeBounds(stroke, rect);
         return (
             eraserX >= bounds.minX - eraserRadius &&
@@ -247,6 +253,105 @@ function isStrokeIntersecting(
     }
 
     return false;
+}
+
+export function hydrateStroke(stroke: Stroke): Stroke {
+    if (stroke.tool === 'table' && stroke.text && (!stroke.tableRows || !stroke.tableData)) {
+        try {
+            const parsed = JSON.parse(stroke.text);
+            if (parsed.rows) stroke.tableRows = parsed.rows;
+            if (parsed.cols) stroke.tableCols = parsed.cols;
+            if (parsed.data) stroke.tableData = parsed.data;
+        } catch {}
+    }
+    return stroke;
+}
+
+function drawTable(ctx: CanvasRenderingContext2D, stroke: Stroke, rect: DOMRect) {
+    const bounds = getStrokeBounds(stroke, rect);
+    const minX = bounds.minX;
+    const minY = bounds.minY;
+    const width = bounds.width;
+    const height = bounds.height;
+
+    const rows = Math.max(1, stroke.tableRows || 3);
+    const cols = Math.max(1, stroke.tableCols || 3);
+    const rowH = height / rows;
+    const colW = width / cols;
+
+    // 1. Table White Canvas Background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(minX, minY, width, height);
+
+    // 2. Header Row Accent Background (row 0)
+    ctx.fillStyle = 'rgba(241, 245, 249, 0.95)'; // Soft Slate-100 accent
+    ctx.fillRect(minX, minY, width, rowH);
+
+    // 3. Grid Lines
+    const tableColor = stroke.color === '#ffffff' ? '#1e293b' : (stroke.color || '#334155');
+    const baseLineWidth = Math.max(1.5, stroke.size || 2);
+
+    ctx.strokeStyle = tableColor;
+    ctx.lineCap = 'square';
+    ctx.lineJoin = 'miter';
+
+    // Outer border
+    ctx.lineWidth = baseLineWidth;
+    ctx.strokeRect(minX, minY, width, height);
+
+    // Horizontal dividers
+    for (let r = 1; r < rows; r++) {
+        const y = minY + r * rowH;
+        ctx.beginPath();
+        // Slightly distinct line below header
+        if (r === 1) {
+            ctx.lineWidth = Math.max(2, baseLineWidth);
+        } else {
+            ctx.lineWidth = Math.max(1, Math.round(baseLineWidth * 0.75));
+        }
+        ctx.moveTo(minX, y);
+        ctx.lineTo(minX + width, y);
+        ctx.stroke();
+    }
+
+    // Vertical dividers
+    ctx.lineWidth = Math.max(1, Math.round(baseLineWidth * 0.75));
+    for (let c = 1; c < cols; c++) {
+        const x = minX + c * colW;
+        ctx.beginPath();
+        ctx.moveTo(x, minY);
+        ctx.lineTo(x, minY + height);
+        ctx.stroke();
+    }
+
+    // 4. Cell Text Content
+    const tableData = stroke.tableData;
+    const fontSize = Math.min(Math.max(11, Math.round(rowH * 0.38)), 20);
+
+    for (let r = 0; r < rows; r++) {
+        const isHeader = r === 0;
+        ctx.font = isHeader
+            ? `600 ${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`
+            : `${fontSize}px Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+        ctx.fillStyle = isHeader ? '#0f172a' : '#1e293b';
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+
+        for (let c = 0; c < cols; c++) {
+            const cellText = tableData?.[r]?.[c] || '';
+            if (cellText) {
+                const cellX = minX + c * colW + 8;
+                const cellY = minY + r * rowH + rowH / 2;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(minX + c * colW + 2, minY + r * rowH + 2, Math.max(colW - 4, 1), Math.max(rowH - 4, 1));
+                ctx.clip();
+                ctx.fillText(cellText, cellX, cellY);
+                ctx.restore();
+            }
+        }
+    }
 }
 
 export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhiteboardOptions): UseWhiteboardReturn {
@@ -304,6 +409,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const rect = canvas.getBoundingClientRect();
         const activeBoard = currentBoardRef.current;
 
+        // Ensure canvas transform matches device pixel ratio
+        const dpr = window.devicePixelRatio || 1;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
         // Clear and fill white
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, rect.width, rect.height);
@@ -337,6 +446,8 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                     const bounds = getStrokeBounds(stroke, rect);
                     ctx.drawImage(img, bounds.minX, bounds.minY, bounds.width, bounds.height);
                 }
+            } else if (stroke.tool === 'table') {
+                drawTable(ctx, stroke, rect);
             } else if (stroke.tool === 'highlight') {
                 ctx.globalAlpha = 0.3;
                 ctx.strokeStyle = stroke.color;
@@ -439,7 +550,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 ctx.stroke();
 
                 // Draw handles for resizable strokes
-                if (['image', 'rect', 'circle', 'triangle', 'star', 'line', 'arrow', 'text'].includes(selectedStroke.tool)) {
+                if (['image', 'rect', 'circle', 'triangle', 'star', 'line', 'arrow', 'text', 'table'].includes(selectedStroke.tool)) {
                     const cornerHandles = [
                         { name: 'tl', x: bounds.minX, y: bounds.minY },
                         { name: 'tr', x: bounds.maxX, y: bounds.minY },
@@ -637,7 +748,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const newMinY = cy - newHeight / 2;
         const newMaxY = cy + newHeight / 2;
 
-        if (['image', 'rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+        if (['image', 'rect', 'circle', 'triangle', 'star', 'table'].includes(stroke.tool)) {
             stroke.points = [
                 { x: newMinX / rect.width, y: newMinY / rect.height },
                 { x: newMaxX / rect.width, y: newMaxY / rect.height },
@@ -924,7 +1035,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 }
 
                 const bounds = getStrokeBounds(stroke, rect);
-                if (stroke.tool === 'image' || stroke.tool === 'text') {
+                if (stroke.tool === 'image' || stroke.tool === 'text' || stroke.tool === 'table') {
                     if (clickX >= bounds.minX && clickX <= bounds.maxX && clickY >= bounds.minY && clickY <= bounds.maxY) {
                         foundStrokeId = strokeId;
                         break;
@@ -1081,7 +1192,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 if (handle.includes('b')) newMaxY = Math.max(maxY + dy, minY + 25);
             }
 
-            if (['image', 'rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+            if (['image', 'rect', 'circle', 'triangle', 'star', 'table'].includes(stroke.tool)) {
                 stroke.points = [
                     { x: newMinX / rect.width, y: newMinY / rect.height },
                     { x: newMaxX / rect.width, y: newMaxY / rect.height },
@@ -1201,7 +1312,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     const handleRemoteMessage = useCallback((message: WhiteboardMessage) => {
         console.log('[useWhiteboard] 🎨 handleRemoteMessage received:', message.type);
         if (message.type === 'stroke' && message.data) {
-            const stroke = message.data as Stroke;
+            const stroke = hydrateStroke(message.data as Stroke);
             const existing = strokes.current.get(stroke.id);
             if (!stroke.board) {
                 stroke.board = existing?.board || message.board || currentBoardRef.current || 1;
@@ -1372,6 +1483,225 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
     }, [canvasRef, redrawCanvas, sendMessage]);
 
+    const addTableStroke = useCallback((rows: number = 3, cols: number = 3, position?: Point) => {
+        const canvas = canvasRef.current;
+        const rect = canvas?.getBoundingClientRect();
+        const canvasWidth = rect?.width || 1000;
+        const canvasHeight = rect?.height || 600;
+
+        const strokeId = generateStrokeId();
+        const activeBoard = currentBoardRef.current;
+
+        const validRows = Math.min(15, Math.max(1, rows));
+        const validCols = Math.min(15, Math.max(1, cols));
+
+        // Calculate comfortable dimensions on canvas
+        const targetWidth = Math.min(canvasWidth * 0.7, Math.max(260, validCols * 100));
+        const targetHeight = Math.min(canvasHeight * 0.65, Math.max(150, validRows * 46));
+
+        const normW = targetWidth / canvasWidth;
+        const normH = targetHeight / canvasHeight;
+
+        // Position: centered or at given point
+        const p0x = position ? Math.max(0.05, Math.min(position.x, 0.95 - normW)) : 0.22;
+        const p0y = position ? Math.max(0.05, Math.min(position.y, 0.95 - normH)) : 0.22;
+
+        const initialData: string[][] = Array.from({ length: validRows }, () => Array(validCols).fill(''));
+
+        const stroke: Stroke = {
+            id: strokeId,
+            tool: 'table',
+            color: currentColor === '#ffffff' ? '#1e293b' : currentColor,
+            size: Math.max(2, currentSize),
+            points: [
+                { x: p0x, y: p0y },
+                { x: p0x + normW, y: p0y + normH },
+            ],
+            board: activeBoard,
+            tableRows: validRows,
+            tableCols: validCols,
+            tableData: initialData,
+            text: JSON.stringify({ rows: validRows, cols: validCols, data: initialData }),
+            timestamp: Date.now(),
+        };
+
+        strokes.current.set(strokeId, stroke);
+        setSelectedStrokeId(strokeId);
+        setCurrentTool('select');
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: activeBoard,
+            timestamp: Date.now(),
+        });
+    }, [canvasRef, currentColor, currentSize, redrawCanvas, sendMessage]);
+
+    const updateTableCell = useCallback((strokeId: string, row: number, col: number, text: string) => {
+        const stroke = strokes.current.get(strokeId);
+        if (!stroke || stroke.tool !== 'table') return;
+
+        const rows = stroke.tableRows || 3;
+        const cols = stroke.tableCols || 3;
+        const data = stroke.tableData
+            ? stroke.tableData.map(r => [...r])
+            : Array.from({ length: rows }, () => Array(cols).fill(''));
+
+        while (data.length <= row) {
+            data.push(Array(cols).fill(''));
+        }
+        while (data[row].length <= col) {
+            data[row].push('');
+        }
+
+        data[row][col] = text;
+        stroke.tableData = data;
+        stroke.text = JSON.stringify({ rows: stroke.tableRows, cols: stroke.tableCols, data });
+
+        strokes.current.set(strokeId, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: stroke.board || currentBoardRef.current,
+            timestamp: Date.now(),
+        });
+    }, [redrawCanvas, sendMessage]);
+
+    const addTableRow = useCallback((targetStrokeId?: string) => {
+        const id = targetStrokeId || selectedStrokeId;
+        if (!id) return;
+        const stroke = strokes.current.get(id);
+        if (!stroke || stroke.tool !== 'table') return;
+
+        const oldRows = stroke.tableRows || 3;
+        if (oldRows >= 15) return;
+        const newRows = oldRows + 1;
+        const cols = stroke.tableCols || 3;
+
+        const data = stroke.tableData ? stroke.tableData.map(r => [...r]) : Array.from({ length: oldRows }, () => Array(cols).fill(''));
+        data.push(Array(cols).fill(''));
+
+        stroke.tableRows = newRows;
+        stroke.tableData = data;
+
+        if (stroke.points.length >= 2) {
+            const h = stroke.points[1].y - stroke.points[0].y;
+            const newH = h * (newRows / oldRows);
+            stroke.points[1].y = stroke.points[0].y + newH;
+        }
+
+        stroke.text = JSON.stringify({ rows: newRows, cols, data });
+        strokes.current.set(id, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: stroke.board || currentBoardRef.current,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const removeTableRow = useCallback((targetStrokeId?: string) => {
+        const id = targetStrokeId || selectedStrokeId;
+        if (!id) return;
+        const stroke = strokes.current.get(id);
+        if (!stroke || stroke.tool !== 'table') return;
+
+        const oldRows = stroke.tableRows || 3;
+        if (oldRows <= 1) return;
+        const newRows = oldRows - 1;
+        const cols = stroke.tableCols || 3;
+
+        const data = stroke.tableData ? stroke.tableData.map(r => [...r]) : Array.from({ length: oldRows }, () => Array(cols).fill(''));
+        data.pop();
+
+        stroke.tableRows = newRows;
+        stroke.tableData = data;
+
+        if (stroke.points.length >= 2) {
+            const h = stroke.points[1].y - stroke.points[0].y;
+            const newH = h * (newRows / oldRows);
+            stroke.points[1].y = stroke.points[0].y + newH;
+        }
+
+        stroke.text = JSON.stringify({ rows: newRows, cols, data });
+        strokes.current.set(id, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: stroke.board || currentBoardRef.current,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const addTableCol = useCallback((targetStrokeId?: string) => {
+        const id = targetStrokeId || selectedStrokeId;
+        if (!id) return;
+        const stroke = strokes.current.get(id);
+        if (!stroke || stroke.tool !== 'table') return;
+
+        const rows = stroke.tableRows || 3;
+        const oldCols = stroke.tableCols || 3;
+        if (oldCols >= 15) return;
+        const newCols = oldCols + 1;
+
+        const data = stroke.tableData ? stroke.tableData.map(r => [...r, '']) : Array.from({ length: rows }, () => Array(newCols).fill(''));
+
+        stroke.tableCols = newCols;
+        stroke.tableData = data;
+
+        if (stroke.points.length >= 2) {
+            const w = stroke.points[1].x - stroke.points[0].x;
+            const newW = w * (newCols / oldCols);
+            stroke.points[1].x = stroke.points[0].x + newW;
+        }
+
+        stroke.text = JSON.stringify({ rows, cols: newCols, data });
+        strokes.current.set(id, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: stroke.board || currentBoardRef.current,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
+    const removeTableCol = useCallback((targetStrokeId?: string) => {
+        const id = targetStrokeId || selectedStrokeId;
+        if (!id) return;
+        const stroke = strokes.current.get(id);
+        if (!stroke || stroke.tool !== 'table') return;
+
+        const rows = stroke.tableRows || 3;
+        const oldCols = stroke.tableCols || 3;
+        if (oldCols <= 1) return;
+        const newCols = oldCols - 1;
+
+        const data = stroke.tableData ? stroke.tableData.map(r => r.slice(0, newCols)) : Array.from({ length: rows }, () => Array(newCols).fill(''));
+
+        stroke.tableCols = newCols;
+        stroke.tableData = data;
+
+        if (stroke.points.length >= 2) {
+            const w = stroke.points[1].x - stroke.points[0].x;
+            const newW = w * (newCols / oldCols);
+            stroke.points[1].x = stroke.points[0].x + newW;
+        }
+
+        stroke.text = JSON.stringify({ rows, cols: newCols, data });
+        strokes.current.set(id, stroke);
+        redrawCanvas();
+        sendMessage({
+            type: 'stroke',
+            data: stroke,
+            board: stroke.board || currentBoardRef.current,
+            timestamp: Date.now(),
+        });
+    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+
     const setActive = useCallback((active: boolean) => {
         setIsActive(active);
         if (active) {
@@ -1393,8 +1723,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     const loadStrokes = useCallback((loadedStrokes: Stroke[]) => {
         strokes.current.clear();
         if (Array.isArray(loadedStrokes)) {
-            loadedStrokes.forEach((stroke) => {
-                if (stroke && stroke.id) {
+            loadedStrokes.forEach((s) => {
+                if (s && s.id) {
+                    const stroke = hydrateStroke(s);
                     if (!stroke.board) {
                         stroke.board = 1;
                     }
@@ -1419,8 +1750,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     useEffect(() => {
         if (initialStrokes && Array.isArray(initialStrokes)) {
             strokes.current.clear();
-            initialStrokes.forEach((stroke) => {
-                if (stroke && stroke.id) {
+            initialStrokes.forEach((s) => {
+                if (s && s.id) {
+                    const stroke = hydrateStroke(s);
                     if (!stroke.board) {
                         stroke.board = 1;
                     }
@@ -1473,6 +1805,12 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         setActive,
         addTextStroke,
         addImageStroke,
+        addTableStroke,
+        updateTableCell,
+        addTableRow,
+        removeTableRow,
+        addTableCol,
+        removeTableCol,
         deleteSelected,
         scaleSelected,
         rotateSelected,
