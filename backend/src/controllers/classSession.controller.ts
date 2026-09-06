@@ -227,6 +227,58 @@ function generateRecurringInstances(
   return instances;
 }
 
+/**
+ * Helper to determine teacher authorization and scope for class sessions.
+ * Matches the permission pattern used in activityGroup.controller.ts:
+ * - ADMIN has full access.
+ * - TEACHER with active role having classSessions.view/create/update/delete has full access for that operation.
+ * - Normal TEACHER without elevated permissions can ONLY access their own class sessions (where teacher_id = teacher.id).
+ */
+async function getTeacherClassSessionScope(req: Request) {
+  const user = (req as AuthRequest).user;
+  if (!user || user.role !== 'TEACHER') {
+    return {
+      isTeacher: false,
+      teacherId: null as number | null,
+      hasElevatedView: false,
+      hasElevatedCreate: false,
+      hasElevatedUpdate: false,
+      hasElevatedDelete: false,
+      error: null as string | null,
+    };
+  }
+
+  const teacher = await prisma.teacher.findUnique({
+    where: { user_id: user.id },
+    include: { role: true },
+  });
+
+  if (!teacher) {
+    return {
+      isTeacher: true,
+      teacherId: null as number | null,
+      hasElevatedView: false,
+      hasElevatedCreate: false,
+      hasElevatedUpdate: false,
+      hasElevatedDelete: false,
+      error: 'Teacher profile not found',
+    };
+  }
+
+  const permissions = teacher.role?.permissions as any;
+  const isRoleActive = Boolean(teacher.role?.is_active);
+
+  return {
+    isTeacher: true,
+    teacherId: teacher.id,
+    hasElevatedView: Boolean(isRoleActive && permissions?.classSessions?.view === true),
+    hasElevatedCreate: Boolean(isRoleActive && permissions?.classSessions?.create === true),
+    hasElevatedUpdate: Boolean(isRoleActive && permissions?.classSessions?.update === true),
+    hasElevatedDelete: Boolean(isRoleActive && permissions?.classSessions?.delete === true),
+    error: null as string | null,
+  };
+}
+
 export const getAllClassSessions = async (req: Request, res: Response) => {
   try {
     const { page, limit, skip } = getPaginationParams(
@@ -254,7 +306,49 @@ export const getAllClassSessions = async (req: Request, res: Response) => {
       ];
     }
 
-    if (teacher_id) where.teacher_id = parseInt(teacher_id as string);
+    const teacherScope = await getTeacherClassSessionScope(req);
+    if (teacherScope.error) {
+      return sendError(res, teacherScope.error, 404);
+    }
+
+    if (teacherScope.isTeacher) {
+      if (!teacherScope.hasElevatedView) {
+        where.teacher_id = teacherScope.teacherId;
+      } else if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
+      }
+    } else if (teacher_id) {
+      where.teacher_id = parseInt(teacher_id as string);
+    }
+
+    const userRole = (req as AuthRequest).user?.role;
+    const userId = (req as AuthRequest).user?.id;
+    if (userRole === 'STUDENT' && userId) {
+      const student = await prisma.student.findUnique({
+        where: { user_id: userId },
+        include: {
+          enrollments: { select: { subject_id: true } },
+          section_memberships: { select: { section_id: true } },
+        },
+      });
+      if (student) {
+        const enrolledSubjectIds = student.enrollments
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
+        const mySectionIds = student.section_memberships.map((m) => m.section_id);
+        where.subject_id = { in: enrolledSubjectIds };
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { section_id: null },
+              { section_id: { in: mySectionIds } },
+            ],
+          },
+        ];
+      }
+    }
+
     if (subject_id) where.subject_id = parseInt(subject_id as string);
     if (class_id) where.class_id = parseInt(class_id as string);
     if (board_id) where.board_id = parseInt(board_id as string);
@@ -391,6 +485,15 @@ export const getClassSessionById = async (req: Request, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
+    const teacherScope = await getTeacherClassSessionScope(req);
+    if (teacherScope.error) {
+      return sendError(res, teacherScope.error, 404);
+    }
+
+    if (teacherScope.isTeacher && !teacherScope.hasElevatedView && session.teacher_id !== teacherScope.teacherId) {
+      return sendError(res, 'You are not authorized to view this class session', 403);
+    }
+
     sendSuccess(res, session);
   } catch (error: any) {
     sendError(res, error.message, 500);
@@ -447,6 +550,17 @@ export const createClassSession = async (req: AuthRequest, res: Response) => {
 
     if (!teacher) {
       return sendError(res, 'Teacher not found', 404);
+    }
+
+    const userRole = req.user?.role;
+    if (userRole === 'TEACHER') {
+      const teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      if (!teacherScope.hasElevatedCreate && teacher_id !== teacherScope.teacherId) {
+        return sendError(res, 'You can only create class sessions for yourself', 403);
+      }
     }
 
     // Get subject info
@@ -654,6 +768,21 @@ export const updateClassSession = async (req: Request, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
+    const userRole = (req as AuthRequest).user?.role;
+    let teacherScope: any = null;
+    if (userRole === 'TEACHER') {
+      teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      if (!teacherScope.hasElevatedUpdate && existingSession.teacher_id !== teacherScope.teacherId) {
+        return sendError(res, 'You are not authorized to update this class session', 403);
+      }
+      if (!teacherScope.hasElevatedUpdate && teacher_id !== undefined && teacher_id !== teacherScope.teacherId) {
+        return sendError(res, 'You cannot reassign this class session to another teacher', 403);
+      }
+    }
+
     // Validate time if provided
     if (start_time && end_time) {
       const startTime = new Date(start_time);
@@ -686,13 +815,17 @@ export const updateClassSession = async (req: Request, res: Response) => {
 
     // If admin/teacher wants to apply changes across all recurring sessions in the series
     if (apply_to_all_recurring && (existingSession.recurrence_group_id || existingSession.is_recurring)) {
-      const whereFilter = existingSession.recurrence_group_id
+      const whereFilter: any = existingSession.recurrence_group_id
         ? { recurrence_group_id: existingSession.recurrence_group_id }
         : {
             teacher_id: existingSession.teacher_id,
             subject_id: existingSession.subject_id,
             is_recurring: true,
           };
+
+      if (userRole === 'TEACHER' && teacherScope && !teacherScope.hasElevatedUpdate && teacherScope.teacherId) {
+        whereFilter.teacher_id = teacherScope.teacherId;
+      }
 
       const commonUpdateData: any = { ...updateData };
       delete commonUpdateData.start_time;
@@ -791,14 +924,30 @@ export const deleteClassSession = async (req: Request, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
+    const userRole = (req as AuthRequest).user?.role;
+    let teacherScope: any = null;
+    if (userRole === 'TEACHER') {
+      teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      if (!teacherScope.hasElevatedDelete && session.teacher_id !== teacherScope.teacherId) {
+        return sendError(res, 'You are not authorized to delete this class session', 403);
+      }
+    }
+
     if (deleteRecurring && (session.recurrence_group_id || session.is_recurring)) {
-      const whereFilter = session.recurrence_group_id
+      const whereFilter: any = session.recurrence_group_id
         ? { recurrence_group_id: session.recurrence_group_id }
         : {
             teacher_id: session.teacher_id,
             subject_id: session.subject_id,
             is_recurring: true,
           };
+
+      if (userRole === 'TEACHER' && teacherScope && !teacherScope.hasElevatedDelete && teacherScope.teacherId) {
+        whereFilter.teacher_id = teacherScope.teacherId;
+      }
 
       const deleted = await prisma.classSession.deleteMany({
         where: whereFilter,
@@ -828,6 +977,26 @@ export const bulkDeleteClassSessions = async (req: Request, res: Response) => {
 
     const ids = session_ids.map((id: any) => parseInt(id, 10)).filter((id: number) => !isNaN(id));
 
+    const userRole = (req as AuthRequest).user?.role;
+    let teacherScope: any = null;
+    if (userRole === 'TEACHER') {
+      teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      if (!teacherScope.hasElevatedDelete && teacherScope.teacherId) {
+        const unauthorizedCount = await prisma.classSession.count({
+          where: {
+            id: { in: ids },
+            teacher_id: { not: teacherScope.teacherId },
+          },
+        });
+        if (unauthorizedCount > 0) {
+          return sendError(res, 'You can only delete your own class sessions', 403);
+        }
+      }
+    }
+
     if (delete_recurring_series) {
       const selectedSessions = await prisma.classSession.findMany({
         where: { id: { in: ids } },
@@ -843,15 +1012,25 @@ export const bulkDeleteClassSessions = async (req: Request, res: Response) => {
         whereOr.push({ recurrence_group_id: { in: recurrenceGroupIds } });
       }
 
+      const deleteWhere: any = { OR: whereOr };
+      if (userRole === 'TEACHER' && teacherScope && !teacherScope.hasElevatedDelete && teacherScope.teacherId) {
+        deleteWhere.teacher_id = teacherScope.teacherId;
+      }
+
       const deleted = await prisma.classSession.deleteMany({
-        where: { OR: whereOr },
+        where: deleteWhere,
       });
 
       return sendSuccess(res, { count: deleted.count }, `Successfully deleted ${deleted.count} sessions`);
     }
 
+    const deleteWhere: any = { id: { in: ids } };
+    if (userRole === 'TEACHER' && teacherScope && !teacherScope.hasElevatedDelete && teacherScope.teacherId) {
+      deleteWhere.teacher_id = teacherScope.teacherId;
+    }
+
     const deleted = await prisma.classSession.deleteMany({
-      where: { id: { in: ids } },
+      where: deleteWhere,
     });
 
     sendSuccess(res, { count: deleted.count }, `Successfully deleted ${deleted.count} sessions`);
@@ -872,7 +1051,49 @@ export const getUpcomingSessions = async (req: Request, res: Response) => {
       },
     };
 
-    if (teacher_id) where.teacher_id = parseInt(teacher_id as string);
+    const teacherScope = await getTeacherClassSessionScope(req);
+    if (teacherScope.error) {
+      return sendError(res, teacherScope.error, 404);
+    }
+
+    if (teacherScope.isTeacher) {
+      if (!teacherScope.hasElevatedView) {
+        where.teacher_id = teacherScope.teacherId;
+      } else if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
+      }
+    } else if (teacher_id) {
+      where.teacher_id = parseInt(teacher_id as string);
+    }
+
+    const userRole = (req as AuthRequest).user?.role;
+    const userId = (req as AuthRequest).user?.id;
+    if (userRole === 'STUDENT' && userId) {
+      const student = await prisma.student.findUnique({
+        where: { user_id: userId },
+        include: {
+          enrollments: { select: { subject_id: true } },
+          section_memberships: { select: { section_id: true } },
+        },
+      });
+      if (student) {
+        const enrolledSubjectIds = student.enrollments
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
+        const mySectionIds = student.section_memberships.map((m) => m.section_id);
+        where.subject_id = { in: enrolledSubjectIds };
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { section_id: null },
+              { section_id: { in: mySectionIds } },
+            ],
+          },
+        ];
+      }
+    }
+
     if (subject_id) where.subject_id = parseInt(subject_id as string);
 
     const sessions = await prisma.classSession.findMany({
@@ -923,7 +1144,49 @@ export const getPastSessions = async (req: Request, res: Response) => {
       },
     };
 
-    if (teacher_id) where.teacher_id = parseInt(teacher_id as string);
+    const teacherScope = await getTeacherClassSessionScope(req);
+    if (teacherScope.error) {
+      return sendError(res, teacherScope.error, 404);
+    }
+
+    if (teacherScope.isTeacher) {
+      if (!teacherScope.hasElevatedView) {
+        where.teacher_id = teacherScope.teacherId;
+      } else if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
+      }
+    } else if (teacher_id) {
+      where.teacher_id = parseInt(teacher_id as string);
+    }
+
+    const userRole = (req as AuthRequest).user?.role;
+    const userId = (req as AuthRequest).user?.id;
+    if (userRole === 'STUDENT' && userId) {
+      const student = await prisma.student.findUnique({
+        where: { user_id: userId },
+        include: {
+          enrollments: { select: { subject_id: true } },
+          section_memberships: { select: { section_id: true } },
+        },
+      });
+      if (student) {
+        const enrolledSubjectIds = student.enrollments
+          .map((e) => e.subject_id)
+          .filter((id) => id !== null);
+        const mySectionIds = student.section_memberships.map((m) => m.section_id);
+        where.subject_id = { in: enrolledSubjectIds };
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { section_id: null },
+              { section_id: { in: mySectionIds } },
+            ],
+          },
+        ];
+      }
+    }
+
     if (subject_id) where.subject_id = parseInt(subject_id as string);
 
     const sessions = await prisma.classSession.findMany({
@@ -1094,13 +1357,15 @@ export const getTodaysSessions = async (req: AuthRequest, res: Response) => {
         ];
       }
     } else if (userRole === 'TEACHER') {
-      const teacher = await prisma.teacher.findUnique({
-        where: { user_id: userId },
-      });
-
-      if (teacher) {
-        // Teacher sees: sessions they teach that are either subject-wide OR their section
-        where.teacher_id = teacher.id;
+      const teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      const { teacher_id } = req.query;
+      if (!teacherScope.hasElevatedView) {
+        where.teacher_id = teacherScope.teacherId;
+      } else if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
       }
     }
 
@@ -1170,12 +1435,20 @@ export const getWeeklySchedule = async (req: AuthRequest, res: Response) => {
         ];
       }
     } else if (userRole === 'TEACHER') {
-      const teacher = await prisma.teacher.findUnique({
-        where: { user_id: userId },
-      });
-
-      if (teacher) {
-        where.teacher_id = teacher.id;
+      const teacherScope = await getTeacherClassSessionScope(req);
+      if (teacherScope.error) {
+        return sendError(res, teacherScope.error, 404);
+      }
+      const { teacher_id } = req.query;
+      if (!teacherScope.hasElevatedView) {
+        where.teacher_id = teacherScope.teacherId;
+      } else if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
+      }
+    } else if (userRole === 'ADMIN') {
+      const { teacher_id } = req.query;
+      if (teacher_id) {
+        where.teacher_id = parseInt(teacher_id as string);
       }
     }
 

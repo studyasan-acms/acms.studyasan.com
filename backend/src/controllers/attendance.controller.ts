@@ -21,6 +21,20 @@ export const getAllAttendances = async (req: Request, res: Response) => {
     if (user_id) where.user_id = parseInt(user_id as string);
     if (role) where.role = role;
 
+    const authUserRole = (req as AuthRequest).user?.role;
+    const authUserId = (req as AuthRequest).user?.id;
+    if (authUserRole === 'TEACHER' && authUserId) {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: authUserId },
+        include: { role: true },
+      });
+      const permissions = teacher?.role?.permissions as any;
+      const hasViewAll = Boolean(teacher?.role?.is_active && permissions?.classSessions?.view === true);
+      if (!hasViewAll && teacher) {
+        where.class_session = { teacher_id: teacher.id };
+      }
+    }
+
     const [attendances, total] = await Promise.all([
       prisma.classSessionAttendance.findMany({
         where,
