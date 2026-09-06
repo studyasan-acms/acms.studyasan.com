@@ -195,12 +195,139 @@ export function getStrokeBounds(stroke: Stroke, rect: DOMRect): StrokeBounds {
     return { minX, minY, maxX, maxY, width: Math.max(maxX - minX, 10), height: Math.max(maxY - minY, 10) };
 }
 
+function interpolateSegment(p1: Point, p2: Point, steps: number): Point[] {
+    const pts: Point[] = [];
+    const count = Math.max(steps, 1);
+    for (let i = 0; i <= count; i++) {
+        const t = i / count;
+        pts.push({
+            x: p1.x + t * (p2.x - p1.x),
+            y: p1.y + t * (p2.y - p1.y),
+        });
+    }
+    return pts;
+}
+
+export function getStrokeOutlinePoints(stroke: Stroke): Point[] {
+    if (!stroke.points || stroke.points.length === 0) return [];
+
+    if (['pen', 'rainbow', 'highlight'].includes(stroke.tool)) {
+        return stroke.points;
+    }
+
+    if (['line', 'arrow'].includes(stroke.tool)) {
+        if (stroke.points.length < 2) return stroke.points;
+        return interpolateSegment(stroke.points[0], stroke.points[1], 16);
+    }
+
+    if (stroke.tool === 'rect' && stroke.points.length >= 2) {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1];
+        const minX = Math.min(p0.x, p1.x);
+        const maxX = Math.max(p0.x, p1.x);
+        const minY = Math.min(p0.y, p1.y);
+        const maxY = Math.max(p0.y, p1.y);
+
+        const tl = { x: minX, y: minY };
+        const tr = { x: maxX, y: minY };
+        const br = { x: maxX, y: maxY };
+        const bl = { x: minX, y: maxY };
+
+        const top = interpolateSegment(tl, tr, 12);
+        const right = interpolateSegment(tr, br, 12);
+        const bottom = interpolateSegment(br, bl, 12);
+        const left = interpolateSegment(bl, tl, 12);
+
+        return [...top, ...right.slice(1), ...bottom.slice(1), ...left.slice(1)];
+    }
+
+    if (stroke.tool === 'triangle' && stroke.points.length >= 2) {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1];
+        const minX = Math.min(p0.x, p1.x);
+        const maxX = Math.max(p0.x, p1.x);
+        const minY = Math.min(p0.y, p1.y);
+        const maxY = Math.max(p0.y, p1.y);
+        const topMid = { x: (minX + maxX) / 2, y: minY };
+        const br = { x: maxX, y: maxY };
+        const bl = { x: minX, y: maxY };
+
+        const e1 = interpolateSegment(topMid, br, 14);
+        const e2 = interpolateSegment(br, bl, 14);
+        const e3 = interpolateSegment(bl, topMid, 14);
+
+        return [...e1, ...e2.slice(1), ...e3.slice(1)];
+    }
+
+    if (stroke.tool === 'circle' && stroke.points.length >= 2) {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1];
+        const cx = (p0.x + p1.x) / 2;
+        const cy = (p0.y + p1.y) / 2;
+        const rx = Math.abs(p1.x - p0.x) / 2;
+        const ry = Math.abs(p1.y - p0.y) / 2;
+
+        const pts: Point[] = [];
+        const steps = 48;
+        for (let i = 0; i <= steps; i++) {
+            const theta = (i / steps) * Math.PI * 2;
+            pts.push({
+                x: cx + rx * Math.cos(theta),
+                y: cy + ry * Math.sin(theta),
+            });
+        }
+        return pts;
+    }
+
+    if (stroke.tool === 'star' && stroke.points.length >= 2) {
+        const p0 = stroke.points[0];
+        const p1 = stroke.points[1];
+        const cx = (p0.x + p1.x) / 2;
+        const cy = (p0.y + p1.y) / 2;
+        const outerR = Math.abs(p1.x - p0.x) / 2;
+        const innerR = outerR / 2;
+
+        const vertices: Point[] = [];
+        const spikes = 5;
+        let rot = (Math.PI / 2) * 3;
+        const step = Math.PI / spikes;
+
+        for (let i = 0; i < spikes; i++) {
+            vertices.push({
+                x: cx + Math.cos(rot) * outerR,
+                y: cy + Math.sin(rot) * outerR,
+            });
+            rot += step;
+            vertices.push({
+                x: cx + Math.cos(rot) * innerR,
+                y: cy + Math.sin(rot) * innerR,
+            });
+            rot += step;
+        }
+        vertices.push(vertices[0]);
+
+        const pts: Point[] = [];
+        for (let i = 0; i < vertices.length - 1; i++) {
+            const edge = interpolateSegment(vertices[i], vertices[i + 1], 6);
+            if (i === 0) {
+                pts.push(...edge);
+            } else {
+                pts.push(...edge.slice(1));
+            }
+        }
+        return pts;
+    }
+
+    return stroke.points;
+}
+
 function isStrokeIntersecting(
     stroke: Stroke,
     eraserX: number,
     eraserY: number,
     eraserRadius: number,
-    rect: DOMRect
+    rect: DOMRect,
+    eraserType: 'object' | 'pixel' = 'pixel'
 ): boolean {
     if (!stroke.points || stroke.points.length === 0) return false;
 
@@ -208,11 +335,23 @@ function isStrokeIntersecting(
     const strokeSize = stroke.size || 4;
     const thresholdSq = (eraserRadius + strokeSize / 2) * (eraserRadius + strokeSize / 2);
 
-    if (['pen', 'rainbow', 'highlight'].includes(stroke.tool)) {
-        for (let i = 0; i < stroke.points.length; i++) {
+    // Freehand strokes & lines/arrows & vector shapes
+    if (['pen', 'rainbow', 'highlight', 'line', 'arrow', 'rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+        if (eraserType === 'object' && ['rect', 'circle', 'triangle', 'star'].includes(stroke.tool)) {
+            const bounds = getStrokeBounds(stroke, rect);
+            return (
+                eraserX >= bounds.minX - eraserRadius &&
+                eraserX <= bounds.maxX + eraserRadius &&
+                eraserY >= bounds.minY - eraserRadius &&
+                eraserY <= bounds.maxY + eraserRadius
+            );
+        }
+
+        const outlinePoints = getStrokeOutlinePoints(stroke);
+        for (let i = 0; i < outlinePoints.length; i++) {
             const pA = {
-                x: stroke.points[i].x * rect.width,
-                y: stroke.points[i].y * rect.height,
+                x: outlinePoints[i].x * rect.width,
+                y: outlinePoints[i].y * rect.height,
             };
             const dx = pA.x - eraserX;
             const dy = pA.y - eraserY;
@@ -220,10 +359,10 @@ function isStrokeIntersecting(
                 return true;
             }
 
-            if (i < stroke.points.length - 1) {
+            if (i < outlinePoints.length - 1) {
                 const pB = {
-                    x: stroke.points[i + 1].x * rect.width,
-                    y: stroke.points[i + 1].y * rect.height,
+                    x: outlinePoints[i + 1].x * rect.width,
+                    y: outlinePoints[i + 1].y * rect.height,
                 };
                 if (distSqToSegment(eraserPt, pA, pB) <= thresholdSq) {
                     return true;
@@ -231,34 +370,6 @@ function isStrokeIntersecting(
             }
         }
         return false;
-    }
-
-    if (['line', 'arrow'].includes(stroke.tool) && stroke.points.length >= 2) {
-        const pA = {
-            x: stroke.points[0].x * rect.width,
-            y: stroke.points[0].y * rect.height,
-        };
-        const pB = {
-            x: stroke.points[1].x * rect.width,
-            y: stroke.points[1].y * rect.height,
-        };
-        return distSqToSegment(eraserPt, pA, pB) <= thresholdSq;
-    }
-
-    if (['rect', 'circle', 'triangle', 'star'].includes(stroke.tool) && stroke.points.length >= 2) {
-        const pA = {
-            x: stroke.points[0].x * rect.width,
-            y: stroke.points[0].y * rect.height,
-        };
-        const pB = {
-            x: stroke.points[1].x * rect.width,
-            y: stroke.points[1].y * rect.height,
-        };
-        const minX = Math.min(pA.x, pB.x) - eraserRadius;
-        const maxX = Math.max(pA.x, pB.x) + eraserRadius;
-        const minY = Math.min(pA.y, pB.y) - eraserRadius;
-        const maxY = Math.max(pA.y, pB.y) + eraserRadius;
-        return eraserX >= minX && eraserX <= maxX && eraserY >= minY && eraserY <= maxY;
     }
 
     if (stroke.tool === 'text' && stroke.text && stroke.points.length >= 1) {
@@ -288,8 +399,8 @@ function isStrokeIntersecting(
 }
 
 /**
- * Pixel Eraser: Cuts intersecting segments out of vector strokes (pen, rainbow, highlight, line, arrow),
- * splitting them cleanly into remaining sub-strokes.
+ * Pixel Eraser: Cuts intersecting segments out of vector strokes & shapes,
+ * splitting them cleanly into remaining sub-strokes without deleting entire objects.
  * Returns null if untouched, empty array if completely erased, or array of sub-strokes if split.
  */
 function splitStrokeByEraser(
@@ -301,12 +412,12 @@ function splitStrokeByEraser(
 ): Stroke[] | null {
     if (!stroke.points || stroke.points.length === 0) return null;
 
-    if (!isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
+    if (!isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect, 'pixel')) {
         return null;
     }
 
-    // For non-freehand / non-line elements (shapes, text, images, tables), delete the entire object
-    if (!['pen', 'rainbow', 'highlight', 'line', 'arrow'].includes(stroke.tool)) {
+    // For non-vector objects (text, image, table), delete entire object when directly hit
+    if (['text', 'image', 'table'].includes(stroke.tool)) {
         return [];
     }
 
@@ -314,99 +425,117 @@ function splitStrokeByEraser(
     const effectiveRadius = eraserRadius + strokeSize / 2;
     const effectiveRadiusSq = effectiveRadius * effectiveRadius;
 
-    const isInside = (p: Point) => {
-        const dx = p.x * rect.width - eraserX;
-        const dy = p.y * rect.height - eraserY;
-        return dx * dx + dy * dy <= effectiveRadiusSq;
-    };
+    const rawPoints = getStrokeOutlinePoints(stroke);
+    if (!rawPoints || rawPoints.length === 0) return [];
 
-    // If single point stroke (dot)
-    if (stroke.points.length === 1) {
-        return isInside(stroke.points[0]) ? [] : null;
+    if (rawPoints.length === 1) {
+        const dx = rawPoints[0].x * rect.width - eraserX;
+        const dy = rawPoints[0].y * rect.height - eraserY;
+        return (dx * dx + dy * dy <= effectiveRadiusSq) ? [] : null;
     }
 
     const segments: Point[][] = [];
     let currentSegment: Point[] = [];
-    const points = stroke.points;
 
-    for (let i = 0; i < points.length; i++) {
-        const pA = points[i];
-        const pA_in = isInside(pA);
+    for (let i = 0; i < rawPoints.length - 1; i++) {
+        const pA = rawPoints[i];
+        const pB = rawPoints[i + 1];
 
-        if (i === 0 && !pA_in) {
-            currentSegment.push(pA);
+        const pAx = pA.x * rect.width;
+        const pAy = pA.y * rect.height;
+        const pBx = pB.x * rect.width;
+        const pBy = pB.y * rect.height;
+
+        const dx = pBx - pAx;
+        const dy = pBy - pAy;
+        const vx = pAx - eraserX;
+        const vy = pAy - eraserY;
+
+        const a = dx * dx + dy * dy;
+        const b = 2 * (vx * dx + vy * dy);
+        const c = vx * vx + vy * vy - effectiveRadiusSq;
+
+        if (a < 1e-8) {
+            if (c > 0) {
+                if (currentSegment.length === 0) currentSegment.push(pA);
+            } else {
+                if (currentSegment.length >= 2) segments.push(currentSegment);
+                currentSegment = [];
+            }
+            continue;
         }
 
-        if (i < points.length - 1) {
-            const pB = points[i + 1];
-            const pB_in = isInside(pB);
+        const disc = b * b - 4 * a * c;
+        let inStart = 1;
+        let inEnd = 0;
 
-            const pAx = pA.x * rect.width;
-            const pAy = pA.y * rect.height;
-            const pBx = pB.x * rect.width;
-            const pBy = pB.y * rect.height;
-
-            const dx = pBx - pAx;
-            const dy = pBy - pAy;
-            const vx = pAx - eraserX;
-            const vy = pAy - eraserY;
-
-            const a = dx * dx + dy * dy;
-            const b = 2 * (vx * dx + vy * dy);
-            const c = vx * vx + vy * vy - effectiveRadiusSq;
-
-            const validT: number[] = [];
-            if (a > 1e-6) {
-                const disc = b * b - 4 * a * c;
-                if (disc >= 0) {
-                    const sqrtDisc = Math.sqrt(disc);
-                    const t1 = (-b - sqrtDisc) / (2 * a);
-                    const t2 = (-b + sqrtDisc) / (2 * a);
-                    if (t1 > 0.0001 && t1 < 0.9999) validT.push(t1);
-                    if (t2 > 0.0001 && t2 < 0.9999) validT.push(t2);
-                }
-            }
-            validT.sort((n1, n2) => n1 - n2);
-
-            if (!pA_in && pB_in) {
-                const t = validT.length > 0 ? validT[0] : 0.5;
-                const enterPt: Point = {
-                    x: pA.x + t * (pB.x - pA.x),
-                    y: pA.y + t * (pB.y - pA.y),
-                };
-                currentSegment.push(enterPt);
-                if (currentSegment.length >= 2) {
-                    segments.push(currentSegment);
-                }
-                currentSegment = [];
-            } else if (pA_in && !pB_in) {
-                const t = validT.length > 0 ? validT[validT.length - 1] : 0.5;
-                const exitPt: Point = {
-                    x: pA.x + t * (pB.x - pA.x),
-                    y: pA.y + t * (pB.y - pA.y),
-                };
-                currentSegment = [exitPt, pB];
-            } else if (!pA_in && !pB_in) {
-                if (validT.length >= 2) {
-                    const enterPt: Point = {
-                        x: pA.x + validT[0] * (pB.x - pA.x),
-                        y: pA.y + validT[0] * (pB.y - pA.y),
-                    };
-                    const exitPt: Point = {
-                        x: pA.x + validT[1] * (pB.x - pA.x),
-                        y: pA.y + validT[1] * (pB.y - pA.y),
-                    };
-                    currentSegment.push(enterPt);
-                    if (currentSegment.length >= 2) {
-                        segments.push(currentSegment);
-                    }
-                    currentSegment = [exitPt, pB];
-                } else {
-                    currentSegment.push(pB);
-                }
+        if (disc <= 0) {
+            if (c < 0) {
+                inStart = 0;
+                inEnd = 1;
             } else {
-                // Both inside: do nothing
+                inStart = 1;
+                inEnd = 0;
             }
+        } else {
+            const sqrtDisc = Math.sqrt(disc);
+            const t1 = (-b - sqrtDisc) / (2 * a);
+            const t2 = (-b + sqrtDisc) / (2 * a);
+            inStart = Math.max(0, Math.min(1, t1));
+            inEnd = Math.max(0, Math.min(1, t2));
+        }
+
+        if (inStart >= inEnd || inEnd - inStart < 1e-4) {
+            // Entire segment is outside eraser
+            if (currentSegment.length === 0) {
+                currentSegment.push(pA);
+            }
+            currentSegment.push(pB);
+        } else if (inStart <= 1e-4 && inEnd >= 1 - 1e-4) {
+            // Entire segment is inside eraser
+            if (currentSegment.length >= 2) {
+                segments.push(currentSegment);
+            }
+            currentSegment = [];
+        } else if (inStart > 1e-4 && inEnd >= 1 - 1e-4) {
+            // Enters circle and remains inside at pB
+            if (currentSegment.length === 0) {
+                currentSegment.push(pA);
+            }
+            const enterPt: Point = {
+                x: pA.x + inStart * (pB.x - pA.x),
+                y: pA.y + inStart * (pB.y - pA.y),
+            };
+            currentSegment.push(enterPt);
+            if (currentSegment.length >= 2) {
+                segments.push(currentSegment);
+            }
+            currentSegment = [];
+        } else if (inStart <= 1e-4 && inEnd < 1 - 1e-4) {
+            // Starts inside circle at pA and exits before pB
+            const exitPt: Point = {
+                x: pA.x + inEnd * (pB.x - pA.x),
+                y: pA.y + inEnd * (pB.y - pA.y),
+            };
+            currentSegment = [exitPt, pB];
+        } else {
+            // Starts outside, enters circle, exits circle, ends outside
+            if (currentSegment.length === 0) {
+                currentSegment.push(pA);
+            }
+            const enterPt: Point = {
+                x: pA.x + inStart * (pB.x - pA.x),
+                y: pA.y + inStart * (pB.y - pA.y),
+            };
+            currentSegment.push(enterPt);
+            if (currentSegment.length >= 2) {
+                segments.push(currentSegment);
+            }
+            const exitPt: Point = {
+                x: pA.x + inEnd * (pB.x - pA.x),
+                y: pA.y + inEnd * (pB.y - pA.y),
+            };
+            currentSegment = [exitPt, pB];
         }
     }
 
@@ -414,12 +543,19 @@ function splitStrokeByEraser(
         segments.push(currentSegment);
     }
 
-    const newStrokes: Stroke[] = segments.map((segPoints, idx) => ({
-        ...stroke,
-        id: `${stroke.id}_p${Date.now().toString(36)}_${idx}`,
-        points: segPoints,
-        timestamp: Date.now(),
-    }));
+    const convertedTool: DrawingTool = ['rect', 'circle', 'triangle', 'star', 'arrow'].includes(stroke.tool)
+        ? 'pen'
+        : stroke.tool;
+
+    const newStrokes: Stroke[] = segments
+        .filter(seg => seg.length >= 2)
+        .map((segPoints, idx) => ({
+            ...stroke,
+            tool: convertedTool,
+            id: `${stroke.id}_p${Date.now().toString(36)}_${idx}`,
+            points: segPoints,
+            timestamp: Date.now(),
+        }));
 
     return newStrokes;
 }
@@ -1043,7 +1179,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                     continue;
                 }
 
-                if (isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
+                if (isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect, 'object')) {
                     strokesIdsToDelete.push(strokeId);
                     if (eraserSessionRef.current) {
                         if (eraserSessionRef.current.added.has(strokeId)) {
