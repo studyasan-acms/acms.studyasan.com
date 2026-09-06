@@ -67,6 +67,13 @@ export interface PaginatedResponse<T> {
       total: number;
       totalPages: number;
     };
+    stats?: {
+      total: number;
+      published?: number;
+      draft?: number;
+      active?: number;
+      inactive?: number;
+    };
   };
 }
 
@@ -1184,7 +1191,8 @@ export interface Job {
 export interface JobApplication {
   id: number;
   job_id: number;
-  student_id: number;
+  student_id?: number | null;
+  teacher_id?: number | null;
   cv_url: string;
   cover_letter: string;
   status: ApplicationStatus;
@@ -1202,6 +1210,19 @@ export interface JobApplication {
     status: JobStatus;
   };
   student?: Student;
+  teacher?: {
+    id: number;
+    user_id: number;
+    user: {
+      id: number;
+      name: string;
+      email: string;
+      phone?: string;
+      profile_url?: string;
+    };
+    qualification?: string | null;
+    experience?: string | null;
+  };
 }
 
 export interface CreateJobData {

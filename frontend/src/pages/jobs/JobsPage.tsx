@@ -42,6 +42,7 @@ export default function JobsPage() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
   const isStudent = user?.role === 'STUDENT';
+  const isTeacher = user?.role === 'TEACHER';
   const isRestrictedStudent = isStudent && isStudentTillClass12(user);
   
   const [searchParams, setSearchParams] = useSearchParams();
@@ -100,7 +101,7 @@ export default function JobsPage() {
 
   // Fetch Applications
   const fetchApplications = useCallback(async () => {
-    if (!isStudent) return;
+    if (!isStudent && !isTeacher) return;
     setIsLoadingApplications(true);
     try {
       const params: any = { page: appsCurrentPage, limit };
@@ -116,7 +117,7 @@ export default function JobsPage() {
     } finally {
       setIsLoadingApplications(false);
     }
-  }, [appsCurrentPage, appsSelectedStatus, limit, isStudent]);
+  }, [appsCurrentPage, appsSelectedStatus, limit, isStudent, isTeacher]);
 
   useEffect(() => {
     if (activeTab === 'jobs') {
@@ -239,8 +240,8 @@ export default function JobsPage() {
         )}
       </div>
 
-      {/* Tabs (only for students) */}
-      {isStudent && (
+      {/* Tabs (for students and teachers) */}
+      {(isStudent || isTeacher) && (
         <div className="flex gap-2 border-b border-gray-200">
           <button
             onClick={() => handleTabChange('jobs')}

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Plus,
   Edit,
@@ -21,6 +21,8 @@ import {
   LayoutGrid,
   List,
   Filter,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -92,6 +94,13 @@ export default function ActivityGroupsPage() {
   const [sortOption, setSortOption] = useState('name_asc'); // 'name_asc' | 'name_desc' | 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+  const limit = 12;
+
   // Form modal states
   const [formOpen, setFormOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ActivityGroup | null>(null);
@@ -121,47 +130,53 @@ export default function ActivityGroupsPage() {
   const [enrollingGroup, setEnrollingGroup] = useState<ActivityGroup | null>(null);
   const [managingTeachersGroup, setManagingTeachersGroup] = useState<ActivityGroup | null>(null);
 
-  useEffect(() => {
-    fetchActivityGroups();
-    if (isAdmin) {
-      currencyService.getAll().then(setCurrencies).catch(console.error);
-    }
-  }, [isAdmin]);
-
-  const fetchActivityGroups = async () => {
+  const fetchActivityGroups = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await activityGroupAPI.getAll();
+      const params: any = {
+        page: currentPage,
+        limit,
+      };
+      if (searchTerm.trim()) params.search = searchTerm.trim();
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (sortOption) params.sort = sortOption;
+
+      const response = await activityGroupAPI.getAll(params);
       setActivityGroups(response.data.data.activityGroups || []);
+      if (response.data.data.pagination) {
+        setTotalPages(response.data.data.pagination.totalPages || 1);
+        setTotal(response.data.data.pagination.total || 0);
+      }
+      if (response.data.data.stats) {
+        setStats(response.data.data.stats);
+      }
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to fetch activity groups');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, statusFilter, sortOption]);
 
-  // Filtering & Sorting
-  const filteredGroups = activityGroups
-    .filter((g) => {
-      const matchesSearch =
-        g.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (g.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      if (!matchesSearch) return false;
-      if (statusFilter === 'active') return g.is_active;
-      if (statusFilter === 'inactive') return !g.is_active;
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortOption === 'name_asc') return a.name.localeCompare(b.name);
-      if (sortOption === 'name_desc') return b.name.localeCompare(a.name);
-      if (sortOption === 'oldest') return a.id - b.id;
-      return b.id - a.id;
-    });
+  useEffect(() => {
+    fetchActivityGroups();
+  }, [fetchActivityGroups]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, sortOption]);
+
+  useEffect(() => {
+    if (isAdmin) {
+      currencyService.getAll().then(setCurrencies).catch(console.error);
+    }
+  }, [isAdmin]);
+
+  const filteredGroups = activityGroups;
 
   // Stats
-  const totalGroups = activityGroups.length;
-  const activeGroups = activityGroups.filter(g => g.is_active).length;
-  const inactiveGroups = activityGroups.filter(g => !g.is_active).length;
+  const totalGroups = stats.total || total;
+  const activeGroups = stats.active;
+  const inactiveGroups = stats.inactive;
 
   // Form helpers
   const resetForm = () => {
@@ -733,7 +748,7 @@ export default function ActivityGroupsPage() {
                   className="hover:bg-slate-50/70 cursor-pointer transition-colors"
                 >
                   <TableCell className="font-bold text-slate-400 text-xs">
-                    {index + 1}
+                    {index + 1 + (currentPage - 1) * limit}
                   </TableCell>
                   <TableCell>
                     <div className="font-bold text-slate-900">{group.name}</div>
@@ -785,6 +800,41 @@ export default function ActivityGroupsPage() {
             </TableBody>
           </Table>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200/80">
+          <p className="text-xs text-slate-500 font-medium">
+            Showing {(currentPage - 1) * limit + 1} to{" "}
+            {Math.min(currentPage * limit, total)} of {total} activity groups
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" /> Previous
+            </Button>
+            <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl border border-slate-200/80 shadow-xs">
+              <span className="text-xs font-bold text-slate-700">
+                Page {currentPage} of {totalPages}
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
+            >
+              Next <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );

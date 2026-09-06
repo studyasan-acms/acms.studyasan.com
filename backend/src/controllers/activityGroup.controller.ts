@@ -51,14 +51,25 @@ export const createActivityGroup = async (req: Request, res: Response) => {
 // Get all Activity Groups
 export const getAllActivityGroups = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10, is_active } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    const { page = 1, limit = 12, is_active, status, search, sort } = req.query;
+    const pageNum = Math.max(1, Number(page) || 1);
+    const limitNum = Math.max(1, Number(limit) || 12);
+    const skip = (pageNum - 1) * limitNum;
     const userId = (req as any).user.id;
     const userRole = (req as any).user.role;
 
     const where: any = {};
-    if (is_active !== undefined) {
-      where.is_active = is_active === 'true';
+    if (status === 'active' || is_active === 'true') {
+      where.is_active = true;
+    } else if (status === 'inactive' || is_active === 'false') {
+      where.is_active = false;
+    }
+
+    if (search && typeof search === 'string' && search.trim()) {
+      where.OR = [
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { description: { contains: search.trim(), mode: 'insensitive' } },
+      ];
     }
 
     // If user is TEACHER, check if they have the elevated 'activityGroups.view' permission.
@@ -86,11 +97,21 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
       }
     }
 
-    const [activityGroups, total] = await Promise.all([
+    // Dynamic sorting
+    let orderBy: any = { created_at: 'desc' };
+    if (sort === 'name_asc') orderBy = { name: 'asc' };
+    else if (sort === 'name_desc') orderBy = { name: 'desc' };
+    else if (sort === 'oldest') orderBy = { created_at: 'asc' };
+    else if (sort === 'newest') orderBy = { created_at: 'desc' };
+
+    const baseWhereForStats = { ...where };
+    delete baseWhereForStats.is_active;
+
+    const [activityGroups, total, totalActive, totalInactive] = await Promise.all([
       prisma.activityGroup.findMany({
         where,
         skip,
-        take: Number(limit),
+        take: limitNum,
         include: {
           creator: {
             select: {
@@ -121,20 +142,25 @@ export const getAllActivityGroups = async (req: Request, res: Response) => {
             },
           },
         },
-        orderBy: {
-          created_at: 'desc',
-        },
+        orderBy,
       }),
       prisma.activityGroup.count({ where }),
+      prisma.activityGroup.count({ where: { ...baseWhereForStats, is_active: true } }),
+      prisma.activityGroup.count({ where: { ...baseWhereForStats, is_active: false } }),
     ]);
 
     return sendSuccess(res, {
       activityGroups,
+      stats: {
+        total: totalActive + totalInactive,
+        active: totalActive,
+        inactive: totalInactive,
+      },
       pagination: {
         total,
-        page: Number(page),
-        limit: Number(limit),
-        totalPages: Math.ceil(total / Number(limit)),
+        page: pageNum,
+        limit: limitNum,
+        totalPages: Math.ceil(total / limitNum) || 1,
       },
     });
   } catch (error: any) {

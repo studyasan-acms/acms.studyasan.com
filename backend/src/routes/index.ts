@@ -793,10 +793,10 @@ router.post('/jobs', authenticate, authorize('ADMIN'), jobController.createJob);
 router.put('/jobs/:id', authenticate, authorize('ADMIN'), jobController.updateJob);
 router.delete('/jobs/:id', authenticate, authorize('ADMIN'), jobController.deleteJob);
 
-// Student: Apply for jobs
-router.post('/jobs/apply', authenticate, authorize('STUDENT'), upload.single('cv'), jobController.applyForJob);
-router.get('/jobs/applications/my', authenticate, authorize('STUDENT'), jobController.getMyApplications);
-router.delete('/jobs/applications/:id', authenticate, authorize('STUDENT'), jobController.withdrawApplication);
+// Student/Teacher: Apply for jobs
+router.post('/jobs/apply', authenticate, authorize('STUDENT', 'TEACHER'), upload.single('cv'), jobController.applyForJob);
+router.get('/jobs/applications/my', authenticate, authorize('STUDENT', 'TEACHER'), jobController.getMyApplications);
+router.delete('/jobs/applications/:id', authenticate, authorize('STUDENT', 'TEACHER'), jobController.withdrawApplication);
 
 // Admin: Manage applications
 router.get('/jobs/:job_id/applications', authenticate, authorize('ADMIN'), jobController.getJobApplications);

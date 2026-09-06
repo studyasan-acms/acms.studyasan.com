@@ -336,6 +336,7 @@ model Teacher {
   know_your_child_reports   KnowYourChildReport[]
   brain_quests              BrainQuest[]
   sections                  Section[]
+  job_applications          JobApplication[]
 
   @@map("teachers")
 }
@@ -1205,7 +1206,8 @@ model Job {
 model JobApplication {
   id           Int               @id @default(autoincrement())
   job_id       Int
-  student_id   Int
+  student_id   Int? // Nullable: either student or teacher applies
+  teacher_id   Int? // Nullable: either student or teacher applies
   cv_url       String // URL to uploaded CV
   cover_letter String // Text cover letter
   status       ApplicationStatus @default(PENDING)
@@ -1215,10 +1217,12 @@ model JobApplication {
   applied_at   DateTime          @default(now())
   updated_at   DateTime          @updatedAt
 
-  job     Job     @relation(fields: [job_id], references: [id], onDelete: Cascade)
-  student Student @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  job     Job      @relation(fields: [job_id], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  teacher Teacher? @relation(fields: [teacher_id], references: [id], onDelete: Cascade)
 
   @@unique([job_id, student_id])
+  @@unique([job_id, teacher_id])
   @@map("job_applications")
 }
 

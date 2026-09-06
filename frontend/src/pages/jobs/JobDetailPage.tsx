@@ -29,6 +29,7 @@ export default function JobDetailPage() {
   const { user } = useAuthStore();
   const isStudent = user?.role === 'STUDENT';
   const isAdmin = user?.role === 'ADMIN';
+  const isTeacher = user?.role === 'TEACHER';
 
   usePageTitle('Job Details');
 
@@ -258,8 +259,8 @@ export default function JobDetailPage() {
           </div>
         )}
 
-        {/* Apply Section (for students) */}
-        {isStudent && job.status === 'OPEN' && (
+        {/* Apply Section (for students and teachers) */}
+        {(isStudent || isTeacher) && job.status === 'OPEN' && (
           <div className="pt-4 border-t border-gray-100">
             {!showApplyForm ? (
               <Button

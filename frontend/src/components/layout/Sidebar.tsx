@@ -193,7 +193,7 @@ const navItems: NavItem[] = [
     title: "Jobs & Internships",
     href: "/dashboard/jobs",
     icon: Briefcase,
-    roles: ["ADMIN", "STUDENT"],
+    roles: ["ADMIN", "TEACHER", "STUDENT"],
     group: "Finance",
   },
 

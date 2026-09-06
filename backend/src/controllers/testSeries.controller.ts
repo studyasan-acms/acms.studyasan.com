@@ -21,10 +21,10 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { page, limit, skip } = getPaginationParams(
             req.query.page as string,
-            req.query.limit as string
+            req.query.limit as string || '12'
         );
 
-        const { search, is_published } = req.query;
+        const { search, is_published, status, sort } = req.query;
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
@@ -34,7 +34,6 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
         if (userRole === 'STUDENT') {
             // Students see only published test series they are enrolled in
             where.is_published = true;
-            // Get student record
             if (userId) {
                 const student = await prisma.student.findUnique({
                     where: { user_id: userId },
@@ -47,45 +46,60 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
                         },
                     };
                 } else {
-                    // If no student record, return no results
                     where.id = -1;
                 }
             } else {
                 where.id = -1;
             }
         } else if (userRole === 'TEACHER') {
-            // Teachers see only test series they are assigned to
             if (userId) {
                 const teacher = await prisma.teacher.findUnique({
                     where: { user_id: userId },
+                    include: { role: true },
                 });
                 if (teacher) {
-                    where.teacher_junctions = {
-                        some: {
-                            teacher_id: teacher.id,
-                        },
-                    };
+                    const permissions = teacher.role?.permissions as any;
+                    const hasViewAllPermission = teacher.role?.is_active && permissions?.testSeries?.view === true;
+                    if (!hasViewAllPermission) {
+                        where.teacher_junctions = {
+                            some: {
+                                teacher_id: teacher.id,
+                            },
+                        };
+                    }
                 } else {
-                    // If no teacher record, return no results
                     where.id = -1;
                 }
             } else {
                 where.id = -1;
             }
         }
-        // Admins see all test series, with optional is_published filter
-        else if (is_published !== undefined) {
-            where.is_published = is_published === 'true';
+
+        // Status & Published filter (for Admin / Teacher)
+        if (status === 'published' || is_published === 'true') {
+            where.is_published = true;
+        } else if (status === 'draft' || is_published === 'false') {
+            where.is_published = false;
         }
 
-        if (search) {
+        if (search && typeof search === 'string' && search.trim()) {
             where.OR = [
-                { title: { contains: search as string, mode: 'insensitive' } },
-                { description: { contains: search as string, mode: 'insensitive' } },
+                { title: { contains: search.trim(), mode: 'insensitive' } },
+                { description: { contains: search.trim(), mode: 'insensitive' } },
             ];
         }
 
-        const [testSeries, total] = await Promise.all([
+        // Dynamic sorting
+        let orderBy: any = { created_at: 'desc' };
+        if (sort === 'title_asc') orderBy = { title: 'asc' };
+        else if (sort === 'title_desc') orderBy = { title: 'desc' };
+        else if (sort === 'oldest') orderBy = { created_at: 'asc' };
+        else if (sort === 'newest') orderBy = { created_at: 'desc' };
+
+        const baseWhereForStats = { ...where };
+        delete baseWhereForStats.is_published;
+
+        const [testSeries, total, totalPublished, totalDraft] = await Promise.all([
             prisma.testSeries.findMany({
                 where,
                 skip,
@@ -121,12 +135,19 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
                         },
                     },
                 },
-                orderBy: { created_at: 'desc' },
+                orderBy,
             }),
             prisma.testSeries.count({ where }),
+            prisma.testSeries.count({ where: { ...baseWhereForStats, is_published: true } }),
+            prisma.testSeries.count({ where: { ...baseWhereForStats, is_published: false } }),
         ]);
 
-        const response = createPaginatedResponse(testSeries, total, page, limit);
+        const response: any = createPaginatedResponse(testSeries, total, page, limit);
+        response.stats = {
+            total: totalPublished + totalDraft,
+            published: totalPublished,
+            draft: totalDraft,
+        };
         sendSuccess(res, response);
     } catch (error: any) {
         console.error('Error fetching test series:', error);

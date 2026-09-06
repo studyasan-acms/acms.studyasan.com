@@ -60,6 +60,8 @@ import {
     X,
     Star,
     Compass,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -86,6 +88,7 @@ export default function TestSeriesPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
+    const [stats, setStats] = useState({ total: 0, published: 0, draft: 0 });
     const limit = 12;
 
     // Modal states
@@ -115,17 +118,26 @@ export default function TestSeriesPage() {
         try {
             const params: any = { page: currentPage, limit };
             if (searchTerm.trim()) params.search = searchTerm.trim();
+            if (statusFilter !== "all") params.status = statusFilter;
+            if (sortOption) params.sort = sortOption;
 
             const response = await testSeriesService.getAll(params);
             setTestSeriesList(response.data.data);
-            setTotalPages(response.data.pagination.totalPages);
-            setTotal(response.data.pagination.total);
+            setTotalPages(response.data.pagination?.totalPages || 1);
+            setTotal(response.data.pagination?.total || 0);
+            if (response.data.stats) {
+                setStats({
+                    total: response.data.stats.total || 0,
+                    published: response.data.stats.published || 0,
+                    draft: response.data.stats.draft || 0,
+                });
+            }
         } catch (error) {
             console.error("Failed to fetch test series:", error);
         } finally {
             setIsLoading(false);
         }
-    }, [currentPage, searchTerm]);
+    }, [currentPage, searchTerm, statusFilter, sortOption]);
 
     useEffect(() => {
         fetchTestSeries();
@@ -222,22 +234,10 @@ export default function TestSeriesPage() {
         }
     };
 
-    // Filter & Sort frontend logic
-    const filteredList = testSeriesList
-        .filter((s) => {
-            if (statusFilter === "published") return s.is_published;
-            if (statusFilter === "draft") return !s.is_published;
-            return true;
-        })
-        .sort((a, b) => {
-            if (sortOption === "title_asc") return a.title.localeCompare(b.title);
-            if (sortOption === "title_desc") return b.title.localeCompare(a.title);
-            if (sortOption === "oldest") return a.id - b.id;
-            return b.id - a.id; // newest default
-        });
-
-    const publishedCount = testSeriesList.filter((s) => s.is_published).length;
-    const draftCount = testSeriesList.filter((s) => !s.is_published).length;
+    const filteredList = testSeriesList;
+    const totalCount = stats.total || total;
+    const publishedCount = stats.published;
+    const draftCount = stats.draft;
 
     const clearFilters = () => {
         setSearchTerm("");
@@ -386,7 +386,7 @@ export default function TestSeriesPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Test Series</p>
-                            <h3 className="text-2xl font-black text-slate-900 mt-1">{total}</h3>
+                            <h3 className="text-2xl font-black text-slate-900 mt-1">{totalCount}</h3>
                         </div>
                         <div className="h-10 w-10 bg-saBlue/10 rounded-xl flex items-center justify-center text-saBlue">
                             <Library className="h-5 w-5" />
@@ -745,29 +745,34 @@ export default function TestSeriesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200/80">
                     <p className="text-xs text-slate-500 font-medium">
                         Showing {(currentPage - 1) * limit + 1} to{" "}
-                        {Math.min(currentPage * limit, total)} of {total} series
+                        {Math.min(currentPage * limit, total)} of {total} test series
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                             disabled={currentPage === 1}
-                            className="rounded-xl text-xs"
+                            className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
                         >
-                            Previous
+                            <ChevronLeft className="w-4 h-4 mr-1" /> Previous
                         </Button>
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-xl border border-slate-200/80 shadow-xs">
+                            <span className="text-xs font-bold text-slate-700">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                        </div>
                         <Button
                             variant="outline"
                             size="sm"
                             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                             disabled={currentPage === totalPages}
-                            className="rounded-xl text-xs"
+                            className="rounded-xl text-xs border-slate-200/80 hover:border-saBlue hover:text-saBlue"
                         >
-                            Next
+                            Next <ChevronRight className="w-4 h-4 ml-1" />
                         </Button>
                     </div>
                 </div>

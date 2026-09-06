@@ -11,11 +11,28 @@ import type {
 
 // Activity Group APIs
 export const activityGroupAPI = {
-  getAll: (params?: { page?: number; limit?: number; is_active?: boolean }) =>
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    is_active?: boolean;
+    status?: string;
+    search?: string;
+    sort?: string;
+  }) =>
     api.get<{
       data: {
         activityGroups: ActivityGroup[];
-        pagination: any;
+        pagination: {
+          total: number;
+          page: number;
+          limit: number;
+          totalPages: number;
+        };
+        stats?: {
+          total: number;
+          active: number;
+          inactive: number;
+        };
       };
     }>('/activity-groups', { params }),
 

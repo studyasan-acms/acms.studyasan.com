@@ -202,9 +202,9 @@ export default function AdminApplicationsPage() {
                     <TableCell className="pl-6 py-4">
                       <div className="flex flex-col">
                         <span className="font-semibold text-sm text-gray-900">
-                          {application.student?.user?.name}
+                          {application.student?.user?.name || application.teacher?.user?.name}
                         </span>
-                        <span className="text-xs text-gray-500">{application.student?.user?.email}</span>
+                        <span className="text-xs text-gray-500">{application.student?.user?.email || application.teacher?.user?.email}</span>
                       </div>
                     </TableCell>
                     {!isSpecificJob && (
@@ -280,7 +280,7 @@ export default function AdminApplicationsPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900">Application Review</h2>
                   <p className="text-sm text-gray-500 mt-1">
-                    {selectedApplication.student?.user?.name}
+                    {selectedApplication.student?.user?.name || selectedApplication.teacher?.user?.name}
                   </p>
                 </div>
                 <Button
@@ -308,10 +308,13 @@ export default function AdminApplicationsPage() {
 
                 <div>
                   <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider mb-2">
-                    Student Info
+                    Applicant Info
                   </h3>
-                  <p className="text-sm text-gray-700">{selectedApplication.student?.user?.email}</p>
-                  <p className="text-sm text-gray-700">{selectedApplication.student?.user?.phone}</p>
+                  <p className="text-sm text-gray-700">{selectedApplication.student?.user?.email || selectedApplication.teacher?.user?.email}</p>
+                  <p className="text-sm text-gray-700">{selectedApplication.student?.user?.phone || selectedApplication.teacher?.user?.phone}</p>
+                  {selectedApplication.teacher && (
+                    <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-lg">Teacher</span>
+                  )}
                 </div>
 
                 <div>

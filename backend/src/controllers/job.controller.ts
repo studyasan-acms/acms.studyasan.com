@@ -192,13 +192,14 @@ export const deleteJob = async (req: Request, res: Response) => {
 
 // ==================== STUDENT ROUTES ====================
 
-// Apply for a job (Student only)
+// Apply for a job (Student or Teacher)
 export const applyForJob = async (req: AuthRequest, res: Response) => {
   try {
     const { job_id, cover_letter } = req.body;
     const file = req.file;
+    const userRole = req.user!.role;
 
-    console.log('Apply for job request:', { job_id, has_cover_letter: !!cover_letter, has_file: !!file });
+    console.log('Apply for job request:', { job_id, has_cover_letter: !!cover_letter, has_file: !!file, role: userRole });
 
     if (!job_id || !cover_letter) {
       return sendError(res, 'Job ID and cover letter are required', 400);
@@ -207,17 +208,6 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
     if (!file) {
       return sendError(res, 'CV file is required', 400);
     }
-
-    // Get student ID from user
-    const student = await prisma.student.findUnique({
-      where: { user_id: req.user!.id },
-    });
-
-    if (!student) {
-      return sendError(res, 'Student profile not found', 404);
-    }
-
-    console.log('Student found:', student.id);
 
     // Check if job exists and is open
     const job = await prisma.job.findUnique({
@@ -237,48 +227,58 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Application deadline has passed', 400);
     }
 
-    // Check if already applied
-    const existingApplication = await prisma.jobApplication.findUnique({
-      where: {
-        job_id_student_id: {
-          job_id: parseInt(job_id as string),
-          student_id: student.id,
-        },
-      },
-    });
+    let applicationData: any;
+    let uploadPath: string;
 
-    if (existingApplication) {
-      return sendError(res, 'You have already applied for this job', 400);
+    if (userRole === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!student) return sendError(res, 'Student profile not found', 404);
+
+      // Check if already applied
+      const existing = await prisma.jobApplication.findUnique({
+        where: { job_id_student_id: { job_id: parseInt(job_id as string), student_id: student.id } },
+      });
+      if (existing) return sendError(res, 'You have already applied for this job', 400);
+
+      uploadPath = `job-applications/students/${student.id}`;
+      const uploadResult = await uploadToS3(file, uploadPath);
+      applicationData = { job_id: parseInt(job_id as string), student_id: student.id, cv_url: uploadResult.url, cover_letter };
+    } else if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!teacher) return sendError(res, 'Teacher profile not found', 404);
+
+      // Check if already applied
+      const existing = await prisma.jobApplication.findUnique({
+        where: { job_id_teacher_id: { job_id: parseInt(job_id as string), teacher_id: teacher.id } },
+      });
+      if (existing) return sendError(res, 'You have already applied for this job', 400);
+
+      uploadPath = `job-applications/teachers/${teacher.id}`;
+      const uploadResult = await uploadToS3(file, uploadPath);
+      applicationData = { job_id: parseInt(job_id as string), teacher_id: teacher.id, cv_url: uploadResult.url, cover_letter };
+    } else {
+      return sendError(res, 'Only students and teachers can apply for jobs', 403);
     }
 
     console.log('Uploading CV to S3...');
 
-    // Upload CV to S3
-    const uploadResult = await uploadToS3(file, `job-applications/${student.id}`);
-
-    console.log('CV uploaded successfully:', uploadResult.url);
-
     // Create application
     const application = await prisma.jobApplication.create({
-      data: {
-        job_id: parseInt(job_id as string),
-        student_id: student.id,
-        cv_url: uploadResult.url,
-        cover_letter,
-      },
+      data: applicationData,
       include: {
         job: true,
         student: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phone: true,
-                profile_url: true,
-              },
-            },
+            user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
+          },
+        },
+        teacher: {
+          include: {
+            user: { select: { id: true, name: true, email: true, phone: true, profile_url: true } },
           },
         },
       },
@@ -291,7 +291,7 @@ export const applyForJob = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Get my applications (Student only)
+// Get my applications (Student or Teacher)
 export const getMyApplications = async (req: AuthRequest, res: Response) => {
   try {
     const { page, limit, skip } = getPaginationParams(
@@ -299,17 +299,25 @@ export const getMyApplications = async (req: AuthRequest, res: Response) => {
       req.query.limit as string
     );
 
-    // Get student ID from user
-    const student = await prisma.student.findUnique({
-      where: { user_id: req.user!.id },
-    });
-
-    if (!student) {
-      return sendError(res, 'Student profile not found', 404);
-    }
-
     const { status } = req.query;
-    const where: any = { student_id: student.id };
+    const userRole = req.user!.role;
+    let where: any = {};
+
+    if (userRole === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!student) return sendError(res, 'Student profile not found', 404);
+      where.student_id = student.id;
+    } else if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!teacher) return sendError(res, 'Teacher profile not found', 404);
+      where.teacher_id = teacher.id;
+    } else {
+      return sendError(res, 'Unauthorized', 403);
+    }
 
     if (status) where.status = status;
 
@@ -343,21 +351,34 @@ export const getMyApplications = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Withdraw application (Student only)
+// Withdraw application (Student or Teacher)
 export const withdrawApplication = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userRole = req.user!.role;
 
-    // Get student ID from user
-    const student = await prisma.student.findUnique({
-      where: { user_id: req.user!.id },
-    });
+    let applicantId: number;
+    let fieldCheck: string;
 
-    if (!student) {
-      return sendError(res, 'Student profile not found', 404);
+    if (userRole === 'STUDENT') {
+      const student = await prisma.student.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!student) return sendError(res, 'Student profile not found', 404);
+      applicantId = student.id;
+      fieldCheck = 'student_id';
+    } else if (userRole === 'TEACHER') {
+      const teacher = await prisma.teacher.findUnique({
+        where: { user_id: req.user!.id },
+      });
+      if (!teacher) return sendError(res, 'Teacher profile not found', 404);
+      applicantId = teacher.id;
+      fieldCheck = 'teacher_id';
+    } else {
+      return sendError(res, 'Unauthorized', 403);
     }
 
-    // Check if application exists and belongs to student
+    // Check if application exists and belongs to the applicant
     const application = await prisma.jobApplication.findUnique({
       where: { id: parseInt(id as string) },
     });
@@ -366,7 +387,12 @@ export const withdrawApplication = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Application not found', 404);
     }
 
-    if (application.student_id !== student.id) {
+    // Verify ownership
+    const owns = fieldCheck === 'student_id'
+      ? application.student_id === applicantId
+      : application.teacher_id === applicantId;
+
+    if (!owns) {
       return sendError(res, 'Unauthorized', 403);
     }
 
@@ -428,6 +454,19 @@ export const getJobApplications = async (req: Request, res: Response) => {
               board: true,
             },
           },
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  profile_url: true,
+                },
+              },
+            },
+          },
         },
       }),
       prisma.jobApplication.count({ where }),
@@ -485,6 +524,19 @@ export const getAllApplications = async (req: Request, res: Response) => {
               board: true,
             },
           },
+          teacher: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  profile_url: true,
+                },
+              },
+            },
+          },
         },
       }),
       prisma.jobApplication.count({ where }),
@@ -530,6 +582,18 @@ export const reviewApplication = async (req: AuthRequest, res: Response) => {
             },
           },
         },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -562,6 +626,19 @@ export const getApplicationById = async (req: Request, res: Response) => {
             },
             class: true,
             board: true,
+          },
+        },
+        teacher: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                profile_url: true,
+              },
+            },
           },
         },
       },

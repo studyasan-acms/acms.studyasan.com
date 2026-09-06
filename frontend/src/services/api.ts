@@ -1250,7 +1250,9 @@ export const testSeriesService = {
     page?: number;
     limit?: number;
     search?: string;
-    is_published?: boolean;
+    is_published?: boolean | string;
+    status?: string;
+    sort?: string;
   }): Promise<PaginatedResponse<TestSeries>> => {
     const response = await api.get<PaginatedResponse<TestSeries>>('/test-series', { params });
     return response.data;
