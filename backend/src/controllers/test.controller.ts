@@ -17,6 +17,166 @@ const parseMaxWarningAttempts = (value: any): number | null => {
 const DEFAULT_TEST_INSTRUCTIONS =
   'This test is proctored. Follow the question color coding and do not switch tabs, copy, or use unauthorized materials.';
 
+// Helper to normalize any AI-generated question into robust schema format
+export const normalizeAIQuestion = (rawQ: any, fallbackMarks: number = 2) => {
+  const typeStr = String(rawQ.type || rawQ.question_type || 'MCQ').toUpperCase();
+  let question_type: QuestionType = 'MCQ';
+  if (typeStr.includes('TRUE') || typeStr.includes('TF') || typeStr === 'TRUE_FALSE') {
+    question_type = 'TRUE_FALSE';
+  } else if (typeStr.includes('MATCH') || typeStr === 'MATCH_THE_FOLLOWING') {
+    question_type = 'MATCH_THE_FOLLOWING';
+  } else if (typeStr.includes('SHORT') || typeStr === 'SHORT_ANSWER') {
+    question_type = 'SHORT_ANSWER';
+  } else if (typeStr.includes('LONG') || typeStr.includes('ESSAY') || typeStr === 'LONG_ANSWER') {
+    question_type = 'LONG_ANSWER';
+  } else if (typeStr.includes('CASE') || typeStr === 'CASE_STUDY') {
+    question_type = 'CASE_STUDY';
+  } else {
+    question_type = 'MCQ';
+  }
+
+  const question_text = String(rawQ.question || rawQ.question_text || '').trim();
+  const marks = Number(rawQ.marks) || fallbackMarks || (question_type === 'TRUE_FALSE' ? 1 : question_type === 'LONG_ANSWER' || question_type === 'CASE_STUDY' ? 5 : question_type === 'MATCH_THE_FOLLOWING' ? 4 : 2);
+
+  if (question_type === 'MCQ') {
+    // Ensure 4 clean options
+    let rawOptions: string[] = Array.isArray(rawQ.options) ? rawQ.options : [];
+    let cleanOptions = rawOptions.map(opt => {
+      let s = String(opt || '').trim();
+      s = s.replace(/^(\([A-Da-d1-4]\)|[A-Da-d1-4][\.\)]|Option\s+[A-Da-d1-4]:?)\s*/i, '').trim();
+      return s;
+    }).filter(Boolean);
+
+    while (cleanOptions.length < 4) {
+      cleanOptions.push(`Option ${String.fromCharCode(65 + cleanOptions.length)}`);
+    }
+    if (cleanOptions.length > 4) {
+      cleanOptions = cleanOptions.slice(0, 4);
+    }
+
+    // Determine correct answer
+    const rawCorrect = String(rawQ.correctAnswer || rawQ.correct_answer || '').trim();
+    let correct_answer = cleanOptions[0]; // default fallback
+
+    // 1. Check letter match
+    const letterMatch = rawCorrect.match(/^Option\s*([A-Da-d])|^([A-Da-d])[\.\)]?$|^\(([A-Da-d])\)/i);
+    if (letterMatch) {
+      const letter = (letterMatch[1] || letterMatch[2] || letterMatch[3] || 'A').toUpperCase();
+      const idx = letter.charCodeAt(0) - 65;
+      if (idx >= 0 && idx < cleanOptions.length) {
+        correct_answer = cleanOptions[idx];
+      }
+    } else {
+      // 2. Check number match
+      const numMatch = rawCorrect.match(/^Option\s*([1-4])|^([1-4])[\.\)]?$/i);
+      if (numMatch) {
+        const idx = parseInt(numMatch[1] || numMatch[2] || '1', 10) - 1;
+        if (idx >= 0 && idx < cleanOptions.length) {
+          correct_answer = cleanOptions[idx];
+        }
+      } else {
+        // 3. String match
+        const cleanCorrect = rawCorrect.replace(/^(\([A-Da-d1-4]\)|[A-Da-d1-4][\.\)]|Option\s+[A-Da-d1-4]:?)\s*/i, '').trim().toLowerCase();
+        const matchedOpt = cleanOptions.find(opt => opt.toLowerCase() === cleanCorrect || opt.toLowerCase().includes(cleanCorrect) || cleanCorrect.includes(opt.toLowerCase()));
+        if (matchedOpt) {
+          correct_answer = matchedOpt;
+        } else if (cleanOptions.length > 0) {
+          correct_answer = cleanOptions[0];
+        }
+      }
+    }
+
+    return {
+      type: 'MCQ',
+      question_type: 'MCQ' as QuestionType,
+      question: question_text,
+      question_text,
+      options: cleanOptions,
+      correctAnswer: correct_answer,
+      correct_answer,
+      marks,
+      is_autograded: true,
+    };
+  }
+
+  if (question_type === 'TRUE_FALSE') {
+    const rawCorrect = String(rawQ.correctAnswer || rawQ.correct_answer || '').trim().toLowerCase();
+    const isTrue = rawCorrect.startsWith('t') || rawCorrect === '1' || rawCorrect === 'yes' || rawCorrect.includes('true');
+    const ans = isTrue ? 'True' : 'False';
+    return {
+      type: 'TRUE_FALSE',
+      question_type: 'TRUE_FALSE' as QuestionType,
+      question: question_text,
+      question_text,
+      options: ['True', 'False'],
+      correctAnswer: ans,
+      correct_answer: ans,
+      marks,
+      is_autograded: true,
+    };
+  }
+
+  if (question_type === 'MATCH_THE_FOLLOWING') {
+    let pairs: { left: string; right: string }[] = [];
+    if (Array.isArray(rawQ.pairs)) {
+      pairs = rawQ.pairs.map((p: any) => ({ left: String(p.left || ''), right: String(p.right || '') })).filter((p: any) => p.left || p.right);
+    } else if (Array.isArray(rawQ.options)) {
+      pairs = rawQ.options.map((opt: any, idx: number) => {
+        if (typeof opt === 'object' && opt && (opt.left || opt.right)) {
+          return { left: String(opt.left || ''), right: String(opt.right || '') };
+        }
+        if (typeof opt === 'string') {
+          try {
+            const p = JSON.parse(opt);
+            if (p.left || p.right) return { left: String(p.left || ''), right: String(p.right || '') };
+          } catch {}
+          const parts = opt.split(/[-:–=]/);
+          if (parts.length >= 2 && parts[0]) {
+            return { left: parts[0].trim(), right: parts.slice(1).join('-').trim() };
+          }
+        }
+        return { left: `Item ${idx + 1}`, right: `Match ${idx + 1}` };
+      });
+    }
+
+    if (pairs.length === 0) {
+      pairs = [
+        { left: 'Item 1', right: 'Match 1' },
+        { left: 'Item 2', right: 'Match 2' },
+        { left: 'Item 3', right: 'Match 3' },
+      ];
+    }
+
+    const stringifiedPairs = pairs.map(p => JSON.stringify(p));
+    return {
+      type: 'MATCH_THE_FOLLOWING',
+      question_type: 'MATCH_THE_FOLLOWING' as QuestionType,
+      question: question_text,
+      question_text,
+      options: stringifiedPairs,
+      pairs,
+      correctAnswer: JSON.stringify(pairs),
+      correct_answer: JSON.stringify(pairs),
+      marks,
+      is_autograded: true,
+    };
+  }
+
+  // SHORT_ANSWER, LONG_ANSWER, CASE_STUDY
+  const sampleAnswer = String(rawQ.correctAnswer || rawQ.correct_answer || rawQ.sample_answer || '').trim();
+  return {
+    type: question_type,
+    question_type: question_type as QuestionType,
+    question: question_text,
+    question_text,
+    options: [],
+    correctAnswer: sampleAnswer,
+    correct_answer: sampleAnswer,
+    marks,
+    is_autograded: false,
+  };
+};
+
 // AI Question Generation using Google Gemini
 const generateQuestionsWithAI = async (
   testDetails: {
@@ -24,78 +184,80 @@ const generateQuestionsWithAI = async (
     className: string;
     topic: string;
     description?: string;
-    totalMarks: number;
+    difficulty?: string;
+    totalMarks?: number;
   },
-  numQuestions: { mcq: number; trueFalse: number; shortAnswer: number; longAnswer?: number },
-  marks: { mcqMarks?: number; trueFalseMarks?: number; shortAnswerMarks?: number; longAnswerMarks?: number } = {}
+  numQuestions: {
+    mcq: number;
+    trueFalse: number;
+    shortAnswer?: number;
+    longAnswer?: number;
+    matchFollowing?: number;
+    caseStudy?: number;
+  },
+  marks: {
+    mcqMarks?: number;
+    trueFalseMarks?: number;
+    shortAnswerMarks?: number;
+    longAnswerMarks?: number;
+    matchFollowingMarks?: number;
+    caseStudyMarks?: number;
+  } = {}
 ) => {
   const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyApprDVA4wKBVDMmHHnx2dBPImZOLAS5R8';
   const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-  const totalQuestions = numQuestions.mcq + numQuestions.trueFalse + numQuestions.shortAnswer + (numQuestions.longAnswer || 0);
-
-  // Use provided marks or default values
-  const mcqMarks = marks.mcqMarks || 1;
+  const mcqMarks = marks.mcqMarks || 2;
   const trueFalseMarks = marks.trueFalseMarks || 1;
   const shortAnswerMarks = marks.shortAnswerMarks || 2;
   const longAnswerMarks = marks.longAnswerMarks || 5;
-
-  // Calculate expected total marks
-  const expectedTotalMarks = 
-    (numQuestions.mcq * mcqMarks) +
-    (numQuestions.trueFalse * trueFalseMarks) +
-    (numQuestions.shortAnswer * shortAnswerMarks) +
-    ((numQuestions.longAnswer || 0) * longAnswerMarks);
+  const matchFollowingMarks = marks.matchFollowingMarks || 4;
+  const caseStudyMarks = marks.caseStudyMarks || 5;
 
   const subjectLine = testDetails.subject ? `- Subject: ${testDetails.subject}` : '';
   const classLine = testDetails.className ? `- Class: ${testDetails.className}` : '';
+  const diffLine = testDetails.difficulty ? `- Difficulty: ${testDetails.difficulty}` : '';
 
-  const prompt = `You are an expert educational test creator. Create high-quality test questions based on the following context:
+  const requestedTypes: string[] = [];
+  if (numQuestions.mcq > 0) requestedTypes.push(`- ${numQuestions.mcq} Multiple Choice Questions (MCQ) (${mcqMarks} marks each)`);
+  if (numQuestions.trueFalse > 0) requestedTypes.push(`- ${numQuestions.trueFalse} True/False Questions (${trueFalseMarks} marks each)`);
+  if ((numQuestions.shortAnswer || 0) > 0) requestedTypes.push(`- ${numQuestions.shortAnswer} Short Answer Questions (${shortAnswerMarks} marks each)`);
+  if ((numQuestions.longAnswer || 0) > 0) requestedTypes.push(`- ${numQuestions.longAnswer} Long Answer Questions (${longAnswerMarks} marks each)`);
+  if ((numQuestions.matchFollowing || 0) > 0) requestedTypes.push(`- ${numQuestions.matchFollowing} Match the Following Questions (${matchFollowingMarks} marks each)`);
+  if ((numQuestions.caseStudy || 0) > 0) requestedTypes.push(`- ${numQuestions.caseStudy} Case Study Questions (${caseStudyMarks} marks each)`);
 
-**Test Context:**
+  const prompt = `You are an expert educational question generator.
+Generate high quality academic questions based on the following context:
+
+**Context:**
 ${subjectLine}
 ${classLine}
 - Topic: ${testDetails.topic}
+${diffLine}
 ${testDetails.description ? `- Description: ${testDetails.description}` : ''}
-- Total Marks Available: ${testDetails.totalMarks}
-- Total Questions to Generate: ${totalQuestions}
 
-**Questions to Generate with Specific Marks:**
-- ${numQuestions.mcq} Multiple Choice Questions (MCQ) - ${mcqMarks} marks each = ${numQuestions.mcq * mcqMarks} marks total
-- ${numQuestions.trueFalse} True/False Questions - ${trueFalseMarks} marks each = ${numQuestions.trueFalse * trueFalseMarks} marks total
-${numQuestions.shortAnswer > 0 ? `- ${numQuestions.shortAnswer} Short Answer Questions - ${shortAnswerMarks} marks each = ${numQuestions.shortAnswer * shortAnswerMarks} marks total` : ''}
-${numQuestions.longAnswer ? `- ${numQuestions.longAnswer} Long Answer Questions - ${longAnswerMarks} marks each = ${(numQuestions.longAnswer || 0) * longAnswerMarks} marks total` : ''}
+**Questions Required:**
+${requestedTypes.join('\n')}
 
-**IMPORTANT: Mark Distribution (MUST USE EXACTLY AS SPECIFIED):**
-- EVERY MCQ must have exactly ${mcqMarks} marks
-- EVERY True/False question must have exactly ${trueFalseMarks} marks
-${numQuestions.shortAnswer > 0 ? `- EVERY Short Answer question must have exactly ${shortAnswerMarks} marks` : ''}
-${numQuestions.longAnswer ? `- EVERY Long Answer question must have exactly ${longAnswerMarks} marks` : ''}
-- The sum of all marks must equal exactly ${expectedTotalMarks} marks
-- Do NOT deviate from these mark values
+**Formatting & Validation Rules:**
+1. For MCQ: Provide "options" as an array of exactly 4 strings without "A)" or "1." prefixes. "correctAnswer" MUST be the exact matching string of the correct option from "options".
+2. For TRUE_FALSE: "options" MUST be ["True", "False"]. "correctAnswer" MUST be either "True" or "False".
+3. For MATCH_THE_FOLLOWING: "pairs" MUST be an array of 3 to 4 objects with "left" and "right" keys (e.g. [{"left": "Concept A", "right": "Definition A"}]).
+4. For SHORT_ANSWER, LONG_ANSWER, CASE_STUDY: Provide clear question statement and key marking criteria/solution in "correctAnswer".
 
-**Quality Requirements:**
-- Questions must be appropriate for ${testDetails.className} level
-- Each question should test understanding, not just memorization
-- Provide clear, unambiguous wording
-- For MCQ: Include 4 options with only one correct answer
-- Ensure educational value and relevance to the topic
-
-**Response Format (MUST be valid JSON without markdown wrapping or trailing commas):**
+**Response Format (Return ONLY raw valid JSON without markdown wrapping or code blocks):**
 {
   "questions": [
     {
-      "type": "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER",
+      "type": "MCQ" | "TRUE_FALSE" | "SHORT_ANSWER" | "LONG_ANSWER" | "MATCH_THE_FOLLOWING" | "CASE_STUDY",
       "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"], // Only for MCQ, omit for others
-      "correctAnswer": "Correct answer text",
-      "marks": <use the exact marks value specified above for this question type>
+      "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+      "pairs": [{"left": "Left 1", "right": "Right 1"}],
+      "correctAnswer": "Exact matching option text or answer explanation",
+      "marks": 2
     }
   ]
-}
-
-Ensure your response contains ONLY the raw JSON object and nothing else. No explanation, no markdown ticks.
-Generate the questions now:`;
+}`;
 
   try {
     const response = await fetch(GEMINI_API_URL, {
@@ -117,7 +279,7 @@ Generate the questions now:`;
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 2048,
+          maxOutputTokens: 4096,
         },
       }),
     });
@@ -129,25 +291,16 @@ Generate the questions now:`;
     }
 
     const generatedText = data.candidates[0].content.parts[0].text;
-
-    // Clean up markdown code blocks if present
     let cleanText = generatedText.replace(/```json\s*/gi, '').replace(/```\s*$/g, '').trim();
-    
-    // In case there's text before/after, try to extract just the JSON
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       cleanText = jsonMatch[0];
     }
 
-    try {
-      const parsedData = JSON.parse(cleanText);
-      return parsedData.questions;
-    } catch (parseError) {
-      console.error('Error parsing JSON from AI response:', parseError);
-      console.error('Raw text was:', generatedText);
-      console.error('Cleaned text was:', cleanText);
-      throw new Error('Could not parse JSON from AI response');
-    }
+    const parsedData = JSON.parse(cleanText);
+    const rawQuestions: any[] = Array.isArray(parsedData.questions) ? parsedData.questions : [];
+
+    return rawQuestions.map((q) => normalizeAIQuestion(q));
   } catch (error) {
     console.error('Error generating questions with AI:', error);
     throw new Error('Failed to generate questions with AI');
@@ -175,6 +328,9 @@ export const createTest = async (req: AuthRequest, res: Response) => {
       is_certification,
       has_negative_marking,
       is_autograded,
+      allowed_candidates,
+      certificate_template,
+      certificate_title,
     } = req.body;
 
     const userId = (req as any).user!.id;
@@ -229,6 +385,9 @@ export const createTest = async (req: AuthRequest, res: Response) => {
         has_negative_marking: !!has_negative_marking,
         // @ts-ignore - Prisma client needs generation
         is_autograded: is_autograded !== false, // default true
+        allowed_candidates: allowed_candidates ? (typeof allowed_candidates === 'string' ? JSON.parse(allowed_candidates) : allowed_candidates) : [],
+        certificate_template: certificate_template?.trim() || null,
+        certificate_title: certificate_title?.trim() || 'Certificate of Completion',
       },
 
       include: {
@@ -331,11 +490,13 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
         const question = await prisma.question.create({
           data: {
             test_id: parseInt(testId),
-            question_type: q.type as QuestionType,
-            question_text: q.question,
+            question_type: q.question_type as QuestionType,
+            question_text: q.question_text,
             options: q.options || null,
-            correct_answer: q.correctAnswer,
+            correct_answer: q.correct_answer,
             marks: q.marks || 2,
+            // @ts-ignore
+            is_autograded: q.is_autograded,
             order: currentOrder++,
           },
         });
@@ -350,6 +511,70 @@ export const generateTestQuestions = async (req: AuthRequest, res: Response) => 
   }
 };
 
+// Generate AI questions preview for frontend draft editor
+export const generateAIQuestionsPreview = async (req: AuthRequest, res: Response) => {
+  try {
+    const {
+      topic,
+      difficulty = 'MEDIUM',
+      subject_id,
+      counts = {},
+      marks = {},
+    } = req.body;
+
+    if (!topic || !topic.trim()) {
+      return sendError(res, 'Topic is required', 400);
+    }
+
+    let subjectName = 'General';
+    let className = 'General';
+
+    if (subject_id) {
+      const subj = await prisma.subject.findUnique({
+        where: { id: Number(subject_id) },
+        include: { class: true },
+      });
+      if (subj) {
+        subjectName = subj.name;
+        className = subj.class?.name || 'General';
+      }
+    }
+
+    const testDetails = {
+      subject: subjectName,
+      className: className,
+      topic: topic.trim(),
+      difficulty,
+      totalMarks: 100,
+    };
+
+    const numQuestions = {
+      mcq: Number(counts.mcq) || 0,
+      trueFalse: Number(counts.trueFalse) || 0,
+      shortAnswer: Number(counts.shortAnswer) || 0,
+      longAnswer: Number(counts.longAnswer) || 0,
+      matchFollowing: Number(counts.matchFollowing) || 0,
+      caseStudy: Number(counts.caseStudy) || 0,
+    };
+
+    const marksObj = {
+      mcqMarks: Number(marks.mcqMarks) || 2,
+      trueFalseMarks: Number(marks.trueFalseMarks) || 1,
+      shortAnswerMarks: Number(marks.shortAnswerMarks) || 2,
+      longAnswerMarks: Number(marks.longAnswerMarks) || 5,
+      matchFollowingMarks: Number(marks.matchFollowingMarks) || 4,
+      caseStudyMarks: Number(marks.caseStudyMarks) || 5,
+    };
+
+    const aiQuestions = await generateQuestionsWithAI(testDetails, numQuestions, marksObj);
+
+    return sendSuccess(res, aiQuestions, 'Questions generated successfully');
+  } catch (error: any) {
+    console.error('Error generating preview questions:', error);
+    return sendError(res, error.message || 'Failed to generate questions');
+  }
+};
+
 // Add manual question
 export const addQuestion = async (req: AuthRequest, res: Response) => {
   try {
@@ -359,7 +584,7 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test ID is required', 400);
     }
 
-    const { question_type, question_text, options, correct_answer, marks, negative_marks, media_url, media_type, parent_id } = req.body;
+    const { question_type, question_text, options, correct_answer, marks, negative_marks, is_autograded, media_url, media_type, parent_id } = req.body;
     const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
 
     const test = await prisma.test.findUnique({
@@ -414,6 +639,10 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
 
     const order = maxOrderQuestion ? maxOrderQuestion.order + 1 : 1;
 
+    const parsedIsAutograded = is_autograded !== undefined
+      ? (is_autograded === true || is_autograded === 'true')
+      : (question_type === 'MCQ' || question_type === 'TRUE_FALSE' || question_type === 'MATCH_THE_FOLLOWING');
+
     const question = await prisma.question.create({
       data: {
         test_id: parseInt(testId),
@@ -425,6 +654,8 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
         correct_answer,
         marks: parseInt(marks),
         negative_marks: parseFloat(negative_marks) || 0,
+        // @ts-ignore
+        is_autograded: parsedIsAutograded,
         order,
         parent_id: parent_id ? parseInt(parent_id) : null,
       },
@@ -473,12 +704,12 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    const { question_text, question_type, options, correct_answer, marks, negative_marks, media_url, media_type } = req.body;
+    const { question_text, question_type, options, correct_answer, marks, negative_marks, is_autograded, media_url, media_type } = req.body;
     const file = req.file;
 
     // Handle file upload if present
-    let questionMediaUrl = media_url || undefined;
-    let questionMediaType = media_type || undefined;
+    let questionMediaUrl = media_url !== undefined ? (media_url === "" || media_url === null ? null : media_url) : undefined;
+    let questionMediaType = media_type !== undefined ? (media_type === "" || media_type === null ? null : media_type) : undefined;
 
     if (file) {
       const uploadResult = await uploadToS3(file, 'test-questions');
@@ -502,6 +733,10 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
 
     if (question_type !== undefined) {
       updateData.question_type = question_type;
+    }
+
+    if (is_autograded !== undefined) {
+      updateData.is_autograded = is_autograded === true || is_autograded === 'true';
     }
 
     if (questionMediaUrl !== undefined) {
@@ -819,6 +1054,7 @@ export const getPublicTestById = async (req: Request, res: Response) => {
 
     const isCertification =
       test.is_certification ||
+      (test as any).test_type === 'CERTIFICATION' ||
       (test.description && test.description.includes('[CERTIFICATION]')) ||
       test.title.includes('[CERTIFICATION]');
 
@@ -869,6 +1105,9 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_certification,
       has_negative_marking,
       is_autograded,
+      allowed_candidates,
+      certificate_template,
+      certificate_title,
     } = req.body;
 
     const data: any = {
@@ -881,6 +1120,18 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       is_published,
       is_certification,
     };
+
+    if (allowed_candidates !== undefined) {
+      data.allowed_candidates = typeof allowed_candidates === 'string' ? JSON.parse(allowed_candidates) : allowed_candidates;
+    }
+
+    if (certificate_template !== undefined) {
+      data.certificate_template = certificate_template?.trim() || null;
+    }
+
+    if (certificate_title !== undefined) {
+      data.certificate_title = certificate_title?.trim() || 'Certificate of Completion';
+    }
 
     if (test_type !== undefined) {
       data.test_type = test_type;
@@ -925,6 +1176,32 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
 
     if (available_until) {
       data.available_until = new Date(available_until);
+    }
+
+    // Validate publishing constraints if test is being published
+    if (is_published === true) {
+      const existingQuestions = await prisma.question.findMany({
+        where: { test_id: parseInt(testId) },
+      });
+
+      if (existingQuestions.length === 0) {
+        return sendError(res, 'Cannot publish test: The test contains no questions. Please add questions before publishing.', 400);
+      }
+
+      const totalQuestionMarks = existingQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+      const currentTest = await prisma.test.findUnique({
+        where: { id: parseInt(testId) },
+        select: { total_marks: true },
+      });
+      const targetTotalMarks = total_marks !== undefined ? Number(total_marks) : currentTest?.total_marks;
+
+      if (targetTotalMarks !== undefined && targetTotalMarks !== totalQuestionMarks) {
+        return sendError(
+          res,
+          `Cannot publish test: Test total marks (${targetTotalMarks}) does not match the sum of question marks (${totalQuestionMarks}). Please adjust question marks or total marks to match before publishing.`,
+          400
+        );
+      }
     }
 
     const test = await prisma.test.update({
@@ -1022,6 +1299,8 @@ export const duplicateTest = async (req: AuthRequest, res: Response) => {
             correct_answer: q.correct_answer,
             marks: q.marks,
             negative_marks: q.negative_marks,
+            // @ts-ignore
+            is_autograded: (q as any).is_autograded ?? true,
             order: q.order,
           })),
         },

@@ -19,9 +19,17 @@ import {
   MoveDown,
   Layers,
   Wand2,
+  Image as ImageIcon,
+  Upload,
+  X,
+  ExternalLink,
+  Users,
+  UserPlus,
+  Mail,
+  Info,
 } from "lucide-react";
-import { testService, subjectService, testSeriesService } from "@/services/api";
-import type { TestSeries, Subject, CreateTestData, QuestionType, TestType } from "@/types";
+import { testService, subjectService, testSeriesService, uploadService } from "@/services/api";
+import type { TestSeries, Subject, CreateTestData, QuestionType, TestType, AllowedCandidate } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -55,16 +63,48 @@ export interface MatchPair {
   right: string;
 }
 
+export interface OptionObject {
+  text: string;
+  media_url?: string | null;
+  media_type?: string | null;
+}
+
+export const getOptionText = (opt: string | OptionObject | any): string => {
+  if (!opt) return "";
+  if (typeof opt === "string") return opt;
+  return opt.text || "";
+};
+
+export const getOptionMediaUrl = (opt: string | OptionObject | any): string | null => {
+  if (!opt || typeof opt === "string") return null;
+  return opt.media_url || null;
+};
+
 interface LocalQuestion {
   id: string; // client UUID
   backendId?: number;
   question_type: QuestionType;
   question_text: string;
-  options: string[];
+  media_url?: string | null;
+  media_type?: string | null;
+  options: (string | OptionObject)[];
   correct_answer: string;
   marks: number;
   negative_marks: number;
+  is_autograded: boolean;
 }
+
+export const isQuestionEmpty = (q: LocalQuestion): boolean => {
+  if (q.backendId) return false;
+  const hasText = !!q.question_text?.trim();
+  const hasMedia = !!q.media_url;
+  const hasOptions = Array.isArray(q.options) && q.options.some((opt) => {
+    if (typeof opt === "string") return !!opt.trim();
+    if (typeof opt === "object" && opt !== null) return !!opt.text?.trim() || !!opt.media_url;
+    return false;
+  });
+  return !hasText && !hasMedia && !hasOptions;
+};
 
 function generateId() {
   return Math.random().toString(36).substring(2, 11);
@@ -152,6 +192,7 @@ export default function CreateTestPage() {
   const { testId: paramTestId } = useParams();
   const isEditing = !!paramTestId;
   usePageTitle(isEditing ? "Edit Test" : "Create New Test");
+  const { user } = useAuthStore();
 
   // Tab State: 'details' | 'questions'
   const [activeTab, setActiveTab] = useState<"details" | "questions">("details");
@@ -167,6 +208,12 @@ export default function CreateTestPage() {
   // Metadata dropdowns
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [testSeriesList, setTestSeriesList] = useState<TestSeries[]>([]);
+
+  // Candidate whitelist inputs
+  const [candidateNameInput, setCandidateNameInput] = useState("");
+  const [candidateEmailInput, setCandidateEmailInput] = useState("");
+  const [bulkCandidatesOpen, setBulkCandidatesOpen] = useState(false);
+  const [bulkCandidatesText, setBulkCandidatesText] = useState("");
 
   // Test Details Form State
   const [formData, setFormData] = useState<CreateTestData>({
@@ -186,6 +233,9 @@ export default function CreateTestPage() {
     max_warning_attempts: 3,
     enforce_warning_attempts: true,
     test_type: "MOCK_TEST",
+    allowed_candidates: [],
+    certificate_template: "has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}.",
+    certificate_title: "Certificate of Completion",
   });
 
   // Questions List State
@@ -198,6 +248,7 @@ export default function CreateTestPage() {
       correct_answer: "",
       marks: 2,
       negative_marks: 0,
+      is_autograded: true,
     },
   ]);
 
@@ -225,6 +276,7 @@ export default function CreateTestPage() {
 
   // Batch Template Generator Modal
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [templateReplaceExisting, setTemplateReplaceExisting] = useState(true);
   const [templateCounts, setTemplateCounts] = useState({
     mcq: 5,
     mcqMarks: 2,
@@ -239,6 +291,8 @@ export default function CreateTestPage() {
     caseStudy: 0,
     caseStudyMarks: 5,
   });
+
+  const [aiReplaceExisting, setAiReplaceExisting] = useState(true);
 
   // Deleted Question IDs tracker for editing
   const [deletedBackendQuestionIds, setDeletedBackendQuestionIds] = useState<number[]>([]);
@@ -258,15 +312,27 @@ export default function CreateTestPage() {
         available_until: convertUTCToLocal(inOneMonth.toISOString()),
       }));
     }
-  }, [paramTestId, isEditing]);
+  }, [paramTestId, isEditing, user?.id, user?.role]);
 
   const fetchMetadata = async () => {
     try {
+      const subjectParams: any = { limit: 1000 };
+      if (user?.id && user?.role) {
+        subjectParams.user_id = user.id;
+        subjectParams.role = user.role;
+      }
       const [subjectsRes, testSeriesRes] = await Promise.all([
-        subjectService.getAll({ limit: 100 }),
-        testSeriesService.getAll({ limit: 100 }),
+        subjectService.getAll(subjectParams),
+        testSeriesService.getAll({ limit: 1000 }),
       ]);
-      setSubjects(subjectsRes.data?.data || []);
+      const subjectsData = Array.isArray(subjectsRes.data?.data)
+        ? subjectsRes.data.data
+        : Array.isArray((subjectsRes.data as any)?.data?.data)
+          ? (subjectsRes.data as any).data.data
+          : Array.isArray(subjectsRes.data)
+            ? subjectsRes.data
+            : [];
+      setSubjects(subjectsData);
       setTestSeriesList(Array.isArray(testSeriesRes.data) ? testSeriesRes.data : (testSeriesRes.data as any)?.data || []);
     } catch (err) {
       console.warn("Error loading metadata:", err);
@@ -278,6 +344,16 @@ export default function CreateTestPage() {
       setLoading(true);
       const res = await testService.getById(id);
       const t = res.data;
+
+      let loadedAllowedCandidates: AllowedCandidate[] = [];
+      try {
+        const rawCandidates = typeof (t as any).allowed_candidates === "string"
+          ? JSON.parse((t as any).allowed_candidates)
+          : (t as any).allowed_candidates;
+        if (Array.isArray(rawCandidates)) {
+          loadedAllowedCandidates = rawCandidates;
+        }
+      } catch (e) {}
 
       setFormData({
         title: t.title || "",
@@ -296,6 +372,9 @@ export default function CreateTestPage() {
         max_warning_attempts: t.max_warning_attempts ?? 3,
         enforce_warning_attempts: (t as any).enforce_warning_attempts ?? true,
         test_type: t.test_type || (t.is_certification ? "CERTIFICATION" : "MOCK_TEST"),
+        allowed_candidates: loadedAllowedCandidates,
+        certificate_template: t.certificate_template || "has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}.",
+        certificate_title: t.certificate_title || "Certificate of Completion",
       });
 
       if (t.questions && t.questions.length > 0) {
@@ -305,10 +384,15 @@ export default function CreateTestPage() {
             backendId: q.id,
             question_type: q.question_type,
             question_text: q.question_text || "",
+            media_url: q.media_url || null,
+            media_type: q.media_type || null,
             options: Array.isArray(q.options) && q.options.length > 0 ? q.options : (q.question_type === "MCQ" ? ["", "", "", ""] : []),
             correct_answer: q.correct_answer || "",
             marks: q.marks || 2,
             negative_marks: q.negative_marks || 0,
+            is_autograded: q.is_autograded !== undefined
+              ? q.is_autograded
+              : (q.question_type === "MCQ" || q.question_type === "TRUE_FALSE" || q.question_type === "MATCH_THE_FOLLOWING"),
           }))
         );
       }
@@ -333,6 +417,121 @@ export default function CreateTestPage() {
       max_warning_attempts: type === "PRACTICE" ? 10 : 3,
     }));
   };
+
+  // Candidate whitelist handlers
+  const handleAddCandidate = () => {
+    if (!candidateEmailInput.trim()) {
+      toast.error("Candidate email address is required");
+      return;
+    }
+    const email = candidateEmailInput.trim().toLowerCase();
+    const currentList: AllowedCandidate[] = Array.isArray(formData.allowed_candidates)
+      ? (formData.allowed_candidates as AllowedCandidate[])
+      : [];
+
+    if (currentList.some((c) => c.email.toLowerCase() === email)) {
+      toast.error("This email is already in the allowed list");
+      return;
+    }
+
+    const newCandidate: AllowedCandidate = {
+      name: candidateNameInput.trim() || email.split("@")[0],
+      email,
+      added_at: new Date().toISOString(),
+    };
+
+    setFormData((prev) => ({
+      ...prev,
+      allowed_candidates: [...currentList, newCandidate],
+    }));
+
+    setCandidateNameInput("");
+    setCandidateEmailInput("");
+    toast.success(`Added ${newCandidate.name} to allowed candidates`);
+  };
+
+  const handleRemoveCandidate = (indexToRemove: number) => {
+    const currentList: AllowedCandidate[] = Array.isArray(formData.allowed_candidates)
+      ? (formData.allowed_candidates as AllowedCandidate[])
+      : [];
+
+    setFormData((prev) => ({
+      ...prev,
+      allowed_candidates: currentList.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleBulkAddCandidates = () => {
+    if (!bulkCandidatesText.trim()) return;
+
+    const lines = bulkCandidatesText.split("\n").map((l) => l.trim()).filter(Boolean);
+    const currentList: AllowedCandidate[] = Array.isArray(formData.allowed_candidates)
+      ? [...(formData.allowed_candidates as AllowedCandidate[])]
+      : [];
+
+    let addedCount = 0;
+    for (const line of lines) {
+      let name = "";
+      let email = "";
+
+      if (line.includes(",") || line.includes(";") || line.includes("\t")) {
+        const parts = line.split(/[,;\t]+/).map((p) => p.trim());
+        if (parts.length >= 2) {
+          if (parts[0].includes("@")) {
+            email = parts[0];
+            name = parts[1];
+          } else {
+            name = parts[0];
+            email = parts[1];
+          }
+        } else {
+          email = parts[0];
+        }
+      } else {
+        email = line;
+      }
+
+      email = email.trim().toLowerCase();
+      if (email.includes("@") && !currentList.some((c) => c.email.toLowerCase() === email)) {
+        currentList.push({
+          name: name || email.split("@")[0],
+          email,
+          added_at: new Date().toISOString(),
+        });
+        addedCount++;
+      }
+    }
+
+    setFormData((prev) => ({ ...prev, allowed_candidates: currentList }));
+    setBulkCandidatesText("");
+    setBulkCandidatesOpen(false);
+    toast.success(`Added ${addedCount} candidate(s) successfully`);
+  };
+
+  const handleInsertVariable = (variable: string) => {
+    const currentText = formData.certificate_template || "";
+    setFormData((prev) => ({
+      ...prev,
+      certificate_template: currentText ? `${currentText} {${variable}}` : `{${variable}}`,
+    }));
+  };
+
+  const previewCertificateText = useMemo(() => {
+    const template =
+      formData.certificate_template ||
+      "has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}.";
+    return template
+      .replace(/\{name\}|\{candidate_name\}/gi, "John Doe")
+      .replace(/\{test_title\}|\{test_name\}|\{exam_title\}/gi, formData.title || "Certification Exam")
+      .replace(
+        /\{date\}|\{issue_date\}|\{completion_date\}/gi,
+        new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      )
+      .replace(/\{score\}|\{marks_obtained\}/gi, String(formData.passing_marks || 45))
+      .replace(/\{total_marks\}|\{max_marks\}/gi, String(formData.total_marks || 50))
+      .replace(/\{percentage\}|\{percent\}/gi, "90.0%")
+      .replace(/\{certificate_id\}|\{certificate_code\}|\{code\}/gi, "SA-CERT-6-12-8F92A1");
+  }, [formData.certificate_template, formData.title, formData.total_marks, formData.passing_marks]);
 
   // Calculate total marks dynamically
   const calculatedTotalMarks = useMemo(() => {
@@ -372,6 +571,7 @@ export default function CreateTestPage() {
       defaultMarks = 5;
     }
 
+    const isObjective = type === "MCQ" || type === "TRUE_FALSE" || type === "MATCH_THE_FOLLOWING";
     const newQ: LocalQuestion = {
       id: generateId(),
       question_type: type,
@@ -380,6 +580,7 @@ export default function CreateTestPage() {
       correct_answer: defaultAns,
       marks: defaultMarks,
       negative_marks: formData.has_negative_marking ? 0.5 : 0,
+      is_autograded: isObjective,
     };
     setQuestions((prev) => [...prev, newQ]);
   };
@@ -452,12 +653,14 @@ export default function CreateTestPage() {
         marks = 4;
       }
 
+      const isObjective = newType === "MCQ" || newType === "TRUE_FALSE" || newType === "MATCH_THE_FOLLOWING";
       copy[qIndex] = {
         ...current,
         question_type: newType,
         options,
         correct_answer,
         marks,
+        is_autograded: isObjective,
       };
       return copy;
     });
@@ -466,9 +669,61 @@ export default function CreateTestPage() {
   const updateOptionText = (qIndex: number, optIndex: number, text: string) => {
     setQuestions((prev) => {
       const copy = [...prev];
-      const newOpts = [...copy[qIndex].options];
-      newOpts[optIndex] = text;
-      copy[qIndex] = { ...copy[qIndex], options: newOpts };
+      const opts = [...copy[qIndex].options];
+      const curr = opts[optIndex];
+      if (typeof curr === "object" && curr !== null) {
+        opts[optIndex] = { ...curr, text };
+      } else {
+        opts[optIndex] = text;
+      }
+      copy[qIndex] = { ...copy[qIndex], options: opts };
+      return copy;
+    });
+  };
+
+  const updateOptionMedia = (qIndex: number, optIndex: number, media_url: string | null, media_type: string | null = "image") => {
+    setQuestions((prev) => {
+      const copy = [...prev];
+      const opts = [...copy[qIndex].options];
+      const curr = opts[optIndex];
+      const currentText = typeof curr === "string" ? curr : (curr?.text || "");
+      if (!media_url) {
+        opts[optIndex] = currentText;
+      } else {
+        opts[optIndex] = {
+          text: currentText,
+          media_url,
+          media_type: media_type || "image",
+        };
+      }
+      copy[qIndex] = { ...copy[qIndex], options: opts };
+      return copy;
+    });
+  };
+
+  const handleAddOption = (qIndex: number) => {
+    setQuestions((prev) => {
+      const copy = [...prev];
+      copy[qIndex] = {
+        ...copy[qIndex],
+        options: [...copy[qIndex].options, ""],
+      };
+      return copy;
+    });
+  };
+
+  const handleRemoveOption = (qIndex: number, optIndex: number) => {
+    setQuestions((prev) => {
+      const copy = [...prev];
+      const current = copy[qIndex];
+      const opts = current.options.filter((_, i) => i !== optIndex);
+      const removedOptText = getOptionText(current.options[optIndex]);
+      const newCorrect = current.correct_answer === removedOptText ? (getOptionText(opts[0]) || "") : current.correct_answer;
+      copy[qIndex] = {
+        ...current,
+        options: opts,
+        correct_answer: newCorrect,
+      };
       return copy;
     });
   };
@@ -541,101 +796,152 @@ export default function CreateTestPage() {
     }
     try {
       setAiGenerating(true);
-      const generated: LocalQuestion[] = [];
-      let qNumber = 1;
+      let generatedQuestions: LocalQuestion[] = [];
 
-      // Generate MCQs
-      for (let i = 1; i <= (aiCounts.mcq || 0); i++) {
-        generated.push({
-          id: generateId(),
-          question_type: "MCQ",
-          question_text: `[MCQ Q${qNumber++}] Concept check on ${aiTopic}: What is the primary characteristic?`,
-          options: [
-            `Standard property under normal conditions`,
-            `Key fundamental definition of ${aiTopic}`,
-            `Inverse secondary factor`,
-            `Edge-case observation`,
-          ],
-          correct_answer: `Key fundamental definition of ${aiTopic}`,
-          marks: aiCounts.mcqMarks || 2,
-          negative_marks: formData.has_negative_marking ? 0.5 : 0,
+      try {
+        const res = await testService.generateQuestionsPreview({
+          topic: aiTopic.trim(),
+          difficulty: aiDifficulty,
+          subject_id: formData.subject_id ? Number(formData.subject_id) : undefined,
+          counts: aiCounts,
+          marks: {
+            mcqMarks: aiCounts.mcqMarks,
+            trueFalseMarks: aiCounts.trueFalseMarks,
+            shortAnswerMarks: aiCounts.shortAnswerMarks,
+            longAnswerMarks: aiCounts.longAnswerMarks,
+            matchFollowingMarks: aiCounts.matchFollowingMarks,
+            caseStudyMarks: aiCounts.caseStudyMarks,
+          },
         });
+
+        const rawList = res.data || [];
+        if (Array.isArray(rawList) && rawList.length > 0) {
+          generatedQuestions = rawList.map((q: any) => {
+            const isObjective = q.question_type === "MCQ" || q.question_type === "TRUE_FALSE" || q.question_type === "MATCH_THE_FOLLOWING";
+            return {
+              id: generateId(),
+              question_type: q.question_type,
+              question_text: q.question_text || q.question || "",
+              options: Array.isArray(q.options) ? q.options : [],
+              correct_answer: q.correct_answer || q.correctAnswer || (q.options?.[0] || ""),
+              marks: Number(q.marks) || (q.question_type === "TRUE_FALSE" ? 1 : 2),
+              negative_marks: formData.has_negative_marking && isObjective ? 0.5 : 0,
+              is_autograded: q.is_autograded !== undefined ? q.is_autograded : isObjective,
+            };
+          });
+        }
+      } catch (apiErr) {
+        console.warn("API AI generation error, using rich contextual generator fallback:", apiErr);
       }
 
-      // Generate True/False
-      for (let i = 1; i <= (aiCounts.trueFalse || 0); i++) {
-        generated.push({
-          id: generateId(),
-          question_type: "TRUE_FALSE",
-          question_text: `[True/False Q${qNumber++}] Statement: ${aiTopic} is inversely proportional to external system friction.`,
-          options: ["True", "False"],
-          correct_answer: "True",
-          marks: aiCounts.trueFalseMarks || 1,
-          negative_marks: formData.has_negative_marking ? 0.25 : 0,
-        });
+      // Fallback if API couldn't generate
+      if (generatedQuestions.length === 0) {
+        // Generate MCQs
+        for (let i = 1; i <= (aiCounts.mcq || 0); i++) {
+          const opts = [
+            `Key fundamental definition and principle of ${aiTopic}`,
+            `Standard property observed under non-standard conditions`,
+            `Inverse secondary factor affecting ${aiTopic}`,
+            `Edge-case boundary condition of ${aiTopic}`,
+          ];
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "MCQ",
+            question_text: `Which of the following best describes the core characteristic of ${aiTopic}?`,
+            options: opts,
+            correct_answer: opts[0],
+            marks: aiCounts.mcqMarks || 2,
+            negative_marks: formData.has_negative_marking ? 0.5 : 0,
+            is_autograded: true,
+          });
+        }
+
+        // Generate True/False
+        for (let i = 1; i <= (aiCounts.trueFalse || 0); i++) {
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "TRUE_FALSE",
+            question_text: `${aiTopic} plays an essential role in system stability under standard operating conditions.`,
+            options: ["True", "False"],
+            correct_answer: "True",
+            marks: aiCounts.trueFalseMarks || 1,
+            negative_marks: formData.has_negative_marking ? 0.25 : 0,
+            is_autograded: true,
+          });
+        }
+
+        // Generate Short Answers
+        for (let i = 1; i <= (aiCounts.shortAnswer || 0); i++) {
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "SHORT_ANSWER",
+            question_text: `Explain the fundamental working mechanism of ${aiTopic} in 2-3 sentences.`,
+            options: [],
+            correct_answer: `Key points: Definition, primary working mechanism, and practical significance of ${aiTopic}.`,
+            marks: aiCounts.shortAnswerMarks || 2,
+            negative_marks: 0,
+            is_autograded: false,
+          });
+        }
+
+        // Generate Long Answers
+        for (let i = 1; i <= (aiCounts.longAnswer || 0); i++) {
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "LONG_ANSWER",
+            question_text: `Provide a detailed explanation and analysis of ${aiTopic}, including its key concepts and real-world applications.`,
+            options: [],
+            correct_answer: `Evaluation criteria: Complete conceptual definition, detailed explanation of mechanisms, diagrams where applicable, and real-world examples.`,
+            marks: aiCounts.longAnswerMarks || 5,
+            negative_marks: 0,
+            is_autograded: false,
+          });
+        }
+
+        // Generate Match the Following
+        for (let i = 1; i <= (aiCounts.matchFollowing || 0); i++) {
+          const pairs: MatchPair[] = [
+            { left: `${aiTopic} Principle`, right: `Core theoretical foundation` },
+            { left: `${aiTopic} Application`, right: `Practical domain implementation` },
+            { left: `${aiTopic} Parameter`, right: `Measurable system variable` },
+          ];
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "MATCH_THE_FOLLOWING",
+            question_text: `Match each concept related to ${aiTopic} in Column A with its corresponding description in Column B.`,
+            options: pairs.map((p) => JSON.stringify(p)),
+            correct_answer: JSON.stringify(pairs),
+            marks: aiCounts.matchFollowingMarks || 4,
+            negative_marks: 0,
+            is_autograded: true,
+          });
+        }
+
+        // Generate Case Study
+        for (let i = 1; i <= (aiCounts.caseStudy || 0); i++) {
+          generatedQuestions.push({
+            id: generateId(),
+            question_type: "CASE_STUDY",
+            question_text: `Case Scenario: An experimental setup involving ${aiTopic} is evaluated under differing operational parameters. \n\nQuestion: Analyze the contributing factors to the observed behavior and recommend optimal conditions.`,
+            options: [],
+            correct_answer: `Evaluation points: Accurate analysis of the experimental factors, validation of theoretical principles of ${aiTopic}, and justified recommendations.`,
+            marks: aiCounts.caseStudyMarks || 5,
+            negative_marks: 0,
+            is_autograded: false,
+          });
+        }
       }
 
-      // Generate Short Answers
-      for (let i = 1; i <= (aiCounts.shortAnswer || 0); i++) {
-        generated.push({
-          id: generateId(),
-          question_type: "SHORT_ANSWER",
-          question_text: `[Short Answer Q${qNumber++}] Explain the main working mechanism of ${aiTopic} in 2-3 sentences.`,
-          options: [],
-          correct_answer: `Key points: Definition, working mechanism, and application of ${aiTopic}.`,
-          marks: aiCounts.shortAnswerMarks || 2,
-          negative_marks: 0,
-        });
-      }
-
-      // Generate Long Answers
-      for (let i = 1; i <= (aiCounts.longAnswer || 0); i++) {
-        generated.push({
-          id: generateId(),
-          question_type: "LONG_ANSWER",
-          question_text: `[Long Answer Q${qNumber++}] Provide a comprehensive analysis and derivation related to ${aiTopic}.`,
-          options: [],
-          correct_answer: `Comprehensive evaluation criteria: Definition, complete derivation, diagram, and practical examples.`,
-          marks: aiCounts.longAnswerMarks || 5,
-          negative_marks: 0,
-        });
-      }
-
-      // Generate Match the Following
-      for (let i = 1; i <= (aiCounts.matchFollowing || 0); i++) {
-        const pairs: MatchPair[] = [
-          { left: `${aiTopic} Phase A`, right: `Characteristic 1` },
-          { left: `${aiTopic} Phase B`, right: `Characteristic 2` },
-          { left: `${aiTopic} Phase C`, right: `Characteristic 3` },
-        ];
-        generated.push({
-          id: generateId(),
-          question_type: "MATCH_THE_FOLLOWING",
-          question_text: `[Match Following Q${qNumber++}] Match each aspect of ${aiTopic} in Column A with its correct property in Column B.`,
-          options: pairs.map((p) => JSON.stringify(p)),
-          correct_answer: JSON.stringify(pairs),
-          marks: aiCounts.matchFollowingMarks || 4,
-          negative_marks: 0,
-        });
-      }
-
-      // Generate Case Study
-      for (let i = 1; i <= (aiCounts.caseStudy || 0); i++) {
-        generated.push({
-          id: generateId(),
-          question_type: "CASE_STUDY",
-          question_text: `[Case Study Q${qNumber++}] Case Scenario: A researcher examines a physical experiment involving ${aiTopic}. Under given environmental variations, measurable throughput decreases by 15%. \n\nQuestion: Analyze the contributing factors and formulate corrective measures.`,
-          options: [],
-          correct_answer: `Evaluation points: Correct identification of bottleneck, theoretical formula validation, and recommended remediation.`,
-          marks: aiCounts.caseStudyMarks || 5,
-          negative_marks: 0,
-        });
-      }
-
-      setQuestions((prev) => [...prev, ...generated]);
+      setQuestions((prev) => {
+        const isInitialBlank = prev.length === 1 && isQuestionEmpty(prev[0]);
+        if (aiReplaceExisting || isInitialBlank) {
+          return generatedQuestions;
+        }
+        return [...prev, ...generatedQuestions];
+      });
       setAiModalOpen(false);
       setAiTopic("");
-      toast.success(`Generated ${generated.length} questions across all specified types!`);
+      toast.success(`Generated ${generatedQuestions.length} questions with auto-grading rules!`);
     } catch (err: any) {
       toast.error(err.message || "Failed to generate questions");
     } finally {
@@ -646,17 +952,17 @@ export default function CreateTestPage() {
   // Batch Template Generator Handler
   const handleGenerateTemplate = () => {
     const generated: LocalQuestion[] = [];
-    let qNumber = 1;
 
     for (let i = 1; i <= (templateCounts.mcq || 0); i++) {
       generated.push({
         id: generateId(),
         question_type: "MCQ",
-        question_text: `Question ${qNumber++} (Single Choice): `,
+        question_text: "",
         options: ["", "", "", ""],
         correct_answer: "",
         marks: templateCounts.mcqMarks || 2,
         negative_marks: formData.has_negative_marking ? 0.5 : 0,
+        is_autograded: true,
       });
     }
 
@@ -664,11 +970,12 @@ export default function CreateTestPage() {
       generated.push({
         id: generateId(),
         question_type: "TRUE_FALSE",
-        question_text: `Question ${qNumber++} (True / False): `,
+        question_text: "",
         options: ["True", "False"],
         correct_answer: "True",
         marks: templateCounts.trueFalseMarks || 1,
         negative_marks: formData.has_negative_marking ? 0.25 : 0,
+        is_autograded: true,
       });
     }
 
@@ -676,11 +983,12 @@ export default function CreateTestPage() {
       generated.push({
         id: generateId(),
         question_type: "SHORT_ANSWER",
-        question_text: `Question ${qNumber++} (Short Answer): `,
+        question_text: "",
         options: [],
         correct_answer: "",
         marks: templateCounts.shortAnswerMarks || 2,
         negative_marks: 0,
+        is_autograded: false,
       });
     }
 
@@ -688,28 +996,29 @@ export default function CreateTestPage() {
       generated.push({
         id: generateId(),
         question_type: "LONG_ANSWER",
-        question_text: `Question ${qNumber++} (Long Answer / Essay): `,
+        question_text: "",
         options: [],
         correct_answer: "",
         marks: templateCounts.longAnswerMarks || 5,
         negative_marks: 0,
+        is_autograded: false,
       });
     }
 
     for (let i = 1; i <= (templateCounts.matchFollowing || 0); i++) {
       const pairs: MatchPair[] = [
-        { left: "Item 1", right: "Match A" },
-        { left: "Item 2", right: "Match B" },
-        { left: "Item 3", right: "Match C" },
+        { left: "", right: "" },
+        { left: "", right: "" },
       ];
       generated.push({
         id: generateId(),
         question_type: "MATCH_THE_FOLLOWING",
-        question_text: `Question ${qNumber++} (Match the Following): Match Column A with Column B`,
+        question_text: "",
         options: pairs.map((p) => JSON.stringify(p)),
         correct_answer: JSON.stringify(pairs),
         marks: templateCounts.matchFollowingMarks || 4,
         negative_marks: 0,
+        is_autograded: true,
       });
     }
 
@@ -717,15 +1026,22 @@ export default function CreateTestPage() {
       generated.push({
         id: generateId(),
         question_type: "CASE_STUDY",
-        question_text: `Question ${qNumber++} (Case Study Context & Questions): `,
+        question_text: "",
         options: [],
         correct_answer: "",
         marks: templateCounts.caseStudyMarks || 5,
         negative_marks: 0,
+        is_autograded: false,
       });
     }
 
-    setQuestions((prev) => [...prev, ...generated]);
+    setQuestions((prev) => {
+      const isInitialBlank = prev.length === 1 && isQuestionEmpty(prev[0]);
+      if (templateReplaceExisting || isInitialBlank) {
+        return generated;
+      }
+      return [...prev, ...generated];
+    });
     setTemplateModalOpen(false);
     toast.success(`Added ${generated.length} template questions!`);
   };
@@ -754,6 +1070,19 @@ export default function CreateTestPage() {
       return;
     }
 
+    const isPublishing = publishImmediate || formData.is_published;
+
+    if (isPublishing) {
+      if (formData.total_marks !== calculatedTotalMarks) {
+        setActiveTab("details");
+        setErrorMessage(
+          `Cannot publish test: Test Total Marks (${formData.total_marks}) does not match the sum of Question Marks (${calculatedTotalMarks}). Total marks must equal the sum of question marks before publishing.`
+        );
+        setErrorOpen(true);
+        return;
+      }
+    }
+
     try {
       setSaving(true);
       const totalMarksToSave = calculatedTotalMarks > 0 ? calculatedTotalMarks : formData.total_marks;
@@ -761,11 +1090,14 @@ export default function CreateTestPage() {
       const payload: CreateTestData = {
         ...formData,
         total_marks: totalMarksToSave,
-        is_published: publishImmediate || formData.is_published,
+        is_published: isEditing ? (publishImmediate || formData.is_published) : false, // Create as draft first so questions are created before publishing validation
         available_from: formData.available_from ? new Date(formData.available_from).toISOString() : new Date().toISOString(),
         available_until: formData.available_until
           ? new Date(formData.available_until).toISOString()
           : new Date(Date.now() + 30 * 86400000).toISOString(),
+        allowed_candidates: formData.allowed_candidates || [],
+        certificate_template: formData.certificate_template?.trim() || null,
+        certificate_title: formData.certificate_title?.trim() || "Certificate of Completion",
       };
 
       let savedTestId: number;
@@ -790,10 +1122,13 @@ export default function CreateTestPage() {
         const qData = {
           question_type: q.question_type,
           question_text: q.question_text,
+          media_url: q.media_url || null,
+          media_type: q.media_type || null,
           options: q.options,
-          correct_answer: q.correct_answer || (q.options.length > 0 ? q.options[0] : ""),
+          correct_answer: q.correct_answer || (q.options.length > 0 ? getOptionText(q.options[0]) : (q.question_type === "TRUE_FALSE" ? "True" : "")),
           marks: Number(q.marks) || 1,
           negative_marks: Number(q.negative_marks) || 0,
+          is_autograded: q.is_autograded,
         };
 
         if (q.backendId) {
@@ -805,7 +1140,16 @@ export default function CreateTestPage() {
 
       await Promise.all(questionPromises);
 
-      setSuccessMessage(isEditing ? "Test updated successfully!" : "Test created and published successfully!");
+      // If creating new test and publish was requested, publish now that all questions are saved in the database
+      if (!isEditing && isPublishing) {
+        await testService.update(savedTestId, { is_published: true, total_marks: totalMarksToSave });
+      }
+
+      setSuccessMessage(
+        isEditing
+          ? (isPublishing ? "Test updated and published successfully!" : "Test draft updated successfully!")
+          : (isPublishing ? "Test created and published successfully!" : "Test saved as draft successfully!")
+      );
       setSuccessOpen(true);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to save test. Please check all required fields.");
@@ -1047,14 +1391,14 @@ export default function CreateTestPage() {
                 <div>
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Total Marks *</Label>
-                    {calculatedTotalMarks > 0 && (
+                    {calculatedTotalMarks > 0 && formData.total_marks !== calculatedTotalMarks && (
                       <button
                         type="button"
                         onClick={() => setFormData((prev) => ({ ...prev, total_marks: calculatedTotalMarks }))}
-                        className="text-[10px] text-[#0276D3] font-bold hover:underline"
+                        className="text-[10px] bg-amber-50 border border-amber-200 text-amber-800 font-bold px-1.5 py-0.5 rounded hover:bg-amber-100 flex items-center gap-1"
                         title="Click to sync total marks with questions"
                       >
-                        Sync ({calculatedTotalMarks})
+                        ⚡ Auto-Sync ({calculatedTotalMarks})
                       </button>
                     )}
                   </div>
@@ -1063,11 +1407,16 @@ export default function CreateTestPage() {
                     min={1}
                     value={formData.total_marks}
                     onChange={(e) => setFormData({ ...formData, total_marks: Number(e.target.value) })}
-                    className="mt-1 rounded-xl text-sm border-slate-200"
+                    className={`mt-1 rounded-xl text-sm ${formData.total_marks !== calculatedTotalMarks ? 'border-amber-400 bg-amber-50/20' : 'border-slate-200'}`}
                   />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    {calculatedTotalMarks > 0 ? `From questions: ${calculatedTotalMarks} marks` : "Test full marks"}
-                  </p>
+                  <div className="flex items-center justify-between text-[10px] mt-1">
+                    <span className="text-slate-500">From questions: <strong>{calculatedTotalMarks} marks</strong></span>
+                    {formData.total_marks === calculatedTotalMarks ? (
+                      <span className="text-emerald-600 font-bold">✓ Matched</span>
+                    ) : (
+                      <span className="text-amber-600 font-bold">⚠️ Must match to publish</span>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -1126,13 +1475,13 @@ export default function CreateTestPage() {
                 <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer border border-slate-200/80 hover:bg-slate-100/60 transition-colors">
                   <input
                     type="checkbox"
-                    checked={formData.is_autograded}
-                    onChange={(e) => setFormData({ ...formData, is_autograded: e.target.checked })}
+                    checked={formData.enforce_warning_attempts === false}
+                    onChange={(e) => setFormData({ ...formData, enforce_warning_attempts: !e.target.checked })}
                     className="w-4 h-4 rounded text-[#0276D3]"
                   />
                   <div>
-                    <span className="text-xs font-bold text-slate-800">Instant Auto-grading</span>
-                    <p className="text-[11px] text-slate-500">Auto-calculate student marks immediately upon submit.</p>
+                    <span className="text-xs font-bold text-slate-800">Disable Proctoring Auto-Submit</span>
+                    <p className="text-[11px] text-slate-500">Allow student to continue test even after warnings.</p>
                   </div>
                 </label>
               </div>
@@ -1160,6 +1509,220 @@ export default function CreateTestPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* 4. Certification & Candidate Access Control (when test_type is CERTIFICATION) */}
+          {formData.test_type === "CERTIFICATION" && (
+            <Card className="rounded-2xl border-2 border-emerald-200 shadow-sm bg-white overflow-hidden">
+              <CardHeader className="bg-emerald-50/70 p-5 pb-4 border-b border-emerald-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 bg-emerald-600 text-white rounded-xl shadow-xs">
+                      <Award className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-base font-bold text-emerald-950">
+                        4. Certificate Customization & Candidate Whitelist
+                      </CardTitle>
+                      <CardDescription className="text-xs text-emerald-700 mt-0.5">
+                        Define custom certificate wording and manage eligible candidate emails.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold px-3 py-1">
+                    Certification Mode Active
+                  </Badge>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-6 space-y-6">
+                {/* Certificate Title & Wording */}
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                      Certificate Heading / Title
+                    </Label>
+                    <Input
+                      value={formData.certificate_title || ""}
+                      onChange={(e) => setFormData({ ...formData, certificate_title: e.target.value })}
+                      placeholder="e.g. Certificate of Completion, Certificate of Excellence"
+                      className="mt-1.5 rounded-xl text-sm border-slate-200"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        Certificate Body Text (with Variables)
+                      </Label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Click tags below to insert placeholders
+                      </span>
+                    </div>
+
+                    {/* Variable Badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2.5">
+                      {[
+                        { label: "{name}", desc: "Candidate Name" },
+                        { label: "{date}", desc: "Issued Date" },
+                        { label: "{test_title}", desc: "Test Title" },
+                        { label: "{score}", desc: "Candidate Score" },
+                        { label: "{total_marks}", desc: "Total Marks" },
+                        { label: "{percentage}", desc: "Percentage" },
+                        { label: "{certificate_id}", desc: "Certificate ID" },
+                      ].map((item) => (
+                        <button
+                          key={item.label}
+                          type="button"
+                          onClick={() => handleInsertVariable(item.label.replace(/[{}]/g, ""))}
+                          className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 transition-colors flex items-center gap-1"
+                          title={`Insert ${item.desc}`}
+                        >
+                          <span>{item.label}</span>
+                          <span className="text-[10px] text-emerald-600">({item.desc})</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <Textarea
+                      rows={3}
+                      value={formData.certificate_template || ""}
+                      onChange={(e) => setFormData({ ...formData, certificate_template: e.target.value })}
+                      placeholder="has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}."
+                      className="rounded-xl text-xs font-mono border-slate-200"
+                    />
+
+                    {/* Live Preview Box */}
+                    <div className="mt-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 text-xs">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                        Live Certificate Preview:
+                      </span>
+                      <p className="text-slate-700 italic font-serif leading-relaxed">
+                        "{previewCertificateText}"
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Candidate Whitelist Section */}
+                <div className="pt-6 border-t border-slate-200 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-[#0276D3]" />
+                        <h4 className="text-sm font-bold text-slate-800">
+                          Candidate Whitelist / Allowed Emails
+                        </h4>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Only candidates entering these whitelisted emails will be permitted to attempt the exam.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setBulkCandidatesOpen(true)}
+                        className="rounded-xl text-xs font-bold border-slate-200 text-slate-700 hover:bg-slate-50"
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1.5" /> Bulk Import
+                      </Button>
+                      <Badge
+                        className={`text-xs font-bold ${
+                          (formData.allowed_candidates as any[])?.length > 0
+                            ? "bg-blue-100 text-blue-800 border-blue-200"
+                            : "bg-amber-100 text-amber-800 border-amber-200"
+                        }`}
+                      >
+                        {(formData.allowed_candidates as any[])?.length > 0
+                          ? `${(formData.allowed_candidates as any[]).length} Invited Candidate(s)`
+                          : "Open Access (No restriction)"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* Add Single Candidate Form */}
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="sm:col-span-5">
+                      <Input
+                        placeholder="Candidate Name (e.g. Jane Doe)"
+                        value={candidateNameInput}
+                        onChange={(e) => setCandidateNameInput(e.target.value)}
+                        className="bg-white rounded-xl text-xs h-9"
+                      />
+                    </div>
+                    <div className="sm:col-span-5">
+                      <Input
+                        type="email"
+                        placeholder="Candidate Email (e.g. jane@example.com) *"
+                        value={candidateEmailInput}
+                        onChange={(e) => setCandidateEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddCandidate();
+                          }
+                        }}
+                        className="bg-white rounded-xl text-xs h-9"
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Button
+                        type="button"
+                        onClick={handleAddCandidate}
+                        className="w-full bg-[#0276D3] hover:bg-[#015bb5] text-white rounded-xl text-xs font-bold h-9"
+                      >
+                        <UserPlus className="w-3.5 h-3.5 mr-1" /> Add
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Candidates List Table */}
+                  {(formData.allowed_candidates as AllowedCandidate[])?.length > 0 ? (
+                    <div className="rounded-xl border border-slate-200 overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                          <tr>
+                            <th className="py-2.5 px-3 w-12 text-center">#</th>
+                            <th className="py-2.5 px-3">Candidate Name</th>
+                            <th className="py-2.5 px-3">Email Address</th>
+                            <th className="py-2.5 px-3 w-16 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {(formData.allowed_candidates as AllowedCandidate[]).map((cand, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50/60">
+                              <td className="py-2 px-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                              <td className="py-2 px-3 font-medium text-slate-800">{cand.name || "—"}</td>
+                              <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{cand.email}</td>
+                              <td className="py-2 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveCandidate(idx)}
+                                  className="p-1 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                                  title="Remove candidate"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                      <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <p>
+                        <strong>Open Access Mode:</strong> No candidates have been whitelisted yet. Any person who opens the public certification link and inputs their name and email will be able to take the exam. Add emails above to enforce access control.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Next Button */}
           <div className="flex justify-end">
@@ -1323,6 +1886,21 @@ export default function CreateTestPage() {
                           </div>
                         )}
 
+                        {/* Per-Question Auto-Check Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => updateQuestionField(qIndex, "is_autograded", !q.is_autograded)}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                            q.is_autograded
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/70"
+                              : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/60"
+                          }`}
+                          title={q.is_autograded ? "Auto-checked on submission" : "Requires teacher manual grading"}
+                        >
+                          <Sparkles className={`w-3.5 h-3.5 ${q.is_autograded ? "text-emerald-600" : "text-slate-400"}`} />
+                          <span>{q.is_autograded ? "Auto-Check: ON" : "Manual Review"}</span>
+                        </button>
+
                         <Button
                           size="icon"
                           variant="ghost"
@@ -1377,45 +1955,209 @@ export default function CreateTestPage() {
                         />
                       </div>
 
+                      {/* Question Media Attachment Section */}
+                      <div className="pt-2 border-t border-slate-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                            <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                            Question Attachment (Image / Diagram / PDF)
+                          </Label>
+                          {q.media_url && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                updateQuestionField(qIndex, "media_url", null);
+                                updateQuestionField(qIndex, "media_type", null);
+                              }}
+                              className="text-xs h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50 font-bold"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" /> Remove Attachment
+                            </Button>
+                          )}
+                        </div>
+
+                        {!q.media_url ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors shadow-xs">
+                              <Upload className="w-3.5 h-3.5 text-slate-500" />
+                              <span>Upload Image or PDF</span>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (!file) return;
+                                  const toastId = toast.loading("Uploading attachment...");
+                                  try {
+                                    const res = await uploadService.uploadFile(file, "test-questions");
+                                    const url = res.url;
+                                    const type = file.type.startsWith("image/") ? "image" : file.type === "application/pdf" ? "pdf" : "other";
+                                    updateQuestionField(qIndex, "media_url", url);
+                                    updateQuestionField(qIndex, "media_type", type);
+                                    toast.success("Attachment uploaded successfully!", { id: toastId });
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Failed to upload file", { id: toastId });
+                                  }
+                                }}
+                              />
+                            </label>
+                            <span className="text-[11px] text-slate-400">Supported: Images (.png, .jpg), PDF documents</span>
+                          </div>
+                        ) : (
+                          <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 max-w-md">
+                            {q.media_type === "image" && (
+                              <img
+                                src={q.media_url}
+                                alt="Question attachment"
+                                className="max-h-56 rounded-lg object-contain bg-white border border-slate-200 p-1"
+                              />
+                            )}
+                            {q.media_type === "pdf" && (
+                              <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-200">
+                                <FileText className="w-7 h-7 text-red-500 shrink-0" />
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-xs font-bold text-slate-800 truncate">PDF Attachment</p>
+                                  <a
+                                    href={q.media_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] text-[#0276D3] hover:underline font-semibold flex items-center gap-1"
+                                  >
+                                    <span>Open PDF in new tab</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              </div>
+                            )}
+                            {q.media_type !== "image" && q.media_type !== "pdf" && (
+                              <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                                <FileText className="w-5 h-5 text-slate-500" />
+                                <a
+                                  href={q.media_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-[#0276D3] hover:underline font-semibold"
+                                >
+                                  View Attached File
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       {/* Options Builder for MCQ */}
                       {q.question_type === "MCQ" && (
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                            Options (Click the option letter to mark as Correct Answer)
-                          </Label>
+                        <div className="space-y-2.5 pt-2 border-t border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                              Options (Click letter to mark Correct Answer. Click icon to attach Option Image)
+                            </Label>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleAddOption(qIndex)}
+                              className="text-[#0276D3] text-xs h-6 px-2 hover:bg-blue-50 font-bold"
+                            >
+                              + Add Option
+                            </Button>
+                          </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {q.options.map((optText, optIdx) => {
-                              const isCorrect = q.correct_answer === optText && optText.trim().length > 0;
+                            {q.options.map((opt, optIdx) => {
+                              const optText = getOptionText(opt);
+                              const optMedia = getOptionMediaUrl(opt);
                               const optionLetter = String.fromCharCode(65 + optIdx);
+                              const isCorrect = (q.correct_answer === optText && optText.trim().length > 0) || (q.correct_answer === optionLetter);
 
                               return (
                                 <div
                                   key={optIdx}
-                                  className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                                  className={`p-2.5 rounded-xl border transition-all ${
                                     isCorrect ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300" : "bg-slate-50/50 border-slate-200"
                                   }`}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => updateQuestionField(qIndex, "correct_answer", optText)}
-                                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
-                                      isCorrect ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                                    }`}
-                                    title="Mark as Correct Answer"
-                                  >
-                                    {isCorrect ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : optionLetter}
-                                  </button>
-                                  <Input
-                                    value={optText}
-                                    onChange={(e) => {
-                                      updateOptionText(qIndex, optIdx, e.target.value);
-                                      if (isCorrect) {
-                                        updateQuestionField(qIndex, "correct_answer", e.target.value);
-                                      }
-                                    }}
-                                    placeholder={`Option ${optionLetter}`}
-                                    className="border-none shadow-none text-xs bg-transparent focus-visible:ring-0 p-0 h-8"
-                                  />
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const chosenAns = optText.trim() ? optText : optionLetter;
+                                        updateQuestionField(qIndex, "correct_answer", chosenAns);
+                                      }}
+                                      className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                                        isCorrect ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                                      }`}
+                                      title="Mark as Correct Answer"
+                                    >
+                                      {isCorrect ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : optionLetter}
+                                    </button>
+                                    <Input
+                                      value={optText}
+                                      onChange={(e) => {
+                                        updateOptionText(qIndex, optIdx, e.target.value);
+                                        if (isCorrect) {
+                                          updateQuestionField(qIndex, "correct_answer", e.target.value);
+                                        }
+                                      }}
+                                      placeholder={`Option ${optionLetter}`}
+                                      className="border-none shadow-none text-xs bg-transparent focus-visible:ring-0 p-0 h-8 flex-1"
+                                    />
+                                    {/* Option Image Upload */}
+                                    <label
+                                      className="cursor-pointer p-1 text-slate-400 hover:text-[#0276D3] rounded-md hover:bg-white transition-colors shrink-0"
+                                      title="Attach Image to Option"
+                                    >
+                                      <ImageIcon className="w-3.5 h-3.5" />
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if (!file) return;
+                                          const toastId = toast.loading("Uploading option image...");
+                                          try {
+                                            const res = await uploadService.uploadFile(file, "test-questions");
+                                            updateOptionMedia(qIndex, optIdx, res.url, "image");
+                                            toast.success("Option image uploaded!", { id: toastId });
+                                          } catch (err: any) {
+                                            toast.error(err.message || "Upload failed", { id: toastId });
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    {q.options.length > 2 && (
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={() => handleRemoveOption(qIndex, optIdx)}
+                                        className="h-6 w-6 text-slate-400 hover:text-red-600 rounded-md shrink-0"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  {optMedia && (
+                                    <div className="relative inline-block mt-2 ml-8">
+                                      <img
+                                        src={optMedia}
+                                        alt={`Option ${optionLetter}`}
+                                        className="max-h-24 rounded-lg border border-slate-200 bg-white p-0.5 object-contain"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => updateOptionMedia(qIndex, optIdx, null, null)}
+                                        className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 shadow-xs"
+                                        title="Remove option image"
+                                      >
+                                        <X className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -1738,6 +2480,18 @@ export default function CreateTestPage() {
                 </div>
               </div>
             </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100/70 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={aiReplaceExisting}
+                  onChange={(e) => setAiReplaceExisting(e.target.checked)}
+                  className="rounded border-slate-300 text-amber-500 focus:ring-amber-500"
+                />
+                <span>Replace existing / initial blank questions</span>
+              </label>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setAiModalOpen(false)} className="rounded-xl text-xs font-bold">
@@ -1905,6 +2659,18 @@ export default function CreateTestPage() {
                 />
               </div>
             </div>
+
+            <div className="pt-2 border-t border-slate-100">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 hover:bg-slate-100/70 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={templateReplaceExisting}
+                  onChange={(e) => setTemplateReplaceExisting(e.target.checked)}
+                  className="rounded border-slate-300 text-[#0276D3] focus:ring-[#0276D3]"
+                />
+                <span>Replace existing / initial blank questions</span>
+              </label>
+            </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="ghost" onClick={() => setTemplateModalOpen(false)} className="rounded-xl text-xs font-bold">
@@ -1915,6 +2681,48 @@ export default function CreateTestPage() {
               className="bg-[#0276D3] hover:bg-[#015bb5] text-white rounded-xl text-xs font-bold"
             >
               Add Template Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Candidates Modal */}
+      <Dialog open={bulkCandidatesOpen} onOpenChange={setBulkCandidatesOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Bulk Import Allowed Candidates
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Paste names and emails (one per line). Formats: "Name, email@domain.com" or just "email@domain.com".
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <Textarea
+              rows={8}
+              value={bulkCandidatesText}
+              onChange={(e) => setBulkCandidatesText(e.target.value)}
+              placeholder={`Alice Smith, alice@example.com\nBob Jones, bob@example.com\ncharlie@example.com`}
+              className="font-mono text-xs rounded-xl"
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setBulkCandidatesOpen(false)}
+              className="rounded-xl text-xs"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleBulkAddCandidates}
+              className="bg-[#0276D3] hover:bg-[#015bb5] text-white rounded-xl text-xs font-bold"
+            >
+              Import Candidates
             </Button>
           </DialogFooter>
         </DialogContent>

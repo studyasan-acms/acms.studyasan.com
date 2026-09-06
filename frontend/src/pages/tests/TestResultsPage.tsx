@@ -22,6 +22,64 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 import MathRenderer from "@/components/ui/MathRenderer";
 import { getEffectiveTestType } from "./TestsPage";
 
+function formatOptionDisplay(rawAnswer: string | null | undefined, optionsRaw: any): { letter: string | null; text: string } {
+  if (!rawAnswer) return { letter: null, text: '' };
+
+  let options: string[] = [];
+  try {
+    const parsed = typeof optionsRaw === 'string' ? JSON.parse(optionsRaw) : optionsRaw;
+    if (Array.isArray(parsed)) {
+      options = parsed.map((opt: any) => {
+        if (!opt) return '';
+        if (typeof opt === 'string') return opt.trim();
+        if (typeof opt === 'object' && opt.text) return String(opt.text).trim();
+        return String(opt).trim();
+      });
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const trimmed = rawAnswer.trim();
+
+  // Check if rawAnswer is a single letter (e.g. 'A', 'B', 'C', 'D')
+  if (/^[a-zA-Z]$/.test(trimmed)) {
+    const letter = trimmed.toUpperCase();
+    const idx = letter.charCodeAt(0) - 65;
+    if (idx >= 0 && idx < options.length && options[idx]) {
+      return { letter, text: options[idx] };
+    }
+    return { letter, text: letter };
+  }
+
+  // Check if rawAnswer is "Option A", "Option B", etc.
+  const optMatch = trimmed.match(/^option\s+([a-zA-Z])$/i);
+  if (optMatch) {
+    const letter = optMatch[1].toUpperCase();
+    const idx = letter.charCodeAt(0) - 65;
+    if (idx >= 0 && idx < options.length && options[idx]) {
+      return { letter, text: options[idx] };
+    }
+    return { letter, text: trimmed };
+  }
+
+  // Check if rawAnswer is an index ("0", "1", "2")
+  if (/^\d+$/.test(trimmed)) {
+    const n = parseInt(trimmed, 10);
+    if (n >= 0 && n < options.length && options[n]) {
+      return { letter: String.fromCharCode(65 + n), text: options[n] };
+    }
+  }
+
+  // Check if rawAnswer matches any option text directly
+  const foundIdx = options.findIndex((opt) => opt.toLowerCase() === trimmed.toLowerCase());
+  if (foundIdx !== -1) {
+    return { letter: String.fromCharCode(65 + foundIdx), text: options[foundIdx] };
+  }
+
+  return { letter: null, text: trimmed };
+}
+
 export default function TestResultsPage() {
   const { attemptId } = useParams<{ attemptId: string }>();
   const navigate = useNavigate();
@@ -158,45 +216,46 @@ export default function TestResultsPage() {
         </div>
       )}
 
-      {/* Score Summary Card */}
-      <Card className="shadow-xs border border-slate-200 rounded-2xl overflow-hidden bg-white">
-        <CardContent className="p-0">
+      {/* Main Scorecard / Status */}
+      <Card className="shadow-xs border border-slate-200 rounded-2xl overflow-hidden bg-white text-center">
+        <CardContent className="p-6 sm:p-8">
           {!attempt.is_graded ? (
-            <div className="text-center py-12 px-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-amber-50 text-[#eca209] mb-3">
-                <Clock className="w-8 h-8" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 mb-1">Grading Under Review</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Your subjective submissions are being evaluated by your teacher. Your final scorecard will update shortly.
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-2xl p-4 max-w-md mx-auto text-xs space-y-1">
+              <p className="font-bold flex items-center justify-center gap-1.5">
+                <Clock className="w-4 h-4 text-amber-600" /> Pending Manual Review
+              </p>
+              <p className="text-amber-700/90 text-[11px]">
+                Your subjective and descriptive answers are awaiting evaluation by your teacher.
               </p>
             </div>
           ) : (
-            <div className="text-center py-10 px-6">
-              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3 ${isPassed ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black border uppercase tracking-wider bg-slate-100 text-slate-700 border-slate-200">
                 {isPassed ? (
-                  <CheckCircle2 className="w-8 h-8" />
+                  <span className="text-emerald-700 flex items-center gap-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" /> Passed Test
+                  </span>
                 ) : (
-                  <XCircle className="w-8 h-8" />
+                  <span className="text-red-700 flex items-center gap-1">
+                    <XCircle className="w-4 h-4 text-red-600" /> Needs Improvement
+                  </span>
                 )}
               </div>
-              <h3 className="text-2xl font-black text-slate-900 mb-1">
-                {isPassed ? 'Passed Successfully!' : 'Needs Improvement'}
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">
+
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
                 {isPassed
-                  ? (effectiveType === 'CERTIFICATION' ? 'Congratulations! You qualified for certification.' : 'Great job on this attempt!')
-                  : `Passing threshold was ${attempt.test?.passing_marks || 0} marks. Keep practicing!`}
+                  ? `Congratulations! You scored above the passing threshold of ${attempt.test?.passing_marks} marks.`
+                  : `Passing threshold was ${attempt.test?.passing_marks} marks. Keep practicing!`}
               </p>
 
-              <div className="flex items-center justify-center gap-6 mb-6">
-                <div className="text-center">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Your Score</p>
+              <div className="flex items-center justify-center gap-6 pt-2">
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Your Score</p>
                   <p className="text-3xl sm:text-4xl font-black text-[#0276D3] mt-0.5">{attempt.score || 0}</p>
                 </div>
-                <div className="text-3xl text-slate-300 font-light">/</div>
-                <div className="text-center">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Marks</p>
+                <div className="text-2xl font-light text-slate-300">/</div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Marks</p>
                   <p className="text-3xl sm:text-4xl font-black text-slate-800 mt-0.5">{attempt.total_marks}</p>
                 </div>
               </div>
@@ -208,29 +267,10 @@ export default function TestResultsPage() {
                     style={{ width: `${Math.min(100, Math.max(0, percentage))}%` }}
                   />
                 </div>
-                <p className="text-sm font-bold text-slate-700">{percentage.toFixed(1)}% Accuracy</p>
+                <p className="text-xs font-bold text-slate-700">{percentage.toFixed(1)}% Accuracy</p>
               </div>
             </div>
           )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-5 border-t border-slate-100 bg-slate-50/50 text-xs">
-            <div className="text-center">
-              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Test Type</p>
-              <p className="font-bold text-slate-800 mt-0.5">{effectiveType.replace('_', ' ')}</p>
-            </div>
-            <div className="text-center">
-              <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Submitted Date</p>
-              <p className="font-bold text-slate-800 mt-0.5">
-                {attempt.submitted_at ? new Date(attempt.submitted_at).toLocaleString('en-IN') : 'In Progress'}
-              </p>
-            </div>
-            {attempt.is_graded && attempt.grader && (
-              <div className="text-center">
-                <p className="font-bold text-slate-400 uppercase tracking-wider text-[10px]">Reviewed By</p>
-                <p className="font-bold text-slate-800 mt-0.5">{attempt.grader?.name}</p>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
@@ -293,7 +333,20 @@ export default function TestResultsPage() {
                           <p className="text-slate-400 italic">Not answered</p>
                         ) : (
                           <>
-                            {answer.answer_text && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
+                            {answer.answer_text && answer.question?.question_type === 'MCQ' && (() => {
+                              const disp = formatOptionDisplay(answer.answer_text, answer.question.options);
+                              return (
+                                <div className="text-slate-800 font-medium flex items-center gap-2">
+                                  {disp.letter && (
+                                    <span className="w-5 h-5 rounded-md bg-slate-200 text-slate-700 font-bold text-[11px] flex items-center justify-center shrink-0">
+                                      {disp.letter}
+                                    </span>
+                                  )}
+                                  <MathRenderer text={disp.text} inline />
+                                </div>
+                              );
+                            })()}
+                            {answer.answer_text && answer.question?.question_type !== 'MCQ' && answer.question?.question_type !== 'MATCH_THE_FOLLOWING' && (
                               <div className="text-slate-800 font-medium">
                                 <MathRenderer text={answer.answer_text} />
                               </div>
@@ -309,9 +362,23 @@ export default function TestResultsPage() {
                       {answer.question?.question_type !== 'SHORT_ANSWER' && (
                         <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200">
                           <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">Correct Answer</p>
-                          <div className="text-emerald-900 font-bold">
-                            <MathRenderer text={answer.question?.correct_answer || ''} />
-                          </div>
+                          {answer.question?.question_type === 'MCQ' ? (() => {
+                            const disp = formatOptionDisplay(answer.question.correct_answer, answer.question.options);
+                            return (
+                              <div className="text-emerald-900 font-bold flex items-center gap-2">
+                                {disp.letter && (
+                                  <span className="w-5 h-5 rounded-md bg-emerald-600 text-white font-bold text-[11px] flex items-center justify-center shrink-0">
+                                    {disp.letter}
+                                  </span>
+                                )}
+                                <MathRenderer text={disp.text} inline />
+                              </div>
+                            );
+                          })() : (
+                            <div className="text-emerald-900 font-bold">
+                              <MathRenderer text={answer.question?.correct_answer || ''} />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

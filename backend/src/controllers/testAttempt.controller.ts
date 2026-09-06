@@ -7,6 +7,121 @@ import { uploadToS3, getFileType } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
 
+/**
+ * Helper to robustly compare student's MCQ answer with correct answer key.
+ * Handles cases where student submitted letter ("C") and correct_answer is option text,
+ * or student submitted text and correct_answer is letter, or both are letters/text.
+ */
+export function isMCQAnswerCorrect(
+  studentAnswer: string | null | undefined,
+  correctAnswer: string | null | undefined,
+  optionsRaw: any
+): boolean {
+  if (!studentAnswer || !correctAnswer) return false;
+
+  const sAns = studentAnswer.trim().toLowerCase();
+  const cAns = correctAnswer.trim().toLowerCase();
+
+  // Direct exact match (case-insensitive)
+  if (sAns === cAns) return true;
+
+  // Normalize options array
+  let options: string[] = [];
+  try {
+    const parsed = typeof optionsRaw === 'string' ? JSON.parse(optionsRaw) : optionsRaw;
+    if (Array.isArray(parsed)) {
+      options = parsed.map((opt: any) => {
+        if (!opt) return '';
+        if (typeof opt === 'string') return opt.trim().toLowerCase();
+        if (typeof opt === 'object' && opt.text) return String(opt.text).trim().toLowerCase();
+        return String(opt).trim().toLowerCase();
+      });
+    }
+  } catch (e) {
+    // ignore parse error
+  }
+
+  // Find 0-based index of student answer
+  let studentIdx = -1;
+  if (/^[a-z]$/i.test(sAns)) {
+    studentIdx = sAns.charCodeAt(0) - 97; // 'a' -> 0, 'b' -> 1, 'c' -> 2
+  } else if (/^option\s+[a-z]$/i.test(sAns)) {
+    const letter = sAns.replace(/^option\s+/, '').trim();
+    studentIdx = letter.charCodeAt(0) - 97;
+  } else if (/^\d+$/.test(sAns)) {
+    const n = parseInt(sAns, 10);
+    if (n >= 0 && n < options.length) studentIdx = n;
+    else if (n >= 1 && n <= options.length) studentIdx = n - 1;
+  } else if (options.length > 0) {
+    studentIdx = options.findIndex((opt) => opt === sAns);
+  }
+
+  // Find 0-based index of correct answer
+  let correctIdx = -1;
+  if (/^[a-z]$/i.test(cAns)) {
+    correctIdx = cAns.charCodeAt(0) - 97;
+  } else if (/^option\s+[a-z]$/i.test(cAns)) {
+    const letter = cAns.replace(/^option\s+/, '').trim();
+    correctIdx = letter.charCodeAt(0) - 97;
+  } else if (/^\d+$/.test(cAns)) {
+    const n = parseInt(cAns, 10);
+    if (n >= 0 && n < options.length) correctIdx = n;
+    else if (n >= 1 && n <= options.length) correctIdx = n - 1;
+  } else if (options.length > 0) {
+    correctIdx = options.findIndex((opt) => opt === cAns);
+  }
+
+  // Both indices match (e.g. both resolved to option C / index 2)
+  if (studentIdx !== -1 && correctIdx !== -1 && studentIdx === correctIdx) {
+    return true;
+  }
+
+  // If studentIdx was found (e.g. index 2 for "C"), check if option[2] equals cAns
+  if (studentIdx >= 0 && studentIdx < options.length) {
+    if (options[studentIdx] === cAns) return true;
+  }
+
+  // If correctIdx was found (e.g. index 2 for "favorite_colors..."), check if option[2] equals sAns or if sAns is letter
+  if (correctIdx >= 0 && correctIdx < options.length) {
+    if (options[correctIdx] === sAns) return true;
+    const correctLetter = String.fromCharCode(65 + correctIdx).toLowerCase();
+    if (sAns === correctLetter) return true;
+  }
+
+  return false;
+}
+
+/**
+ * Render certificate text by replacing variables like {name}, {date}, {test_title}, etc.
+ */
+export function renderCertificateText(
+  template: string | null | undefined,
+  variables: {
+    name: string;
+    test_title: string;
+    date: string;
+    score: number;
+    total_marks: number;
+    percentage: string;
+    certificate_id: string;
+  }
+): string {
+  const defaultText =
+    'has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}.';
+  let text = template?.trim() || defaultText;
+
+  text = text
+    .replace(/\{name\}|\{candidate_name\}/gi, variables.name)
+    .replace(/\{test_title\}|\{test_name\}|\{exam_title\}/gi, variables.test_title)
+    .replace(/\{date\}|\{issue_date\}|\{completion_date\}/gi, variables.date)
+    .replace(/\{score\}|\{marks_obtained\}/gi, String(variables.score))
+    .replace(/\{total_marks\}|\{max_marks\}/gi, String(variables.total_marks))
+    .replace(/\{percentage\}|\{percent\}/gi, variables.percentage)
+    .replace(/\{certificate_id\}|\{certificate_code\}|\{code\}/gi, variables.certificate_id);
+
+  return text;
+}
+
 // Start a test attempt
 export const startTestAttempt = async (req: AuthRequest, res: Response) => {
   try {
@@ -49,25 +164,39 @@ export const startTestAttempt = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test is not available at this time', 403);
     }
 
-    // Check if student has already attempted this test (non-practice attempt)
+    // Check if student has already attempted this test (non-practice attempt) or earned a certificate
     const existingAttempt = await prisma.testAttempt.findFirst({
       where: {
         test_id: parseInt(testId),
         student_id: user.student.id,
         is_practice: false,
       },
+      include: {
+        certificate: true,
+      },
     });
 
     if (existingAttempt) {
+      if (existingAttempt.certificate) {
+        return sendError(
+          res,
+          `You have already completed this assessment and earned your official certificate (Certificate ID: ${existingAttempt.certificate.code}). You cannot re-attempt this exam.`,
+          403
+        );
+      }
       return sendError(res, 'You have already attempted this test', 403);
     }
+
+    // Calculate actual total marks from test questions if available
+    const questionTotalMarks = test.questions?.reduce((sum, q) => sum + (Number(q.marks) || 0), 0) || 0;
+    const effectiveTotalMarks = questionTotalMarks > 0 ? questionTotalMarks : test.total_marks;
 
     // Create test attempt
     const testAttempt = await prisma.testAttempt.create({
       data: {
         test_id: parseInt(testId),
         student_id: user.student.id,
-        total_marks: test.total_marks,
+        total_marks: effectiveTotalMarks,
       },
       include: {
         test: {
@@ -301,131 +430,188 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test already submitted', 403);
     }
 
-    // Auto-grade MCQ and True/False questions
+    // Auto-grade questions based on each question's is_autograded setting
     const answers = await prisma.answer.findMany({
       where: { test_attempt_id: parseInt(attemptId) },
       include: { question: true },
     });
 
-    const isAutograded = (attempt.test as any)?.is_autograded ?? true;
-    let hasShortAnswers = !isAutograded;
     const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
 
-    if (isAutograded) {
-      const manualQuestionsCount = await prisma.question.count({
-        where: {
-          test_id: attempt.test_id,
-          question_type: {
-            notIn: ['MCQ', 'TRUE_FALSE', 'MATCH_THE_FOLLOWING', 'CASE_STUDY']
-          }
-        }
-      });
-      if (manualQuestionsCount > 0) {
-        hasShortAnswers = true;
-      }
-    }
+    // Check if test contains questions that require manual grading
+    const allQuestions = await prisma.question.findMany({
+      where: { test_id: attempt.test_id },
+    });
+
+    let hasManualQuestions = allQuestions.some((q: any) => {
+      const isAutograded = q.is_autograded !== undefined
+        ? q.is_autograded
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
+      return !isAutograded;
+    });
 
     let autoGradedScore = 0;
     for (const answer of answers) {
-      if (
-        isAutograded &&
-        (answer.question.question_type === 'MCQ' ||
-        answer.question.question_type === 'TRUE_FALSE')
-      ) {
-        const isCorrect =
-          answer.answer_text?.trim().toLowerCase() ===
-          answer.question.correct_answer?.trim().toLowerCase();
+      const q = answer.question as any;
+      const isAutograded = q.is_autograded !== undefined
+        ? q.is_autograded
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
 
-        const questionNegativeMarks = testHasNegativeMarking
-          ? Number((answer.question as any).negative_marks || 0)
-          : 0;
+      if (isAutograded) {
+        if (q.question_type === 'MCQ') {
+          const isCorrect = isMCQAnswerCorrect(answer.answer_text, q.correct_answer, q.options);
+          const questionNegativeMarks = testHasNegativeMarking
+            ? Number(q.negative_marks || 0)
+            : 0;
 
-        await prisma.answer.update({
-          where: { id: answer.id },
-          data: {
-            is_correct: isCorrect,
-            marks_obtained: isCorrect
-              ? answer.question.marks
-              : (testHasNegativeMarking ? -questionNegativeMarks : 0),
-          },
-        });
+          const marksObtained = isCorrect
+            ? q.marks
+            : (testHasNegativeMarking ? -questionNegativeMarks : 0);
 
-        if (isCorrect) {
-          autoGradedScore += answer.question.marks;
-        } else if (testHasNegativeMarking) {
-          autoGradedScore -= questionNegativeMarks;
-        }
-      } else if (isAutograded && answer.question.question_type === 'MATCH_THE_FOLLOWING') {
-        let correctPairs = 0;
-        let totalPairs = 0;
-        try {
-          let correctOptions = typeof answer.question.options === 'string'
-            ? JSON.parse(answer.question.options)
-            : answer.question.options;
-            
-          if (Array.isArray(correctOptions)) {
-            correctOptions = correctOptions.map((opt: any) => {
-              if (typeof opt === 'string') {
-                try { return JSON.parse(opt); } catch(e) { return opt; }
-              }
-              return opt;
-            });
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: isCorrect,
+              marks_obtained: marksObtained,
+            },
+          });
+
+          autoGradedScore += marksObtained;
+        } else if (q.question_type === 'TRUE_FALSE') {
+          const isCorrect =
+            answer.answer_text?.trim().toLowerCase() ===
+            q.correct_answer?.trim().toLowerCase();
+
+          const questionNegativeMarks = testHasNegativeMarking
+            ? Number(q.negative_marks || 0)
+            : 0;
+
+          const marksObtained = isCorrect
+            ? q.marks
+            : (testHasNegativeMarking ? -questionNegativeMarks : 0);
+
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: isCorrect,
+              marks_obtained: marksObtained,
+            },
+          });
+
+          autoGradedScore += marksObtained;
+        } else if (q.question_type === 'MATCH_THE_FOLLOWING') {
+          let correctPairs = 0;
+          let totalPairs = 0;
+          try {
+            let correctOptions = typeof q.options === 'string'
+              ? JSON.parse(q.options)
+              : q.options;
+              
+            if (Array.isArray(correctOptions)) {
+              correctOptions = correctOptions.map((opt: any) => {
+                if (typeof opt === 'string') {
+                  try { return JSON.parse(opt); } catch(e) { return opt; }
+                }
+                return opt;
+              });
+            }
+            const studentAnswers = answer.answer_text ? JSON.parse(answer.answer_text) : [];
+
+            if (Array.isArray(correctOptions) && Array.isArray(studentAnswers)) {
+              totalPairs = correctOptions.length;
+              studentAnswers.forEach(ansPair => {
+                const correctPair = correctOptions.find(opt => opt.left === ansPair.left);
+                if (correctPair && correctPair.right === ansPair.right) {
+                  correctPairs++;
+                }
+              });
+            }
+          } catch (e) {
+            console.error('Error parsing MATCH_THE_FOLLOWING answers', e);
           }
-          const studentAnswers = answer.answer_text ? JSON.parse(answer.answer_text) : [];
 
-          if (Array.isArray(correctOptions) && Array.isArray(studentAnswers)) {
-            totalPairs = correctOptions.length;
-            studentAnswers.forEach(ansPair => {
-              const correctPair = correctOptions.find(opt => opt.left === ansPair.left);
-              if (correctPair && correctPair.right === ansPair.right) {
-                correctPairs++;
-              }
-            });
-          }
-        } catch (e) {
-          console.error('Error parsing MATCH_THE_FOLLOWING answers', e);
+          const isCorrect = totalPairs > 0 && correctPairs === totalPairs;
+          const marksObtained = totalPairs > 0 ? (q.marks / totalPairs) * correctPairs : 0;
+
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: isCorrect,
+              marks_obtained: marksObtained,
+            },
+          });
+
+          autoGradedScore += marksObtained;
+        } else if (q.question_type === 'CASE_STUDY') {
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: true,
+              marks_obtained: 0,
+            },
+          });
+        } else if (q.correct_answer && q.correct_answer.trim()) {
+          // Short answer with auto-check enabled and correct answer defined
+          const isCorrect =
+            answer.answer_text?.trim().toLowerCase() ===
+            q.correct_answer?.trim().toLowerCase();
+
+          const marksObtained = isCorrect ? q.marks : 0;
+
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: isCorrect,
+              marks_obtained: marksObtained,
+            },
+          });
+
+          autoGradedScore += marksObtained;
+        } else {
+          hasManualQuestions = true;
+          await prisma.answer.update({
+            where: { id: answer.id },
+            data: {
+              is_correct: null,
+              marks_obtained: null,
+            },
+          });
         }
-
-        const isCorrect = totalPairs > 0 && correctPairs === totalPairs;
-        const marksObtained = totalPairs > 0 ? (answer.question.marks / totalPairs) * correctPairs : 0;
-
-        await prisma.answer.update({
-          where: { id: answer.id },
-          data: {
-            is_correct: isCorrect,
-            marks_obtained: marksObtained,
-          },
-        });
-
-        autoGradedScore += marksObtained;
-      } else if (answer.question.question_type === 'CASE_STUDY') {
-        // Case Study is just a parent container/paragraph, it doesn't need grading.
-        // We set marks to 0 and mark as correct so it doesn't fail any checks.
-        await prisma.answer.update({
-          where: { id: answer.id },
-          data: {
-            is_correct: true,
-            marks_obtained: 0,
-          },
-        });
       } else {
-        hasShortAnswers = true;
+        hasManualQuestions = true;
+        await prisma.answer.update({
+          where: { id: answer.id },
+          data: {
+            is_correct: null,
+            marks_obtained: null,
+          },
+        });
       }
     }
 
     // Update test attempt
-    const finalScore = hasShortAnswers ? null : Math.round(autoGradedScore);
+    const finalScore = hasManualQuestions ? null : Math.max(0, Math.round(autoGradedScore));
+    const isGraded = !hasManualQuestions;
+    const isPassed = isGraded && finalScore !== null ? finalScore >= attempt.test.passing_marks : null;
+    const allQuestionsSum = allQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    const effectiveAttemptTotal = allQuestionsSum > 0 ? allQuestionsSum : attempt.test.total_marks;
+
     const updatedAttempt = await prisma.testAttempt.update({
       where: { id: parseInt(attemptId) },
       data: {
         submitted_at: new Date(),
         score: finalScore,
-        is_graded: !hasShortAnswers,
-        is_passed: hasShortAnswers ? null : (finalScore !== null && finalScore >= attempt.test.passing_marks),
-        total_marks: attempt.test.total_marks, // Sync to current test value in case test was edited after attempt started
+        is_graded: isGraded,
+        is_passed: isPassed,
+        total_marks: effectiveAttemptTotal,
       },
       include: {
         test: true,
+        student: {
+          include: {
+            user: true,
+          },
+        },
         answers: {
           include: {
             question: true,
@@ -433,6 +619,62 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
         },
       },
     });
+
+    // Generate Certificate for internal tests if certified & passed
+    if (isPassed && (attempt.test.is_certification || (attempt.test as any).test_type === 'CERTIFICATION')) {
+      try {
+        const studentName = (updatedAttempt.student as any)?.user?.name || 'Student';
+        const studentEmail = (updatedAttempt.student as any)?.user?.email;
+        const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const certificateCode = `SA-CERT-${attempt.test_id}-${attempt.id}-${randomPart}`;
+        const pct = effectiveAttemptTotal > 0 ? `${((finalScore! / effectiveAttemptTotal) * 100).toFixed(1)}%` : '100%';
+        const formattedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+        const renderedText = renderCertificateText(
+          (attempt.test as any)?.certificate_template,
+          {
+            name: studentName,
+            test_title: attempt.test.title,
+            date: formattedDate,
+            score: finalScore || 0,
+            total_marks: effectiveAttemptTotal,
+            percentage: pct,
+            certificate_id: certificateCode,
+          }
+        );
+
+        await prisma.certificate.upsert({
+          where: { test_attempt_id: attempt.id },
+          update: {
+            recipient_name: studentName,
+            recipient_email: studentEmail || null,
+            code: certificateCode,
+            certificate_text: renderedText,
+          },
+          create: {
+            test_id: attempt.test_id,
+            test_attempt_id: attempt.id,
+            recipient_name: studentName,
+            recipient_email: studentEmail || null,
+            code: certificateCode,
+            certificate_text: renderedText,
+          },
+        });
+
+        if (studentEmail) {
+          sendCertificateEmail(
+            studentEmail,
+            studentName,
+            attempt.test.title,
+            certificateCode,
+            finalScore || 0,
+            effectiveAttemptTotal
+          ).catch((err) => console.error('Failed to send certificate email:', err));
+        }
+      } catch (certErr) {
+        console.error('Error creating certificate for internal test attempt:', certErr);
+      }
+    }
 
     return sendSuccess(res, updatedAttempt, 'Test submitted successfully');
   } catch (error) {
@@ -531,7 +773,14 @@ export const getTestAttempts = async (req: AuthRequest, res: Response) => {
       where: { test_id: parseInt(testId) },
       include: {
         test: {
-          select: { total_marks: true },
+          select: {
+            total_marks: true,
+            title: true,
+            is_certification: true,
+            certificate_title: true,
+            certificate_template: true,
+            passing_marks: true,
+          },
         },
         student: {
           include: {
@@ -551,6 +800,7 @@ export const getTestAttempts = async (req: AuthRequest, res: Response) => {
             email: true,
           },
         },
+        certificate: true,
       },
       orderBy: {
         submitted_at: 'desc',
@@ -569,6 +819,72 @@ export const getTestAttempts = async (req: AuthRequest, res: Response) => {
   } catch (error) {
     console.error('Error fetching test attempts:', error);
     return sendError(res, 'Failed to fetch test attempts');
+  }
+};
+
+// Get all issued certificates (teachers/admin)
+export const getAllCertificates = async (req: AuthRequest, res: Response) => {
+  try {
+    const { testId, search } = req.query;
+
+    const where: any = {};
+    if (testId) {
+      where.test_id = parseInt(testId as string);
+    }
+    if (search) {
+      const q = String(search).trim();
+      where.OR = [
+        { recipient_name: { contains: q, mode: 'insensitive' } },
+        { recipient_email: { contains: q, mode: 'insensitive' } },
+        { code: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
+    const certificates = await prisma.certificate.findMany({
+      where,
+      include: {
+        test: {
+          select: {
+            id: true,
+            title: true,
+            total_marks: true,
+            passing_marks: true,
+            certificate_title: true,
+            certificate_template: true,
+          },
+        },
+        attempt: {
+          select: {
+            id: true,
+            score: true,
+            total_marks: true,
+            submitted_at: true,
+            started_at: true,
+            is_passed: true,
+            guest_info: true,
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        issued_at: 'desc',
+      },
+    });
+
+    return sendSuccess(res, certificates, 'Certificates fetched successfully');
+  } catch (error) {
+    console.error('Error fetching certificates:', error);
+    return sendError(res, 'Failed to fetch certificates');
   }
 };
 
@@ -870,21 +1186,77 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
 
     if (!test.is_published) return sendError(res, 'Test is not active', 403);
 
+    // Whitelist check: if allowed_candidates is configured, enforce candidate email
+    let allowedList: { name: string; email: string }[] = [];
+    try {
+      const raw = typeof (test as any).allowed_candidates === 'string'
+        ? JSON.parse((test as any).allowed_candidates)
+        : (test as any).allowed_candidates;
+      if (Array.isArray(raw)) {
+        allowedList = raw.filter((c: any) => c && c.email);
+      }
+    } catch (e) {}
+
+    if (allowedList.length > 0) {
+      if (!candidateEmail || !candidateEmail.trim()) {
+        return sendError(res, 'Email address is required for this certification exam', 400);
+      }
+      const normalizedEmail = candidateEmail.trim().toLowerCase();
+      const matchedCandidate = allowedList.find(
+        (c) => c.email && c.email.trim().toLowerCase() === normalizedEmail
+      );
+      if (!matchedCandidate) {
+        return sendError(
+          res,
+          `Access Denied: The email "${candidateEmail}" is not authorized to take this certification exam. Only invited candidate emails are permitted. Please contact the administrator.`,
+          403
+        );
+      }
+    }
+
     // Check dates
     const now = new Date();
     if (now < test.available_from || now > test.available_until) {
       return sendError(res, 'Test is not available at this time', 403);
     }
 
+    // Check if candidate has already completed this exam and earned a certificate
+    const normalizedEmail = candidateEmail ? candidateEmail.trim().toLowerCase() : null;
+    const normalizedName = candidateName.trim().toLowerCase();
+
+    const existingCertificate = await prisma.certificate.findFirst({
+      where: {
+        test_id: parseInt(testId),
+        OR: [
+          ...(normalizedEmail ? [{ recipient_email: { equals: normalizedEmail, mode: 'insensitive' as const } }] : []),
+          { recipient_name: { equals: normalizedName, mode: 'insensitive' as const } },
+        ],
+      },
+      include: {
+        attempt: true,
+      },
+    });
+
+    if (existingCertificate) {
+      return sendError(
+        res,
+        `You have already completed this certification exam and earned your official certificate (Certificate ID: ${existingCertificate.code}). You cannot re-attempt this exam.`,
+        400
+      );
+    }
+
     // Get Guest Student ID
     const guestStudentId = await getGuestStudentId();
+
+    const questionTotalMarks = test.questions?.reduce((sum, q) => sum + (Number(q.marks) || 0), 0) || 0;
+    const effectiveTotalMarks = questionTotalMarks > 0 ? questionTotalMarks : test.total_marks;
 
     // Create Attempt
     const testAttempt = await prisma.testAttempt.create({
       data: {
         test_id: parseInt(testId),
         student_id: guestStudentId,
-        total_marks: test.total_marks,
+        total_marks: effectiveTotalMarks,
         guest_info: { name: candidateName, email: candidateEmail },
       },
       include: {
@@ -939,21 +1311,37 @@ export const submitPublicTest = async (req: Request, res: Response) => {
     });
 
     const testHasNegativeMarking = !!(attempt.test as any)?.has_negative_marking;
-    const isAutograded = (attempt.test as any)?.is_autograded ?? true;
+    let hasManualQuestions = questions.some((q: any) => {
+      const isAutograded = q.is_autograded !== undefined
+        ? q.is_autograded
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
+      return !isAutograded;
+    });
 
     for (const ans of answers) {
-      const question = questions.find(q => q.id === parseInt(ans.question_id));
+      const question = questions.find(q => q.id === parseInt(ans.question_id)) as any;
       if (!question) continue;
 
-      let isCorrect = false;
-      let marksObtained = 0;
+      let isCorrect: boolean | null = false;
+      let marksObtained: number | null = 0;
 
-      if (isAutograded && (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE')) {
+      const isAutograded = question.is_autograded !== undefined
+        ? question.is_autograded
+        : (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING' || question.question_type === 'CASE_STUDY');
+
+      if (isAutograded && question.question_type === 'MCQ') {
+        isCorrect = isMCQAnswerCorrect(ans.answer_text, question.correct_answer, question.options);
+        if (isCorrect) {
+          marksObtained = question.marks;
+        } else if (testHasNegativeMarking) {
+          marksObtained = -Number(question.negative_marks || 0);
+        }
+      } else if (isAutograded && question.question_type === 'TRUE_FALSE') {
         if (ans.answer_text?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase()) {
           isCorrect = true;
           marksObtained = question.marks;
         } else if (testHasNegativeMarking) {
-          marksObtained = -Number((question as any).negative_marks || 0);
+          marksObtained = -Number(question.negative_marks || 0);
         }
       } else if (isAutograded && question.question_type === 'MATCH_THE_FOLLOWING') {
         let correctPairs = 0;
@@ -988,12 +1376,21 @@ export const submitPublicTest = async (req: Request, res: Response) => {
 
         isCorrect = totalPairs > 0 && correctPairs === totalPairs;
         marksObtained = totalPairs > 0 ? (question.marks / totalPairs) * correctPairs : 0;
+      } else if (isAutograded && question.question_type === 'CASE_STUDY') {
+        isCorrect = true;
+        marksObtained = 0;
+      } else if (isAutograded && question.correct_answer && question.correct_answer.trim()) {
+        isCorrect = ans.answer_text?.trim().toLowerCase() === question.correct_answer?.trim().toLowerCase();
+        marksObtained = isCorrect ? question.marks : 0;
+      } else {
+        hasManualQuestions = true;
+        isCorrect = null;
+        marksObtained = null;
       }
-      // Auto-pass descriptive for now or mark as 0? 
-      // For certification, usually only MCQs are auto-graded. 
-      // If manual grading needed, public test is tricky. We assume auto-grade for certification.
 
-      score += marksObtained;
+      if (marksObtained !== null) {
+        score += marksObtained;
+      }
 
       // Create Answer Record
       await prisma.answer.create({
@@ -1007,40 +1404,70 @@ export const submitPublicTest = async (req: Request, res: Response) => {
       });
     }
 
-    const isPassed = score >= attempt.test.passing_marks;
+    const finalScore = hasManualQuestions ? null : Math.max(0, Math.round(score));
+    const isGraded = !hasManualQuestions;
+    const isPassed = isGraded && finalScore !== null ? finalScore >= attempt.test.passing_marks : null;
+
+    const allQuestionsSum = questions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    const effectiveAttemptTotal = allQuestionsSum > 0 ? allQuestionsSum : attempt.test.total_marks;
 
     // Update Attempt
     const updatedAttempt = await prisma.testAttempt.update({
       where: { id: attempt.id },
       data: {
         submitted_at: new Date(),
-        score,
-        is_graded: true, // Auto-graded
-        is_passed: isPassed
+        score: finalScore,
+        is_graded: isGraded,
+        is_passed: isPassed,
+        total_marks: effectiveAttemptTotal,
       }
     });
 
     // Generate Certificate if passed
-    let certificate = null;
+    let certificate: any = null;
     let certificateCode: string | undefined;
+    let renderedCertificateText: string | undefined;
+    const guestInfo = attempt.guest_info as any;
+    const candidateEmail = guestInfo?.email;
 
     if (isPassed) {
       // Generate Unique Code (e.g., SA-CERT-<TESTID>-<ATTEMPTID>-<RANDOM>)
       const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
       certificateCode = `SA-CERT-${attempt.test_id}-${attempt.id}-${randomPart}`;
 
-      certificate = await prisma.certificate.create({
-        data: {
+      const pct = effectiveAttemptTotal > 0 ? `${((score / effectiveAttemptTotal) * 100).toFixed(1)}%` : '100%';
+      const formattedDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      renderedCertificateText = renderCertificateText(
+        (attempt.test as any)?.certificate_template,
+        {
+          name: candidateName,
+          test_title: attempt.test.title,
+          date: formattedDate,
+          score,
+          total_marks: effectiveAttemptTotal,
+          percentage: pct,
+          certificate_id: certificateCode,
+        }
+      );
+
+      certificate = await prisma.certificate.upsert({
+        where: { test_attempt_id: attempt.id },
+        update: {
+          recipient_name: candidateName,
+          recipient_email: candidateEmail || null,
+          code: certificateCode,
+          certificate_text: renderedCertificateText,
+        },
+        create: {
           test_id: attempt.test_id,
           test_attempt_id: attempt.id,
           recipient_name: candidateName,
+          recipient_email: candidateEmail || null,
           code: certificateCode,
-        }
+          certificate_text: renderedCertificateText,
+        },
       });
-
-      // Send Certificate Email (if email is available in guest_info)
-      const guestInfo = attempt.guest_info as any;
-      const candidateEmail = guestInfo?.email;
 
       if (candidateEmail) {
         // Send email asynchronously (don't await to block response)
@@ -1050,20 +1477,24 @@ export const submitPublicTest = async (req: Request, res: Response) => {
           attempt.test.title,
           certificateCode,
           score,
-          attempt.test.total_marks
+          effectiveAttemptTotal
         ).catch((err: any) => console.error('Failed to send certificate email:', err));
       }
     }
 
     return sendSuccess(res, {
       score,
-      total_marks: attempt.test.total_marks,
+      total_marks: effectiveAttemptTotal,
       is_passed: isPassed,
       candidateName,
+      candidateEmail,
       attemptId: attempt.id,
       testTitle: attempt.test.title,
       certificateDate: new Date(),
-      certificateCode: certificateCode
+      certificateCode,
+      certificateId: certificate?.id,
+      certificateText: renderedCertificateText,
+      certificateTitle: (attempt.test as any)?.certificate_title || 'Certificate of Completion',
     }, 'Test submitted successfully');
 
   } catch (error) {

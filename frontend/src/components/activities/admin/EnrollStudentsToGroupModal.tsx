@@ -29,6 +29,7 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
   const isTeacher = user?.role === 'TEACHER';
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [enrolledStudents, setEnrolledStudents] = useState<number[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,14 +38,34 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Fetch initial group enrollments once
   useEffect(() => {
-    fetchData();
+    const fetchInitialGroupEnrollments = async () => {
+      try {
+        setInitialLoading(true);
+        const enrollmentsResponse = await activityEnrollmentAPI.getGroupEnrollments(group.id);
+        const enrolled = enrollmentsResponse.data.data || [];
+        setEnrolledStudents(enrolled);
+        setSelectedStudents(enrolled);
+      } catch (error: any) {
+        toast.error('Failed to fetch group enrollments');
+        console.error(error);
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetchInitialGroupEnrollments();
+  }, [group.id]);
+
+  // Fetch students on page or search term change
+  useEffect(() => {
+    fetchStudents();
   }, [page, searchTerm]);
 
-  const fetchData = async () => {
+  const fetchStudents = async () => {
     try {
       setLoading(true);
-      // Fetch students (paginated)
       const studentsResponse = await api.get('/students', {
         params: { page, limit, search: searchTerm },
       });
@@ -55,14 +76,8 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
       setStudents(studentsArray);
       setTotal(pagination.total || 0);
       setTotalPages(pagination.totalPages || 1);
-      
-      // Fetch enrolled students for this group
-      const enrollmentsResponse = await activityEnrollmentAPI.getGroupEnrollments(group.id);
-      const enrolled = enrollmentsResponse.data.data || [];
-      setEnrolledStudents(enrolled);
-      setSelectedStudents(enrolled); // Pre-select enrolled students
     } catch (error: any) {
-      toast.error('Failed to fetch data');
+      toast.error('Failed to fetch students');
       console.error(error);
     } finally {
       setLoading(false);
@@ -168,7 +183,7 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
           </div>
 
           {/* Students List */}
-          {loading ? (
+          {loading || initialLoading ? (
             <div className="text-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
             </div>

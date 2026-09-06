@@ -174,7 +174,7 @@ const navItems: NavItem[] = [
 
   // ── Admin / Finance
   {
-    title: "Billing & Invoices",
+    title: "Enrollments & Invoices",
     href: "/dashboard/enrollments",
     icon: DollarSign,
     roles: ["ADMIN", "TEACHER"],

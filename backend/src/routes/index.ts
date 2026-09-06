@@ -376,6 +376,7 @@ router.post('/tests/:testId/duplicate', authenticate, authorize('ADMIN', 'TEACHE
 
 // Generate questions using AI
 router.post('/tests/:testId/generate-questions', authenticate, authorize('ADMIN', 'TEACHER'), testController.generateTestQuestions);
+router.post('/tests/ai-generate-preview', authenticate, authorize('ADMIN', 'TEACHER'), testController.generateAIQuestionsPreview);
 
 // Add manual question (with optional file upload for question and options)
 router.post('/tests/:testId/questions', authenticate, authorize('ADMIN', 'TEACHER'), upload.fields([
@@ -416,6 +417,9 @@ router.get('/my-test-attempts', authenticate, authorize('STUDENT'), testAttemptC
 
 // Grade test attempt (teachers/admin) - Custom authorization in controller
 router.post('/test-attempts/:attemptId/grade', authenticate, authorizeStrict('ADMIN', 'TEACHER'), testAttemptController.gradeTestAttempt);
+
+// Get all issued certificates (teachers/admin)
+router.get('/certificates', authenticate, authorize('ADMIN', 'TEACHER'), testAttemptController.getAllCertificates);
 
 // ========== CHAT ROUTES ==========
 // Start a new chat

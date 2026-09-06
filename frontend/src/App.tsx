@@ -216,8 +216,10 @@ function App() {
           <Route path="contact" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />
           <Route path="blog" element={<BlogPage />} />
-          <Route path="certification/:testId" element={<CertificationPage />} />
         </Route>
+
+        {/* Standalone Public Certification Route (No public header/footer) */}
+        <Route path="/certification/:testId" element={<CertificationPage />} />
 
         {/* Auth Routes */}
         <Route

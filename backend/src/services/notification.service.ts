@@ -128,3 +128,69 @@ export const sendNotificationToMultipleUsers = async (
 
   await Promise.allSettled(promises);
 };
+
+/**
+ * Send enrollment notification to a student across all channels (In-app, Push, Email)
+ */
+export const sendEnrollmentNotification = async (
+  studentId: number,
+  entityType: string,
+  entityName: string
+): Promise<void> => {
+  try {
+    const student = await prisma.student.findUnique({
+      where: { id: Number(studentId) },
+      include: { user: true },
+    });
+
+    if (!student || !student.user) {
+      console.warn(`Cannot send enrollment notification: Student ID ${studentId} or user not found`);
+      return;
+    }
+
+    await sendNotificationAllChannels({
+      user_id: student.user.id,
+      type: NotificationType.SUCCESS,
+      title: `Enrolled in ${entityType}`,
+      description: `You have been enrolled in ${entityType}: "${entityName}". You can now access your learning resources and activities.`,
+    });
+  } catch (error) {
+    console.error(`Error sending enrollment notification for student ${studentId}:`, error);
+  }
+};
+
+/**
+ * Send enrollment notifications to multiple students across all channels
+ */
+export const sendBulkEnrollmentNotifications = async (
+  studentIds: number[],
+  entityType: string,
+  entityName: string
+): Promise<void> => {
+  try {
+    const numericIds = studentIds.map(Number).filter((id) => !isNaN(id) && id > 0);
+    if (numericIds.length === 0) return;
+
+    const students = await prisma.student.findMany({
+      where: { id: { in: numericIds } },
+      include: { user: true },
+    });
+
+    const promises = students
+      .filter((s) => s.user)
+      .map((student) =>
+        sendNotificationAllChannels({
+          user_id: student.user.id,
+          type: NotificationType.SUCCESS,
+          title: `Enrolled in ${entityType}`,
+          description: `You have been enrolled in ${entityType}: "${entityName}". You can now access your learning resources and activities.`,
+        }).catch((err) => {
+          console.error(`Error sending notification to student ${student.id}:`, err);
+        })
+      );
+
+    await Promise.allSettled(promises);
+  } catch (error) {
+    console.error('Error in sendBulkEnrollmentNotifications:', error);
+  }
+};

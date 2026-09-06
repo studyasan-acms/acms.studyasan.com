@@ -105,10 +105,7 @@ export default function GradeTestPage() {
     let count = 0;
 
     attempt.test.questions.forEach((q) => {
-      const isAuto =
-        q.question_type === "MCQ" ||
-        q.question_type === "TRUE_FALSE" ||
-        q.question_type === "MATCH_THE_FOLLOWING";
+      const isAuto = q.is_autograded !== false;
       const answer = attempt.answers?.find((a) => a.question_id === q.id);
 
       if (isAuto && answer && answer.is_correct) {
@@ -320,11 +317,7 @@ export default function GradeTestPage() {
               marks_obtained: 0,
               is_correct: false,
             };
-            const isAutoGraded =
-              attempt.test?.is_autograded !== false &&
-              (question.question_type === "MCQ" ||
-                question.question_type === "TRUE_FALSE" ||
-                question.question_type === "MATCH_THE_FOLLOWING");
+            const isAutoGraded = question.is_autograded !== false;
 
             return (
               <div
@@ -370,9 +363,14 @@ export default function GradeTestPage() {
                               -{question.negative_marks} neg
                             </span>
                           ) : null}
-                          {isAutoGraded && (
-                            <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
+                          {isAutoGraded ? (
+                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                              <Sparkles className="w-3 h-3 text-emerald-600" />
                               Auto Evaluated
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded-md">
+                              Manual Review
                             </span>
                           )}
                         </div>

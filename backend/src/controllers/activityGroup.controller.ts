@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { createPaymentSchedule, createOneTimePayment } from '../utils/payment.utils.js';
+import { sendEnrollmentNotification } from '../services/notification.service.js';
 
 // Extended Request type with user info
 interface AuthRequest extends Request {
@@ -512,6 +513,9 @@ export const enrollStudentInActivityGroup = async (req: AuthRequest, res: Respon
         });
       }
     }
+
+    // Send notification across all channels
+    sendEnrollmentNotification(studentId, 'Activity Group', activityGroup.name).catch(console.error);
 
     sendSuccess(res, enrollment, 'Enrolled in activity group successfully', 201);
   } catch (error: any) {

@@ -508,6 +508,9 @@ model Test {
   questions                Question[]
   test_attempts            TestAttempt[]
   is_certification         Boolean       @default(false)
+  allowed_candidates       Json?         @default("[]") // Whitelisted candidates [{ name, email, added_at }]
+  certificate_template     String?       @db.Text // Custom certificate text with variables {name}, {date}, {test_title}, {score}, {percentage}, {certificate_id}
+  certificate_title        String?       @default("Certificate of Completion")
   certificates             Certificate[]
 
   @@map("tests")
@@ -534,6 +537,7 @@ model Question {
   correct_answer String?
   marks          Int
   negative_marks Float        @default(0)
+  is_autograded  Boolean      @default(true)
   order          Int
   parent_id      Int?
   created_at     DateTime     @default(now())
@@ -574,12 +578,14 @@ model TestAttempt {
 }
 
 model Certificate {
-  id              String   @id @default(uuid())
-  test_id         Int
-  test_attempt_id Int      @unique
-  recipient_name  String
-  issued_at       DateTime @default(now())
-  code            String   @unique // Short code for verification
+  id               String   @id @default(uuid())
+  test_id          Int
+  test_attempt_id  Int      @unique
+  recipient_name   String
+  recipient_email  String?
+  issued_at        DateTime @default(now())
+  code             String   @unique // Short code for verification
+  certificate_text String?  @db.Text
 
   test    Test        @relation(fields: [test_id], references: [id], onDelete: Cascade)
   attempt TestAttempt @relation(fields: [test_attempt_id], references: [id], onDelete: Cascade)

@@ -3,6 +3,8 @@ import { PrismaClient, EnrollmentType, InvoiceStatus } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { sendInvoiceEmailNotification } from '../services/email.service.js';
+import { sendEnrollmentNotification, sendBulkEnrollmentNotifications } from '../services/notification.service.js';
+import { generateInvoiceNumber } from '../utils/payment.utils.js';
 
 const prisma = new PrismaClient();
 
@@ -33,12 +35,6 @@ const ENROLLMENT_INCLUDE = {
   },
 };
 
-async function generateInvoiceNumber(): Promise<string> {
-  const currentYear = new Date().getFullYear();
-  const count = await prisma.invoice.count();
-  const nextNum = count + 1;
-  return `SA-${currentYear}-${String(nextNum).padStart(5, '0')}`;
-}
 
 // ─── GET ALL ENROLLMENTS ────────────────────────────────────────────────────
 
@@ -191,6 +187,9 @@ export const createEnrollment = async (req: Request, res: Response) => {
           end_date: item.end_date ? new Date(item.end_date) : null,
         };
 
+        let entityName = '';
+        let entityType = '';
+
         if (type === 'SUBJECT' && item.subject_id) {
           existing = await prisma.enrollment.findFirst({
             where: { student_id: student.id, subject_id: item.subject_id },
@@ -201,6 +200,11 @@ export const createEnrollment = async (req: Request, res: Response) => {
             continue;
           }
           data.subject_id = item.subject_id;
+          const subject = await prisma.subject.findUnique({ where: { id: item.subject_id } });
+          if (subject) {
+            entityName = subject.name;
+            entityType = subject.is_course ? 'Course' : 'Subject';
+          }
         } else if (type === 'TEST_SERIES' && item.test_series_id) {
           existing = await prisma.enrollment.findFirst({
             where: { student_id: student.id, test_series_id: item.test_series_id },
@@ -211,6 +215,11 @@ export const createEnrollment = async (req: Request, res: Response) => {
             continue;
           }
           data.test_series_id = item.test_series_id;
+          const testSeries = await prisma.testSeries.findUnique({ where: { id: item.test_series_id } });
+          if (testSeries) {
+            entityName = testSeries.title;
+            entityType = 'Test Series';
+          }
         } else if (type === 'ACTIVITY_GROUP' && item.activity_group_id) {
           existing = await prisma.enrollment.findFirst({
             where: { student_id: student.id, activity_group_id: item.activity_group_id },
@@ -221,6 +230,30 @@ export const createEnrollment = async (req: Request, res: Response) => {
             continue;
           }
           data.activity_group_id = item.activity_group_id;
+          const group = await prisma.activityGroup.findUnique({
+            where: { id: item.activity_group_id },
+            include: { activities: { where: { is_published: true } } },
+          });
+          if (group) {
+            entityName = group.name;
+            entityType = 'Activity Group';
+            // Sync all published activities for this student
+            for (const act of group.activities) {
+              await prisma.activityEnrollment.upsert({
+                where: {
+                  activity_id_student_id: {
+                    activity_id: act.id,
+                    student_id: student.id,
+                  },
+                },
+                create: {
+                  activity_id: act.id,
+                  student_id: student.id,
+                },
+                update: {},
+              }).catch(console.error);
+            }
+          }
         } else {
           skippedItems.push(`Invalid item (missing ID for type ${type})`);
           continue;
@@ -228,6 +261,11 @@ export const createEnrollment = async (req: Request, res: Response) => {
 
         const enrollment = await prisma.enrollment.create({ data });
         createdEnrollments.push(enrollment);
+
+        // Send notification across all channels (In-app, FCM push, email)
+        if (entityName && entityType) {
+          sendEnrollmentNotification(student.id, entityType, entityName).catch(console.error);
+        }
       } catch (itemErr: any) {
         console.warn('Enrollment item error:', itemErr.message);
         skippedItems.push(`Item error: ${itemErr.message}`);
@@ -407,6 +445,14 @@ export const bulkEnroll = async (req: Request, res: Response) => {
       created.push(student_id);
     }
 
+    if (created.length > 0) {
+      sendBulkEnrollmentNotifications(
+        created,
+        subject.is_course ? 'Course' : 'Subject',
+        subject.name
+      ).catch(console.error);
+    }
+
     sendSuccess(
       res,
       { created: created.length, skipped: skipped.length },
@@ -439,7 +485,6 @@ async function _generateInvoiceForEnrollments(
     },
   });
 
-  const invoice_number = await generateInvoiceNumber();
   let subtotal = 0;
   let totalDiscount = 0;
   const invoiceItems: any[] = [];
@@ -489,25 +534,39 @@ async function _generateInvoiceForEnrollments(
 
   const totalAmount = Math.max(0, subtotal - totalDiscount);
 
-  const invoice = await prisma.invoice.create({
-    data: {
-      invoice_number,
-      student_id: student.id,
-      status: InvoiceStatus.PENDING,
-      issue_date: issueDate,
-      due_date: dueDate,
-      subtotal,
-      discount_amount: totalDiscount,
-      total_amount: totalAmount,
-      notes: notes || null,
-      items: { create: invoiceItems },
-    },
-
-    include: {
-      student: { include: { user: true, class: true, board: true } },
-      items: true,
-    },
-  });
+  let invoice: any;
+  let attempts = 0;
+  while (attempts < 5) {
+    try {
+      const invoice_number = await generateInvoiceNumber();
+      invoice = await prisma.invoice.create({
+        data: {
+          invoice_number,
+          student_id: student.id,
+          status: InvoiceStatus.PENDING,
+          issue_date: issueDate,
+          due_date: dueDate,
+          subtotal,
+          discount_amount: totalDiscount,
+          total_amount: totalAmount,
+          notes: notes || null,
+          items: { create: invoiceItems },
+        },
+        include: {
+          student: { include: { user: true, class: true, board: true } },
+          items: true,
+        },
+      });
+      break;
+    } catch (createErr: any) {
+      if (createErr.code === 'P2002' || createErr.message?.includes('Unique constraint') || createErr.message?.includes('invoice_number')) {
+        attempts++;
+        if (attempts >= 5) throw createErr;
+        continue;
+      }
+      throw createErr;
+    }
+  }
 
   // Link enrollments back to this invoice
   await prisma.enrollment.updateMany({
@@ -525,7 +584,7 @@ async function _generateInvoiceForEnrollments(
       subtotal: invoice.subtotal,
       discount_amount: invoice.discount_amount,
       total_amount: invoice.total_amount,
-      items: invoice.items.map((i) => ({
+      items: invoice.items.map((i: any) => ({
         item_name: i.item_name,
         type: i.type,
         unit_price: i.unit_price,

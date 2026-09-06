@@ -747,11 +747,18 @@ export interface Question {
   correct_answer: string | null;
   marks: number;
   negative_marks: number;
+  is_autograded?: boolean;
   order: number;
   parent_id?: number | null;
   sub_questions?: Question[];
   created_at: string;
   updated_at: string;
+}
+
+export interface AllowedCandidate {
+  name: string;
+  email: string;
+  added_at?: string;
 }
 
 export type TestType = 'MOCK_TEST' | 'PRACTICE' | 'ASSESSMENT' | 'CERTIFICATION';
@@ -775,6 +782,9 @@ export interface Test {
   available_until: string;
   is_published: boolean;
   is_certification: boolean;
+  allowed_candidates?: AllowedCandidate[] | string;
+  certificate_template?: string | null;
+  certificate_title?: string | null;
   created_at: string;
   updated_at: string;
   subject?: {
@@ -814,10 +824,28 @@ export interface Answer {
   question?: Question;
 }
 
+export interface Certificate {
+  id: string;
+  test_id: number;
+  test_attempt_id: number;
+  recipient_name: string;
+  recipient_email?: string | null;
+  issued_at: string;
+  code: string;
+  certificate_text?: string | null;
+  test?: Test;
+  attempt?: TestAttempt;
+}
+
 export interface TestAttempt {
   id: number;
   test_id: number;
-  student_id: number;
+  student_id?: number | null;
+  guest_info?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
   started_at: string;
   submitted_at: string | null;
   score: number | null;
@@ -837,13 +865,14 @@ export interface TestAttempt {
       name: string;
       email: string;
     };
-  };
+  } | null;
   grader?: {
     id: number;
     name: string;
     email: string;
   } | null;
   answers?: Answer[];
+  certificate?: Certificate | null;
 }
 
 export interface CreateTestData {
@@ -864,6 +893,9 @@ export interface CreateTestData {
   available_until: string;
   is_published?: boolean;
   is_certification?: boolean;
+  allowed_candidates?: AllowedCandidate[] | string;
+  certificate_template?: string | null;
+  certificate_title?: string | null;
 }
 
 export interface UpdateTestData {
@@ -884,6 +916,9 @@ export interface UpdateTestData {
   available_until?: string;
   is_published?: boolean;
   is_certification?: boolean;
+  allowed_candidates?: AllowedCandidate[] | string;
+  certificate_template?: string | null;
+  certificate_title?: string | null;
 }
 
 export interface GenerateQuestionsData {
@@ -901,22 +936,25 @@ export interface GenerateQuestionsData {
 export interface CreateQuestionData {
   question_type: QuestionType;
   question_text: string;
-  media_url?: string;
-  media_type?: string;
-  options?: string[];
+  media_url?: string | null;
+  media_type?: string | null;
+  options?: (string | any)[];
   correct_answer: string;
   marks: number;
   negative_marks?: number;
+  is_autograded?: boolean;
 }
 
 export interface UpdateQuestionData {
+  question_type?: QuestionType;
   question_text?: string;
-  media_url?: string;
-  media_type?: string;
-  options?: string[];
+  media_url?: string | null;
+  media_type?: string | null;
+  options?: (string | any)[];
   correct_answer?: string;
   marks?: number;
   negative_marks?: number;
+  is_autograded?: boolean;
 }
 
 export interface SubmitAnswerData {

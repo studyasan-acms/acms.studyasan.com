@@ -44,6 +44,7 @@ import type {
   UpdateProgressData,
   Test,
   TestAttempt,
+  Certificate,
   CreateTestData,
   UpdateTestData,
   GenerateQuestionsData,
@@ -851,6 +852,32 @@ export const testService = {
     return response.data;
   },
 
+  // Generate questions preview using AI (without requiring an existing test)
+  generateQuestionsPreview: async (data: {
+    topic: string;
+    difficulty?: string;
+    subject_id?: number | null;
+    counts?: {
+      mcq?: number;
+      trueFalse?: number;
+      shortAnswer?: number;
+      longAnswer?: number;
+      matchFollowing?: number;
+      caseStudy?: number;
+    };
+    marks?: {
+      mcqMarks?: number;
+      trueFalseMarks?: number;
+      shortAnswerMarks?: number;
+      longAnswerMarks?: number;
+      matchFollowingMarks?: number;
+      caseStudyMarks?: number;
+    };
+  }): Promise<{ success: boolean; data: any[] }> => {
+    const response = await api.post('/tests/ai-generate-preview', data);
+    return response.data;
+  },
+
   // Add manual question
   addQuestion: async (testId: number, data: CreateQuestionData): Promise<{ success: boolean; data: Question }> => {
     const response = await api.post(`/tests/${testId}/questions`, data);
@@ -946,6 +973,12 @@ export const testAttemptService = {
   // Grade test attempt
   gradeAttempt: async (attemptId: number, data: GradeTestData): Promise<{ success: boolean; data: TestAttempt }> => {
     const response = await api.post(`/test-attempts/${attemptId}/grade`, data);
+    return response.data;
+  },
+
+  // Get all issued certificates (teachers/admin)
+  getAllCertificates: async (params?: { testId?: number; search?: string }): Promise<{ success: boolean; data: Certificate[] }> => {
+    const response = await api.get('/certificates', { params });
     return response.data;
   },
 
@@ -1926,3 +1959,4 @@ export const sectionService = {
 
 export default api;
 export { api as apiService };
+

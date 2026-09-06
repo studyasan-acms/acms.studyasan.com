@@ -324,7 +324,8 @@ export default function TestAttemptPage() {
   const [visitedQuestionIds, setVisitedQuestionIds] = useState<Set<number>>(new Set());
   const [answerMediaFiles, setAnswerMediaFiles] = useState<{ [questionId: number]: File | null }>({});
   const [answerMediaUrls, setAnswerMediaUrls] = useState<{ [questionId: number]: string | null }>({});
-  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [violations, setViolations] = useState<Violation[]>([]);
   const [showViolationBanner, setShowViolationBanner] = useState(false);
   const [violationMessage, setViolationMessage] = useState('');
@@ -521,6 +522,29 @@ export default function TestAttemptPage() {
       }
       const enforceWarnings = (response.data.test as any)?.enforce_warning_attempts ?? true;
       setEnforceWarningAttempts(enforceWarnings);
+
+      const durationMins = response.data.test?.duration_minutes;
+      const isTimed = !response.data.is_practice && typeof durationMins === 'number' && durationMins > 0;
+
+      if (response.data.started_at) {
+        const startedAt = new Date(response.data.started_at).getTime();
+        const elapsed = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        setElapsedSeconds(elapsed);
+
+        if (isTimed) {
+          const totalDurationSec = durationMins * 60;
+          const remaining = Math.max(0, totalDurationSec - elapsed);
+          setTimeRemaining(remaining);
+        } else {
+          setTimeRemaining(null);
+        }
+      } else {
+        if (isTimed) {
+          setTimeRemaining(durationMins * 60);
+        } else {
+          setTimeRemaining(null);
+        }
+      }
     } catch (error) {
       console.error('Error fetching test attempt:', error);
       navigate('/tests');
@@ -528,6 +552,36 @@ export default function TestAttemptPage() {
       setLoading(false);
     }
   };
+
+  // ---- Timer Countdown & Elapsed Time ----
+  useEffect(() => {
+    if (!attempt || attempt.submitted_at) return;
+
+    const durationMins = attempt.test?.duration_minutes;
+    const isTimed = !attempt.is_practice && typeof durationMins === 'number' && durationMins > 0;
+
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+
+      if (isTimed) {
+        setTimeRemaining((prev) => {
+          if (prev === null) return null;
+          if (prev <= 1) {
+            clearInterval(timer);
+            if (!hasAutoSubmittedRef.current && !autoSubmitting) {
+              hasAutoSubmittedRef.current = true;
+              setAutoSubmitting(true);
+              handleSubmitTest(true);
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [attempt, autoSubmitting]);
 
   // ---- Answer Change ----
   const handleAnswerChange = async (questionId: number, answerText: string, mediaFile?: File | null, mediaUrl?: string | null) => {
@@ -569,16 +623,19 @@ export default function TestAttemptPage() {
   };
 
   // ---- Format Time ----
-  const formatTime = (seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+  const formatTime = (seconds: number | null | undefined) => {
+    if (seconds === null || seconds === undefined || isNaN(seconds)) return '0:00';
+    const totalSecs = Math.max(0, Math.floor(seconds));
+    const hrs = Math.floor(totalSecs / 3600);
+    const mins = Math.floor((totalSecs % 3600) / 60);
+    const secs = totalSecs % 60;
     if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const isTimeWarning = timeRemaining < 300 && timeRemaining > 0;
-  const isTimeCritical = timeRemaining < 60 && timeRemaining > 0;
+  const isTimed = Boolean(!attempt?.is_practice && attempt?.test?.duration_minutes && attempt.test.duration_minutes > 0);
+  const isTimeWarning = Boolean(isTimed && timeRemaining !== null && timeRemaining < 300 && timeRemaining > 0);
+  const isTimeCritical = Boolean(isTimed && timeRemaining !== null && timeRemaining < 60 && timeRemaining > 0);
 
   const hasAnswerForQuestion = (questionId: number) => {
     const answerText = answers[questionId];
@@ -748,7 +805,16 @@ export default function TestAttemptPage() {
           <div className={`flex items-center gap-2 px-3 sm:px-5 py-1.5 sm:py-2 rounded-full font-mono text-base sm:text-lg font-bold transition-all
             ${isTimeCritical ? 'bg-red-600 text-white animate-pulse' : isTimeWarning ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-800'}`}>
             <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span>{formatTime(timeRemaining)}</span>
+            <span>
+              {isTimed
+                ? formatTime(timeRemaining ?? (attempt.test?.duration_minutes ? attempt.test.duration_minutes * 60 : 0))
+                : formatTime(elapsedSeconds)}
+            </span>
+            {!isTimed && (
+              <span className="text-[10px] uppercase font-sans font-semibold tracking-wider text-slate-500 bg-white/70 px-1.5 py-0.5 rounded">
+                Elapsed
+              </span>
+            )}
             {isTimeWarning && <AlertTriangle className="w-4 h-4" />}
           </div>
 

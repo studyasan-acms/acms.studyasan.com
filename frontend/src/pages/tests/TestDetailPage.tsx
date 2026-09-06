@@ -28,9 +28,12 @@ import {
   ChevronsLeft,
   ChevronsRight,
   RotateCcw,
+  X,
+  Upload,
+  ExternalLink,
 } from "lucide-react";
 
-import { testService, testAttemptService } from "@/services/api";
+import { testService, testAttemptService, uploadService } from "@/services/api";
 import type { Test, Question, UpdateQuestionData, QuestionType, TestType } from "@/types";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -171,7 +174,7 @@ export default function TestDetailPage() {
     if (now > availableUntil) {
       return {
         label: "Closed",
-        badgeClass: "bg-red-50 text-red-600 border-red-200",
+        badgeClass: "bg-red-50 text-red-600 border-red-300 font-extrabold",
         canAttempt: false,
         canPractice: true,
       };
@@ -179,7 +182,7 @@ export default function TestDetailPage() {
 
     return {
       label: "Active",
-      badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-300 font-extrabold",
       canAttempt: !hasAttempted,
       canPractice: true,
     };
@@ -248,6 +251,19 @@ export default function TestDetailPage() {
     return processedQuestions.slice(startIndex, startIndex + questionPageSize);
   }, [processedQuestions, questionPage, questionPageSize]);
 
+  const parsedAllowedCandidates = useMemo(() => {
+    if (!test?.allowed_candidates) return [];
+    try {
+      const raw =
+        typeof test.allowed_candidates === "string"
+          ? JSON.parse(test.allowed_candidates)
+          : test.allowed_candidates;
+      return Array.isArray(raw) ? (raw as { name: string; email: string; added_at?: string }[]) : [];
+    } catch (e) {
+      return [];
+    }
+  }, [test?.allowed_candidates]);
+
   // Reset questionPage when search, type filter, or page size changes
   useEffect(() => {
     setQuestionPage(1);
@@ -260,9 +276,27 @@ export default function TestDetailPage() {
   };
 
   const handleTogglePublish = () => {
-
     if (!test) return;
     const action = test.is_published ? "unpublish" : "publish";
+
+    if (!test.is_published) {
+      const questionCount = test.questions?.length || 0;
+      if (questionCount === 0) {
+        setErrorMessage("Cannot publish test: The test contains no questions. Please add questions before publishing.");
+        setErrorOpen(true);
+        return;
+      }
+
+      const totalQuestionMarks = test.questions?.reduce((acc, q) => acc + (Number(q.marks) || 0), 0) || 0;
+      if (totalQuestionMarks !== test.total_marks) {
+        setErrorMessage(
+          `Cannot publish test: Test Total Marks (${test.total_marks}) does not match the sum of Question Marks (${totalQuestionMarks}). Please edit the test so they match before publishing.`
+        );
+        setErrorOpen(true);
+        return;
+      }
+    }
+
     setConfirmMessage(`Are you sure you want to ${action} "${test.title}"?`);
     setConfirmAction(() => async () => {
       try {
@@ -310,6 +344,9 @@ export default function TestDetailPage() {
       correct_answer: question.correct_answer || (initialOptions.length > 0 ? initialOptions[0] : (question.question_type === "TRUE_FALSE" ? "True" : "")),
       marks: question.marks || 2,
       negative_marks: question.negative_marks || 0,
+      is_autograded: question.is_autograded !== undefined
+        ? question.is_autograded
+        : (question.question_type === "MCQ" || question.question_type === "TRUE_FALSE" || question.question_type === "MATCH_THE_FOLLOWING"),
     });
     setEditQuestionMediaFile(null);
     setEditQuestionMediaUrl(question.media_url || null);
@@ -320,13 +357,38 @@ export default function TestDetailPage() {
   };
 
   const updateEditOptionText = (index: number, val: string) => {
-    const opts = [...(editFormData.options || [])];
-    const isOldCorrect = editFormData.correct_answer === opts[index];
-    opts[index] = val;
+    const opts: any[] = [...(editFormData.options || [])];
+    const curr: any = opts[index];
+    const oldText = typeof curr === "string" ? curr : (curr?.text || "");
+    const isOldCorrect = editFormData.correct_answer === oldText;
+    if (typeof curr === "object" && curr !== null) {
+      opts[index] = { ...curr, text: val };
+    } else {
+      opts[index] = val;
+    }
     setEditFormData({
       ...editFormData,
       options: opts,
       correct_answer: isOldCorrect ? val : editFormData.correct_answer,
+    });
+  };
+
+  const updateEditOptionMedia = (index: number, media_url: string | null, media_type: string | null = "image") => {
+    const opts: any[] = [...(editFormData.options || [])];
+    const curr: any = opts[index];
+    const currText = typeof curr === "string" ? curr : (curr?.text || "");
+    if (!media_url) {
+      opts[index] = currText;
+    } else {
+      opts[index] = {
+        text: currText,
+        media_url,
+        media_type: media_type || "image",
+      };
+    }
+    setEditFormData({
+      ...editFormData,
+      options: opts,
     });
   };
 
@@ -338,11 +400,13 @@ export default function TestDetailPage() {
   };
 
   const handleRemoveEditOption = (index: number) => {
-    const opts = (editFormData.options || []).filter((_, i) => i !== index);
+    const opts: any[] = (editFormData.options || []).filter((_, i) => i !== index);
+    const curr: any = editFormData.options?.[index];
+    const removedText = typeof curr === "string" ? curr : (curr?.text || "");
     setEditFormData({
       ...editFormData,
       options: opts,
-      correct_answer: editFormData.correct_answer === editFormData.options?.[index] ? (opts[0] || "") : editFormData.correct_answer,
+      correct_answer: editFormData.correct_answer === removedText ? (typeof opts[0] === "string" ? opts[0] : (opts[0]?.text || "")) : editFormData.correct_answer,
     });
   };
 
@@ -400,6 +464,8 @@ export default function TestDetailPage() {
       const updateData = {
         question_type: editingQuestion.question_type,
         ...editFormData,
+        media_url: removeQuestionMedia ? null : (editQuestionMediaUrl || null),
+        media_type: removeQuestionMedia ? null : (editQuestionMediaType || null),
       };
       if (editQuestionMediaFile || removeQuestionMedia) {
         const formData = new FormData();
@@ -408,6 +474,7 @@ export default function TestDetailPage() {
         formData.append("correct_answer", editFormData.correct_answer || "");
         formData.append("marks", (editFormData.marks || 2).toString());
         formData.append("negative_marks", (editFormData.negative_marks || 0).toString());
+        formData.append("is_autograded", (editFormData.is_autograded !== false).toString());
         if (editFormData.options) formData.append("options", JSON.stringify(editFormData.options));
         if (removeQuestionMedia) {
           formData.append("media_url", "");
@@ -559,14 +626,24 @@ export default function TestDetailPage() {
           )}
 
           {isTeacherOrAdmin && effectiveType === "CERTIFICATION" && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyLink}
-              className="text-[#0276D3] border-blue-200 hover:bg-blue-50 rounded-xl h-9 text-xs font-medium"
-            >
-              <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy Public Link
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/tests/${testId}/attempts?filter=certificates`)}
+                className="text-emerald-700 border-emerald-300 hover:bg-emerald-50 rounded-xl h-9 text-xs font-bold"
+              >
+                <Award className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> Issued Certificates
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyLink}
+                className="text-[#0276D3] border-blue-200 hover:bg-blue-50 rounded-xl h-9 text-xs font-medium"
+              >
+                <Copy className="w-3.5 h-3.5 mr-1.5" /> Copy Public Link
+              </Button>
+            </>
           )}
 
           {isStudent && status.canAttempt && (
@@ -675,6 +752,131 @@ export default function TestDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Certification Details & Whitelist Info (Teacher/Admin View) */}
+      {isTeacherOrAdmin && effectiveType === "CERTIFICATION" && (
+        <Card className="shadow-xs border-2 border-emerald-200 rounded-2xl overflow-hidden bg-white">
+          <CardHeader className="bg-emerald-50/70 border-b border-emerald-100 py-3.5 px-5">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-emerald-950 flex items-center gap-2">
+                <Award className="w-4 h-4 text-emerald-700" />
+                Certification & Candidate Access Control
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/tests/${testId}/attempts?filter=certificates`)}
+                  className="rounded-xl h-7 px-2.5 text-xs font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-100 bg-white"
+                >
+                  <Award className="w-3.5 h-3.5 mr-1 text-emerald-600" /> View Issued Certificates
+                </Button>
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold px-2.5 py-0.5 text-xs">
+                  {parsedAllowedCandidates.length > 0
+                    ? `${parsedAllowedCandidates.length} Whitelisted Candidates`
+                    : "Open Access Mode"}
+                </Badge>
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-5 space-y-4">
+            {/* Public Link Copy Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3.5 bg-emerald-50/40 rounded-xl border border-emerald-200">
+              <div className="text-xs">
+                <span className="font-bold text-slate-800 block">Public Certification Link:</span>
+                <span className="font-mono text-[11px] text-slate-600 break-all">
+                  {window.location.origin}/certification/{test.id}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleCopyLink}
+                  className="rounded-xl h-8 text-xs font-bold border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                >
+                  <Copy className="w-3.5 h-3.5 mr-1" /> Copy Link
+                </Button>
+                <a
+                  href={`/certification/${test.id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-xl h-8 px-3 text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open Page
+                </a>
+              </div>
+            </div>
+
+            {/* Certificate Template Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Certificate Title / Heading
+                </p>
+                <p className="text-xs font-semibold text-slate-800 bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                  {test.certificate_title || "Certificate of Completion"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                  Certificate Body Template
+                </p>
+                <p className="text-xs font-mono text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200 break-words">
+                  {test.certificate_template ||
+                    "has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}."}
+                </p>
+              </div>
+            </div>
+
+            {/* Allowed Candidates Table / Badge */}
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  Allowed Candidates ({parsedAllowedCandidates.length})
+                </p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => navigate(`/tests/${testId}/edit`)}
+                  className="h-7 text-xs font-bold text-[#0276D3] hover:bg-blue-50"
+                >
+                  <Edit className="w-3 h-3 mr-1" /> Manage Whitelist
+                </Button>
+              </div>
+
+              {parsedAllowedCandidates.length > 0 ? (
+                <div className="rounded-xl border border-slate-200 overflow-hidden max-h-56 overflow-y-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider sticky top-0">
+                      <tr>
+                        <th className="py-2 px-3 w-10 text-center">#</th>
+                        <th className="py-2 px-3">Candidate Name</th>
+                        <th className="py-2 px-3">Email Address</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {parsedAllowedCandidates.map((cand, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/60">
+                          <td className="py-2 px-3 text-center text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="py-2 px-3 font-medium text-slate-800">{cand.name || "—"}</td>
+                          <td className="py-2 px-3 text-slate-600 font-mono text-[11px]">{cand.email}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
+                  <strong>Open Access:</strong> No emails are whitelisted. Anyone who visits the link can enter their name and email to take the certification exam.
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Questions List (Teacher View) with Search, Filter, and Pagination */}
       {isTeacherOrAdmin && test.questions && test.questions.length > 0 && (
@@ -797,6 +999,16 @@ export default function TestDetailPage() {
                               {test.has_negative_marking && question.negative_marks > 0 && (
                                 <span className="text-xs text-red-500 font-medium">-{question.negative_marks} on wrong</span>
                               )}
+                              {question.is_autograded !== false ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-emerald-600" />
+                                  Auto-Checked
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
+                                  Manual Review
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -847,26 +1059,36 @@ export default function TestDetailPage() {
                         <div className="ml-10 mt-3 space-y-1.5">
                           {(question.options as any[]).map((option: any, optIndex: number) => {
                             const optionText = typeof option === 'string' ? option : option?.text || '';
+                            const optionMediaUrl = typeof option === 'object' ? option?.media_url : null;
                             const optionLetter = String.fromCharCode(65 + optIndex);
                             const isCorrect = optionText === question.correct_answer || optionLetter === question.correct_answer || (optionText === '' && question.correct_answer === optionLetter);
 
                             return (
                               <div
                                 key={optIndex}
-                                className={`p-2.5 rounded-xl text-xs flex items-center justify-between border ${
+                                className={`p-2.5 rounded-xl text-xs border ${
                                   isCorrect
                                     ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold'
                                     : 'bg-slate-50 border-slate-200 text-slate-700'
                                 }`}
                               >
-                                <span className="flex items-center gap-2">
-                                  <span className="font-bold text-slate-500">{optionLetter}.</span>
-                                  <MathRenderer text={optionText} inline={true} />
-                                </span>
-                                {isCorrect && (
-                                  <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Correct Answer
+                                <div className="flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <span className="font-bold text-slate-500">{optionLetter}.</span>
+                                    <MathRenderer text={optionText} inline={true} />
                                   </span>
+                                  {isCorrect && (
+                                    <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
+                                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Correct Answer
+                                    </span>
+                                  )}
+                                </div>
+                                {optionMediaUrl && (
+                                  <img
+                                    src={optionMediaUrl}
+                                    alt={`Option ${optionLetter}`}
+                                    className="mt-2 ml-6 max-h-24 rounded-lg border border-slate-200 object-contain bg-white p-0.5"
+                                  />
                                 )}
                               </div>
                             );
@@ -1066,7 +1288,105 @@ export default function TestDetailPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* Question Media Attachment Section */}
+            <div className="pt-2 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                  <ImageIcon className="w-3.5 h-3.5 text-slate-500" />
+                  Question Attachment (Image / Diagram / PDF)
+                </Label>
+                {editQuestionMediaUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setEditQuestionMediaUrl(null);
+                      setEditQuestionMediaType(null);
+                      setEditQuestionMediaFile(null);
+                      setRemoveQuestionMedia(true);
+                    }}
+                    className="text-xs h-6 px-2 text-red-500 hover:text-red-700 hover:bg-red-50 font-bold"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> Remove Attachment
+                  </Button>
+                )}
+              </div>
+
+              {!editQuestionMediaUrl ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-semibold text-slate-700 transition-colors shadow-xs">
+                    <Upload className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Upload Image or PDF</span>
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        const toastId = toast.loading("Uploading attachment...");
+                        try {
+                          const res = await uploadService.uploadFile(file, "test-questions");
+                          const url = res.url;
+                          const type = file.type.startsWith("image/") ? "image" : file.type === "application/pdf" ? "pdf" : "other";
+                          setEditQuestionMediaUrl(url);
+                          setEditQuestionMediaType(type);
+                          setEditQuestionMediaFile(file);
+                          setRemoveQuestionMedia(false);
+                          toast.success("Attachment uploaded successfully!", { id: toastId });
+                        } catch (err: any) {
+                          toast.error(err.message || "Failed to upload file", { id: toastId });
+                        }
+                      }}
+                    />
+                  </label>
+                  <span className="text-[11px] text-slate-400">Supported: Images (.png, .jpg), PDF documents</span>
+                </div>
+              ) : (
+                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50/70 max-w-md">
+                  {editQuestionMediaType === "image" && (
+                    <img
+                      src={editQuestionMediaUrl}
+                      alt="Question attachment"
+                      className="max-h-48 rounded-lg object-contain bg-white border border-slate-200 p-1"
+                    />
+                  )}
+                  {editQuestionMediaType === "pdf" && (
+                    <div className="flex items-center gap-3 p-2 bg-white rounded-lg border border-slate-200">
+                      <FileText className="w-7 h-7 text-red-500 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-slate-800 truncate">PDF Attachment</p>
+                        <a
+                          href={editQuestionMediaUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] text-[#0276D3] hover:underline font-semibold flex items-center gap-1"
+                        >
+                          <span>Open PDF in new tab</span>
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                  {editQuestionMediaType !== "image" && editQuestionMediaType !== "pdf" && (
+                    <div className="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200">
+                      <FileText className="w-5 h-5 text-slate-500" />
+                      <a
+                        href={editQuestionMediaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-[#0276D3] hover:underline font-semibold"
+                      >
+                        View Attached File
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Marks</Label>
                 <Input
@@ -1089,6 +1409,21 @@ export default function TestDetailPage() {
                   className="mt-1 h-9 text-xs rounded-xl border-slate-200"
                 />
               </div>
+              <div>
+                <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Evaluation Mode</Label>
+                <button
+                  type="button"
+                  onClick={() => setEditFormData({ ...editFormData, is_autograded: !editFormData.is_autograded })}
+                  className={`mt-1 w-full h-9 px-3 rounded-xl text-xs font-bold transition-all border flex items-center justify-center gap-1.5 ${
+                    editFormData.is_autograded
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/70"
+                      : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200/60"
+                  }`}
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${editFormData.is_autograded ? "text-emerald-600" : "text-slate-400"}`} />
+                  <span>{editFormData.is_autograded ? "Auto-Check: ON" : "Manual Review"}</span>
+                </button>
+              </div>
             </div>
 
             {/* MCQ Options with Selectable Correct Answer */}
@@ -1109,43 +1444,96 @@ export default function TestDetailPage() {
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {(editFormData.options || []).map((optText, optIdx) => {
-                    const isCorrect = editFormData.correct_answer === optText && optText.trim().length > 0;
+                  {(editFormData.options as any[] || []).map((opt: any, optIdx: number) => {
+                    const optText = typeof opt === "string" ? opt : (opt?.text || "");
+                    const optMedia = typeof opt === "object" && opt !== null ? opt.media_url : null;
                     const optionLetter = String.fromCharCode(65 + optIdx);
+                    const isCorrect = (editFormData.correct_answer === optText && optText.trim().length > 0) || (editFormData.correct_answer === optionLetter);
 
                     return (
                       <div
                         key={optIdx}
-                        className={`flex items-center gap-2 p-2 rounded-xl border transition-all ${
+                        className={`p-2.5 rounded-xl border transition-all ${
                           isCorrect ? "bg-emerald-50 border-emerald-300 ring-1 ring-emerald-300" : "bg-slate-50/50 border-slate-200"
                         }`}
                       >
-                        <button
-                          type="button"
-                          onClick={() => setEditFormData({ ...editFormData, correct_answer: optText })}
-                          className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
-                            isCorrect ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                          }`}
-                          title="Click to mark as Correct Answer"
-                        >
-                          {isCorrect ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : optionLetter}
-                        </button>
-                        <Input
-                          value={optText}
-                          onChange={(e) => updateEditOptionText(optIdx, e.target.value)}
-                          placeholder={`Option ${optionLetter}`}
-                          className="border-none shadow-none text-xs bg-transparent focus-visible:ring-0 p-0 h-8 flex-1"
-                        />
-                        {(editFormData.options?.length || 0) > 2 && (
-                          <Button
+                        <div className="flex items-center gap-2">
+                          <button
                             type="button"
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => handleRemoveEditOption(optIdx)}
-                            className="h-6 w-6 text-slate-400 hover:text-red-600 rounded-md"
+                            onClick={() => {
+                              const chosenAns = optText.trim() ? optText : optionLetter;
+                              setEditFormData({ ...editFormData, correct_answer: chosenAns });
+                            }}
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-xs shrink-0 transition-colors ${
+                              isCorrect ? "bg-emerald-600 text-white" : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                            }`}
+                            title="Click to mark as Correct Answer"
                           >
-                            <Trash2 className="w-3 h-3" />
-                          </Button>
+                            {isCorrect ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : optionLetter}
+                          </button>
+                          <Input
+                            value={optText}
+                            onChange={(e) => updateEditOptionText(optIdx, e.target.value)}
+                            placeholder={`Option ${optionLetter}`}
+                            className="border-none shadow-none text-xs bg-transparent focus-visible:ring-0 p-0 h-8 flex-1"
+                          />
+                          {/* Option Image Upload */}
+                          <label
+                            className="cursor-pointer p-1 text-slate-400 hover:text-[#0276D3] rounded-md hover:bg-white transition-colors shrink-0"
+                            title="Attach Image to Option"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                const toastId = toast.loading("Uploading option image...");
+                                try {
+                                  const res = await uploadService.uploadFile(file, "test-questions");
+                                  updateEditOptionMedia(optIdx, res.url, "image");
+                                  toast.success("Option image uploaded!", { id: toastId });
+                                } catch (err: any) {
+                                  toast.error(err.message || "Upload failed", { id: toastId });
+                                }
+                              }}
+                            />
+                          </label>
+                          {(editFormData.options?.length || 0) > 2 && (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => handleRemoveEditOption(optIdx)}
+                              className="h-6 w-6 text-slate-400 hover:text-red-600 rounded-md shrink-0"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Option Image Preview if attached */}
+                        {optMedia && (
+                          <div className="mt-2 pl-9 flex items-center gap-2">
+                            <div className="relative inline-block border border-slate-200 rounded-lg p-1 bg-white">
+                              <img
+                                src={optMedia}
+                                alt={`Option ${optionLetter} attachment`}
+                                className="h-16 w-auto object-contain rounded"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => updateEditOptionMedia(optIdx, null)}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 shadow-xs"
+                                title="Remove Option Image"
+                              >
+                                <X className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                            <span className="text-[10px] text-slate-400">Attached image for Option {optionLetter}</span>
+                          </div>
                         )}
                       </div>
                     );

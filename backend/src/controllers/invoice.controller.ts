@@ -3,16 +3,10 @@ import { PrismaClient, InvoiceStatus, EnrollmentType } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { sendInvoiceEmailNotification } from '../services/email.service.js';
+import { sendEnrollmentNotification } from '../services/notification.service.js';
+import { generateInvoiceNumber } from '../utils/payment.utils.js';
 
 const prisma = new PrismaClient();
-
-// Helper to generate unique sequential invoice number
-async function generateInvoiceNumber(): Promise<string> {
-  const currentYear = new Date().getFullYear();
-  const count = await prisma.invoice.count();
-  const nextNum = count + 1;
-  return `SA-${currentYear}-${String(nextNum).padStart(5, '0')}`;
-}
 
 export const getAllInvoices = async (req: Request, res: Response) => {
   try {
@@ -264,8 +258,6 @@ export const createInvoice = async (req: Request, res: Response) => {
       return sendError(res, 'Student not found', 404);
     }
 
-    const invoice_number = await generateInvoiceNumber();
-
     // Calculate subtotal and prepare items
     let subtotal = 0;
     const preparedItems: any[] = [];
@@ -323,35 +315,50 @@ export const createInvoice = async (req: Request, res: Response) => {
     const invStatus = status === 'PAID' ? InvoiceStatus.PAID : InvoiceStatus.PENDING;
 
     // Create Invoice and Invoice Items
-    const invoice = await prisma.invoice.create({
-      data: {
-        invoice_number,
-        student_id: student.id,
-        status: invStatus,
-        issue_date: issue_date ? new Date(issue_date) : new Date(),
-        due_date: due_date ? new Date(due_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        paid_date: invStatus === InvoiceStatus.PAID ? (paid_date ? new Date(paid_date) : new Date()) : null,
-        subtotal,
-        discount_amount: Number(discount_amount || 0),
-        total_amount,
-        notes: notes || null,
-        payment_method: payment_method || null,
-        transaction_id: transaction_id || null,
-        items: {
-          create: preparedItems,
-        },
-      },
-      include: {
-        student: {
-          include: {
-            user: true,
-            class: true,
-            board: true,
+    let invoice: any;
+    let attempts = 0;
+    while (attempts < 5) {
+      try {
+        const invoice_number = await generateInvoiceNumber();
+        invoice = await prisma.invoice.create({
+          data: {
+            invoice_number,
+            student_id: student.id,
+            status: invStatus,
+            issue_date: issue_date ? new Date(issue_date) : new Date(),
+            due_date: due_date ? new Date(due_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            paid_date: invStatus === InvoiceStatus.PAID ? (paid_date ? new Date(paid_date) : new Date()) : null,
+            subtotal,
+            discount_amount: Number(discount_amount || 0),
+            total_amount,
+            notes: notes || null,
+            payment_method: payment_method || null,
+            transaction_id: transaction_id || null,
+            items: {
+              create: preparedItems,
+            },
           },
-        },
-        items: true,
-      },
-    });
+          include: {
+            student: {
+              include: {
+                user: true,
+                class: true,
+                board: true,
+              },
+            },
+            items: true,
+          },
+        });
+        break;
+      } catch (createErr: any) {
+        if (createErr.code === 'P2002' || createErr.message?.includes('Unique constraint') || createErr.message?.includes('invoice_number')) {
+          attempts++;
+          if (attempts >= 5) throw createErr;
+          continue;
+        }
+        throw createErr;
+      }
+    }
 
     // Create / link student Enrollments for each item
     for (const item of preparedItems) {
@@ -375,6 +382,10 @@ export const createInvoice = async (req: Request, res: Response) => {
                 invoice_id: invoice.id,
               },
             });
+            const sub = await prisma.subject.findUnique({ where: { id: item.subject_id } });
+            if (sub) {
+              sendEnrollmentNotification(student.id, sub.is_course ? 'Course' : 'Subject', sub.name).catch(console.error);
+            }
           }
         } else if (item.type === 'TEST_SERIES' && item.test_series_id) {
           const existing = await prisma.enrollment.findFirst({
@@ -395,6 +406,10 @@ export const createInvoice = async (req: Request, res: Response) => {
                 invoice_id: invoice.id,
               },
             });
+            const ts = await prisma.testSeries.findUnique({ where: { id: item.test_series_id } });
+            if (ts) {
+              sendEnrollmentNotification(student.id, 'Test Series', ts.title).catch(console.error);
+            }
           }
         } else if (item.type === 'ACTIVITY_GROUP' && item.activity_group_id) {
           const existing = await prisma.enrollment.findFirst({
@@ -416,6 +431,32 @@ export const createInvoice = async (req: Request, res: Response) => {
               },
             });
           }
+
+          // Sync activity enrollments for published activities
+          const ag = await prisma.activityGroup.findUnique({
+            where: { id: item.activity_group_id },
+            include: { activities: { where: { is_published: true } } },
+          });
+          if (ag) {
+            for (const act of ag.activities) {
+              await prisma.activityEnrollment.upsert({
+                where: {
+                  activity_id_student_id: {
+                    activity_id: act.id,
+                    student_id: student.id,
+                  },
+                },
+                create: {
+                  activity_id: act.id,
+                  student_id: student.id,
+                },
+                update: {},
+              }).catch(console.error);
+            }
+            if (!existing) {
+              sendEnrollmentNotification(student.id, 'Activity Group', ag.name).catch(console.error);
+            }
+          }
         }
       } catch (enrollErr) {
         console.warn('Enrollment creation notice:', enrollErr);
@@ -432,7 +473,7 @@ export const createInvoice = async (req: Request, res: Response) => {
         subtotal: invoice.subtotal,
         discount_amount: invoice.discount_amount,
         total_amount: invoice.total_amount,
-        items: invoice.items.map((i) => ({
+        items: invoice.items.map((i: any) => ({
           item_name: i.item_name,
           type: i.type,
           unit_price: i.unit_price,

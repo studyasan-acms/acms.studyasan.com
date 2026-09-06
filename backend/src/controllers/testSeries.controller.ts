@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { createPaymentSchedule, createOneTimePayment } from '../utils/payment.utils.js';
+import { sendEnrollmentNotification } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -641,6 +642,9 @@ export const enrollInTestSeries = async (req: AuthRequest, res: Response) => {
                 type: 'TEST_SERIES',
             });
         }
+
+        // Send notification across all channels
+        sendEnrollmentNotification(studentId, 'Test Series', enrollment.test_series?.title || 'Test Series').catch(console.error);
 
         sendSuccess(res, enrollment, 'Enrolled successfully', 201);
     } catch (error: any) {

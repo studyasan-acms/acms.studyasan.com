@@ -66,7 +66,7 @@ interface FetchParams {
 
 type TestCategoryTab = "ALL" | "MOCK" | "PRACTICE" | "ASSESSMENT" | "CERTIFICATION";
 type StatusFilter = "ALL" | "ACTIVE" | "UPCOMING" | "DRAFT" | "CLOSED";
-type SortField = "title" | "subject" | "status" | "questions" | "duration" | "marks";
+type SortField = "title" | "subject" | "status" | "questions" | "duration" | "marks" | "created_at";
 type SortDirection = "asc" | "desc";
 
 export const getEffectiveTestType = (test: Test): TestType => {
@@ -96,8 +96,8 @@ export default function TestsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
 
   // Sorting States
-  const [sortField, setSortField] = useState<SortField>("title");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   // Pagination States
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -207,8 +207,8 @@ export default function TestsPage() {
 
     if (!test.is_published) return { key: "DRAFT", label: "Draft", badgeClass: "bg-slate-100 text-slate-600 border-slate-200" };
     if (now < availableFrom) return { key: "UPCOMING", label: "Upcoming", badgeClass: "bg-blue-50 text-[#0276D3] border-blue-200" };
-    if (now > availableUntil) return { key: "CLOSED", label: "Closed", badgeClass: "bg-slate-100 text-slate-600 border-slate-200" };
-    return { key: "ACTIVE", label: "Active", badgeClass: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    if (now > availableUntil) return { key: "CLOSED", label: "Closed", badgeClass: "bg-red-50 text-red-600 border-red-300 font-extrabold" };
+    return { key: "ACTIVE", label: "Active", badgeClass: "bg-emerald-50 text-emerald-600 border-emerald-300 font-extrabold" };
   };
 
   const handleSort = (field: SortField) => {
@@ -216,7 +216,7 @@ export default function TestsPage() {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
-      setSortDirection("asc");
+      setSortDirection(field === "created_at" ? "desc" : "asc");
     }
   };
 
@@ -225,8 +225,8 @@ export default function TestsPage() {
     setSelectedSubject("ALL");
     setActiveTab("ALL");
     setStatusFilter("ALL");
-    setSortField("title");
-    setSortDirection("asc");
+    setSortField("created_at");
+    setSortDirection("desc");
     setCurrentPage(1);
   };
 
@@ -316,6 +316,10 @@ export default function TestsPage() {
         comparison = (a.duration_minutes || 0) - (b.duration_minutes || 0);
       } else if (sortField === "marks") {
         comparison = (a.total_marks || 0) - (b.total_marks || 0);
+      } else if (sortField === "created_at") {
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        comparison = dateA - dateB;
       }
 
       return sortDirection === "asc" ? comparison : -comparison;
@@ -680,6 +684,21 @@ export default function TestsPage() {
                     </div>
                   </TableHead>
 
+                  {/* Created On Header */}
+                  <TableHead
+                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    onClick={() => handleSort("created_at")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      Created On
+                      {sortField === "created_at" ? (
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
+                      )}
+                    </div>
+                  </TableHead>
+
                   {/* Action Header */}
                   <TableHead className="text-right font-bold text-xs uppercase tracking-wider text-slate-700">
                     Action
@@ -740,6 +759,20 @@ export default function TestsPage() {
 
                       <TableCell className="text-center text-xs font-bold text-slate-900">
                         {test.total_marks}
+                      </TableCell>
+
+                      <TableCell className="text-xs text-slate-600 whitespace-nowrap">
+                        {test.created_at ? (
+                          <span className="font-semibold text-slate-700">
+                            {new Date(test.created_at).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric",
+                            })}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
                       </TableCell>
 
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>

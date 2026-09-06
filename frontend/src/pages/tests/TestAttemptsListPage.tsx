@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   User,
@@ -18,11 +18,19 @@ import {
   ArrowDown,
   RotateCcw,
   Award,
+  Printer,
+  Copy,
+  Check,
+  ExternalLink,
+  ShieldCheck,
+  X,
 } from "lucide-react";
 import { testService, testAttemptService } from "@/services/api";
 import type { Test, TestAttempt } from "@/types";
 import { Button } from "@/components/ui/button";
+import { printCertificateDocument } from "@/utils/printCertificate";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -38,19 +46,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
 type TypeFilter = "all" | "real" | "practice";
 type StatusFilter = "ALL" | "GRADED" | "PENDING" | "IN_PROGRESS";
-type OutcomeFilter = "ALL" | "PASSED" | "FAILED";
-type SortField = "student" | "type" | "status" | "score" | "submitted";
+type OutcomeFilter = "ALL" | "CERTIFICATE" | "PASSED" | "FAILED";
+type SortField = "student" | "type" | "status" | "score" | "submitted" | "certificate";
 type SortDirection = "asc" | "desc";
 
 export default function TestAttemptsListPage() {
   const { testId } = useParams<{ testId: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [test, setTest] = useState<Test | null>(null);
-  usePageTitle(test ? `Test Attempts: ${test.title}` : "Test Attempts");
+  usePageTitle(test ? `Test Attempts & Certificates: ${test.title}` : "Test Attempts");
 
   const [attempts, setAttempts] = useState<TestAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +74,9 @@ export default function TestAttemptsListPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
-  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("ALL");
+  const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>(
+    searchParams.get("filter") === "certificates" ? "CERTIFICATE" : "ALL"
+  );
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>("submitted");
@@ -68,6 +85,12 @@ export default function TestAttemptsListPage() {
   // Pagination
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
+
+  // Certificate Modal State
+  const [selectedCertAttempt, setSelectedCertAttempt] = useState<TestAttempt | null>(null);
+  const [certModalOpen, setCertModalOpen] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     if (testId) {
@@ -121,12 +144,33 @@ export default function TestAttemptsListPage() {
     setCurrentPage(1);
   };
 
+  // Helper to extract candidate name and email
+  const getCandidateDetails = (attempt: TestAttempt) => {
+    const name =
+      attempt.student?.user?.name ||
+      (attempt.guest_info as any)?.name ||
+      attempt.certificate?.recipient_name ||
+      "Guest Candidate";
+    const email =
+      attempt.student?.user?.email ||
+      (attempt.guest_info as any)?.email ||
+      attempt.certificate?.recipient_email ||
+      "—";
+    const isGuest = !attempt.student_id;
+    return { name, email, isGuest };
+  };
+
   // KPI Metrics
   const totalAttemptsCount = attempts.length;
   const realAttemptsCount = attempts.filter((a) => !a.is_practice).length;
   const practiceAttemptsCount = attempts.filter((a) => a.is_practice).length;
   const gradedCount = attempts.filter((a) => a.is_graded).length;
   const pendingCount = attempts.filter((a) => a.submitted_at && !a.is_graded).length;
+  const issuedCertificatesCount = attempts.filter(
+    (a) =>
+      !!a.certificate ||
+      (a.is_graded && a.is_passed && (test?.is_certification || (test?.test_type as string) === "CERTIFICATION"))
+  ).length;
 
   // Filter & Sort
   const processedAttempts = useMemo(() => {
@@ -136,9 +180,9 @@ export default function TestAttemptsListPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter((a) => {
-        const name = a.student?.user?.name?.toLowerCase() || "";
-        const email = a.student?.user?.email?.toLowerCase() || "";
-        return name.includes(q) || email.includes(q);
+        const { name, email } = getCandidateDetails(a);
+        const certCode = a.certificate?.code?.toLowerCase() || "";
+        return name.toLowerCase().includes(q) || email.toLowerCase().includes(q) || certCode.includes(q);
       });
     }
 
@@ -159,7 +203,13 @@ export default function TestAttemptsListPage() {
     }
 
     // Outcome filter
-    if (outcomeFilter === "PASSED") {
+    if (outcomeFilter === "CERTIFICATE") {
+      result = result.filter(
+        (a) =>
+          !!a.certificate ||
+          (a.is_graded && a.is_passed && (test?.is_certification || (test?.test_type as string) === "CERTIFICATION"))
+      );
+    } else if (outcomeFilter === "PASSED") {
       result = result.filter((a) => a.is_graded && a.is_passed);
     } else if (outcomeFilter === "FAILED") {
       result = result.filter((a) => a.is_graded && !a.is_passed);
@@ -169,8 +219,8 @@ export default function TestAttemptsListPage() {
     result.sort((a, b) => {
       let comparison = 0;
       if (sortField === "student") {
-        const nameA = a.student?.user?.name || "";
-        const nameB = b.student?.user?.name || "";
+        const nameA = getCandidateDetails(a).name;
+        const nameB = getCandidateDetails(b).name;
         comparison = nameA.localeCompare(nameB);
       } else if (sortField === "type") {
         comparison = (a.is_practice ? 1 : 0) - (b.is_practice ? 1 : 0);
@@ -179,9 +229,13 @@ export default function TestAttemptsListPage() {
         const statB = b.is_graded ? "Graded" : b.submitted_at ? "Pending" : "In Progress";
         comparison = statA.localeCompare(statB);
       } else if (sortField === "score") {
-        const scoreA = a.is_graded ? (a.score ?? 0) : -1;
-        const scoreB = b.is_graded ? (b.score ?? 0) : -1;
+        const scoreA = a.is_graded ? a.score ?? 0 : -1;
+        const scoreB = b.is_graded ? b.score ?? 0 : -1;
         comparison = scoreA - scoreB;
+      } else if (sortField === "certificate") {
+        const certA = a.certificate?.code || (a.is_passed ? "1" : "0");
+        const certB = b.certificate?.code || (b.is_passed ? "1" : "0");
+        comparison = certA.localeCompare(certB);
       } else if (sortField === "submitted") {
         const timeA = a.submitted_at ? new Date(a.submitted_at).getTime() : 0;
         const timeB = b.submitted_at ? new Date(b.submitted_at).getTime() : 0;
@@ -192,7 +246,7 @@ export default function TestAttemptsListPage() {
     });
 
     return result;
-  }, [attempts, searchQuery, typeFilter, statusFilter, outcomeFilter, sortField, sortDirection]);
+  }, [attempts, searchQuery, typeFilter, statusFilter, outcomeFilter, sortField, sortDirection, test]);
 
   // Pagination
   const totalCount = processedAttempts.length;
@@ -202,7 +256,78 @@ export default function TestAttemptsListPage() {
     return processedAttempts.slice(startIndex, startIndex + pageSize);
   }, [processedAttempts, currentPage, pageSize]);
 
-  const hasActiveFilters = searchQuery !== "" || typeFilter !== "all" || statusFilter !== "ALL" || outcomeFilter !== "ALL";
+  const hasActiveFilters =
+    searchQuery !== "" || typeFilter !== "all" || statusFilter !== "ALL" || outcomeFilter !== "ALL";
+
+  // Open Certificate Preview
+  const openCertificateModal = (attempt: TestAttempt) => {
+    setSelectedCertAttempt(attempt);
+    setCopiedCode(false);
+    setCopiedLink(false);
+    setCertModalOpen(true);
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
+  const handleCopyLink = () => {
+    if (!test) return;
+    const url = `${window.location.origin}/certification/${test.id}`;
+    navigator.clipboard.writeText(url);
+    setCopiedLink(true);
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+  const handlePrintCertificate = () => {
+    if (!selectedCertAttempt) return;
+    const candidateName = getCandidateDetails(selectedCertAttempt).name;
+    const certTitle = test?.certificate_title || "Certificate of Completion";
+    const certBody = renderCertificateText(selectedCertAttempt);
+    const certCode = selectedCertAttempt.certificate?.code || "SA-CERT-VERIFIED";
+    const dateStr = selectedCertAttempt.submitted_at
+      ? new Date(selectedCertAttempt.submitted_at).toLocaleDateString()
+      : new Date().toLocaleDateString();
+
+    printCertificateDocument({
+      title: test?.title || "Certificate of Completion",
+      candidateName,
+      certificateTitle: certTitle,
+      certificateBodyText: certBody,
+      certificateCode: certCode,
+      dateStr,
+    });
+  };
+
+  // Helper for rendering certificate body text in modal
+  const renderCertificateText = (attempt: TestAttempt | null) => {
+    if (!attempt) return "";
+    if (attempt.certificate?.certificate_text) {
+      return attempt.certificate.certificate_text;
+    }
+    const { name } = getCandidateDetails(attempt);
+    const score = attempt.score ?? 0;
+    const maxMarks = test?.total_marks ?? attempt.total_marks;
+    const percentage = maxMarks > 0 ? `${Math.round((score / maxMarks) * 100)}%` : "0%";
+    const dateStr = attempt.submitted_at
+      ? new Date(attempt.submitted_at).toLocaleDateString()
+      : new Date().toLocaleDateString();
+    const testTitle = test?.title || "Assessment";
+
+    const template =
+      test?.certificate_template ||
+      "has successfully completed the assessment for {test_title} with a score of {score}/{total_marks} ({percentage}) on {date}.";
+
+    return template
+      .replace(/\{name\}|\{candidate_name\}|\{student_name\}/gi, name)
+      .replace(/\{test_title\}|\{title\}/gi, testTitle)
+      .replace(/\{score\}|\{marks\}/gi, String(score))
+      .replace(/\{total_marks\}|\{max_marks\}/gi, String(maxMarks))
+      .replace(/\{percentage\}|\{percent\}/gi, percentage)
+      .replace(/\{date\}|\{completion_date\}/gi, dateStr)
+      .replace(/\{certificate_id\}|\{certificate_code\}|\{code\}/gi, attempt.certificate?.code || "SA-CERT-VERIFIED");
+  };
 
   return (
     <div className="space-y-5 p-1 sm:p-4 pb-20 max-w-7xl mx-auto">
@@ -219,9 +344,16 @@ export default function TestAttemptsListPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-              Test Attempts
-            </h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Test Attempts & Issued Certificates
+              </h1>
+              {(test?.is_certification || (test?.test_type as string) === "CERTIFICATION") && (
+                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold px-2 py-0.5 text-[10px] flex items-center gap-1">
+                  <Award className="w-3 h-3" /> Certification Exam
+                </Badge>
+              )}
+            </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5 font-medium">
               {test?.title || "Loading test details..."}
             </p>
@@ -229,55 +361,82 @@ export default function TestAttemptsListPage() {
         </div>
 
         {test && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs font-bold text-slate-600 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-xl">
               Total Marks: <span className="text-slate-900">{test.total_marks}</span>
             </span>
             <span className="text-xs font-bold text-[#0276D3] bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
               Pass Marks: <span>{test.passing_marks}</span>
             </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate(`/tests/${testId}`)}
+              className="h-8 rounded-xl text-xs font-bold border-slate-200"
+            >
+              Test Specs
+            </Button>
           </div>
         )}
       </div>
 
       {/* KPI Cards - StudyAsan Branding */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {/* Total */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+        <div
+          onClick={() => {
+            setOutcomeFilter("ALL");
+            setTypeFilter("all");
+          }}
+          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3 cursor-pointer hover:border-blue-300 transition-colors"
+        >
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-bold shrink-0">
             <User className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Attempts</p>
             <p className="text-lg sm:text-xl font-black text-slate-900">{totalAttemptsCount}</p>
           </div>
         </div>
 
-        {/* Real */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-bold shrink-0">
+        {/* Issued Certificates */}
+        <div
+          onClick={() => setOutcomeFilter("CERTIFICATE")}
+          className={`p-4 rounded-2xl border shadow-xs flex items-center gap-3 cursor-pointer transition-all ${
+            outcomeFilter === "CERTIFICATE"
+              ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-500/20"
+              : "bg-white border-slate-200 hover:border-emerald-300"
+          }`}
+        >
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold shrink-0">
             <Award className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Exam</p>
+            <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Issued Certs</p>
+            <p className="text-lg sm:text-xl font-black text-emerald-950">{issuedCertificatesCount}</p>
+          </div>
+        </div>
+
+        {/* Exam Attempts */}
+        <div
+          onClick={() => setTypeFilter("real")}
+          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3 cursor-pointer hover:border-blue-300 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold shrink-0">
+            <FileText className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Official Exams</p>
             <p className="text-lg sm:text-xl font-black text-slate-900">{realAttemptsCount}</p>
           </div>
         </div>
 
-        {/* Practice */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#eca209] flex items-center justify-center font-bold shrink-0">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Practice</p>
-            <p className="text-lg sm:text-xl font-black text-slate-900">{practiceAttemptsCount}</p>
-          </div>
-        </div>
-
         {/* Graded */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0">
+        <div
+          onClick={() => setStatusFilter("GRADED")}
+          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3 cursor-pointer hover:border-blue-300 transition-colors"
+        >
+          <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-bold shrink-0">
             <CheckCircle2 className="w-5 h-5" />
           </div>
           <div>
@@ -287,12 +446,15 @@ export default function TestAttemptsListPage() {
         </div>
 
         {/* Pending */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3 col-span-2 sm:col-span-1">
+        <div
+          onClick={() => setStatusFilter("PENDING")}
+          className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3 cursor-pointer hover:border-amber-300 transition-colors col-span-2 sm:col-span-1"
+        >
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold shrink-0">
             <Clock className="w-5 h-5" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pending Review</p>
             <p className="text-lg sm:text-xl font-black text-slate-900">{pendingCount}</p>
           </div>
         </div>
@@ -306,7 +468,7 @@ export default function TestAttemptsListPage() {
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
-              placeholder="Search by student name or email..."
+              placeholder="Search by candidate name, email, or Cert ID..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 h-10 rounded-xl border-slate-200 bg-slate-50/60 focus:bg-white text-xs focus-visible:ring-[#0276D3]"
@@ -342,14 +504,15 @@ export default function TestAttemptsListPage() {
             </Select>
           </div>
 
-          {/* Outcome Filter */}
+          {/* Outcome & Certificate Filter */}
           <div>
             <Select value={outcomeFilter} onValueChange={(v: any) => setOutcomeFilter(v)}>
               <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs">
-                <SelectValue placeholder="Result Outcome" />
+                <SelectValue placeholder="Result & Certificate" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">All Outcomes</SelectItem>
+                <SelectItem value="CERTIFICATE">🎖️ Issued Certificates Only</SelectItem>
                 <SelectItem value="PASSED">Passed</SelectItem>
                 <SelectItem value="FAILED">Needs Improvement</SelectItem>
               </SelectContent>
@@ -361,9 +524,15 @@ export default function TestAttemptsListPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
           <div className="flex items-center gap-2 text-slate-500 font-medium">
             <span>
-              Showing <span className="font-bold text-slate-800">{totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
-              <span className="font-bold text-slate-800">{Math.min(currentPage * pageSize, totalCount)}</span> of{" "}
-              <span className="font-bold text-slate-800">{totalCount}</span> attempts
+              Showing{" "}
+              <span className="font-bold text-slate-800">
+                {totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}
+              </span>{" "}
+              to{" "}
+              <span className="font-bold text-slate-800">
+                {Math.min(currentPage * pageSize, totalCount)}
+              </span>{" "}
+              of <span className="font-bold text-slate-800">{totalCount}</span> attempts
             </span>
             {hasActiveFilters && (
               <button
@@ -391,11 +560,11 @@ export default function TestAttemptsListPage() {
         </div>
       </div>
 
-      {/* Attempts Table */}
+      {/* Attempts & Certificates Table */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24 space-y-4 bg-white rounded-2xl border border-slate-200">
           <div className="w-8 h-8 border-3 border-[#0276D3]/20 border-t-[#0276D3] rounded-full animate-spin"></div>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Loading attempts...</p>
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Loading attempts & certificates...</p>
         </div>
       ) : paginatedAttempts.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center">
@@ -405,8 +574,8 @@ export default function TestAttemptsListPage() {
           <h3 className="text-sm font-bold text-slate-700">No attempts found</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto mt-1">
             {hasActiveFilters
-              ? "No student attempts match your active filters."
-              : "No students have attempted this test yet."}
+              ? "No attempts match your active filters."
+              : "No candidates have attempted this test yet."}
           </p>
           {hasActiveFilters && (
             <Button
@@ -424,22 +593,26 @@ export default function TestAttemptsListPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 border-b border-slate-200">
-                  {/* Student */}
+                  {/* Candidate */}
                   <TableHead
-                    className="w-[280px] font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="w-[260px] font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
                     onClick={() => handleSort("student")}
                   >
                     <div className="flex items-center gap-1.5">
-                      Student
+                      Candidate
                       {sortField === "student" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
                     </div>
                   </TableHead>
 
-                  {/* Type */}
+                  {/* Format */}
                   <TableHead
                     className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
                     onClick={() => handleSort("type")}
@@ -447,7 +620,11 @@ export default function TestAttemptsListPage() {
                     <div className="flex items-center gap-1.5">
                       Format
                       {sortField === "type" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -462,7 +639,11 @@ export default function TestAttemptsListPage() {
                     <div className="flex items-center gap-1.5">
                       Status
                       {sortField === "status" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -477,7 +658,30 @@ export default function TestAttemptsListPage() {
                     <div className="flex items-center justify-center gap-1.5">
                       Score
                       {sortField === "score" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
+                      )}
+                    </div>
+                  </TableHead>
+
+                  {/* Certificate ID */}
+                  <TableHead
+                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    onClick={() => handleSort("certificate")}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      Certificate
+                      {sortField === "certificate" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -492,7 +696,11 @@ export default function TestAttemptsListPage() {
                     <div className="flex items-center gap-1.5">
                       Submitted At
                       {sortField === "submitted" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        )
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -501,19 +709,24 @@ export default function TestAttemptsListPage() {
 
                   {/* Action */}
                   <TableHead className="text-right font-bold text-xs uppercase tracking-wider text-slate-700">
-                    Action
+                    Actions
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedAttempts.map((attempt) => {
-                  const studentName = attempt.student?.user?.name || "Student";
-                  const studentEmail = attempt.student?.user?.email || "—";
+                  const { name, email, isGuest } = getCandidateDetails(attempt);
                   const isGraded = attempt.is_graded;
                   const isPending = attempt.submitted_at && !attempt.is_graded;
                   const maxMarks = test?.total_marks ?? attempt.total_marks;
                   const score = attempt.score ?? 0;
                   const percentage = maxMarks > 0 ? Math.round((score / maxMarks) * 100) : 0;
+                  const hasCert =
+                    !!attempt.certificate ||
+                    (attempt.is_graded &&
+                      attempt.is_passed &&
+                      (test?.is_certification || (test?.test_type as string) === "CERTIFICATION"));
+                  const certCode = attempt.certificate?.code;
 
                   return (
                     <TableRow
@@ -521,17 +734,28 @@ export default function TestAttemptsListPage() {
                       className="cursor-pointer hover:bg-slate-50/60 transition-colors border-b border-slate-100"
                       onClick={() => navigate(`/test-attempts/${attempt.id}/grade`)}
                     >
-                      {/* Student Info */}
+                      {/* Candidate Info */}
                       <TableCell className="font-medium py-3.5">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-black text-xs shrink-0 border border-blue-100">
-                            {studentName.charAt(0).toUpperCase()}
+                          <div
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border ${
+                              isGuest
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : "bg-blue-50 text-[#0276D3] border-blue-100"
+                            }`}
+                          >
+                            {name.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-xs font-bold text-slate-900 leading-tight">
-                              {studentName}
-                            </p>
-                            <p className="text-[11px] text-slate-400">{studentEmail}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="text-xs font-bold text-slate-900 leading-tight">{name}</p>
+                              {isGuest && (
+                                <span className="text-[9px] font-bold px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded border border-slate-200">
+                                  Guest
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-slate-400 font-mono mt-0.5">{email}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -573,10 +797,34 @@ export default function TestAttemptsListPage() {
                             <span className="text-xs font-black text-slate-900">
                               {score} / {maxMarks}
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400">
-                              {percentage}%
-                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">{percentage}%</span>
                           </div>
+                        ) : (
+                          <span className="text-xs text-slate-400 font-medium">—</span>
+                        )}
+                      </TableCell>
+
+                      {/* Certificate */}
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        {certCode ? (
+                          <div className="flex items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold">
+                              <Award className="w-3 h-3 text-emerald-600 shrink-0" />
+                              {certCode}
+                            </span>
+                            <button
+                              onClick={() => handleCopyCode(certCode)}
+                              className="text-slate-400 hover:text-emerald-700 p-1 rounded hover:bg-slate-100 transition-colors"
+                              title="Copy Certificate ID"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : hasCert ? (
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                            <Award className="w-3 h-3 text-emerald-600" />
+                            Eligible / Issued
+                          </span>
                         ) : (
                           <span className="text-xs text-slate-400 font-medium">—</span>
                         )}
@@ -595,20 +843,34 @@ export default function TestAttemptsListPage() {
                           : "—"}
                       </TableCell>
 
-                      {/* Action */}
+                      {/* Actions */}
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          onClick={() => navigate(`/test-attempts/${attempt.id}/grade`)}
-                          disabled={!attempt.submitted_at}
-                          className={`h-8 px-3 rounded-xl text-xs font-bold ${
-                            isPending
-                              ? "bg-[#0276D3] hover:bg-[#015bb5] text-white shadow-xs"
-                              : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
-                          }`}
-                        >
-                          {isPending ? "Grade" : "View"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {hasCert && (
+                            <Button
+                              size="sm"
+                              onClick={() => openCertificateModal(attempt)}
+                              className="h-8 px-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs flex items-center gap-1"
+                              title="View & Print Official Certificate"
+                            >
+                              <Award className="w-3.5 h-3.5" />
+                              Certificate
+                            </Button>
+                          )}
+
+                          <Button
+                            size="sm"
+                            onClick={() => navigate(`/test-attempts/${attempt.id}/grade`)}
+                            disabled={!attempt.submitted_at}
+                            className={`h-8 px-3 rounded-xl text-xs font-bold ${
+                              isPending
+                                ? "bg-[#0276D3] hover:bg-[#015bb5] text-white shadow-xs"
+                                : "border border-slate-200 bg-white hover:bg-slate-50 text-slate-700"
+                            }`}
+                          >
+                            {isPending ? "Grade" : "View"}
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
@@ -648,7 +910,9 @@ export default function TestAttemptsListPage() {
                 </Button>
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
+                  .filter(
+                    (page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1
+                  )
                   .map((page, idx, arr) => {
                     const prev = arr[idx - 1];
                     const hasGap = prev && page - prev > 1;
@@ -697,6 +961,208 @@ export default function TestAttemptsListPage() {
           )}
         </div>
       )}
+
+      {/* CERTIFICATE PREVIEW & PRINT MODAL */}
+      <Dialog open={certModalOpen} onOpenChange={setCertModalOpen}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-slate-900 border border-slate-800 rounded-3xl">
+          {/* Modal Header & Quick Action Bar */}
+          <div className="flex items-center justify-between p-4 px-6 bg-slate-950/80 border-b border-slate-800 text-white">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Award className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold leading-none">Official Digital Certificate</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">
+                  ID: <span className="font-mono text-emerald-400 font-bold">{selectedCertAttempt?.certificate?.code || "SA-CERT-VERIFIED"}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleCopyCode(selectedCertAttempt?.certificate?.code || "SA-CERT-VERIFIED")}
+                className="h-8 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+              >
+                {copiedCode ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                {copiedCode ? "Copied ID" : "Copy ID"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={handlePrintCertificate}
+                className="h-8 rounded-xl text-xs font-bold bg-[#0276D3] hover:bg-[#015bb5] text-white shadow-xs"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" />
+                Print Certificate
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => setCertModalOpen(false)}
+                className="h-8 w-8 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Printable Certificate View */}
+          <div className="p-4 sm:p-8 bg-slate-100 overflow-x-auto flex justify-center">
+            {selectedCertAttempt && (
+              <div
+                id="admin-certificate-view"
+                className="flex flex-col items-center justify-center bg-white w-full max-w-[800px] min-h-[560px] box-border relative p-10 sm:p-12 text-center rounded-2xl shadow-xl border border-slate-200"
+                style={{
+                  backgroundImage: "radial-gradient(#0276D308 1px, transparent 1px)",
+                  backgroundSize: "24px 24px",
+                }}
+              >
+                {/* Embedded Fonts for Certificate */}
+                <style>{`
+                  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Great+Vibes&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap');
+                  @media print {
+                    body * { visibility: hidden !important; }
+                    #admin-certificate-view, #admin-certificate-view * { visibility: visible !important; }
+                    #admin-certificate-view {
+                      position: fixed !important;
+                      left: 0 !important;
+                      top: 0 !important;
+                      width: 100vw !important;
+                      height: 100vh !important;
+                      margin: 0 !important;
+                      padding: 40px !important;
+                      box-shadow: none !important;
+                      border: none !important;
+                    }
+                  }
+                `}</style>
+
+                {/* Frame Border */}
+                <div className="absolute inset-4 sm:inset-5 border-[3px] border-[#0276D3]/40 rounded-3xl pointer-events-none"></div>
+                <div className="absolute inset-6 sm:inset-7 border border-[#0276D3]/20 rounded-2xl pointer-events-none"></div>
+
+                {/* Corner Accents */}
+                <div className="absolute top-6 left-6 w-10 h-10 border-t-4 border-l-4 border-[#0276D3] rounded-tl-xl pointer-events-none"></div>
+                <div className="absolute top-6 right-6 w-10 h-10 border-t-4 border-r-4 border-[#0276D3] rounded-tr-xl pointer-events-none"></div>
+                <div className="absolute bottom-6 left-6 w-10 h-10 border-b-4 border-l-4 border-[#0276D3] rounded-bl-xl pointer-events-none"></div>
+                <div className="absolute bottom-6 right-6 w-10 h-10 border-b-4 border-r-4 border-[#0276D3] rounded-br-xl pointer-events-none"></div>
+
+                {/* Watermark Icon */}
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
+                  <Award className="w-[420px] h-[420px] text-slate-900" />
+                </div>
+
+                {/* Header Brand */}
+                <div className="mb-4 flex flex-col items-center">
+                  <div className="flex items-center justify-center w-12 h-12 bg-[#0276D3] rounded-2xl mb-2 shadow-sm text-white">
+                    <Award className="w-7 h-7" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-[#0276D3] tracking-wider uppercase font-['Outfit']">
+                    StudyAsan
+                  </h2>
+                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400">
+                    Academy of Continuous Mastery & Skills
+                  </span>
+                </div>
+
+                {/* Certificate Title */}
+                <h1
+                  className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-4 uppercase tracking-[0.18em]"
+                  style={{ fontFamily: '"Cinzel", serif' }}
+                >
+                  {test?.certificate_title || "Certificate of Completion"}
+                </h1>
+
+                <p className="text-xs sm:text-sm text-slate-500 mb-3 font-serif italic">
+                  This is proudly presented to
+                </p>
+
+                {/* Recipient Name */}
+                <h2
+                  className="text-3xl sm:text-4xl font-bold text-[#0276D3] mb-2 pb-1 px-6 inline-block"
+                  style={{ fontFamily: '"Outfit", sans-serif' }}
+                >
+                  {getCandidateDetails(selectedCertAttempt).name}
+                </h2>
+                <div className="w-40 h-0.5 bg-gradient-to-r from-transparent via-[#0276D3] to-transparent mb-5"></div>
+
+                {/* Body Text */}
+                <p className="text-xs sm:text-sm text-slate-700 max-w-xl mb-7 font-serif leading-relaxed px-4">
+                  {renderCertificateText(selectedCertAttempt)}
+                </p>
+
+                {/* Footer Signatures & Certificate ID */}
+                <div className="flex justify-between w-full max-w-2xl mt-4 px-4 sm:px-8 items-end gap-2">
+                  {/* Provider Signature */}
+                  <div className="text-center flex flex-col items-center min-w-[140px]">
+                    <div className="mb-1 h-10 flex items-end justify-center">
+                      <span className="text-2xl text-slate-800" style={{ fontFamily: '"Great Vibes", cursive' }}>
+                        Deepak
+                      </span>
+                    </div>
+                    <div className="w-36 h-px bg-slate-400 mb-1"></div>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Authorized Signature</p>
+                  </div>
+
+                  {/* Certificate ID */}
+                  <div className="text-center flex flex-col items-center">
+                    <div className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg mb-1">
+                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Certificate ID
+                      </span>
+                      <span className="font-mono font-bold text-[11px] text-[#0276D3]">
+                        {selectedCertAttempt.certificate?.code || "SA-CERT-VERIFIED"}
+                      </span>
+                    </div>
+                    <p className="text-[8px] text-slate-400">Verified StudyAsan Certificate</p>
+                  </div>
+
+                  {/* Date */}
+                  <div className="text-center flex flex-col items-center justify-end min-w-[140px]">
+                    <div className="mb-1 h-10 flex items-end justify-center">
+                      <span className="text-xs font-semibold text-slate-800 font-['Outfit']">
+                        {selectedCertAttempt.submitted_at
+                          ? new Date(selectedCertAttempt.submitted_at).toLocaleDateString()
+                          : new Date().toLocaleDateString()}
+                      </span>
+                    </div>
+                    <div className="w-36 h-px bg-slate-400 mb-1"></div>
+                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Date Issued</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Modal Footer */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 px-6 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Recipient Email: <strong className="text-slate-200">{selectedCertAttempt ? getCandidateDetails(selectedCertAttempt).email : "—"}</strong></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleCopyLink}
+                className="h-8 rounded-xl text-xs font-bold bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+              >
+                {copiedLink ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <ExternalLink className="w-3.5 h-3.5 mr-1" />}
+                {copiedLink ? "Link Copied" : "Public Exam Link"}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setCertModalOpen(false)}
+                className="h-8 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

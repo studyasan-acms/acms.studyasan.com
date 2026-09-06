@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
+import { sendEnrollmentNotification, sendBulkEnrollmentNotifications } from '../services/notification.service.js';
 
 const prisma = new PrismaClient();
 
@@ -61,6 +62,9 @@ export const enrollStudent = async (req: Request, res: Response) => {
       },
     });
 
+    // Send notification to student across all channels
+    sendEnrollmentNotification(Number(student_id), 'Activity', activity.title).catch(console.error);
+
     return sendSuccess(res, enrollment, 'Student enrolled successfully', 201);
   } catch (error: any) {
     return sendError(res, error.message);
@@ -112,6 +116,9 @@ export const bulkEnrollStudents = async (req: Request, res: Response) => {
         student_id: Number(student_id),
       })),
     });
+
+    // Send notification to newly enrolled students
+    sendBulkEnrollmentNotifications(newStudentIds, 'Activity', activity.title).catch(console.error);
 
     return sendSuccess(
       res,
@@ -231,14 +238,19 @@ export const unenrollStudent = async (req: Request, res: Response) => {
   }
 };
 
-// Enroll Students to Activity Group (all activities in the group)
+// Enroll Students to Activity Group (both group enrollment and individual activities)
 export const enrollStudentsToGroup = async (req: Request, res: Response) => {
   try {
     const { group_id, student_ids } = req.body;
+    const gId = Number(group_id);
+
+    if (!Array.isArray(student_ids) || student_ids.length === 0) {
+      return sendError(res, 'student_ids must be a non-empty array', 400);
+    }
 
     // Check if group exists
     const group = await prisma.activityGroup.findUnique({
-      where: { id: Number(group_id) },
+      where: { id: gId },
       include: {
         activities: {
           where: {
@@ -252,51 +264,78 @@ export const enrollStudentsToGroup = async (req: Request, res: Response) => {
       return sendError(res, 'Activity group not found', 404);
     }
 
-    if (group.activities.length === 0) {
-      return sendError(res, 'No published activities in this group', 400);
+    const numericStudentIds = student_ids.map(Number).filter((id: number) => !isNaN(id) && id > 0);
+
+    // 1. Create/ensure Enrollment record exists for each student (type: ACTIVITY_GROUP)
+    const existingGroupEnrollments = await prisma.enrollment.findMany({
+      where: {
+        activity_group_id: gId,
+        student_id: { in: numericStudentIds },
+        type: 'ACTIVITY_GROUP',
+      },
+      select: { student_id: true },
+    });
+
+    const existingGroupStudentIds = existingGroupEnrollments.map((e) => e.student_id);
+    const newGroupStudentIds = numericStudentIds.filter(
+      (id: number) => !existingGroupStudentIds.includes(id)
+    );
+
+    if (newGroupStudentIds.length > 0) {
+      await prisma.enrollment.createMany({
+        data: newGroupStudentIds.map((student_id: number) => ({
+          type: 'ACTIVITY_GROUP',
+          activity_group_id: gId,
+          student_id,
+        })),
+      });
     }
 
-    let totalEnrolled = 0;
-
-    // Enroll each student to all published activities in the group
-    for (const activity of group.activities) {
-      // Get existing enrollments for this activity
-      const existingEnrollments = await prisma.activityEnrollment.findMany({
-        where: {
-          activity_id: activity.id,
-          student_id: {
-            in: student_ids.map(Number),
-          },
-        },
-        select: {
-          student_id: true,
-        },
-      });
-
-      const existingStudentIds = existingEnrollments.map((e) => e.student_id);
-      const newStudentIds = student_ids.filter(
-        (id: number) => !existingStudentIds.includes(Number(id))
-      );
-
-      if (newStudentIds.length > 0) {
-        await prisma.activityEnrollment.createMany({
-          data: newStudentIds.map((student_id: number) => ({
+    // 2. Enroll each student to all published activities in the group
+    let totalActivityEnrolled = 0;
+    if (group.activities.length > 0) {
+      for (const activity of group.activities) {
+        const existingEnrollments = await prisma.activityEnrollment.findMany({
+          where: {
             activity_id: activity.id,
-            student_id: Number(student_id),
-          })),
+            student_id: {
+              in: numericStudentIds,
+            },
+          },
+          select: {
+            student_id: true,
+          },
         });
-        totalEnrolled += newStudentIds.length;
+
+        const existingStudentIds = existingEnrollments.map((e) => e.student_id);
+        const newStudentIds = numericStudentIds.filter(
+          (id: number) => !existingStudentIds.includes(id)
+        );
+
+        if (newStudentIds.length > 0) {
+          await prisma.activityEnrollment.createMany({
+            data: newStudentIds.map((student_id: number) => ({
+              activity_id: activity.id,
+              student_id,
+            })),
+          });
+          totalActivityEnrolled += newStudentIds.length;
+        }
       }
     }
+
+    // 3. Send notification to all enrolled students across all channels
+    sendBulkEnrollmentNotifications(numericStudentIds, 'Activity Group', group.name).catch(console.error);
 
     return sendSuccess(
       res,
       {
         group_id: group.id,
         activities_count: group.activities.length,
-        enrolled_count: totalEnrolled,
+        enrolled_group_students: newGroupStudentIds.length,
+        enrolled_activity_count: totalActivityEnrolled,
       },
-      `Students enrolled to ${group.activities.length} activities in the group`,
+      `Students enrolled in activity group "${group.name}" successfully`,
       201
     );
   } catch (error: any) {
@@ -304,79 +343,99 @@ export const enrollStudentsToGroup = async (req: Request, res: Response) => {
   }
 };
 
-// Get enrolled students for a group
+// Get enrolled students for a group (from both Enrollment table and ActivityEnrollment)
 export const getGroupEnrollments = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
+    const gId = Number(groupId);
 
-    // Get all activities in the group
+    // 1. Get students enrolled directly in the activity group
+    const groupEnrollments = await prisma.enrollment.findMany({
+      where: {
+        activity_group_id: gId,
+        type: 'ACTIVITY_GROUP',
+      },
+      select: {
+        student_id: true,
+      },
+    });
+
+    // 2. Get students enrolled in any activities in this group
     const activities = await prisma.activity.findMany({
       where: {
-        group_id: Number(groupId),
-        is_published: true,
+        group_id: gId,
       },
       select: {
         id: true,
       },
     });
 
-    if (activities.length === 0) {
-      return sendSuccess(res, []);
+    let activityStudentIds: number[] = [];
+    if (activities.length > 0) {
+      const activityIds = activities.map((a) => a.id);
+      const enrollments = await prisma.activityEnrollment.findMany({
+        where: {
+          activity_id: {
+            in: activityIds,
+          },
+        },
+        select: {
+          student_id: true,
+        },
+      });
+      activityStudentIds = enrollments.map((e) => e.student_id);
     }
 
-    const activityIds = activities.map((a) => a.id);
+    const enrolledStudentIds = Array.from(
+      new Set([...groupEnrollments.map((e) => e.student_id), ...activityStudentIds])
+    );
 
-    // Get all enrollments for these activities
-    const enrollments = await prisma.activityEnrollment.findMany({
-      where: {
-        activity_id: {
-          in: activityIds,
-        },
-      },
-      select: {
-        student_id: true,
-      },
-      distinct: ['student_id'],
-    });
-
-    const enrolledStudentIds = enrollments.map((e) => e.student_id);
     return sendSuccess(res, enrolledStudentIds);
   } catch (error: any) {
     return sendError(res, error.message);
   }
 };
 
-// Unenroll student from activity group
+// Unenroll student from activity group (removes from both Enrollment and ActivityEnrollment)
 export const unenrollStudentFromGroup = async (req: Request, res: Response) => {
   try {
     const { groupId } = req.params;
     const { student_id } = req.body;
+    const gId = Number(groupId);
+    const sId = Number(student_id);
 
-    // Get all activities in the group
+    // 1. Delete group enrollment
+    await prisma.enrollment.deleteMany({
+      where: {
+        activity_group_id: gId,
+        student_id: sId,
+        type: 'ACTIVITY_GROUP',
+      },
+    });
+
+    // 2. Get all activities in the group
     const activities = await prisma.activity.findMany({
       where: {
-        group_id: Number(groupId),
+        group_id: gId,
       },
       select: {
         id: true,
       },
     });
 
-    if (activities.length === 0) {
-      return sendError(res, 'No activities found in this group', 404);
-    }
+    if (activities.length > 0) {
+      const activityIds = activities.map((a) => a.id);
 
-    const activityIds = activities.map((a) => a.id);
-
-    // Delete all enrollments for this student in all activities of the group
-    await prisma.activityEnrollment.deleteMany({
-      where: {
-        student_id: Number(student_id),
-        activity_id: {
-          in: activityIds,
+      // Delete all enrollments for this student in all activities of the group
+      await prisma.activityEnrollment.deleteMany({
+        where: {
+          student_id: sId,
+          activity_id: {
+            in: activityIds,
+          },
         },
-      },
-    });
+      });
+    }
 
     return sendSuccess(res, null, 'Student unenrolled from group successfully');
   } catch (error: any) {

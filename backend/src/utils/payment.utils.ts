@@ -175,3 +175,69 @@ export const createOneTimePayment = async ({
         throw error;
     }
 };
+
+/**
+ * Helper to generate unique sequential invoice number (e.g. SA-2026-00001).
+ * Inspects existing invoice numbers for the current year to find the true max sequence,
+ * ensuring no duplicate key errors if invoices were deleted or created concurrently.
+ */
+export async function generateInvoiceNumber(prismaClient?: PrismaClient): Promise<string> {
+    const db = prismaClient || prisma;
+    const currentYear = new Date().getFullYear();
+    const prefix = `SA-${currentYear}-`;
+
+    const recentInvoices = await db.invoice.findMany({
+        where: {
+            invoice_number: {
+                startsWith: prefix,
+            },
+        },
+        orderBy: {
+            id: 'desc',
+        },
+        take: 50,
+        select: {
+            invoice_number: true,
+        },
+    });
+
+    let maxSeq = 0;
+    for (const inv of recentInvoices) {
+        if (inv.invoice_number) {
+            const parts = inv.invoice_number.split('-');
+            const lastPart = parts[parts.length - 1] ?? '';
+            const num = parseInt(lastPart, 10);
+            if (!isNaN(num) && num > maxSeq) {
+                maxSeq = num;
+            }
+        }
+    }
+
+    const totalCount = await db.invoice.count({
+        where: {
+            invoice_number: {
+                startsWith: prefix,
+            },
+        },
+    });
+
+    let candidateSeq = Math.max(maxSeq, totalCount) + 1;
+    let invoiceNumber = `${prefix}${String(candidateSeq).padStart(5, '0')}`;
+
+    let existing = await db.invoice.findUnique({
+        where: { invoice_number: invoiceNumber },
+        select: { id: true },
+    });
+
+    while (existing) {
+        candidateSeq++;
+        invoiceNumber = `${prefix}${String(candidateSeq).padStart(5, '0')}`;
+        existing = await db.invoice.findUnique({
+            where: { invoice_number: invoiceNumber },
+            select: { id: true },
+        });
+    }
+
+    return invoiceNumber;
+}
+
