@@ -1418,6 +1418,9 @@ model SavedWhiteboard {
 model InvoiceSetting {
   id                  Int      @id @default(autoincrement())
   business_name       String   @default("StudyAsan Academy")
+  org_subtitle        String?  @default("")
+  logo_url            String?  @default("")
+  hsn_sac_code        String?  @default("")
   address             String   @default("Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126")
   email               String   @default("contact@studyasan.com")
   phone               String?  @default("")

@@ -1090,7 +1090,7 @@ export default function CreateTestPage() {
       const payload: CreateTestData = {
         ...formData,
         total_marks: totalMarksToSave,
-        is_published: isEditing ? (publishImmediate || formData.is_published) : false, // Create as draft first so questions are created before publishing validation
+        is_published: false, // Save questions first before publishing validation!
         available_from: formData.available_from ? new Date(formData.available_from).toISOString() : new Date().toISOString(),
         available_until: formData.available_until
           ? new Date(formData.available_until).toISOString()
@@ -1104,7 +1104,6 @@ export default function CreateTestPage() {
 
       if (isEditing && paramTestId) {
         savedTestId = parseInt(paramTestId);
-        await testService.update(savedTestId, payload);
       } else {
         const createRes = await testService.create(payload);
         savedTestId = createRes.data.id;
@@ -1140,10 +1139,12 @@ export default function CreateTestPage() {
 
       await Promise.all(questionPromises);
 
-      // If creating new test and publish was requested, publish now that all questions are saved in the database
-      if (!isEditing && isPublishing) {
-        await testService.update(savedTestId, { is_published: true, total_marks: totalMarksToSave });
-      }
+      // Now that all questions are saved in database with their final marks, update the test details and publishing status
+      await testService.update(savedTestId, {
+        ...payload,
+        total_marks: totalMarksToSave,
+        is_published: isPublishing,
+      });
 
       setSuccessMessage(
         isEditing

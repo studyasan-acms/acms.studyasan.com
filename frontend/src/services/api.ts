@@ -676,8 +676,11 @@ export const invoiceService = {
     return response.data;
   },
 
-  sendEmail: async (id: number): Promise<{ success: boolean; message?: string }> => {
-    const response = await api.post(`/invoices/${id}/send-email`);
+  sendEmail: async (
+    id: number,
+    data?: { is_quotation?: boolean }
+  ): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post(`/invoices/${id}/send-email`, data);
     return response.data;
   },
 

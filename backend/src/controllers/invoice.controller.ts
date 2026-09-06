@@ -679,6 +679,8 @@ export const sendInvoiceEmail = async (req: Request, res: Response) => {
       return sendError(res, 'Student does not have a registered email address', 400);
     }
 
+    const { is_quotation } = req.body || {};
+
     const emailSent = await sendInvoiceEmailNotification(studentEmail, studentName, {
       invoice_number: invoice.invoice_number,
       issue_date: invoice.issue_date,
@@ -696,13 +698,18 @@ export const sendInvoiceEmail = async (req: Request, res: Response) => {
         total: i.total,
       })),
       notes: invoice.notes,
+      is_quotation: Boolean(is_quotation),
     });
 
     if (!emailSent) {
       return sendError(res, 'Failed to send invoice email via SMTP server', 500);
     }
 
-    sendSuccess(res, { sent_to: studentEmail }, 'Invoice email dispatched to student successfully');
+    sendSuccess(
+      res,
+      { sent_to: studentEmail },
+      is_quotation ? 'Quotation email dispatched to student successfully' : 'Invoice email dispatched to student successfully'
+    );
   } catch (error: any) {
     sendError(res, error.message, 500);
   }
@@ -733,6 +740,9 @@ export const getInvoiceSettings = async (req: Request, res: Response) => {
       settings = await prisma.invoiceSetting.create({
         data: {
           business_name: 'StudyAsan Academy',
+          org_subtitle: '',
+          logo_url: '',
+          hsn_sac_code: '',
           address: 'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126',
           email: 'contact@studyasan.com',
           phone: '',
@@ -760,6 +770,9 @@ export const updateInvoiceSettings = async (req: Request, res: Response) => {
   try {
     const {
       business_name,
+      org_subtitle,
+      logo_url,
+      hsn_sac_code,
       address,
       email,
       phone,
@@ -781,6 +794,9 @@ export const updateInvoiceSettings = async (req: Request, res: Response) => {
       settings = await prisma.invoiceSetting.create({
         data: {
           business_name: business_name || 'StudyAsan Academy',
+          org_subtitle: org_subtitle || '',
+          logo_url: logo_url || '',
+          hsn_sac_code: hsn_sac_code || '',
           address: address || '',
           email: email || 'contact@studyasan.com',
           phone: phone || '',
@@ -802,6 +818,9 @@ export const updateInvoiceSettings = async (req: Request, res: Response) => {
         where: { id: settings.id },
         data: {
           business_name: business_name !== undefined ? business_name : settings.business_name,
+          org_subtitle: org_subtitle !== undefined ? org_subtitle : settings.org_subtitle,
+          logo_url: logo_url !== undefined ? logo_url : settings.logo_url,
+          hsn_sac_code: hsn_sac_code !== undefined ? hsn_sac_code : settings.hsn_sac_code,
           address: address !== undefined ? address : settings.address,
           email: email !== undefined ? email : settings.email,
           phone: phone !== undefined ? phone : settings.phone,

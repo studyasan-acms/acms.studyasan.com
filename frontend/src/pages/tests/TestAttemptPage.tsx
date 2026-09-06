@@ -730,7 +730,7 @@ export default function TestAttemptPage() {
 
   const questions = attempt.test.questions;
   const currentQuestion = questions[currentQuestionIndex];
-  const answerableQuestions = questions.filter(q => q.question_type !== 'CASE_STUDY');
+  const answerableQuestions = questions;
   const answeredCount = answerableQuestions.filter((q) => hasAnswerForQuestion(q.id)).length;
   const reviewCount = questions.filter((q) => reviewQuestionIds.has(q.id)).length;
   const progress = answerableQuestions.length > 0 ? (answeredCount / answerableQuestions.length) * 100 : 100;
@@ -1055,11 +1055,48 @@ export default function TestAttemptPage() {
                     </div>
                   )}
 
-                  {/* ---- Case Study ---- */}
+                  {/* ---- Case Study Response Box ---- */}
                   {currentQuestion.question_type === 'CASE_STUDY' && (
-                    <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-center">
-                      <p className="text-gray-500 font-medium">This is a Case Study.</p>
-                      <p className="text-sm text-gray-400 mt-1">Please read the text above carefully. The questions that follow will be based on this case study. Click "Next" to proceed to the questions.</p>
+                    <div className="space-y-4 pt-1">
+                      <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/50 border border-blue-200/80 rounded-2xl p-4 flex items-start gap-3 shadow-xs">
+                        <div className="w-8 h-8 rounded-xl bg-saBlue/10 flex items-center justify-center text-saBlue shrink-0 mt-0.5">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div className="text-xs text-slate-700 leading-relaxed">
+                          <p className="font-bold text-slate-900 text-sm">Case Study Response / Analysis</p>
+                          <p className="text-slate-600 mt-0.5">
+                            Please review the case study scenario and prompt above carefully. Type your detailed analysis, answers, or solution in the box below.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <label className="font-bold text-slate-700 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                            Your Written Response / Solution:
+                          </label>
+                          <span className="text-[11px] font-medium text-slate-400">
+                            {answers[currentQuestion.id]?.length || 0} characters
+                          </span>
+                        </div>
+                        <textarea
+                          value={answers[currentQuestion.id] || ''}
+                          onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+                          className="w-full p-4 sm:p-5 bg-slate-50/60 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-saBlue/20 focus:border-saBlue focus:bg-white resize-y transition-all min-h-[180px] font-sans text-sm leading-relaxed shadow-inner"
+                          rows={8}
+                          placeholder="Write your case study response, detailed answer, key observations, or solution here..."
+                        />
+                      </div>
+
+                      <MediaUpload
+                        label="Upload Supporting Document / Diagram / Handwritten Solution (Optional)"
+                        value={answerMediaUrls[currentQuestion.id]}
+                        onChange={(file, url) => {
+                          if (file || url) handleAnswerChange(currentQuestion.id, answers[currentQuestion.id] || '', file, url);
+                        }}
+                        acceptTypes="image/*,application/pdf"
+                        maxSize={10}
+                      />
                     </div>
                   )}
 

@@ -1462,6 +1462,9 @@ export interface UpdateInvoiceData {
 export interface InvoiceSetting {
   id?: number;
   business_name: string;
+  org_subtitle?: string;
+  logo_url?: string;
+  hsn_sac_code?: string;
   address: string;
   email: string;
   phone?: string;

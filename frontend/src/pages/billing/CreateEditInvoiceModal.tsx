@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2, Calendar, DollarSign, User, BookOpen, Layers, Trophy, Search } from 'lucide-react';
+import { X, Plus, Trash2, Calendar, DollarSign, User, BookOpen, Layers, Trophy, Search, Printer, FileText } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import type { Student, Subject, Invoice } from '@/types';
 interface CreateEditInvoiceModalProps {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (createdInvoice?: Invoice, downloadImmediately?: boolean, mode?: 'INVOICE' | 'QUOTATION') => void;
   editingInvoice?: Invoice | null;
 }
 
@@ -72,6 +72,7 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
   const [overallDiscount, setOverallDiscount] = useState<number>(0);
   const [notes, setNotes] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
+  const [openDownloadAfterSave, setOpenDownloadAfterSave] = useState(true);
 
   // Line items
   const [items, setItems] = useState<LineItemForm[]>([]);
@@ -241,9 +242,10 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
     return name.includes(q) || email.includes(q);
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
+  const saveInvoice = async (
+    triggerDownload: boolean = true,
+    targetMode: 'INVOICE' | 'QUOTATION' = 'INVOICE'
+  ) => {
     if (!studentId) {
       alert('Please select a student.');
       return;
@@ -268,8 +270,10 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
         discount: i.discount,
       }));
 
+      let resultInvoice: Invoice | undefined;
+
       if (editingInvoice) {
-        await invoiceService.update(editingInvoice.id, {
+        const res = await invoiceService.update(editingInvoice.id, {
           student_id: studentId,
           issue_date: issueDate,
           due_date: dueDate,
@@ -280,8 +284,9 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
           notes,
           items: preparedItems,
         });
+        resultInvoice = res.data;
       } else {
-        await invoiceService.create({
+        const res = await invoiceService.create({
           student_id: studentId,
           issue_date: issueDate,
           due_date: dueDate,
@@ -293,9 +298,10 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
           send_email: sendEmail,
           items: preparedItems,
         });
+        resultInvoice = res.data;
       }
 
-      onSuccess();
+      onSuccess(resultInvoice, triggerDownload, targetMode);
       onClose();
     } catch (err: any) {
       console.error('Failed to save invoice:', err);
@@ -303,6 +309,11 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await saveInvoice(openDownloadAfterSave, 'INVOICE');
   };
 
   return (
@@ -674,17 +685,33 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
             </div>
 
             {!editingInvoice && (
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="sendEmailCheck"
-                  checked={sendEmail}
-                  onChange={(e) => setSendEmail(e.target.checked)}
-                  className="rounded border-gray-300 text-saBlue focus:ring-saBlue h-4 w-4"
-                />
-                <label htmlFor="sendEmailCheck" className="text-xs font-semibold text-gray-700 cursor-pointer">
-                  Send itemized invoice email to student upon creation
-                </label>
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="openDownloadCheck"
+                    checked={openDownloadAfterSave}
+                    onChange={(e) => setOpenDownloadAfterSave(e.target.checked)}
+                    className="rounded border-gray-300 text-saBlue focus:ring-saBlue h-4 w-4"
+                  />
+                  <label htmlFor="openDownloadCheck" className="text-xs font-semibold text-gray-700 cursor-pointer flex items-center gap-1.5">
+                    <span>Open download / print pop up immediately after creation</span>
+                    <span className="text-[10px] bg-blue-100 text-saBlue font-bold px-1.5 py-0.5 rounded-md">Default</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sendEmailCheck"
+                    checked={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.checked)}
+                    className="rounded border-gray-300 text-saBlue focus:ring-saBlue h-4 w-4"
+                  />
+                  <label htmlFor="sendEmailCheck" className="text-xs font-semibold text-gray-700 cursor-pointer">
+                    Send itemized invoice email to student upon creation
+                  </label>
+                </div>
               </div>
             )}
           </div>
@@ -706,22 +733,70 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
             </div>
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-gray-100">
+          <DialogFooter className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-gray-100">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="h-10 text-xs rounded-xl border-gray-200 text-gray-600 hover:bg-gray-100"
+              className="h-10 text-xs rounded-xl border-gray-200 text-gray-600 hover:bg-gray-100 w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading || dataLoading}
-              className="h-10 text-xs px-6 rounded-xl bg-saBlue hover:bg-saBlue/90 text-white font-bold shadow-md shadow-saBlue/20"
-            >
-              {loading ? 'Saving...' : editingInvoice ? 'Update Invoice' : 'Create Invoice & Enroll'}
-            </Button>
+
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+              {!editingInvoice ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loading || dataLoading}
+                    onClick={() => saveInvoice(false)}
+                    className="h-10 text-xs px-4 rounded-xl border-slate-200 text-slate-700 hover:bg-slate-50 font-bold"
+                  >
+                    Create Only
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={loading || dataLoading}
+                    onClick={() => saveInvoice(true, 'QUOTATION')}
+                    className="h-10 text-xs px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold shadow-xs flex items-center gap-1.5"
+                    title="Generate invoice and download / view as official Fee Quotation"
+                  >
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    {loading ? 'Creating...' : 'Download Quotation'}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={loading || dataLoading}
+                    onClick={() => saveInvoice(true, 'INVOICE')}
+                    className="h-10 text-xs px-5 rounded-xl bg-saBlue hover:bg-saBlueDarkHover text-white font-bold shadow-md shadow-saBlue/20 flex items-center gap-1.5"
+                  >
+                    <Printer className="w-4 h-4" />
+                    {loading ? 'Creating...' : 'Create & Download / Print'}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={loading || dataLoading}
+                    onClick={() => saveInvoice(true, 'QUOTATION')}
+                    className="h-10 text-xs px-4 rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold shadow-xs flex items-center gap-1.5"
+                  >
+                    <FileText className="w-4 h-4 text-amber-600" />
+                    Download Quotation
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={loading || dataLoading}
+                    className="h-10 text-xs px-6 rounded-xl bg-saBlue hover:bg-saBlueDarkHover text-white font-bold shadow-md shadow-saBlue/20"
+                  >
+                    {loading ? 'Saving...' : 'Update Invoice'}
+                  </Button>
+                </>
+              )}
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

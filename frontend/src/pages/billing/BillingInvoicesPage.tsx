@@ -64,6 +64,7 @@ export const BillingInvoicesPage: React.FC = () => {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalMode, setDetailModalMode] = useState<'INVOICE' | 'QUOTATION'>('INVOICE');
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -551,12 +552,28 @@ export const BillingInvoicesPage: React.FC = () => {
                             </Button>
                           )}
 
+                          {/* View / Download Quotation */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Download / View Fee Quotation"
+                            onClick={() => {
+                              setDetailModalMode('QUOTATION');
+                              setViewingInvoice(inv);
+                              setDetailModalOpen(true);
+                            }}
+                            className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                          </Button>
+
                           {/* View Invoice */}
                           <Button
                             variant="ghost"
                             size="icon"
                             title="View / Print Invoice"
                             onClick={() => {
+                              setDetailModalMode('INVOICE');
                               setViewingInvoice(inv);
                               setDetailModalOpen(true);
                             }}
@@ -647,9 +664,20 @@ export const BillingInvoicesPage: React.FC = () => {
           setCreateEditModalOpen(false);
           setEditingInvoice(null);
         }}
-        onSuccess={() => {
-          showToast(editingInvoice ? 'Invoice updated successfully!' : 'Invoice created & students enrolled!');
+        onSuccess={(createdInvoice, downloadImmediately, mode) => {
+          showToast(
+            editingInvoice
+              ? 'Invoice updated successfully!'
+              : mode === 'QUOTATION'
+              ? 'Fee quotation generated!'
+              : 'Invoice created & students enrolled!'
+          );
           fetchInvoices();
+          if (createdInvoice && downloadImmediately !== false) {
+            setDetailModalMode(mode || 'INVOICE');
+            setViewingInvoice(createdInvoice);
+            setDetailModalOpen(true);
+          }
         }}
         editingInvoice={editingInvoice}
       />
@@ -662,6 +690,8 @@ export const BillingInvoicesPage: React.FC = () => {
           setViewingInvoice(null);
         }}
         invoice={viewingInvoice}
+        initialMode={detailModalMode}
+        autoPrint={detailModalMode === 'QUOTATION'}
       />
 
       {/* Delete Confirmation Modal */}

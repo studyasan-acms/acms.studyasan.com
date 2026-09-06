@@ -280,18 +280,15 @@ export default function TestDetailPage() {
     const action = test.is_published ? "unpublish" : "publish";
 
     if (!test.is_published) {
-      const questionCount = test.questions?.length || 0;
-      if (questionCount === 0) {
+      if (!test.questions || test.questions.length === 0) {
         setErrorMessage("Cannot publish test: The test contains no questions. Please add questions before publishing.");
         setErrorOpen(true);
         return;
       }
 
-      const totalQuestionMarks = test.questions?.reduce((acc, q) => acc + (Number(q.marks) || 0), 0) || 0;
-      if (totalQuestionMarks !== test.total_marks) {
-        setErrorMessage(
-          `Cannot publish test: Test Total Marks (${test.total_marks}) does not match the sum of Question Marks (${totalQuestionMarks}). Please edit the test so they match before publishing.`
-        );
+      const totalQuestionMarks = test.questions.reduce((acc, q) => acc + (Number(q.marks) || 0), 0);
+      if (totalQuestionMarks <= 0) {
+        setErrorMessage("Cannot publish test: Total question marks must be greater than 0.");
         setErrorOpen(true);
         return;
       }
@@ -300,7 +297,11 @@ export default function TestDetailPage() {
     setConfirmMessage(`Are you sure you want to ${action} "${test.title}"?`);
     setConfirmAction(() => async () => {
       try {
-        await testService.update(test.id, { is_published: !test.is_published });
+        const totalQuestionMarks = test.questions?.reduce((acc, q) => acc + (Number(q.marks) || 0), 0) || test.total_marks;
+        await testService.update(test.id, {
+          is_published: !test.is_published,
+          total_marks: totalQuestionMarks,
+        });
         setSuccessMessage(`Test "${test.title}" ${action}ed successfully!`);
         setSuccessOpen(true);
         fetchTest();

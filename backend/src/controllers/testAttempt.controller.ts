@@ -446,7 +446,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
     let hasManualQuestions = allQuestions.some((q: any) => {
       const isAutograded = q.is_autograded !== undefined
         ? q.is_autograded
-        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING');
       return !isAutograded;
     });
 
@@ -455,7 +455,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
       const q = answer.question as any;
       const isAutograded = q.is_autograded !== undefined
         ? q.is_autograded
-        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING');
 
       if (isAutograded) {
         if (q.question_type === 'MCQ') {
@@ -542,7 +542,7 @@ export const submitTest = async (req: AuthRequest, res: Response) => {
           });
 
           autoGradedScore += marksObtained;
-        } else if (q.question_type === 'CASE_STUDY') {
+        } else if (q.question_type === 'CASE_STUDY' && q.marks === 0) {
           await prisma.answer.update({
             where: { id: answer.id },
             data: {
@@ -1314,7 +1314,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
     let hasManualQuestions = questions.some((q: any) => {
       const isAutograded = q.is_autograded !== undefined
         ? q.is_autograded
-        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING' || q.question_type === 'CASE_STUDY');
+        : (q.question_type === 'MCQ' || q.question_type === 'TRUE_FALSE' || q.question_type === 'MATCH_THE_FOLLOWING');
       return !isAutograded;
     });
 
@@ -1327,7 +1327,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
 
       const isAutograded = question.is_autograded !== undefined
         ? question.is_autograded
-        : (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING' || question.question_type === 'CASE_STUDY');
+        : (question.question_type === 'MCQ' || question.question_type === 'TRUE_FALSE' || question.question_type === 'MATCH_THE_FOLLOWING');
 
       if (isAutograded && question.question_type === 'MCQ') {
         isCorrect = isMCQAnswerCorrect(ans.answer_text, question.correct_answer, question.options);
@@ -1376,7 +1376,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
 
         isCorrect = totalPairs > 0 && correctPairs === totalPairs;
         marksObtained = totalPairs > 0 ? (question.marks / totalPairs) * correctPairs : 0;
-      } else if (isAutograded && question.question_type === 'CASE_STUDY') {
+      } else if (question.question_type === 'CASE_STUDY' && question.marks === 0) {
         isCorrect = true;
         marksObtained = 0;
       } else if (isAutograded && question.correct_answer && question.correct_answer.trim()) {

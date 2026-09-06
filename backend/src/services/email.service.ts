@@ -324,8 +324,13 @@ export const sendInvoiceEmailNotification = async (
       total: number;
     }>;
     notes?: string | null;
+    is_quotation?: boolean;
   }
 ): Promise<boolean> => {
+  const isQuotation = Boolean(invoice.is_quotation);
+  const docNumber = isQuotation ? invoice.invoice_number.replace(/^INV-/, 'QT-') : invoice.invoice_number;
+  const docTitle = isQuotation ? 'Fee Quotation' : 'Invoice';
+
   const issueDateFormatted = new Date(invoice.issue_date).toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
@@ -337,9 +342,10 @@ export const sendInvoiceEmailNotification = async (
     year: 'numeric',
   });
 
-  const isPaid = invoice.status === 'PAID';
-  const statusColor = isPaid ? '#0276D3' : '#eca209';
-  const statusBg = isPaid ? '#f0f7ff' : '#fffbeb';
+  const isPaid = !isQuotation && invoice.status === 'PAID';
+  const statusColor = isQuotation ? '#d97706' : (isPaid ? '#0276D3' : '#eca209');
+  const statusBg = isQuotation ? '#fffbeb' : (isPaid ? '#f0f7ff' : '#fffbeb');
+  const statusBadgeText = isQuotation ? 'ESTIMATE' : invoice.status;
 
   const itemsRows = invoice.items
     .map(
@@ -371,7 +377,7 @@ export const sendInvoiceEmailNotification = async (
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Invoice ${invoice.invoice_number} - StudyAsan</title>
+      <title>${docTitle} ${docNumber} - StudyAsan</title>
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7fa;">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="min-width: 100%; background-color: #f4f7fa;">
@@ -380,18 +386,18 @@ export const sendInvoiceEmailNotification = async (
             <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06); overflow: hidden; border: 1px solid #e2e8f0;">
               <!-- Header -->
               <tr>
-                <td style="background: linear-gradient(135deg, #0276D3 0%, #015bb5 100%); padding: 35px 40px; text-align: left;">
+                <td style="background: linear-gradient(135deg, ${isQuotation ? '#d97706 0%, #b45309 100%' : '#0276D3 0%, #015bb5 100%'}); padding: 35px 40px; text-align: left;">
                   <table width="100%" cellspacing="0" cellpadding="0">
                     <tr>
                       <td>
                         <div style="background: #ffffff; display: inline-block; padding: 6px 12px; border-radius: 8px; margin-bottom: 8px;">
                           <img src="https://xdas-tech.sirv.com/studyasan-logo.png" alt="StudyAsan" style="height: 28px; display: block;" />
                         </div>
-                        <p style="color: #bfdbfe; font-size: 12px; margin: 0;">The Path To Success</p>
+                        <p style="color: #bfdbfe; font-size: 12px; margin: 0;">${isQuotation ? 'Official Fee Quotation' : 'The Path To Success'}</p>
                       </td>
                       <td style="text-align: right;">
                         <span style="display: inline-block; padding: 6px 14px; background: rgba(255, 255, 255, 0.2); color: #ffffff; border-radius: 10px; font-size: 13px; font-weight: 700; font-family: monospace;">
-                          ${invoice.invoice_number}
+                          ${docNumber}
                         </span>
                       </td>
                     </tr>
@@ -406,13 +412,13 @@ export const sendInvoiceEmailNotification = async (
                   <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 25px;">
                     <tr>
                       <td>
-                        <p style="color: #64748b; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Billed To</p>
+                        <p style="color: #64748b; font-size: 13px; margin: 0 0 4px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">${isQuotation ? 'Quotation Prepared For' : 'Billed To'}</p>
                         <h3 style="color: #0f172a; font-size: 18px; font-weight: 700; margin: 0;">${name}</h3>
                         <p style="color: #64748b; font-size: 13px; margin: 2px 0 0;">${email}</p>
                       </td>
                       <td style="text-align: right;">
                         <div style="display: inline-block; padding: 8px 18px; background-color: ${statusBg}; border: 1px solid ${statusColor}; color: ${statusColor}; border-radius: 10px; font-size: 12px; font-weight: 800; text-transform: uppercase;">
-                          ${invoice.status}
+                          ${statusBadgeText}
                         </div>
                       </td>
                     </tr>
@@ -422,11 +428,11 @@ export const sendInvoiceEmailNotification = async (
                   <table width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 25px; border: 1px solid #edf2f7;">
                     <tr>
                       <td width="50%" style="padding: 4px 10px;">
-                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">Issue Date:</span>
+                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">${isQuotation ? 'Quotation Date:' : 'Issue Date:'}</span>
                         <span style="color: #1e293b; font-size: 13px; font-weight: 700; margin-left: 6px;">${issueDateFormatted}</span>
                       </td>
                       <td width="50%" style="padding: 4px 10px; text-align: right;">
-                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">Due Date:</span>
+                        <span style="color: #64748b; font-size: 12px; font-weight: 600;">${isQuotation ? 'Valid Until:' : 'Due Date:'}</span>
                         <span style="color: #1e293b; font-size: 13px; font-weight: 700; margin-left: 6px;">${dueDateFormatted}</span>
                       </td>
                     </tr>
@@ -489,8 +495,8 @@ export const sendInvoiceEmailNotification = async (
 
                   <!-- CTA Button -->
                   <div style="text-align: center; margin-top: 10px;">
-                    <a href="https://studyasan.com/dashboard" style="display: inline-block; background: #0276D3; color: #ffffff; text-decoration: none; padding: 14px 34px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(2, 118, 211, 0.3);">
-                      View Invoice on Dashboard
+                    <a href="https://studyasan.com/dashboard" style="display: inline-block; background: ${isQuotation ? '#d97706' : '#0276D3'}; color: #ffffff; text-decoration: none; padding: 14px 34px; border-radius: 12px; font-weight: 700; font-size: 14px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);">
+                      ${isQuotation ? 'View Quotation on Dashboard' : 'View Invoice on Dashboard'}
                     </a>
                   </div>
                 </td>
@@ -518,7 +524,9 @@ export const sendInvoiceEmailNotification = async (
 
   return sendEmail({
     to: email,
-    subject: `Invoice ${invoice.invoice_number} from StudyAsan`,
+    subject: isQuotation
+      ? `Fee Quotation ${docNumber} from StudyAsan Academy`
+      : `Invoice ${invoice.invoice_number} from StudyAsan`,
     html,
   });
 };

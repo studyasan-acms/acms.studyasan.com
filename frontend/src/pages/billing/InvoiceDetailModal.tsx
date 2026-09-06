@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Printer, CheckCircle2, Landmark, QrCode } from 'lucide-react';
+import { Mail, Printer, CheckCircle2, Landmark, QrCode, FileText, Receipt, Download } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { invoiceService } from '@/services/api';
@@ -10,19 +10,25 @@ interface InvoiceDetailModalProps {
   onClose: () => void;
   invoice: Invoice | null;
   onStatusChange?: () => void;
+  initialMode?: 'INVOICE' | 'QUOTATION';
+  autoPrint?: boolean;
 }
 
 export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   open,
   onClose,
   invoice,
+  initialMode = 'INVOICE',
+  autoPrint = false,
 }) => {
+  const [mode, setMode] = useState<'INVOICE' | 'QUOTATION'>(initialMode);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<InvoiceSetting | null>(null);
 
   useEffect(() => {
     if (open) {
+      setMode(initialMode);
       invoiceService
         .getSettings()
         .then((res) => {
@@ -30,9 +36,9 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
         })
         .catch(() => {});
     }
-  }, [open]);
+  }, [open, initialMode]);
 
-  if (!invoice) return null;
+  const isQuotation = mode === 'QUOTATION';
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return 'N/A';
@@ -47,7 +53,14 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     }
   };
 
+  const docNumber = invoice
+    ? isQuotation
+      ? invoice.invoice_number.replace(/^INV-/, 'QT-')
+      : invoice.invoice_number
+    : '';
+
   const handlePrint = () => {
+    if (!invoice) return;
     const printContent = document.getElementById('invoice-printable-area');
     if (!printContent) {
       window.print();
@@ -60,12 +73,16 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       return;
     }
 
+    const docTitle = isQuotation
+      ? `Quotation - ${docNumber} - ${invoice.student?.user?.name || 'Student'}`
+      : `Invoice - ${invoice.invoice_number} - ${invoice.student?.user?.name || 'Student'}`;
+
     const htmlContent = `
       <!DOCTYPE html>
       <html lang="en">
         <head>
           <meta charset="utf-8" />
-          <title>Invoice - ${invoice.invoice_number}</title>
+          <title>${docTitle}</title>
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @page {
@@ -112,20 +129,37 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     printWindow.document.close();
   };
 
+  // Auto-print if requested (e.g. from immediate Download Quotation)
+  useEffect(() => {
+    if (open && autoPrint && settings && invoice) {
+      const timer = setTimeout(() => {
+        handlePrint();
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [open, autoPrint, Boolean(settings), Boolean(invoice)]);
+
   const handleSendEmail = async () => {
+    if (!invoice) return;
     setSendingEmail(true);
     setEmailStatusMessage(null);
     try {
-      await invoiceService.sendEmail(invoice.id);
-      setEmailStatusMessage('Invoice email sent successfully to student!');
-      setTimeout(() => setEmailStatusMessage(null), 4000);
+      await invoiceService.sendEmail(invoice.id, { is_quotation: isQuotation });
+      setEmailStatusMessage(
+        isQuotation
+          ? 'Quotation email dispatched to student successfully!'
+          : 'Invoice email dispatched to student successfully!'
+      );
+      setTimeout(() => setEmailStatusMessage(null), 4500);
     } catch (err: any) {
-      console.error('Failed to send invoice email:', err);
+      console.error('Failed to send email:', err);
       alert(err?.response?.data?.message || 'Failed to send email. Please verify SMTP settings.');
     } finally {
       setSendingEmail(false);
     }
   };
+
+  if (!invoice) return null;
 
   const isPaid = invoice.status === 'PAID';
 
@@ -189,28 +223,78 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
           }
         `}</style>
 
-        {/* Professional Invoice Sheet Container */}
+        {/* Mode Switcher Tabs (Hidden during Print) */}
+        <div className="no-print flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 px-6 sm:px-8 py-3.5 border-b border-gray-200 bg-slate-50/80">
+          <div className="flex items-center gap-1.5 p-1 bg-slate-200/80 rounded-xl">
+            <button
+              type="button"
+              onClick={() => setMode('INVOICE')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                !isQuotation
+                  ? 'bg-white text-saBlue shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              Tax Invoice
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('QUOTATION')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                isQuotation
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Fee Quotation (Estimate)
+            </button>
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium">
+            Displaying as:{' '}
+            <span className={isQuotation ? 'text-amber-800 font-bold' : 'text-saBlue font-bold'}>
+              {isQuotation ? 'Official Fee Quotation' : 'Standard Tax Invoice'}
+            </span>
+          </div>
+        </div>
+
+        {/* Printable Sheet Container */}
         <div id="invoice-printable-area" className="p-8 sm:p-10 space-y-7 bg-white text-slate-900 w-full font-sans">
           
-          {/* 1. Header: Logo & Academy Info (Left) | INVOICE Title & Document Meta (Right) */}
+          {/* 1. Header: Logo & Academy Info (Left) | INVOICE / QUOTATION Title & Meta (Right) */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-6">
             
             {/* Left: Organization Header */}
             <div className="space-y-2 max-w-sm">
               <div className="flex items-center gap-2">
-                {/* Blue background logo container */}
-                <div className="bg-[#0276D3] px-3.5 py-2 rounded-xl inline-flex items-center justify-center shadow-xs">
-                  <img
-                    src="/studyasan-logo.png"
-                    alt="StudyAsan Logo"
-                    className="h-8 w-auto object-contain"
-                  />
-                </div>
+                {settings?.logo_url ? (
+                  <div className="h-12 max-w-[180px] inline-flex items-center justify-start">
+                    <img
+                      src={settings.logo_url}
+                      alt={settings.business_name || 'Organization Logo'}
+                      className="max-h-12 max-w-[180px] object-contain rounded-lg"
+                    />
+                  </div>
+                ) : (
+                  <div className="bg-[#0276D3] px-3.5 py-2 rounded-xl inline-flex items-center justify-center shadow-xs">
+                    <img
+                      src="/studyasan-logo.png"
+                      alt="StudyAsan Logo"
+                      className="h-8 w-auto object-contain"
+                    />
+                  </div>
+                )}
               </div>
               <div className="text-xs text-gray-600 leading-relaxed pt-1">
-                <p className="font-bold text-gray-900 text-sm">
+                <p className="font-extrabold text-gray-900 text-base tracking-tight">
                   {settings?.business_name || 'StudyAsan Academy'}
                 </p>
+                {settings?.org_subtitle && (
+                  <p className="text-[11px] font-semibold text-saBlueDark italic -mt-0.5 mb-1">
+                    {settings.org_subtitle}
+                  </p>
+                )}
                 <p className="mt-0.5">
                   {settings?.address ||
                     'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126'}
@@ -232,30 +316,50 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                     <span className="font-mono font-semibold text-gray-700">{settings.gst_number}</span>
                   </p>
                 )}
+                {settings?.hsn_sac_code && (
+                  <p className="mt-0.5">
+                    <span className="font-bold text-gray-900">HSN/SAC:</span>{' '}
+                    <span className="font-mono font-semibold text-gray-700">{settings.hsn_sac_code}</span>
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Right: Invoice Label & Document Meta (Badge completely removed) */}
+            {/* Right: Title & Document Meta */}
             <div className="text-left sm:text-right space-y-1.5 flex-shrink-0">
               <div className="flex items-center sm:justify-end">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">INVOICE</h1>
+                <h1 className={`text-3xl font-extrabold tracking-tight ${isQuotation ? 'text-amber-800' : 'text-slate-900'}`}>
+                  {isQuotation ? 'QUOTATION' : 'INVOICE'}
+                </h1>
               </div>
 
+              {isQuotation && (
+                <div className="sm:text-right">
+                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-md border border-amber-200">
+                    Fee Quotation & Estimate
+                  </span>
+                </div>
+              )}
+
               <p className="font-mono text-sm font-bold text-gray-800 pt-1">
-                <span className="text-gray-400 font-sans font-normal text-xs uppercase tracking-wider">Invoice No:&nbsp;</span>
-                {invoice.invoice_number}
+                <span className="text-gray-400 font-sans font-normal text-xs uppercase tracking-wider">
+                  {isQuotation ? 'Quotation No:\u00A0' : 'Invoice No:\u00A0'}
+                </span>
+                <span className={isQuotation ? 'text-amber-900' : 'text-gray-800'}>
+                  {docNumber}
+                </span>
               </p>
 
               <div className="text-xs text-gray-600 space-y-0.5 pt-1">
                 <p>
-                  <span className="text-gray-500">Invoice Date:</span>{' '}
+                  <span className="text-gray-500">{isQuotation ? 'Quotation Date:' : 'Invoice Date:'}</span>{' '}
                   <span className="font-semibold text-gray-800">{formatDate(invoice.issue_date)}</span>
                 </p>
                 <p>
-                  <span className="text-gray-500">Due Date:</span>{' '}
+                  <span className="text-gray-500">{isQuotation ? 'Valid Until:' : 'Due Date:'}</span>{' '}
                   <span className="font-semibold text-gray-800">{formatDate(invoice.due_date)}</span>
                 </p>
-                {invoice.paid_date && (
+                {!isQuotation && invoice.paid_date && (
                   <p>
                     <span className="text-gray-500">Payment Date:</span>{' '}
                     <span className="font-semibold text-emerald-700">{formatDate(invoice.paid_date)}</span>
@@ -272,11 +376,13 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           )}
 
-          {/* 2. Billing Meta: Billed To (Student) & Payment Details */}
+          {/* 2. Billing Meta: Billed To (Student) & Payment / Validity Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
             {/* Student Details */}
             <div className="space-y-1">
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Billed To (Student)</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                {isQuotation ? 'Quotation Prepared For' : 'Billed To (Student)'}
+              </p>
               <h3 className="text-base font-bold text-gray-900">
                 {invoice.student?.user?.name || 'Student Name'}
               </h3>
@@ -305,25 +411,44 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Payment Meta */}
+            {/* Payment / Validity Meta */}
             <div className="sm:text-right space-y-1">
-              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Payment Status</p>
+              <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                {isQuotation ? 'Quotation Status' : 'Payment Status'}
+              </p>
               <div className="text-xs text-gray-600 space-y-1 pt-1">
                 <p>
                   <span className="text-gray-500">Status:</span>{' '}
-                  <span className="font-semibold text-gray-900">{isPaid ? 'Paid in Full' : 'Payment Awaited'}</span>
+                  <span className="font-semibold text-gray-900">
+                    {isQuotation
+                      ? 'Fee Estimate (Valid for Admission)'
+                      : isPaid
+                      ? 'Paid in Full'
+                      : 'Payment Awaited'}
+                  </span>
                 </p>
-                {invoice.payment_method && (
+                {isQuotation ? (
                   <p>
-                    <span className="text-gray-500">Method:</span>{' '}
-                    <span className="font-semibold text-gray-900">{invoice.payment_method}</span>
+                    <span className="text-gray-500">Validity:</span>{' '}
+                    <span className="font-semibold text-amber-800">
+                      Until {formatDate(invoice.due_date)}
+                    </span>
                   </p>
-                )}
-                {invoice.transaction_id && (
-                  <p>
-                    <span className="text-gray-500">Ref / Txn ID:</span>{' '}
-                    <span className="font-mono text-gray-800">{invoice.transaction_id}</span>
-                  </p>
+                ) : (
+                  <>
+                    {invoice.payment_method && (
+                      <p>
+                        <span className="text-gray-500">Method:</span>{' '}
+                        <span className="font-semibold text-gray-900">{invoice.payment_method}</span>
+                      </p>
+                    )}
+                    {invoice.transaction_id && (
+                      <p>
+                        <span className="text-gray-500">Ref / Txn ID:</span>{' '}
+                        <span className="font-mono text-gray-800">{invoice.transaction_id}</span>
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -335,7 +460,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               <thead>
                 <tr className="border-t-2 border-b-2 border-gray-900 bg-gray-50 text-gray-800 font-bold uppercase text-[10px] tracking-wider">
                   <th className="py-2.5 px-3 w-8 text-center text-gray-500">#</th>
-                  <th className="py-2.5 px-3">Item / Service Description</th>
+                  <th className="py-2.5 px-3">Item / Course Description</th>
                   <th className="py-2.5 px-3 text-center w-12">Qty</th>
                   <th className="py-2.5 px-3 text-right w-24">Rate / MRP</th>
                   <th className="py-2.5 px-3 text-right w-24">Discount</th>
@@ -356,8 +481,11 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                         </td>
                         <td className="py-3 px-3">
                           <div className="font-bold text-gray-900 text-xs sm:text-sm">{item.item_name}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">
-                            {item.type ? item.type.replace('_', ' ') : 'ENROLLMENT'}
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+                            <span>{item.type ? item.type.replace('_', ' ') : (isQuotation ? 'COURSE / MODULE' : 'ENROLLMENT')}</span>
+                            {settings?.hsn_sac_code && (
+                              <span className="text-gray-400 font-mono font-normal">| HSN/SAC: {settings.hsn_sac_code}</span>
+                            )}
                           </div>
                         </td>
                         <td className="py-3 px-3 text-center font-medium text-gray-700">
@@ -400,7 +528,8 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               {(settings?.bank_name || settings?.upi_id) && (
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
                   <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                    <Landmark className="w-3.5 h-3.5 text-saBlue" /> Payment Remittance Details:
+                    <Landmark className="w-3.5 h-3.5 text-saBlue" />{' '}
+                    {isQuotation ? 'Fee Acceptance & Remittance Details:' : 'Payment Remittance Details:'}
                   </p>
                   {settings.bank_name && (
                     <div className="space-y-0.5 text-slate-700">
@@ -430,11 +559,24 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
               <div className="text-[11px] text-gray-500 space-y-1">
                 <p className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">Terms & Conditions:</p>
-                <p>1. Payments are due by the specified due date.</p>
-                <p>2. Online payments can be made via UPI, Net Banking, or Cards.</p>
-                <p className="italic pt-2 text-gray-400">
-                  This is a computer-generated invoice and requires no physical signature.
-                </p>
+                {isQuotation ? (
+                  <>
+                    <p>1. This fee quotation is valid until the specified date ({formatDate(invoice.due_date)}).</p>
+                    <p>2. Batch seat reservation and admission will be confirmed upon fee remittance.</p>
+                    <p>3. Fee can be paid via the Bank Account or UPI ID specified above.</p>
+                    <p className="italic pt-2 text-gray-400">
+                      This is a computer-generated fee quotation and requires no physical signature.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p>1. Payments are due by the specified due date.</p>
+                    <p>2. Online payments can be made via UPI, Net Banking, or Cards.</p>
+                    <p className="italic pt-2 text-gray-400">
+                      This is a computer-generated invoice and requires no physical signature.
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
@@ -475,9 +617,11 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
               <div className="flex justify-between py-2 border-t-2 border-b-2 border-gray-900 text-sm font-bold text-gray-900">
                 <span className="uppercase tracking-wider text-xs">
-                  {includeGst ? 'Total Amount Due (incl. GST):' : 'Total Amount Due:'}
+                  {isQuotation
+                    ? (includeGst ? 'Total Quoted Fee (incl. GST):' : 'Total Quoted Fee:')
+                    : (includeGst ? 'Total Amount Due (incl. GST):' : 'Total Amount Due:')}
                 </span>
-                <span className="text-base sm:text-lg font-black text-[#0276D3]">
+                <span className={`text-base sm:text-lg font-black ${isQuotation ? 'text-amber-800' : 'text-[#0276D3]'}`}>
                   ₹{finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
@@ -488,26 +632,38 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
         {/* 5. Modal Footer Action Bar (Hidden during Print) */}
         <div className="no-print px-6 py-3.5 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleSendEmail}
               disabled={sendingEmail}
-              className="h-9 px-4 text-xs rounded-lg border-gray-300 text-gray-700 hover:bg-gray-100 font-medium flex items-center gap-2"
+              className={`h-9 px-4 text-xs rounded-lg font-medium flex items-center gap-2 ${
+                isQuotation
+                  ? 'border-amber-300 text-amber-900 hover:bg-amber-50'
+                  : 'border-gray-300 text-gray-700 hover:bg-gray-100'
+              }`}
             >
-              <Mail className="w-3.5 h-3.5 text-[#0276D3]" />
-              {sendingEmail ? 'Sending...' : 'Mail Invoice to Student'}
+              <Mail className={`w-3.5 h-3.5 ${isQuotation ? 'text-amber-600' : 'text-[#0276D3]'}`} />
+              {sendingEmail
+                ? 'Sending...'
+                : isQuotation
+                ? 'Mail Quotation to Student'
+                : 'Mail Invoice to Student'}
             </Button>
             <Button
               type="button"
-              variant="outline"
               size="sm"
               onClick={handlePrint}
-              className="h-9 px-4 text-xs rounded-lg border-gray-300 text-gray-700 hover:bg-gray-100 font-medium flex items-center gap-2"
+              className={`h-9 px-4 text-xs rounded-lg font-bold flex items-center gap-2 ${
+                isQuotation
+                  ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
+                  : 'bg-saBlue hover:bg-saBlueDarkHover text-white shadow-xs'
+              }`}
             >
-              <Printer className="w-3.5 h-3.5 text-gray-600" /> Print / Save PDF
+              {isQuotation ? <Download className="w-3.5 h-3.5" /> : <Printer className="w-3.5 h-3.5" />}
+              {isQuotation ? 'Download Quotation (PDF)' : 'Print / Save PDF'}
             </Button>
           </div>
 
@@ -527,3 +683,4 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 };
 
 export default InvoiceDetailModal;
+

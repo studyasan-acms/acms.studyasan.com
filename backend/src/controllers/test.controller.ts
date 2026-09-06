@@ -661,6 +661,17 @@ export const addQuestion = async (req: AuthRequest, res: Response) => {
       },
     });
 
+    // Keep parent test total_marks in sync
+    const allQuestions = await prisma.question.findMany({
+      where: { test_id: parseInt(testId) },
+      select: { marks: true },
+    });
+    const newTotalMarks = allQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    await prisma.test.update({
+      where: { id: parseInt(testId) },
+      data: { total_marks: newTotalMarks },
+    });
+
     return sendSuccess(res, question, 'Question added successfully', 201);
   } catch (error) {
     console.error('Error adding question:', error);
@@ -751,6 +762,17 @@ export const updateQuestion = async (req: AuthRequest, res: Response) => {
       data: updateData,
     });
 
+    // Keep parent test total_marks in sync
+    const allQuestions = await prisma.question.findMany({
+      where: { test_id: question.test_id },
+      select: { marks: true },
+    });
+    const newTotalMarks = allQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    await prisma.test.update({
+      where: { id: question.test_id },
+      data: { total_marks: newTotalMarks },
+    });
+
     return sendSuccess(res, updatedQuestion, 'Question updated successfully');
   } catch (error) {
     console.error('Error updating question:', error);
@@ -796,6 +818,17 @@ export const deleteQuestion = async (req: AuthRequest, res: Response) => {
 
     await prisma.question.delete({
       where: { id: parseInt(questionId) },
+    });
+
+    // Keep parent test total_marks in sync
+    const allQuestions = await prisma.question.findMany({
+      where: { test_id: question.test_id },
+      select: { marks: true },
+    });
+    const newTotalMarks = allQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
+    await prisma.test.update({
+      where: { id: question.test_id },
+      data: { total_marks: newTotalMarks },
     });
 
     return sendSuccess(res, null, 'Question deleted successfully');
@@ -1189,18 +1222,19 @@ export const updateTest = async (req: AuthRequest, res: Response) => {
       }
 
       const totalQuestionMarks = existingQuestions.reduce((sum, q) => sum + (Number(q.marks) || 0), 0);
-      const currentTest = await prisma.test.findUnique({
-        where: { id: parseInt(testId) },
-        select: { total_marks: true },
-      });
-      const targetTotalMarks = total_marks !== undefined ? Number(total_marks) : currentTest?.total_marks;
 
-      if (targetTotalMarks !== undefined && targetTotalMarks !== totalQuestionMarks) {
-        return sendError(
-          res,
-          `Cannot publish test: Test total marks (${targetTotalMarks}) does not match the sum of question marks (${totalQuestionMarks}). Please adjust question marks or total marks to match before publishing.`,
-          400
-        );
+      // If total_marks was not explicitly sent, automatically sync it to totalQuestionMarks
+      if (total_marks === undefined) {
+        data.total_marks = totalQuestionMarks;
+      } else {
+        const targetTotalMarks = Number(total_marks);
+        if (targetTotalMarks !== totalQuestionMarks) {
+          return sendError(
+            res,
+            `Cannot publish test: Test total marks (${targetTotalMarks}) does not match the sum of question marks (${totalQuestionMarks}). Please adjust question marks or total marks to match before publishing.`,
+            400
+          );
+        }
       }
     }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Save,
   Building2,
@@ -9,12 +9,15 @@ import {
   CheckCircle2,
   RefreshCw,
   Info,
+  Upload,
+  Image as ImageIcon,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { invoiceService } from '@/services/api';
+import { invoiceService, uploadService } from '@/services/api';
 import type { InvoiceSetting } from '@/types';
 
 interface Props {
@@ -24,10 +27,15 @@ interface Props {
 const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<InvoiceSetting>({
     business_name: 'StudyAsan Academy',
+    org_subtitle: '',
+    logo_url: '',
+    hsn_sac_code: '',
     address:
       'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126',
     email: 'contact@studyasan.com',
@@ -50,6 +58,31 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('Please select a valid image file (PNG, JPG, SVG, WebP)');
+      return;
+    }
+
+    setUploadingLogo(true);
+    try {
+      const res = await uploadService.uploadFile(file, 'invoice-logos');
+      if (res?.url) {
+        setFormData((prev) => ({ ...prev, logo_url: res.url }));
+        showToast('Logo uploaded successfully');
+      }
+    } catch (err: any) {
+      console.error('Failed to upload logo:', err);
+      showToast(err?.response?.data?.message || 'Failed to upload logo image');
+    } finally {
+      setUploadingLogo(false);
+      if (logoInputRef.current) logoInputRef.current.value = '';
+    }
+  };
+
   const fetchSettings = async () => {
     setLoading(true);
     try {
@@ -57,6 +90,9 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
       if (res.data) {
         setFormData({
           business_name: res.data.business_name || 'StudyAsan Academy',
+          org_subtitle: res.data.org_subtitle || '',
+          logo_url: res.data.logo_url || '',
+          hsn_sac_code: res.data.hsn_sac_code || '',
           address:
             res.data.address ||
             'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126',
@@ -110,7 +146,7 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 max-w-4xl">
-      {/* 1. GST Configuration Card */}
+      {/* 1. GST & Tax Configuration Card */}
       <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl overflow-hidden">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
           <div className="flex items-center justify-between">
@@ -119,9 +155,9 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
                 <Percent className="w-4 h-4" />
               </div>
               <div>
-                <CardTitle className="text-sm font-black text-slate-900">GST Configuration</CardTitle>
+                <CardTitle className="text-sm font-black text-slate-900">GST & Tax Configuration</CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  Control whether GST applies to student invoices and specify the tax rate.
+                  Control whether GST applies to student invoices, HSN/SAC code, and tax percentage.
                 </CardDescription>
               </div>
             </div>
@@ -179,14 +215,31 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
                 className="h-9 text-xs rounded-lg border-slate-200 font-bold disabled:opacity-50"
               />
               <p className="text-[10px] text-slate-400 mt-1">
-                Standard education / service GST is usually 18%.
+                Standard education / coaching GST is usually 18%.
+              </p>
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="text-[11px] font-bold text-slate-600 block mb-1">
+                HSN / SAC Code (Services Accounting Code)
+              </label>
+              <Input
+                value={formData.hsn_sac_code || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, hsn_sac_code: e.target.value }))
+                }
+                placeholder="e.g. 999293 (Coaching & Educational Services)"
+                className="h-9 text-xs rounded-lg border-slate-200 font-mono"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Services Accounting Code printed on invoices for tax compliance (e.g., 999293 for commercial training & coaching services).
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 2. Academy Business Details Card */}
+      {/* 2. Academy Branding & Business Details Card */}
       <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl overflow-hidden">
         <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
@@ -195,19 +248,100 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
             </div>
             <div>
               <CardTitle className="text-sm font-black text-slate-900">
-                Academy Details (Printed on Invoices)
+                Organization Branding & Invoice Details
               </CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                Contact information and physical address printed on generated invoice receipts.
+                Organization title, subtitle tagline, custom logo, and contact info printed on generated invoices.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5 space-y-4">
+        <CardContent className="p-5 space-y-5">
+          {/* Invoice Logo Section */}
+          <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-saBlue" />
+                Invoice Header Logo
+              </label>
+              {formData.logo_url && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setFormData((prev) => ({ ...prev, logo_url: '' }))}
+                  className="h-7 px-2 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Remove Custom Logo
+                </Button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              {/* Preview Box */}
+              <div className="h-16 w-44 rounded-xl border border-dashed border-slate-300 bg-white flex items-center justify-center p-2 shadow-2xs overflow-hidden flex-shrink-0">
+                {formData.logo_url ? (
+                  <img
+                    src={formData.logo_url}
+                    alt="Invoice Logo Preview"
+                    className="h-full w-full object-contain"
+                  />
+                ) : (
+                  <div className="bg-[#0276D3] px-3 py-1.5 rounded-lg flex items-center justify-center">
+                    <img
+                      src="/studyasan-logo.png"
+                      alt="Default Logo"
+                      className="h-6 w-auto object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Upload actions & URL */}
+              <div className="flex-1 space-y-2 w-full">
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoFileChange}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={uploadingLogo}
+                    onClick={() => logoInputRef.current?.click()}
+                    className="h-8 text-xs font-bold rounded-lg border-slate-300 hover:bg-slate-100 flex items-center gap-1.5"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-saBlue" />
+                    {uploadingLogo ? 'Uploading Logo...' : formData.logo_url ? 'Change Logo Image' : 'Upload Custom Logo'}
+                  </Button>
+                  <span className="text-[11px] text-slate-400">
+                    PNG, JPG, or SVG recommended
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={formData.logo_url || ''}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, logo_url: e.target.value }))
+                    }
+                    placeholder="Or paste direct image URL (https://...)"
+                    className="h-8 text-xs rounded-lg border-slate-200"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                Organization / Academy Name
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                Organization Title / Business Name *
               </label>
               <Input
                 value={formData.business_name}
@@ -218,6 +352,26 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
                 required
                 className="h-9 text-xs rounded-lg border-slate-200 font-bold text-slate-900"
               />
+              <p className="text-[10px] text-slate-400 mt-1">
+                The primary organization header displayed on all student invoices.
+              </p>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                Organization Subtitle / Tagline
+              </label>
+              <Input
+                value={formData.org_subtitle || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, org_subtitle: e.target.value }))
+                }
+                placeholder="e.g. Center for Academic Excellence & Preparation"
+                className="h-9 text-xs rounded-lg border-slate-200 text-slate-900"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Printed directly below the organization title on the invoice header.
+              </p>
             </div>
 
             <div>
@@ -250,7 +404,7 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="text-[11px] font-bold text-slate-600 block mb-1">
                 Website
               </label>

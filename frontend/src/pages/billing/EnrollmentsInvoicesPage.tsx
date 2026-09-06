@@ -102,6 +102,7 @@ const EnrollmentsInvoicesPage: React.FC = () => {
   const [createEditModalOpen, setCreateEditModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalMode, setDetailModalMode] = useState<'INVOICE' | 'QUOTATION'>('INVOICE');
   const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deletingInvoice, setDeletingInvoice] = useState<Invoice | null>(null);
@@ -558,8 +559,23 @@ const EnrollmentsInvoicesPage: React.FC = () => {
                         <TableCell className="text-right py-3 px-4">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => { setViewingInvoice(inv); setDetailModalOpen(true); }}
-                              title="View"
+                              onClick={() => {
+                                setDetailModalMode('QUOTATION');
+                                setViewingInvoice(inv);
+                                setDetailModalOpen(true);
+                              }}
+                              title="Download / View Fee Quotation"
+                              className="p-1.5 rounded-lg hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
+                            >
+                              <FileText size={15} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setDetailModalMode('INVOICE');
+                                setViewingInvoice(inv);
+                                setDetailModalOpen(true);
+                              }}
+                              title="View Invoice"
                               className="p-1.5 rounded-lg hover:bg-saBlue/10 text-slate-400 hover:text-saBlue transition-colors"
                             >
                               <Eye size={15} />
@@ -687,13 +703,29 @@ const EnrollmentsInvoicesPage: React.FC = () => {
       <CreateEditInvoiceModal
         open={createEditModalOpen}
         onClose={() => { setCreateEditModalOpen(false); setEditingInvoice(null); }}
-        onSuccess={() => { fetchInvoices(); showToast(editingInvoice ? 'Invoice updated' : 'Invoice created'); }}
+        onSuccess={(createdInvoice, downloadImmediately, mode) => {
+          fetchInvoices();
+          showToast(
+            editingInvoice
+              ? 'Invoice updated'
+              : mode === 'QUOTATION'
+              ? 'Fee quotation generated!'
+              : 'Invoice created successfully'
+          );
+          if (createdInvoice && downloadImmediately !== false) {
+            setDetailModalMode(mode || 'INVOICE');
+            setViewingInvoice(createdInvoice);
+            setDetailModalOpen(true);
+          }
+        }}
         editingInvoice={editingInvoice}
       />
       <InvoiceDetailModal
         open={detailModalOpen}
         onClose={() => { setDetailModalOpen(false); setViewingInvoice(null); }}
         invoice={viewingInvoice}
+        initialMode={detailModalMode}
+        autoPrint={detailModalMode === 'QUOTATION'}
       />
       <DeleteConfirmationModal
         open={deleteModalOpen}
