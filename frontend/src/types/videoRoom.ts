@@ -99,6 +99,11 @@ export type DrawingTool =
     | 'table';
 
 /**
+ * Eraser modes: 'object' erases whole stroke/object on touch, 'pixel' precision trims intersecting segments.
+ */
+export type EraserType = 'object' | 'pixel';
+
+/**
  * A single point on the canvas
  */
 export interface Point {

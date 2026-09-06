@@ -155,17 +155,20 @@ export default function WhiteboardPage() {
     if (!activeBoard) return;
     setIsSaving(true);
     try {
-      const res = await whiteboardService.update(activeBoard.id, {
+      await whiteboardService.update(activeBoard.id, {
         strokes,
         thumbnail: thumbnail || null,
       });
-      if (res && res.data) {
-        setActiveBoard(res.data);
-        const nowStr = format(new Date(), 'h:mm a');
-        setLastSavedTime(nowStr);
-        setSaveSuccessMsg(true);
-        setTimeout(() => setSaveSuccessMsg(false), 3000);
-      }
+      // IMPORTANT: Do NOT call setActiveBoard(res.data) here.
+      // Replacing activeBoard changes the `initialStrokes` prop passed to <Whiteboard>,
+      // which triggers useWhiteboard's useEffect([initialStrokes]) to clear and reload
+      // all strokes from the server — wiping erases, deleted objects, new text, images,
+      // and tables that the user has drawn since the last save.
+      // We only need to update the save timestamp UI.
+      const nowStr = format(new Date(), 'h:mm a');
+      setLastSavedTime(nowStr);
+      setSaveSuccessMsg(true);
+      setTimeout(() => setSaveSuccessMsg(false), 3000);
     } catch (err) {
       console.error('Failed to save whiteboard:', err);
     } finally {
@@ -236,7 +239,9 @@ export default function WhiteboardPage() {
       if (res && res.data) {
         setShowEditModal(false);
         if (activeBoard && activeBoard.id === boardToEdit.id) {
-          setActiveBoard(res.data);
+          // Only update the title metadata, not the strokes, to avoid
+          // triggering the initialStrokes reload that wipes local canvas state.
+          setActiveBoard(prev => prev ? { ...prev, title: res.data.title, updated_at: res.data.updated_at } : res.data);
         }
         fetchWhiteboards();
       }

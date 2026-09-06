@@ -38,6 +38,9 @@ import {
     Table as TableIcon,
     Plus,
     Grid,
+    Undo2,
+    Redo2,
+    Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWhiteboard, PEN_THICKNESS_RANGE, PEN_THICKNESS_PRESETS } from '@/hooks/useWhiteboard';
@@ -100,10 +103,19 @@ export function Whiteboard({
         currentColor,
         currentSize,
         currentBoard,
+        eraserType,
+        selectedStrokeId,
+        selectedStroke,
+        canUndo,
+        canRedo,
+        redrawCanvas,
         setTool,
         setColor,
         setSize,
         setBoard,
+        setEraserType,
+        undo,
+        redo,
         clearCanvas,
         clearBoard,
         handlePointerDown,
@@ -126,13 +138,12 @@ export function Whiteboard({
         bringSelectedToFront,
         sendSelectedToBack,
         resetSelectedAspectRatio,
-        selectedStrokeId,
-        selectedStroke,
         getStrokes,
         loadStrokes,
         exportImage,
         getStrokeBoundsForCanvas,
     } = useWhiteboard({ canvasRef, sendMessage, initialStrokes });
+
 
     const [textInput, setTextInput] = useState('');
     const [textPosition, setTextPosition] = useState<{ x: number; y: number } | null>(null);
@@ -140,6 +151,7 @@ export function Whiteboard({
     const [imageUrlInput, setImageUrlInput] = useState('');
     const [showImageDialog, setShowImageDialog] = useState(false);
     const [imageFile, setImageFile] = useState<File | null>(null);
+    const [showEraserMenu, setShowEraserMenu] = useState(false);
     const [showShapeSelector, setShowShapeSelector] = useState(false);
     const [showColorSelector, setShowColorSelector] = useState(false);
     const [showTableDialog, setShowTableDialog] = useState(false);
@@ -158,10 +170,24 @@ export function Whiteboard({
     const textInputRef = useRef<HTMLInputElement>(null);
     const cellInputRef = useRef<HTMLInputElement>(null);
     const isAdvancingRef = useRef(false);
+    const eraserSelectorRef = useRef<HTMLDivElement>(null);
     const shapeSelectorRef = useRef<HTMLDivElement>(null);
     const colorSelectorRef = useRef<HTMLDivElement>(null);
     const imageSelectorRef = useRef<HTMLDivElement>(null);
     const tableSelectorRef = useRef<HTMLDivElement>(null);
+
+    // Close eraser selector when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (eraserSelectorRef.current && !eraserSelectorRef.current.contains(e.target as Node)) {
+                setShowEraserMenu(false);
+            }
+        };
+        if (showEraserMenu) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [showEraserMenu]);
 
     // Delete handler
     useEffect(() => {
@@ -402,7 +428,7 @@ export function Whiteboard({
         setActive(isActive);
     }, [isActive, setActive]);
 
-    // Size canvas to container
+    // Size canvas to container - also redraw strokes after resize since changing canvas dimensions clears the bitmap
     useEffect(() => {
         const resizeCanvas = () => {
             const canvas = canvasRef.current;
@@ -424,12 +450,16 @@ export function Whiteboard({
                 ctx.fillStyle = '#ffffff';
                 ctx.fillRect(0, 0, rect.width, rect.height);
             }
+
+            // Redraw strokes after resize — setting canvas.width/height clears the bitmap
+            setTimeout(redrawCanvas, 0);
         };
 
         resizeCanvas();
         window.addEventListener('resize', resizeCanvas);
         return () => window.removeEventListener('resize', resizeCanvas);
-    }, [isActive]);
+    }, [isActive, redrawCanvas]);
+
 
     if (!isActive) return null;
 
@@ -450,6 +480,30 @@ export function Whiteboard({
 
                     {canEdit && (
                         <>
+                            {/* Undo / Redo Controls */}
+                            <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={undo}
+                                    disabled={!canUndo}
+                                    title="Undo (Ctrl+Z)"
+                                    className="h-7 w-7 p-0 text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                                >
+                                    <Undo2 className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={redo}
+                                    disabled={!canRedo}
+                                    title="Redo (Ctrl+Y)"
+                                    className="h-7 w-7 p-0 text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+                                >
+                                    <Redo2 className="w-3.5 h-3.5" />
+                                </Button>
+                            </div>
+
                             {/* Drawing Tools */}
                             <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                                 <Button
@@ -461,6 +515,7 @@ export function Whiteboard({
                                         setShowTableDialog(false);
                                         setShowShapeSelector(false);
                                         setShowColorSelector(false);
+                                        setShowEraserMenu(false);
                                     }}
                                     title="Select"
                                     className={`h-7 w-7 p-0 ${currentTool === 'select' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
@@ -476,27 +531,113 @@ export function Whiteboard({
                                         setShowTableDialog(false);
                                         setShowShapeSelector(false);
                                         setShowColorSelector(false);
+                                        setShowEraserMenu(false);
                                     }}
                                     title="Pen"
                                     className={`h-7 w-7 p-0 ${currentTool === 'pen' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
                                 >
                                     <Pencil className="w-3.5 h-3.5" />
                                 </Button>
-                                <Button
-                                    variant={currentTool === 'eraser' ? 'default' : 'ghost'}
-                                    size="sm"
-                                    onClick={() => {
-                                        setTool('eraser');
-                                        setShowImageDialog(false);
-                                        setShowTableDialog(false);
-                                        setShowShapeSelector(false);
-                                        setShowColorSelector(false);
-                                    }}
-                                    title="Eraser"
-                                    className={`h-7 w-7 p-0 ${currentTool === 'eraser' ? 'bg-slate-800 hover:bg-slate-700' : ''}`}
-                                >
-                                    <Eraser className="w-3.5 h-3.5" />
-                                </Button>
+
+                                {/* Eraser with Object vs Pixel Mode Selector */}
+                                <div className="relative" ref={eraserSelectorRef}>
+                                    <div className="flex items-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setTool('eraser');
+                                                setShowImageDialog(false);
+                                                setShowTableDialog(false);
+                                                setShowShapeSelector(false);
+                                                setShowColorSelector(false);
+                                            }}
+                                            title={`Eraser (${eraserType === 'pixel' ? 'Pixel Eraser - precision stroke trim' : 'Object Eraser - delete whole object'})`}
+                                            className={`flex items-center gap-0.5 h-7 px-1.5 rounded transition-colors ${
+                                                currentTool === 'eraser'
+                                                    ? 'bg-slate-800 text-white shadow-xs'
+                                                    : 'text-slate-700 hover:bg-slate-100'
+                                            }`}
+                                        >
+                                            <Eraser className="w-3.5 h-3.5" />
+                                            <span
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowEraserMenu(!showEraserMenu);
+                                                    setShowImageDialog(false);
+                                                    setShowTableDialog(false);
+                                                    setShowShapeSelector(false);
+                                                    setShowColorSelector(false);
+                                                }}
+                                                className="p-0.5 hover:bg-white/20 rounded transition-colors cursor-pointer"
+                                                title="Choose Eraser Type"
+                                            >
+                                                <ChevronDown className="w-2.5 h-2.5 opacity-80" />
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {showEraserMenu && (
+                                        <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl p-2 z-[100] min-w-[210px] animate-in fade-in zoom-in-95 duration-150">
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
+                                                Eraser Mode
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEraserType('pixel');
+                                                    setTool('eraser');
+                                                    setShowEraserMenu(false);
+                                                }}
+                                                className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors ${
+                                                    eraserType === 'pixel'
+                                                        ? 'bg-sky-50 text-sky-950 border border-sky-200'
+                                                        : 'hover:bg-slate-50 text-slate-700'
+                                                }`}
+                                            >
+                                                <div className={`mt-0.5 p-1 rounded ${eraserType === 'pixel' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    <Eraser className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-semibold flex items-center justify-between">
+                                                        <span>Pixel Eraser</span>
+                                                        {eraserType === 'pixel' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                        Precision trims strokes & lines where touched
+                                                    </div>
+                                                </div>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setEraserType('object');
+                                                    setTool('eraser');
+                                                    setShowEraserMenu(false);
+                                                }}
+                                                className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors mt-1 ${
+                                                    eraserType === 'object'
+                                                        ? 'bg-sky-50 text-sky-950 border border-sky-200'
+                                                        : 'hover:bg-slate-50 text-slate-700'
+                                                }`}
+                                            >
+                                                <div className={`mt-0.5 p-1 rounded ${eraserType === 'object' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </div>
+                                                <div className="flex-1">
+                                                    <div className="text-xs font-semibold flex items-center justify-between">
+                                                        <span>Object Eraser</span>
+                                                        {eraserType === 'object' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
+                                                    </div>
+                                                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                                        Erases entire stroke, shape, or text on touch
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <Button
                                     variant={currentTool === 'highlight' ? 'default' : 'ghost'}
                                     size="sm"
@@ -506,6 +647,7 @@ export function Whiteboard({
                                         setShowTableDialog(false);
                                         setShowShapeSelector(false);
                                         setShowColorSelector(false);
+                                        setShowEraserMenu(false);
                                     }}
                                     title="Highlight"
                                     className={`h-7 w-7 p-0 ${currentTool === 'highlight' ? 'bg-yellow-400 hover:bg-yellow-500' : ''}`}

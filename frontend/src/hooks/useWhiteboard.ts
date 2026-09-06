@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { DrawingTool, Stroke, Point, WhiteboardMessage } from '@/types/videoRoom';
+import type { DrawingTool, EraserType, Stroke, Point, WhiteboardMessage } from '@/types/videoRoom';
 
 // Pen thickness range configuration
 export const PEN_THICKNESS_RANGE = {
@@ -38,17 +38,49 @@ export interface StrokeBounds {
     height: number;
 }
 
+export type WhiteboardHistoryAction =
+    | {
+          type: 'add';
+          stroke: Stroke;
+      }
+    | {
+          type: 'delete';
+          strokes: Stroke[];
+      }
+    | {
+          type: 'modify';
+          before: Stroke;
+          after: Stroke;
+      }
+    | {
+          type: 'replace';
+          removed: Stroke[];
+          added: Stroke[];
+      }
+    | {
+          type: 'clear';
+          strokes: Stroke[];
+          board?: number;
+      };
+
 interface UseWhiteboardReturn {
     currentTool: DrawingTool;
     currentColor: string;
     currentSize: number;
     currentBoard: number;
+    eraserType: EraserType;
     selectedStrokeId: string | null;
     selectedStroke: Stroke | null;
+    canUndo: boolean;
+    canRedo: boolean;
+    redrawCanvas: () => void;
     setTool: (tool: DrawingTool) => void;
     setColor: (color: string) => void;
     setSize: (size: number) => void;
     setBoard: (board: number, broadcast?: boolean) => void;
+    setEraserType: (type: EraserType) => void;
+    undo: () => void;
+    redo: () => void;
     clearCanvas: () => void;
     clearBoard: (board: number) => void;
     handlePointerDown: (e: React.PointerEvent) => void;
@@ -255,6 +287,143 @@ function isStrokeIntersecting(
     return false;
 }
 
+/**
+ * Pixel Eraser: Cuts intersecting segments out of vector strokes (pen, rainbow, highlight, line, arrow),
+ * splitting them cleanly into remaining sub-strokes.
+ * Returns null if untouched, empty array if completely erased, or array of sub-strokes if split.
+ */
+function splitStrokeByEraser(
+    stroke: Stroke,
+    eraserX: number,
+    eraserY: number,
+    eraserRadius: number,
+    rect: DOMRect
+): Stroke[] | null {
+    if (!stroke.points || stroke.points.length === 0) return null;
+
+    if (!isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
+        return null;
+    }
+
+    // For non-freehand / non-line elements (shapes, text, images, tables), delete the entire object
+    if (!['pen', 'rainbow', 'highlight', 'line', 'arrow'].includes(stroke.tool)) {
+        return [];
+    }
+
+    const strokeSize = stroke.size || 4;
+    const effectiveRadius = eraserRadius + strokeSize / 2;
+    const effectiveRadiusSq = effectiveRadius * effectiveRadius;
+
+    const isInside = (p: Point) => {
+        const dx = p.x * rect.width - eraserX;
+        const dy = p.y * rect.height - eraserY;
+        return dx * dx + dy * dy <= effectiveRadiusSq;
+    };
+
+    // If single point stroke (dot)
+    if (stroke.points.length === 1) {
+        return isInside(stroke.points[0]) ? [] : null;
+    }
+
+    const segments: Point[][] = [];
+    let currentSegment: Point[] = [];
+    const points = stroke.points;
+
+    for (let i = 0; i < points.length; i++) {
+        const pA = points[i];
+        const pA_in = isInside(pA);
+
+        if (i === 0 && !pA_in) {
+            currentSegment.push(pA);
+        }
+
+        if (i < points.length - 1) {
+            const pB = points[i + 1];
+            const pB_in = isInside(pB);
+
+            const pAx = pA.x * rect.width;
+            const pAy = pA.y * rect.height;
+            const pBx = pB.x * rect.width;
+            const pBy = pB.y * rect.height;
+
+            const dx = pBx - pAx;
+            const dy = pBy - pAy;
+            const vx = pAx - eraserX;
+            const vy = pAy - eraserY;
+
+            const a = dx * dx + dy * dy;
+            const b = 2 * (vx * dx + vy * dy);
+            const c = vx * vx + vy * vy - effectiveRadiusSq;
+
+            const validT: number[] = [];
+            if (a > 1e-6) {
+                const disc = b * b - 4 * a * c;
+                if (disc >= 0) {
+                    const sqrtDisc = Math.sqrt(disc);
+                    const t1 = (-b - sqrtDisc) / (2 * a);
+                    const t2 = (-b + sqrtDisc) / (2 * a);
+                    if (t1 > 0.0001 && t1 < 0.9999) validT.push(t1);
+                    if (t2 > 0.0001 && t2 < 0.9999) validT.push(t2);
+                }
+            }
+            validT.sort((n1, n2) => n1 - n2);
+
+            if (!pA_in && pB_in) {
+                const t = validT.length > 0 ? validT[0] : 0.5;
+                const enterPt: Point = {
+                    x: pA.x + t * (pB.x - pA.x),
+                    y: pA.y + t * (pB.y - pA.y),
+                };
+                currentSegment.push(enterPt);
+                if (currentSegment.length >= 2) {
+                    segments.push(currentSegment);
+                }
+                currentSegment = [];
+            } else if (pA_in && !pB_in) {
+                const t = validT.length > 0 ? validT[validT.length - 1] : 0.5;
+                const exitPt: Point = {
+                    x: pA.x + t * (pB.x - pA.x),
+                    y: pA.y + t * (pB.y - pA.y),
+                };
+                currentSegment = [exitPt, pB];
+            } else if (!pA_in && !pB_in) {
+                if (validT.length >= 2) {
+                    const enterPt: Point = {
+                        x: pA.x + validT[0] * (pB.x - pA.x),
+                        y: pA.y + validT[0] * (pB.y - pA.y),
+                    };
+                    const exitPt: Point = {
+                        x: pA.x + validT[1] * (pB.x - pA.x),
+                        y: pA.y + validT[1] * (pB.y - pA.y),
+                    };
+                    currentSegment.push(enterPt);
+                    if (currentSegment.length >= 2) {
+                        segments.push(currentSegment);
+                    }
+                    currentSegment = [exitPt, pB];
+                } else {
+                    currentSegment.push(pB);
+                }
+            } else {
+                // Both inside: do nothing
+            }
+        }
+    }
+
+    if (currentSegment.length >= 2) {
+        segments.push(currentSegment);
+    }
+
+    const newStrokes: Stroke[] = segments.map((segPoints, idx) => ({
+        ...stroke,
+        id: `${stroke.id}_p${Date.now().toString(36)}_${idx}`,
+        points: segPoints,
+        timestamp: Date.now(),
+    }));
+
+    return newStrokes;
+}
+
 export function hydrateStroke(stroke: Stroke): Stroke {
     if (stroke.tool === 'table' && stroke.text && (!stroke.tableRows || !stroke.tableData)) {
         try {
@@ -361,8 +530,32 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     const [currentBoard, setCurrentBoard] = useState(1);
     const currentBoardRef = useRef(1);
     currentBoardRef.current = currentBoard;
+    const [eraserType, setEraserType] = useState<EraserType>('pixel');
     const [isActive, setIsActive] = useState(false);
     const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
+
+    // Undo / Redo history stacks
+    const undoStack = useRef<WhiteboardHistoryAction[]>([]);
+    const redoStack = useRef<WhiteboardHistoryAction[]>([]);
+    const [canUndo, setCanUndo] = useState(false);
+    const [canRedo, setCanRedo] = useState(false);
+
+    const eraserSessionRef = useRef<{ removed: Map<string, Stroke>; added: Map<string, Stroke> } | null>(null);
+    const dragStartStrokeSnapshot = useRef<Stroke | null>(null);
+
+    const updateUndoRedoState = useCallback(() => {
+        setCanUndo(undoStack.current.length > 0);
+        setCanRedo(redoStack.current.length > 0);
+    }, []);
+
+    const pushHistory = useCallback((action: WhiteboardHistoryAction) => {
+        undoStack.current.push(action);
+        if (undoStack.current.length > 80) {
+            undoStack.current.shift();
+        }
+        redoStack.current = [];
+        updateUndoRedoState();
+    }, [updateUndoRedoState]);
 
     const strokes = useRef<Map<string, Stroke>>(new Map());
     const currentStroke = useRef<Stroke | null>(null);
@@ -673,6 +866,163 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         ctx.closePath();
     };
 
+    const undo = useCallback(() => {
+        if (undoStack.current.length === 0) return;
+        const action = undoStack.current.pop()!;
+        redoStack.current.push(action);
+
+        switch (action.type) {
+            case 'add': {
+                strokes.current.delete(action.stroke.id);
+                if (selectedStrokeId === action.stroke.id) {
+                    setSelectedStrokeId(null);
+                }
+                sendMessage({
+                    type: 'delete-strokes',
+                    strokeIds: [action.stroke.id],
+                    timestamp: Date.now(),
+                });
+                break;
+            }
+            case 'delete': {
+                for (const s of action.strokes) {
+                    strokes.current.set(s.id, s);
+                    sendMessage({
+                        type: 'stroke',
+                        data: s,
+                        timestamp: Date.now(),
+                    });
+                }
+                break;
+            }
+            case 'modify': {
+                strokes.current.set(action.before.id, action.before);
+                sendMessage({
+                    type: 'stroke',
+                    data: action.before,
+                    timestamp: Date.now(),
+                });
+                break;
+            }
+            case 'replace': {
+                const addedIds = action.added.map(s => s.id);
+                if (addedIds.length > 0) {
+                    addedIds.forEach(id => strokes.current.delete(id));
+                    sendMessage({
+                        type: 'delete-strokes',
+                        strokeIds: addedIds,
+                        timestamp: Date.now(),
+                    });
+                }
+                for (const s of action.removed) {
+                    strokes.current.set(s.id, s);
+                    sendMessage({
+                        type: 'stroke',
+                        data: s,
+                        timestamp: Date.now(),
+                    });
+                }
+                break;
+            }
+            case 'clear': {
+                for (const s of action.strokes) {
+                    strokes.current.set(s.id, s);
+                    sendMessage({
+                        type: 'stroke',
+                        data: s,
+                        timestamp: Date.now(),
+                    });
+                }
+                break;
+            }
+        }
+
+        updateUndoRedoState();
+        redrawCanvas();
+    }, [selectedStrokeId, sendMessage, redrawCanvas, updateUndoRedoState]);
+
+    const redo = useCallback(() => {
+        if (redoStack.current.length === 0) return;
+        const action = redoStack.current.pop()!;
+        undoStack.current.push(action);
+
+        switch (action.type) {
+            case 'add': {
+                strokes.current.set(action.stroke.id, action.stroke);
+                sendMessage({
+                    type: 'stroke',
+                    data: action.stroke,
+                    timestamp: Date.now(),
+                });
+                break;
+            }
+            case 'delete': {
+                const ids = action.strokes.map(s => s.id);
+                ids.forEach(id => strokes.current.delete(id));
+                if (selectedStrokeId && ids.includes(selectedStrokeId)) {
+                    setSelectedStrokeId(null);
+                }
+                sendMessage({
+                    type: 'delete-strokes',
+                    strokeIds: ids,
+                    timestamp: Date.now(),
+                });
+                break;
+            }
+            case 'modify': {
+                strokes.current.set(action.after.id, action.after);
+                sendMessage({
+                    type: 'stroke',
+                    data: action.after,
+                    timestamp: Date.now(),
+                });
+                break;
+            }
+            case 'replace': {
+                const removedIds = action.removed.map(s => s.id);
+                if (removedIds.length > 0) {
+                    removedIds.forEach(id => strokes.current.delete(id));
+                    sendMessage({
+                        type: 'delete-strokes',
+                        strokeIds: removedIds,
+                        timestamp: Date.now(),
+                    });
+                }
+                for (const s of action.added) {
+                    strokes.current.set(s.id, s);
+                    sendMessage({
+                        type: 'stroke',
+                        data: s,
+                        timestamp: Date.now(),
+                    });
+                }
+                break;
+            }
+            case 'clear': {
+                if (action.board !== undefined) {
+                    for (const s of action.strokes) {
+                        strokes.current.delete(s.id);
+                    }
+                    sendMessage({
+                        type: 'clear-board',
+                        board: action.board,
+                        timestamp: Date.now(),
+                    });
+                } else {
+                    strokes.current.clear();
+                    sendMessage({
+                        type: 'clear',
+                        timestamp: Date.now(),
+                    });
+                }
+                break;
+            }
+        }
+
+        updateUndoRedoState();
+        redrawCanvas();
+    }, [selectedStrokeId, sendMessage, redrawCanvas, updateUndoRedoState]);
+
     const eraseStrokesAtPoint = useCallback((point: Point) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -683,38 +1033,110 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const eraserRadius = Math.max(currentSize * 2, 12);
 
         const strokesArray = Array.from(strokes.current.entries());
-        const strokesIdsToDelete: string[] = [];
-
         const activeBoard = currentBoardRef.current;
-        for (const [strokeId, stroke] of strokesArray) {
-            const strokeBoard = stroke.board || 1;
-            if (strokeBoard !== activeBoard) {
-                continue;
+
+        if (eraserType === 'object') {
+            const strokesIdsToDelete: string[] = [];
+            for (const [strokeId, stroke] of strokesArray) {
+                const strokeBoard = stroke.board || 1;
+                if (strokeBoard !== activeBoard) {
+                    continue;
+                }
+
+                if (isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
+                    strokesIdsToDelete.push(strokeId);
+                    if (eraserSessionRef.current) {
+                        if (eraserSessionRef.current.added.has(strokeId)) {
+                            eraserSessionRef.current.added.delete(strokeId);
+                        } else if (!eraserSessionRef.current.removed.has(strokeId)) {
+                            eraserSessionRef.current.removed.set(strokeId, stroke);
+                        }
+                    }
+                }
             }
 
-            if (isStrokeIntersecting(stroke, eraserX, eraserY, eraserRadius, rect)) {
-                strokesIdsToDelete.push(strokeId);
+            if (strokesIdsToDelete.length > 0) {
+                for (const strokeId of strokesIdsToDelete) {
+                    strokes.current.delete(strokeId);
+                }
+                if (selectedStrokeId && strokesIdsToDelete.includes(selectedStrokeId)) {
+                    setSelectedStrokeId(null);
+                }
+                redrawCanvas();
+                sendMessage({
+                    type: 'delete-strokes',
+                    strokeIds: strokesIdsToDelete,
+                    timestamp: Date.now(),
+                });
             }
-        }
+        } else {
+            // PIXEL ERASER (Precision stroke trimming)
+            const idsToDelete: string[] = [];
+            const strokesToAdd: Stroke[] = [];
 
-        if (strokesIdsToDelete.length > 0) {
-            for (const strokeId of strokesIdsToDelete) {
-                strokes.current.delete(strokeId);
+            for (const [strokeId, stroke] of strokesArray) {
+                const strokeBoard = stroke.board || 1;
+                if (strokeBoard !== activeBoard) {
+                    continue;
+                }
+
+                const splitResult = splitStrokeByEraser(stroke, eraserX, eraserY, eraserRadius, rect);
+                if (splitResult !== null) {
+                    idsToDelete.push(strokeId);
+                    strokesToAdd.push(...splitResult);
+
+                    if (eraserSessionRef.current) {
+                        if (eraserSessionRef.current.added.has(strokeId)) {
+                            eraserSessionRef.current.added.delete(strokeId);
+                        } else if (!eraserSessionRef.current.removed.has(strokeId)) {
+                            eraserSessionRef.current.removed.set(strokeId, stroke);
+                        }
+                    }
+                }
             }
-            if (selectedStrokeId && strokesIdsToDelete.includes(selectedStrokeId)) {
-                setSelectedStrokeId(null);
+
+            if (idsToDelete.length > 0) {
+                for (const id of idsToDelete) {
+                    strokes.current.delete(id);
+                }
+                for (const newStroke of strokesToAdd) {
+                    strokes.current.set(newStroke.id, newStroke);
+                    if (eraserSessionRef.current) {
+                        eraserSessionRef.current.added.set(newStroke.id, newStroke);
+                    }
+                }
+
+                if (selectedStrokeId && idsToDelete.includes(selectedStrokeId)) {
+                    setSelectedStrokeId(null);
+                }
+
+                redrawCanvas();
+
+                sendMessage({
+                    type: 'delete-strokes',
+                    strokeIds: idsToDelete,
+                    timestamp: Date.now(),
+                });
+                for (const newStroke of strokesToAdd) {
+                    sendMessage({
+                        type: 'stroke',
+                        data: newStroke,
+                        timestamp: Date.now(),
+                    });
+                }
             }
-            redrawCanvas();
-            sendMessage({
-                type: 'delete-strokes',
-                strokeIds: strokesIdsToDelete,
-                timestamp: Date.now(),
-            });
         }
-    }, [canvasRef, currentBoard, currentSize, redrawCanvas, selectedStrokeId, sendMessage]);
+    }, [canvasRef, currentSize, eraserType, redrawCanvas, selectedStrokeId, sendMessage]);
 
     const deleteSelected = useCallback(() => {
         if (selectedStrokeId) {
+            const strokeToDelete = strokes.current.get(selectedStrokeId);
+            if (strokeToDelete) {
+                pushHistory({
+                    type: 'delete',
+                    strokes: [{ ...strokeToDelete }],
+                });
+            }
             const idToDelete = selectedStrokeId;
             strokes.current.delete(idToDelete);
             setSelectedStrokeId(null);
@@ -725,7 +1147,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 timestamp: Date.now(),
             });
         }
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const scaleSelected = useCallback((scaleFactor: number) => {
         if (!selectedStrokeId) return;
@@ -735,6 +1157,8 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const bounds = getStrokeBounds(stroke, rect);
         const cx = bounds.minX + bounds.width / 2;
@@ -763,13 +1187,18 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
 
         strokes.current.set(selectedStrokeId, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
             data: stroke,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage, pushHistory]);
 
     const rotateSelected = useCallback((degrees: number = 90) => {
         if (!selectedStrokeId) return;
@@ -779,6 +1208,8 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         const canvas = canvasRef.current;
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         stroke.rotation = ((stroke.rotation || 0) + degrees) % 360;
 
@@ -797,13 +1228,18 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
 
         strokes.current.set(selectedStrokeId, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
             data: stroke,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage, pushHistory]);
 
     const duplicateSelected = useCallback(() => {
         if (!selectedStrokeId) return;
@@ -822,13 +1258,17 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         strokes.current.set(newId, newStroke);
         setSelectedStrokeId(newId);
+        pushHistory({
+            type: 'add',
+            stroke: { ...newStroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
             data: newStroke,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const bringSelectedToFront = useCallback(() => {
         if (!selectedStrokeId) return;
@@ -875,6 +1315,8 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
 
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
+
         const img = loadedImages.current.get(stroke.imageUrl) || new Image();
         if (!img.src) img.src = stroke.imageUrl;
 
@@ -890,6 +1332,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                     { x: bounds.maxX / rect.width, y: newMaxY / rect.height },
                 ];
                 strokes.current.set(selectedStrokeId, stroke);
+                pushHistory({
+                    type: 'modify',
+                    before: strokeBefore,
+                    after: { ...stroke },
+                });
                 redrawCanvas();
                 sendMessage({
                     type: 'stroke',
@@ -904,7 +1351,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         } else {
             img.onload = doReset;
         }
-    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, canvasRef, redrawCanvas, sendMessage, pushHistory]);
 
     const getStrokeBoundsForCanvas = useCallback((stroke: Stroke): StrokeBounds | null => {
         const canvas = canvasRef.current;
@@ -913,9 +1360,19 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     }, [canvasRef]);
 
     const handlePointerUp = useCallback(() => {
-        if ((isDragging.current || resizeHandle.current) && selectedStrokeId) {
+        // 1. Finalize drag or resize transformation
+        if ((isDragging.current || resizeHandle.current) && selectedStrokeId && dragStartStrokeSnapshot.current) {
             const stroke = strokes.current.get(selectedStrokeId);
             if (stroke) {
+                const beforeJson = JSON.stringify(dragStartStrokeSnapshot.current);
+                const afterJson = JSON.stringify(stroke);
+                if (beforeJson !== afterJson) {
+                    pushHistory({
+                        type: 'modify',
+                        before: dragStartStrokeSnapshot.current,
+                        after: { ...stroke },
+                    });
+                }
                 sendMessage({
                     type: 'stroke',
                     data: stroke,
@@ -924,7 +1381,25 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             }
         }
 
+        // 2. Finalize eraser session
+        if (eraserSessionRef.current) {
+            const { removed, added } = eraserSessionRef.current;
+            if (removed.size > 0 || added.size > 0) {
+                pushHistory({
+                    type: 'replace',
+                    removed: Array.from(removed.values()),
+                    added: Array.from(added.values()),
+                });
+            }
+            eraserSessionRef.current = null;
+        }
+
+        // 3. Finalize drawing stroke
         if (currentStroke.current && currentStroke.current.tool !== 'eraser') {
+            pushHistory({
+                type: 'add',
+                stroke: { ...currentStroke.current },
+            });
             sendMessage({
                 type: 'stroke',
                 data: currentStroke.current,
@@ -938,11 +1413,40 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         isDragging.current = false;
         dragStartPoint.current = null;
         dragStartStrokePoints.current = [];
+        dragStartStrokeSnapshot.current = null;
         resizeHandle.current = null;
         resizeStartPoint.current = null;
         resizeStartBounds.current = null;
         resizeStartStrokePoints.current = [];
-    }, [sendMessage, selectedStrokeId]);
+    }, [sendMessage, selectedStrokeId, pushHistory]);
+
+    // Global keyboard listener for Undo (Ctrl+Z / Cmd+Z) and Redo (Ctrl+Y / Ctrl+Shift+Z / Cmd+Shift+Z)
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const target = e.target as HTMLElement | null;
+            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
+                return;
+            }
+
+            const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+            if (isCtrlOrCmd) {
+                if (e.key === 'z' || e.key === 'Z') {
+                    e.preventDefault();
+                    if (e.shiftKey) {
+                        redo();
+                    } else {
+                        undo();
+                    }
+                } else if (e.key === 'y' || e.key === 'Y') {
+                    e.preventDefault();
+                    redo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [undo, redo]);
 
     const handlePointerDown = useCallback((e: React.PointerEvent) => {
         try {
@@ -988,6 +1492,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                             resizeStartPoint.current = point;
                             resizeStartBounds.current = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
                             resizeStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                            dragStartStrokeSnapshot.current = JSON.parse(JSON.stringify(selectedStroke));
                             isDragging.current = false;
                             return;
                         }
@@ -1007,6 +1512,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                             resizeStartPoint.current = point;
                             resizeStartBounds.current = { minX: bounds.minX, minY: bounds.minY, maxX: bounds.maxX, maxY: bounds.maxY };
                             resizeStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                            dragStartStrokeSnapshot.current = JSON.parse(JSON.stringify(selectedStroke));
                             isDragging.current = false;
                             return;
                         }
@@ -1017,6 +1523,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                         isDragging.current = true;
                         dragStartPoint.current = point;
                         dragStartStrokePoints.current = selectedStroke.points.map(p => ({ ...p }));
+                        dragStartStrokeSnapshot.current = JSON.parse(JSON.stringify(selectedStroke));
                         resizeHandle.current = null;
                         return;
                     }
@@ -1060,11 +1567,13 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 const stroke = strokes.current.get(foundStrokeId);
                 if (stroke) {
                     dragStartStrokePoints.current = stroke.points.map(p => ({ ...p }));
+                    dragStartStrokeSnapshot.current = JSON.parse(JSON.stringify(stroke));
                 }
             } else {
                 setSelectedStrokeId(null);
                 isDragging.current = false;
                 resizeHandle.current = null;
+                dragStartStrokeSnapshot.current = null;
             }
             redrawCanvas();
             return;
@@ -1074,6 +1583,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         if (currentTool === 'eraser') {
             isDrawing.current = true;
+            eraserSessionRef.current = {
+                removed: new Map<string, Stroke>(),
+                added: new Map<string, Stroke>(),
+            };
             currentStroke.current = {
                 id: '',
                 tool: 'eraser',
@@ -1363,6 +1876,13 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
     }, [redrawCanvas, selectedStrokeId]);
 
     const clearCanvas = useCallback(() => {
+        const allStrokes = Array.from(strokes.current.values()).map(s => ({ ...s }));
+        if (allStrokes.length > 0) {
+            pushHistory({
+                type: 'clear',
+                strokes: allStrokes,
+            });
+        }
         strokes.current.clear();
         loadedImages.current.clear();
         redrawCanvas();
@@ -1370,17 +1890,26 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             type: 'clear',
             timestamp: Date.now(),
         });
-    }, [redrawCanvas, sendMessage]);
+    }, [redrawCanvas, sendMessage, pushHistory]);
 
     const clearBoard = useCallback((board: number) => {
         const strokesArray = Array.from(strokes.current.entries());
         const deletedIds: string[] = [];
+        const deletedStrokes: Stroke[] = [];
         for (const [strokeId, stroke] of strokesArray) {
             const strokeBoard = stroke.board || 1;
             if (strokeBoard === board) {
                 strokes.current.delete(strokeId);
                 deletedIds.push(strokeId);
+                deletedStrokes.push({ ...stroke });
             }
+        }
+        if (deletedStrokes.length > 0) {
+            pushHistory({
+                type: 'clear',
+                strokes: deletedStrokes,
+                board,
+            });
         }
         if (selectedStrokeId && deletedIds.includes(selectedStrokeId)) {
             setSelectedStrokeId(null);
@@ -1392,7 +1921,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             strokeIds: deletedIds,
             timestamp: Date.now(),
         });
-    }, [redrawCanvas, sendMessage, selectedStrokeId]);
+    }, [redrawCanvas, sendMessage, selectedStrokeId, pushHistory]);
 
     const addTextStroke = useCallback((text: string, position: Point) => {
         const strokeId = generateStrokeId();
@@ -1409,6 +1938,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         };
         strokes.current.set(strokeId, stroke);
         setSelectedStrokeId(strokeId);
+        pushHistory({
+            type: 'add',
+            stroke: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1416,7 +1949,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: activeBoard,
             timestamp: Date.now(),
         });
-    }, [currentColor, currentSize, redrawCanvas, sendMessage]);
+    }, [currentColor, currentSize, redrawCanvas, sendMessage, pushHistory]);
 
     const addImageStroke = useCallback((imageUrl: string, position: Point) => {
         const canvas = canvasRef.current;
@@ -1462,6 +1995,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             strokes.current.set(strokeId, stroke);
             setSelectedStrokeId(strokeId);
             setCurrentTool('select');
+            pushHistory({
+                type: 'add',
+                stroke: { ...stroke },
+            });
             redrawCanvas();
             sendMessage({
                 type: 'stroke',
@@ -1481,7 +2018,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 applyImage(400, 300);
             };
         }
-    }, [canvasRef, redrawCanvas, sendMessage]);
+    }, [canvasRef, redrawCanvas, sendMessage, pushHistory]);
 
     const addTableStroke = useCallback((rows: number = 3, cols: number = 3, position?: Point) => {
         const canvas = canvasRef.current;
@@ -1528,6 +2065,10 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         strokes.current.set(strokeId, stroke);
         setSelectedStrokeId(strokeId);
         setCurrentTool('select');
+        pushHistory({
+            type: 'add',
+            stroke: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1535,11 +2076,13 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: activeBoard,
             timestamp: Date.now(),
         });
-    }, [canvasRef, currentColor, currentSize, redrawCanvas, sendMessage]);
+    }, [canvasRef, currentColor, currentSize, redrawCanvas, sendMessage, pushHistory]);
 
     const updateTableCell = useCallback((strokeId: string, row: number, col: number, text: string) => {
         const stroke = strokes.current.get(strokeId);
         if (!stroke || stroke.tool !== 'table') return;
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const rows = stroke.tableRows || 3;
         const cols = stroke.tableCols || 3;
@@ -1559,6 +2102,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         stroke.text = JSON.stringify({ rows: stroke.tableRows, cols: stroke.tableCols, data });
 
         strokes.current.set(strokeId, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1566,13 +2114,15 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: stroke.board || currentBoardRef.current,
             timestamp: Date.now(),
         });
-    }, [redrawCanvas, sendMessage]);
+    }, [redrawCanvas, sendMessage, pushHistory]);
 
     const addTableRow = useCallback((targetStrokeId?: string) => {
         const id = targetStrokeId || selectedStrokeId;
         if (!id) return;
         const stroke = strokes.current.get(id);
         if (!stroke || stroke.tool !== 'table') return;
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const oldRows = stroke.tableRows || 3;
         if (oldRows >= 15) return;
@@ -1593,6 +2143,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         stroke.text = JSON.stringify({ rows: newRows, cols, data });
         strokes.current.set(id, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1600,13 +2155,15 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: stroke.board || currentBoardRef.current,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const removeTableRow = useCallback((targetStrokeId?: string) => {
         const id = targetStrokeId || selectedStrokeId;
         if (!id) return;
         const stroke = strokes.current.get(id);
         if (!stroke || stroke.tool !== 'table') return;
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const oldRows = stroke.tableRows || 3;
         if (oldRows <= 1) return;
@@ -1627,6 +2184,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         stroke.text = JSON.stringify({ rows: newRows, cols, data });
         strokes.current.set(id, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1634,13 +2196,15 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: stroke.board || currentBoardRef.current,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const addTableCol = useCallback((targetStrokeId?: string) => {
         const id = targetStrokeId || selectedStrokeId;
         if (!id) return;
         const stroke = strokes.current.get(id);
         if (!stroke || stroke.tool !== 'table') return;
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const rows = stroke.tableRows || 3;
         const oldCols = stroke.tableCols || 3;
@@ -1660,6 +2224,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         stroke.text = JSON.stringify({ rows, cols: newCols, data });
         strokes.current.set(id, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1667,13 +2236,15 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: stroke.board || currentBoardRef.current,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const removeTableCol = useCallback((targetStrokeId?: string) => {
         const id = targetStrokeId || selectedStrokeId;
         if (!id) return;
         const stroke = strokes.current.get(id);
         if (!stroke || stroke.tool !== 'table') return;
+
+        const strokeBefore = JSON.parse(JSON.stringify(stroke));
 
         const rows = stroke.tableRows || 3;
         const oldCols = stroke.tableCols || 3;
@@ -1693,6 +2264,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
 
         stroke.text = JSON.stringify({ rows, cols: newCols, data });
         strokes.current.set(id, stroke);
+        pushHistory({
+            type: 'modify',
+            before: strokeBefore,
+            after: { ...stroke },
+        });
         redrawCanvas();
         sendMessage({
             type: 'stroke',
@@ -1700,7 +2276,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             board: stroke.board || currentBoardRef.current,
             timestamp: Date.now(),
         });
-    }, [selectedStrokeId, redrawCanvas, sendMessage]);
+    }, [selectedStrokeId, redrawCanvas, sendMessage, pushHistory]);
 
     const setActive = useCallback((active: boolean) => {
         setIsActive(active);
@@ -1746,7 +2322,11 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         }
     }, [canvasRef]);
 
-    // Initialize from initialStrokes
+    // Initialize from initialStrokes — only re-run when the prop array reference changes (i.e. board data reloaded from server).
+    // IMPORTANT: redrawCanvas is intentionally NOT in the dependency array here.
+    // Adding it would cause strokes.current.clear() to fire whenever the redrawCanvas
+    // callback reference changes (e.g. after selectedStrokeId changes), which would wipe
+    // all locally drawn strokes.
     useEffect(() => {
         if (initialStrokes && Array.isArray(initialStrokes)) {
             strokes.current.clear();
@@ -1761,7 +2341,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             });
             setTimeout(redrawCanvas, 50);
         }
-    }, [initialStrokes, redrawCanvas]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialStrokes]); // Deliberately omit redrawCanvas — see comment above
+
 
     // Redraw when currentBoard changes
     useEffect(() => {
@@ -1790,12 +2372,19 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         currentColor,
         currentSize,
         currentBoard,
+        eraserType,
         selectedStrokeId,
         selectedStroke,
+        canUndo,
+        canRedo,
+        redrawCanvas,
         setTool,
         setColor: setCurrentColor,
         setSize: setCurrentSize,
         setBoard,
+        setEraserType,
+        undo,
+        redo,
         clearCanvas,
         clearBoard,
         handlePointerDown,
