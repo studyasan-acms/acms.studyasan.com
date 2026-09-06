@@ -44,9 +44,9 @@ export default function StudentLiveQuiz({ joinCode, onExit }: Props) {
 
     useEffect(() => {
         if (!isMuted) {
-            playSound('bg-music', { loop: true, volume: 0.3 });
+            playSound('bg-music-playful', { loop: true, volume: 0.15 });
         } else {
-            stopSound('bg-music');
+            stopSound('bg-music-playful');
         }
     }, [isMuted]);
 

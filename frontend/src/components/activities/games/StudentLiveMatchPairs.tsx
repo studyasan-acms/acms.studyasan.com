@@ -7,6 +7,7 @@ import { useSound } from '../../../hooks/useSound';
 import { io, Socket } from 'socket.io-client';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 import MatchPairsGame from '../games/MatchPairsGame'; // We might partially reuse or duplicate logic if props differ significantly
 // Actually, better to duplicate the logic to wrap it in the lobby/socket flow, or wrap the component.
 // Wrapping component is cleaner if MatchPairsGame accepts onComplete/onCancel and we just overlay the Lobby/Finished states?
@@ -51,9 +52,9 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     useEffect(() => {
         if (!isMuted && status === 'IN_PROGRESS') {
-            playSound('bg-music', { loop: true, volume: 0.2 });
+            playSound('bg-music-playful', { loop: true, volume: 0.15 });
         } else {
-            stopSound('bg-music');
+            stopSound('bg-music-playful');
         }
     }, [isMuted, status]);
 
@@ -237,89 +238,75 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     if (status === 'LOBBY') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-                <div className="text-center animate-in fade-in zoom-in duration-500">
-                    <div className="mb-8 relative inline-block">
-                        <div className="absolute inset-0 bg-saBlueLight/30 blur-3xl rounded-full animate-pulse"></div>
-                        <Gamepad2 className="w-24 h-24 text-saVividOrange fill-current relative z-10 animate-bounce" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 -z-10" />
+                <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden mx-4 animate-in zoom-in-95 duration-300">
+                    <div className="w-20 h-20 mx-auto mb-6 bg-blue-50 text-saBlue rounded-3xl flex items-center justify-center animate-bounce border border-blue-100 shadow-sm">
+                        <Gamepad2 className="w-10 h-10" />
                     </div>
-                    <h2 className="text-4xl font-bold mb-4">Match Pairs Live!</h2>
-                    <p className="text-xl text-blue-200">Waiting for host to start...</p>
-                    <div className="mt-8 flex justify-center gap-2">
-                        {[0, 1, 2].map(i => <div key={i} className="w-3 h-3 bg-white rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }}></div>)}
+                    <h2 className="text-3xl font-black text-slate-800 mb-2">Match Pairs Live!</h2>
+                    <p className="text-sm text-slate-500 font-medium mb-6">Waiting for host to start the activity...</p>
+                    <div className="flex justify-center gap-2">
+                        {[0, 1, 2].map(i => (
+                            <div key={i} className="w-3 h-3 bg-saBlue rounded-full animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />
+                        ))}
                     </div>
-                </div>
-                <Button variant="ghost" className="absolute top-4 right-4" onClick={onExit}> <X /> </Button>
+                    <Button variant="ghost" className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700" onClick={onExit}>
+                        <X className="w-5 h-5" />
+                    </Button>
+                </Card>
             </div>
         );
     }
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white">
-                <Card className="gamified-card p-8 md:p-12 text-center max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-                    <Trophy className="w-24 h-24 mx-auto text-saVividOrange mb-6" />
-                    <h2 className="text-4xl font-bold mb-2">Session Ended</h2>
-                    <p className="text-xl text-saBlueLight mb-8">Your Final Score: {Math.round(score)}</p>
-
-                    <div className="bg-slate-800/50 rounded-2xl p-6 mb-8 text-left">
-                        <h3 className="text-lg font-bold mb-4 text-center uppercase tracking-widest text-slate-400">Leaderboard</h3>
-                        <div className="space-y-3">
-                            {leaderboard.length === 0 ? (
-                                <p className="text-center text-slate-500">Wait for final scores...</p>
-                            ) : (
-                                leaderboard.map((s, i) => (
-                                    <div key={s.student_id} className={`p-3 rounded-lg flex items-center justify-between ${i === 0 ? 'bg-saVividOrange/20 border border-saVividOrange/50' : 'bg-slate-700/50'}`}>
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-sm font-bold ${i === 0 ? 'bg-saVividOrange text-slate-950' : 'bg-slate-600'}`}>#{i + 1}</div>
-                                            <span className="font-semibold">{s.name}</span>
-                                        </div>
-                                        <span className="font-bold text-saBlueLight">{s.score}</span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                    <Button onClick={onExit} size="lg" className="btn-3d-primary w-full">Exit</Button>
-                </Card>
-            </div>
+            <VictoryCelebrationModal
+                title="Live Match Complete!"
+                activityTitle="Live Match Pairs"
+                score={Math.round(score)}
+                onContinue={onExit}
+                continueText="Exit Game"
+            />
         );
     }
 
     return (
-        <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full -z-10 bg-[url('/grid.svg')] opacity-20" />
-            <div className="absolute top-[-20%] right-[-10%] w-[50%] h-[50%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-            <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-saBlue/40 blur-[100px] rounded-full" />
+        <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 -z-10" />
+            <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px] -z-10" />
+            <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px] -z-10" />
 
             {/* Header */}
-            <div className="p-3 sm:p-4 flex justify-between items-center bg-black/20 backdrop-blur-md border-b border-white/5 z-20 gap-2">
-                <div className="flex items-center gap-2 sm:gap-4">
-                    <span className="font-bold text-sm sm:text-lg text-saVividOrange whitespace-nowrap">Live Match</span>
+            <div className="p-3 sm:p-5 flex justify-between items-center bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs">
+                <div className="flex items-center gap-3">
+                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-7 sm:h-8 object-contain" />
+                    <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                    <span className="font-black text-sm sm:text-lg uppercase tracking-wider whitespace-nowrap">Live Match Pairs</span>
                     <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full">
                         {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-4">
-                    <div className="flex items-center bg-saVividOrange/10 px-2.5 sm:px-4 py-1 sm:py-2 rounded-full text-saVividOrange border border-saVividOrange/25 text-xs sm:text-sm font-bold">
-                        <Star className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1 sm:mr-2 fill-current" />
-                        <span>{Math.round(score)}</span>
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs sm:text-sm">
+                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 fill-current text-amber-300" />
+                        <span>{Math.round(score)} EXP</span>
                     </div>
-                    <div className="flex items-center bg-saBlueLight/10 px-2.5 sm:px-4 py-1 sm:py-2 rounded-full text-saBlueLight border border-saBlueLight/20 text-xs sm:text-sm font-bold font-mono">
-                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs sm:text-sm font-mono">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
                         <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={onExit} className="p-1.5 sm:p-2"><X className="w-4 h-4 sm:w-5 sm:h-5" /></Button>
+                    <Button variant="ghost" onClick={onExit} className="hover:bg-white/10 text-white p-2 rounded-xl"><X className="w-5 h-5" /></Button>
                 </div>
             </div>
 
             {/* Game Grid */}
-            <div className="flex-1 overflow-y-auto p-2 sm:p-4 md:p-8 relative z-10 w-full max-w-7xl mx-auto flex flex-col">
-                <div className="flex-1 grid grid-cols-2 gap-2 sm:gap-4 md:gap-8 lg:gap-12 h-full">
-                    {/* Left */}
-                    <div className="space-y-2 sm:space-y-4">
-                        <h3 className="text-xs sm:text-lg font-bold text-center text-saBlueLight uppercase tracking-widest border-b border-saBlueLight/30 pb-2">Terms</h3>
-                        <div className="grid gap-2 sm:gap-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 relative z-10 w-full max-w-6xl mx-auto flex flex-col">
+                <div className="flex-1 grid grid-cols-2 gap-4 sm:gap-6 md:gap-8 h-full">
+                    {/* Left: Terms */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs sm:text-sm font-black text-center text-saBlue uppercase tracking-widest border-b border-slate-200 pb-2">Terms</h3>
+                        <div className="grid gap-2.5 sm:gap-3">
                             {leftItems.map((pair, index) => {
                                 const isSelected = selectedLeft === index;
                                 const isMatched = matched.has(`L${index}`);
@@ -328,24 +315,26 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         key={index}
                                         onClick={() => handleLeftClick(index)}
                                         disabled={isMatched}
-                                        className={`btn-3d w-full min-h-[3rem] sm:min-h-[4rem] p-2 sm:p-4 text-left rounded-lg sm:rounded-xl transition-all duration-300 flex items-center gap-1.5 sm:gap-4 group 
-                                        ${isMatched
-                                                ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
+                                        className={`w-full min-h-[3.5rem] sm:min-h-[4.5rem] p-3 sm:p-4 text-left rounded-2xl border-2 transition-all duration-200 flex items-center gap-3 ${
+                                            isMatched
+                                                ? 'opacity-40 grayscale cursor-not-allowed bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-[1.01] ring-2 sm:ring-4 ring-saBlueLight/30 z-10'
-                                                    : 'btn-3d-neutral hover:scale-[1.01]'}`}
+                                                ? 'bg-blue-50 border-saBlue text-saBlue font-black shadow-md scale-[1.02]'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:scale-[1.01] shadow-xs'
+                                        }`}
                                     >
-                                        {pair.imageLeft && <img src={pair.imageLeft} alt="" className="w-7 h-7 sm:w-12 sm:h-12 object-cover rounded bg-black/30 shrink-0" />}
-                                        <span className={`text-xs sm:text-base font-bold break-words leading-tight ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.left}</span>
+                                        {pair.imageLeft && <img src={pair.imageLeft} alt="" className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded-xl bg-slate-100 shrink-0" />}
+                                        <span className={`text-xs sm:text-sm font-bold leading-snug ${isMatched ? 'line-through text-emerald-700' : 'text-slate-800'}`}>{pair.left}</span>
                                     </button>
                                 );
                             })}
                         </div>
                     </div>
-                    {/* Right */}
-                    <div className="space-y-2 sm:space-y-4">
-                        <h3 className="text-xs sm:text-lg font-bold text-center text-saVividOrange uppercase tracking-widest border-b border-saVividOrange/30 pb-2">Definitions</h3>
-                        <div className="grid gap-2 sm:gap-4">
+
+                    {/* Right: Definitions */}
+                    <div className="space-y-3">
+                        <h3 className="text-xs sm:text-sm font-black text-center text-saVividOrange uppercase tracking-widest border-b border-slate-200 pb-2">Definitions</h3>
+                        <div className="grid gap-2.5 sm:gap-3">
                             {rightItems.map((pair, index) => {
                                 const isSelected = selectedRight === index;
                                 const isMatched = matched.has(`R${index}`);
@@ -355,22 +344,23 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                                         key={index}
                                         onClick={() => handleRightClick(index)}
                                         disabled={isMatched || !isVisible}
-                                        className={`btn-3d w-full min-h-[3rem] sm:min-h-[4rem] p-2 sm:p-4 text-left rounded-lg sm:rounded-xl transition-all duration-300 flex items-center gap-1.5 sm:gap-4 group 
-                                        ${isMatched
-                                                ? 'opacity-50 grayscale cursor-not-allowed bg-green-500/20 border-green-500/50'
+                                        className={`w-full min-h-[3.5rem] sm:min-h-[4.5rem] p-3 sm:p-4 text-left rounded-2xl border-2 transition-all duration-200 flex items-center gap-3 ${
+                                            isMatched
+                                                ? 'opacity-40 grayscale cursor-not-allowed bg-emerald-50 border-emerald-300 text-emerald-700 font-bold'
                                                 : isSelected
-                                                    ? 'btn-3d-primary scale-[1.01] ring-2 sm:ring-4 ring-saVividOrange/30 z-10'
-                                                    : !isVisible
-                                                        ? 'bg-slate-800/50 border-slate-700 text-slate-500 cursor-not-allowed'
-                                                        : 'bg-slate-700 border-b-4 border-slate-900 text-slate-100 hover:bg-slate-600 hover:scale-[1.01] shadow-lg'}`}
+                                                ? 'bg-amber-50 border-amber-500 text-amber-900 font-black shadow-md scale-[1.02]'
+                                                : !isVisible
+                                                ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                                : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:scale-[1.01] shadow-xs'
+                                        }`}
                                     >
                                         {isVisible ? (
                                             <>
-                                                {pair.imageRight && <img src={pair.imageRight} alt="" className="w-7 h-7 sm:w-12 sm:h-12 object-cover rounded bg-black/30 shrink-0" />}
-                                                <span className={`text-xs sm:text-base font-bold break-words leading-tight ${isMatched ? 'text-green-400 line-through' : 'text-white'}`}>{pair.right}</span>
+                                                {pair.imageRight && <img src={pair.imageRight} alt="" className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded-xl bg-slate-100 shrink-0" />}
+                                                <span className={`text-xs sm:text-sm font-bold leading-snug ${isMatched ? 'line-through text-emerald-700' : 'text-slate-800'}`}>{pair.right}</span>
                                             </>
                                         ) : (
-                                            <div className="w-full flex justify-center"><span className="text-base sm:text-xl font-bold text-slate-600">?</span></div>
+                                            <div className="w-full flex justify-center"><span className="text-base sm:text-xl font-black text-slate-300">?</span></div>
                                         )}
                                     </button>
                                 );

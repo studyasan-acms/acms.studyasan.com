@@ -4,8 +4,9 @@ import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import { activityAttemptAPI } from '../../../services/activity.service';
 import confetti from 'canvas-confetti';
-import { X, Trophy, Clock, Star, Volume2, VolumeX, RotateCcw } from 'lucide-react';
+import { X, Trophy, Clock, Star, Volume2, VolumeX, RotateCcw, Crown } from 'lucide-react';
 import { useSound } from '../../../hooks/useSound';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 
 interface Props {
     activity: Activity;
@@ -56,9 +57,25 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
     const [capturedPieces, setCapturedPieces] = useState<{ white: ChessPiece[], black: ChessPiece[] }>({ white: [], black: [] });
     const [isComputerThinking, setIsComputerThinking] = useState(false);
 
-    // Level progression state
-    const [currentLevel, setCurrentLevel] = useState(1);
+    // Level progression state with localStorage persistence
+    const [unlockedLevel, setUnlockedLevel] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem(`studyasan_chess_unlocked_${activity.id}`);
+            return saved ? Math.max(1, parseInt(saved, 10) || 1) : 1;
+        } catch {
+            return 1;
+        }
+    });
+    const [currentLevel, setCurrentLevel] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem(`studyasan_chess_level_${activity.id}`);
+            return saved ? Math.max(1, parseInt(saved, 10) || 1) : 1;
+        } catch {
+            return 1;
+        }
+    });
     const [showLevelUp, setShowLevelUp] = useState(false);
+    const [levelUpCountdown, setLevelUpCountdown] = useState<number>(5);
 
     // Get game settings from activity
     const chessConfig = activity.items?.[0]?.content || {};
@@ -69,6 +86,32 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     const { playSound, stopSound, stopAll } = useSound();
 
+    // Winning graphics stay on screen for 5s countdown, then auto-advances to the next level
+    useEffect(() => {
+        if (!showLevelUp) {
+            setLevelUpCountdown(5);
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setLevelUpCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [showLevelUp]);
+
+    useEffect(() => {
+        if (showLevelUp && levelUpCountdown === 0) {
+            handleNextLevel();
+        }
+    }, [showLevelUp, levelUpCountdown]);
+
     useEffect(() => {
         const timer = setInterval(() => setTimeElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
         return () => clearInterval(timer);
@@ -76,9 +119,9 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     useEffect(() => {
         if (!isMuted) {
-            playSound('bg-music', { loop: true, volume: 0.3 });
+            playSound('bg-music-zen', { loop: true, volume: 0.15 });
         } else {
-            stopSound('bg-music');
+            stopSound('bg-music-zen');
         }
         return () => stopAll();
     }, [isMuted]);
@@ -183,99 +226,68 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
         return values[type];
     };
 
-    const executeMove = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-        const newBoard = board.map(r => [...r]);
-        const capturedPiece = newBoard[toRow][toCol];
-        const movingPiece = newBoard[fromRow][fromCol];
-
-        if (!movingPiece) return;
-
-        newBoard[toRow][toCol] = movingPiece;
-        newBoard[fromRow][fromCol] = null;
-
-        // Handle captured pieces
-        if (capturedPiece) {
-            const newCaptured = { ...capturedPieces };
-            // Add to the list of the player who CAPTURED the piece
-            newCaptured[movingPiece.color].push(capturedPiece);
-            setCapturedPieces(newCaptured);
-
-            // Only add score if player captures
-            if (movingPiece.color === 'white') {
-                const points = getPieceValue(capturedPiece.type);
-                setScore(score + points);
-                playSound('correct');
-                confetti({
-                    particleCount: 30,
-                    spread: 50,
-                    origin: { y: 0.6 }
-                });
+    const findKing = (currentBoard: Board, color: PieceColor): [number, number] | null => {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = currentBoard[r][c];
+                if (piece && piece.type === 'king' && piece.color === color) {
+                    return [r, c];
+                }
             }
+        }
+        return null;
+    };
 
-            // Check for checkmate (simplified - capture king)
-            if (capturedPiece.type === 'king') {
-                if (vsComputer) {
-                    if (movingPiece.color === 'white') {
-                        // White captured Black King: Level Cleared!
-                        const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
-                        
-                        if (isFinalLevel) {
-                            handleComplete(score + getPieceValue('king') + pointsPerLevel);
-                        } else {
-                            // Level cleared transition!
-                            playSound('correct');
-                            setShowLevelUp(true);
+    const isSquareUnderAttack = (boardToTest: Board, targetRow: number, targetCol: number, attackerColor: PieceColor): boolean => {
+        for (let r = 0; r < 8; r++) {
+            for (let c = 0; c < 8; c++) {
+                const piece = boardToTest[r][c];
+                if (piece && piece.color === attackerColor) {
+                    if (piece.type === 'pawn') {
+                        const direction = attackerColor === 'white' ? -1 : 1;
+                        if (targetRow === r + direction && Math.abs(targetCol - c) === 1) {
+                            return true;
                         }
                     } else {
-                        // CPU captured White King: Game Over!
-                        playSound('game-over');
-                        onComplete(score, Math.floor((Date.now() - startTime) / 1000));
+                        if (isValidMove(r, c, targetRow, targetCol, boardToTest, attackerColor)) {
+                            return true;
+                        }
                     }
-                } else {
-                    // Pass & Play (vs Teacher): Match completes immediately on king capture
-                    playSound('game-over');
-                    handleComplete(score + getPieceValue('king') + pointsPerLevel);
                 }
-                return;
             }
-        } else {
-            if (movingPiece.color === 'white') playSound('click');
         }
-
-        setBoard(newBoard);
-        setCurrentPlayer(movingPiece.color === 'white' ? 'black' : 'white');
-        setMoveCount(prev => prev + 1);
-        setSelectedSquare(null);
-
-        // Submit move
-        submitResponse({ from: [fromRow, fromCol], to: [toRow, toCol] }, true);
+        return false;
     };
 
-    const handleNextLevel = () => {
-        // Increment level and score
-        setCurrentLevel(prev => prev + 1);
-        setScore(prev => prev + pointsPerLevel);
-        
-        // Reset board for next level
-        setBoard(initializeBoard());
-        setSelectedSquare(null);
-        setCurrentPlayer('white');
-        setMoveCount(0);
-        setCapturedPieces({ white: [], black: [] });
-        setShowLevelUp(false);
+    const isKingInCheck = (boardToTest: Board, kingColor: PieceColor): boolean => {
+        const kingPos = findKing(boardToTest, kingColor);
+        if (!kingPos) return true; // Missing king is considered checked/lost
+        const opponentColor: PieceColor = kingColor === 'white' ? 'black' : 'white';
+        return isSquareUnderAttack(boardToTest, kingPos[0], kingPos[1], opponentColor);
     };
 
-    const getAllValidMoves = (currentBoard: Board, color: PieceColor) => {
+    const isLegalMove = (fromRow: number, fromCol: number, toRow: number, toCol: number, currentBoard = board, player = currentPlayer): boolean => {
+        if (!isValidMove(fromRow, fromCol, toRow, toCol, currentBoard, player)) return false;
+
+        // Simulate move on a temporary board
+        const tempBoard: Board = currentBoard.map(row => row.map(cell => cell ? { ...cell } : null));
+        tempBoard[toRow][toCol] = tempBoard[fromRow][fromCol];
+        tempBoard[fromRow][fromCol] = null;
+
+        // Player cannot make a move that leaves their own king in check
+        return !isKingInCheck(tempBoard, player);
+    };
+
+    const getAllLegalMoves = (currentBoard: Board, color: PieceColor) => {
         const moves: { from: [number, number], to: [number, number], score: number }[] = [];
 
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
                 const piece = currentBoard[r][c];
                 if (piece && piece.color === color) {
-                    // Check all possible squares
                     for (let tr = 0; tr < 8; tr++) {
                         for (let tc = 0; tc < 8; tc++) {
-                            if (isValidMove(r, c, tr, tc, currentBoard, color)) {
+                            if (isLegalMove(r, c, tr, tc, currentBoard, color)) {
                                 let moveScore = 0;
                                 const targetPiece = currentBoard[tr][tc];
 
@@ -284,7 +296,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                     moveScore += getPieceValue(targetPiece.type);
                                 }
 
-                                // Center control bonus (very simple)
+                                // Center control bonus
                                 if ((tr === 3 || tr === 4) && (tc === 3 || tc === 4)) {
                                     moveScore += 5;
                                 }
@@ -303,9 +315,164 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
         return moves;
     };
 
+    const isCheckmate = (currentBoard: Board, color: PieceColor): boolean => {
+        if (!isKingInCheck(currentBoard, color)) return false;
+        return getAllLegalMoves(currentBoard, color).length === 0;
+    };
+
+    const executeMove = (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
+        const newBoard: Board = board.map(r => r.map(cell => cell ? { ...cell } : null));
+        const movingPiece = newBoard[fromRow][fromCol];
+        const capturedPiece = newBoard[toRow][toCol];
+
+        if (!movingPiece) return;
+
+        // Pawn promotion to Queen
+        if (movingPiece.type === 'pawn') {
+            if (movingPiece.color === 'white' && toRow === 0) {
+                movingPiece.type = 'queen';
+            } else if (movingPiece.color === 'black' && toRow === 7) {
+                movingPiece.type = 'queen';
+            }
+        }
+
+        newBoard[toRow][toCol] = movingPiece;
+        newBoard[fromRow][fromCol] = null;
+
+        // Handle captured pieces
+        if (capturedPiece) {
+            const newCaptured = { ...capturedPieces };
+            newCaptured[movingPiece.color] = [...newCaptured[movingPiece.color], capturedPiece];
+            setCapturedPieces(newCaptured);
+
+            if (movingPiece.color === 'white') {
+                const points = getPieceValue(capturedPiece.type);
+                setScore(prev => prev + points);
+                playSound('correct');
+                confetti({
+                    particleCount: 25,
+                    spread: 45,
+                    origin: { y: 0.6 }
+                });
+            }
+        } else {
+            if (movingPiece.color === 'white') playSound('click');
+        }
+
+        setBoard(newBoard);
+        setMoveCount(prev => prev + 1);
+        setSelectedSquare(null);
+
+        // Submit move
+        submitResponse({ from: [fromRow, fromCol], to: [toRow, toCol] }, true);
+
+        // AUTO-DETECT CHECKMATE AFTER MOVE!
+        if (movingPiece.color === 'white') {
+            const blackKingMissing = !findKing(newBoard, 'black');
+            const blackInCheck = isKingInCheck(newBoard, 'black');
+            const blackLegalMoves = getAllLegalMoves(newBoard, 'black');
+            const blackNoMoves = blackLegalMoves.length === 0;
+            const blackKingCaptured = capturedPiece?.type === 'king' && capturedPiece?.color === 'black';
+
+            if (blackKingMissing || (blackInCheck && blackNoMoves) || blackNoMoves || blackKingCaptured) {
+                // AUTO-DETECTED CHECKMATE / VICTORY!
+                handleLevelClear(getPieceValue('king'));
+                return;
+            }
+
+            setCurrentPlayer('black');
+        } else {
+            const whiteKingMissing = !findKing(newBoard, 'white');
+            const whiteInCheck = isKingInCheck(newBoard, 'white');
+            const whiteLegalMoves = getAllLegalMoves(newBoard, 'white');
+            const whiteNoMoves = whiteLegalMoves.length === 0;
+            const whiteKingCaptured = capturedPiece?.type === 'king' && capturedPiece?.color === 'white';
+
+            if (whiteKingMissing || (whiteInCheck && whiteNoMoves) || whiteNoMoves || whiteKingCaptured) {
+                // CPU checkmated White
+                playSound('game-over');
+                onComplete(score, Math.floor((Date.now() - startTime) / 1000));
+                return;
+            }
+
+            setCurrentPlayer('white');
+        }
+    };
+
+    const handleLevelClear = (extraPoints = 0) => {
+        playSound('game-over');
+        confetti({
+            particleCount: 160,
+            spread: 90,
+            origin: { y: 0.5 }
+        });
+
+        const bonus = pointsPerLevel + extraPoints;
+        const newScore = score + bonus;
+        setScore(newScore);
+
+        const nextLvl = currentLevel + 1;
+        setUnlockedLevel(prev => {
+            const updated = Math.max(prev, nextLvl);
+            try {
+                localStorage.setItem(`studyasan_chess_unlocked_${activity.id}`, String(updated));
+            } catch { }
+            return updated;
+        });
+        try {
+            localStorage.setItem(`studyasan_chess_level_${activity.id}`, String(nextLvl));
+        } catch { }
+
+        submitResponse({ level: currentLevel, cleared: true, totalScore: newScore }, true);
+
+        const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
+        if (isFinalLevel) {
+            handleComplete(newScore);
+        } else {
+            setShowLevelUp(true);
+            setLevelUpCountdown(5); // Winning graphics appear for 5s then auto-advance to Level 2
+        }
+    };
+
+    const handleNextLevel = () => {
+        setShowLevelUp(false);
+        const nextLvl = currentLevel + 1;
+        setCurrentLevel(nextLvl);
+        try {
+            localStorage.setItem(`studyasan_chess_level_${activity.id}`, String(nextLvl));
+        } catch { }
+
+        // Reset board for next level cleanly
+        setBoard(initializeBoard());
+        setSelectedSquare(null);
+        setCurrentPlayer('white');
+        setMoveCount(0);
+        setCapturedPieces({ white: [], black: [] });
+    };
+
+    const switchLevel = (targetLevel: number) => {
+        if (targetLevel > unlockedLevel) return;
+        setShowLevelUp(false);
+        if (targetLevel === currentLevel) return;
+        setCurrentLevel(targetLevel);
+        try {
+            localStorage.setItem(`studyasan_chess_level_${activity.id}`, String(targetLevel));
+        } catch { }
+        setBoard(initializeBoard());
+        setSelectedSquare(null);
+        setCurrentPlayer('white');
+        setMoveCount(0);
+        setCapturedPieces({ white: [], black: [] });
+        playSound('click');
+    };
+
     const makeComputerMove = () => {
-        const possibleMoves = getAllValidMoves(board, 'black');
-        if (possibleMoves.length === 0) return; // No moves (mate or stalemate)
+        const possibleMoves = getAllLegalMoves(board, 'black');
+        if (possibleMoves.length === 0) {
+            // Checkmate or Stalemate: Black has no legal moves! White wins!
+            handleLevelClear(getPieceValue('king'));
+            return;
+        }
 
         let selectedMove;
         const rand = Math.random();
@@ -358,8 +525,11 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
         if (selectedSquare) {
             const [fromRow, fromCol] = selectedSquare;
 
-            if (isValidMove(fromRow, fromCol, row, col)) {
+            if (isLegalMove(fromRow, fromCol, row, col, board, currentPlayer)) {
                 executeMove(fromRow, fromCol, row, col);
+            } else if (board[row][col]?.color === currentPlayer) {
+                setSelectedSquare([row, col]);
+                playSound('click');
             } else {
                 setSelectedSquare(null);
             }
@@ -374,6 +544,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
             }
         }
     };
+
 
     const handleComplete = (finalScore: number) => {
         const timeTaken = Math.floor((Date.now() - startTime) / 1000);
@@ -417,20 +588,14 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     if (showCelebration) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
-                <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
-                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
-                    <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-                    <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Checkmate!</h2>
-                    <p className="text-lg text-slate-500 mb-4 relative z-15 font-bold uppercase tracking-wider">Match Complete</p>
-                    <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
-                    <div className="flex justify-center gap-4 relative z-10">
-                        {[...Array(3)].map((_, i) => (
-                            <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
-                        ))}
-                    </div>
-                </Card>
-            </div>
+            <VictoryCelebrationModal
+                title="Checkmate!"
+                activityTitle={activity.title || 'Chess Master Challenge'}
+                score={Math.round(score)}
+                timeTaken={timeElapsed}
+                onContinue={() => onComplete(score, timeElapsed)}
+                continueText="Finish & Claim Rewards"
+            />
         );
     }
 
@@ -464,7 +629,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
                 {/* Soft Grid Pattern */}
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40" />
-                
+
                 {/* Colorful Blurred Glowing Blobs */}
                 <div className="absolute -top-[10%] -left-[10%] w-[45%] h-[45%] rounded-full bg-saBlue/10 blur-[120px]" />
                 <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px]" />
@@ -474,11 +639,11 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                 {/* Circles */}
                 <div className="absolute w-12 h-12 rounded-full border-2 border-saBlue/15 animate-float-slow" style={{ top: '15%', left: '8%' }} />
                 <div className="absolute w-8 h-8 rounded-full border-2 border-blue-400/20 animate-float-fast" style={{ top: '55%', left: '4%' }} />
-                
+
                 {/* Squares */}
                 <div className="absolute w-10 h-10 border-2 border-blue-400/20 rounded-lg animate-float-fast" style={{ top: '12%', right: '12%' }} />
                 <div className="absolute w-14 h-14 border-2 border-saVividOrange/15 rounded-xl animate-float-medium" style={{ top: '48%', left: '88%' }} />
-                
+
                 {/* Triangles */}
                 <svg className="absolute w-14 h-14 text-saVividOrange/15 animate-float-medium" style={{ top: '75%', left: '12%' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <polygon points="12 2 22 22 2 22" />
@@ -487,36 +652,6 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                     <polygon points="12 2 22 22 2 22" />
                 </svg>
             </div>
-            {/* Level Cleared Transition Overlay */}
-            {showLevelUp && (
-                <div className="absolute inset-0 z-45 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-                    <Card className="gamified-card p-10 text-center relative overflow-hidden max-w-sm mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl">
-                        <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5" />
-                        <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-5 animate-bounce relative z-10" />
-                        <h2 className="text-3xl font-black mb-1.5 relative z-10 text-slate-800">Level {currentLevel} Cleared!</h2>
-                        <p className="text-xs text-slate-400 mb-5 relative z-10 font-bold uppercase tracking-wider">Enemy King Captured</p>
-                        
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6 relative z-10 space-y-2">
-                            <div className="flex justify-between items-center text-xs font-semibold">
-                                <span className="text-slate-505">Level Clear Bonus:</span>
-                                <span className="text-saVividOrange font-bold">+{pointsPerLevel} EXP</span>
-                            </div>
-                            <div className="h-px bg-slate-200/60" />
-                            <div className="flex justify-between items-center text-xs font-semibold">
-                                <span className="text-slate-550 font-bold">Total EXP:</span>
-                                <span className="text-saBlue font-bold">{Math.round(score + pointsPerLevel)} EXP</span>
-                            </div>
-                        </div>
-
-                        <Button 
-                            onClick={handleNextLevel} 
-                            className="w-full h-11 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold text-sm tracking-wide shadow-md shadow-blue-500/20 relative z-10"
-                        >
-                            Next Level (Level {currentLevel + 1})
-                        </Button>
-                    </Card>
-                </div>
-            )}
 
             {/* Header */}
             <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
@@ -549,7 +684,18 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                     <Button variant="ghost" onClick={resetGame} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
                         <RotateCcw className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            if (score > 0 || currentLevel > 1) {
+                                handleComplete(score);
+                            } else {
+                                onCancel();
+                            }
+                        }}
+                        className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors"
+                        title={score > 0 ? "Save & Exit" : "Exit"}
+                    >
                         <X className="w-5 h-5" />
                     </Button>
                 </div>
@@ -558,7 +704,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-                    
+
                     {/* Left Column: Instructions & Black Captured */}
                     <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
                         {/* Instructions Card */}
@@ -571,17 +717,17 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
                         {/* Captured pieces by Black (White pieces captured) */}
                         <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <h3 className="text-xs font-black mb-3 text-slate-400 uppercase tracking-wider text-center">Black Captured</h3>
-                          <div className="flex flex-wrap gap-1.5 justify-center min-h-[40px]">
-                              {capturedPieces.white.map((piece, i) => (
-                                  <span key={i} className="text-2xl text-black drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">
-                                      {pieceSymbols[piece.color][piece.type]}
-                                  </span>
-                              ))}
-                              {capturedPieces.white.length === 0 && (
-                                  <span className="text-xs text-slate-350 italic self-center">None</span>
-                              )}
-                          </div>
+                            <h3 className="text-xs font-black mb-3 text-slate-400 uppercase tracking-wider text-center">Black Captured</h3>
+                            <div className="flex flex-wrap gap-1.5 justify-center min-h-[40px]">
+                                {capturedPieces.white.map((piece, i) => (
+                                    <span key={i} className="text-2xl text-black drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">
+                                        {pieceSymbols[piece.color][piece.type]}
+                                    </span>
+                                ))}
+                                {capturedPieces.white.length === 0 && (
+                                    <span className="text-xs text-slate-350 italic self-center">None</span>
+                                )}
+                            </div>
                         </Card>
                     </div>
 
@@ -591,11 +737,21 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                             <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 shadow-xs">
                                 <span className={`w-3 h-3 rounded-full border border-slate-400 ${currentPlayer === 'white' ? 'bg-white' : 'bg-slate-800'}`} />
                                 <span className="text-xs font-bold text-slate-700">
-                                    {vsComputer 
-                                      ? (currentPlayer === 'white' ? 'YOUR TURN' : 'COMPUTER THINKING...') 
-                                      : `${currentPlayer.toUpperCase()}'s TURN`}
+                                    {vsComputer
+                                        ? (currentPlayer === 'white' ? 'YOUR TURN' : 'COMPUTER THINKING...')
+                                        : `${currentPlayer.toUpperCase()}'s TURN`}
                                 </span>
                                 {isComputerThinking && vsComputer && <span className="w-1.5 h-1.5 bg-saVividOrange rounded-full animate-ping" />}
+                                {board.length > 0 && isKingInCheck(board, 'white') && (
+                                    <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-black uppercase tracking-wider animate-pulse">
+                                        CHECK!
+                                    </span>
+                                )}
+                                {board.length > 0 && isKingInCheck(board, 'black') && (
+                                    <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider animate-pulse">
+                                        OPPONENT CHECKED!
+                                    </span>
+                                )}
                             </div>
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
                                 {vsComputer ? `Moves: ${moveCount} · Level ${currentLevel}` : `Moves: ${moveCount} · Face-to-Face Match`}
@@ -610,15 +766,18 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                             {row.map((piece, colIndex) => {
                                                 const isLight = (rowIndex + colIndex) % 2 === 0;
                                                 const isSelected = selectedSquare && selectedSquare[0] === rowIndex && selectedSquare[1] === colIndex;
+                                                const isLegalDestination = selectedSquare && isLegalMove(selectedSquare[0], selectedSquare[1], rowIndex, colIndex);
+                                                const isKingChecked = piece?.type === 'king' && isKingInCheck(board, piece.color);
 
                                                 return (
                                                     <div
                                                         key={`${rowIndex}-${colIndex}`}
                                                         className={`
-                                                            w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center
+                                                            relative w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center
                                                             cursor-pointer transition-all duration-200 text-xl xs:text-2xl sm:text-3xl md:text-4xl select-none
                                                             ${isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'}
-                                                            ${isSelected ? 'ring-4 ring-saBlueLight ring-inset' : ''}
+                                                            ${isSelected ? 'ring-4 ring-saBlue ring-inset z-10' : ''}
+                                                            ${isKingChecked ? 'ring-4 ring-rose-500 ring-inset bg-rose-500/25 animate-pulse z-10' : ''}
                                                             hover:brightness-105
                                                         `}
                                                         onClick={() => {
@@ -632,9 +791,16 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                                             }
                                                         }}
                                                     >
+                                                        {/* Legal move indicator dot or capture ring */}
+                                                        {isLegalDestination && !piece && (
+                                                            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-saBlue/50 pointer-events-none" />
+                                                        )}
+                                                        {isLegalDestination && piece && (
+                                                            <div className="absolute inset-0.5 rounded-sm border-2 border-rose-500/80 pointer-events-none animate-pulse" />
+                                                        )}
                                                         {piece && (
                                                             <span className={`
-                                                                select-none
+                                                                select-none relative z-10
                                                                 ${piece.color === 'white'
                                                                     ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] filter brightness-125'
                                                                     : 'text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]'}
@@ -660,34 +826,33 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                 <>
                                     <h3 className="text-xs font-black mb-3 text-saVividOrange uppercase tracking-wider">Level Progression</h3>
                                     <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 flex-1">
-                                        {[...Array(totalLevels || 8)].map((_, i) => {
+                                        {[...Array(Math.max(totalLevels || 8, unlockedLevel))].map((_, i) => {
                                             const lvlNum = i + 1;
                                             const isActive = lvlNum === currentLevel;
                                             const isCleared = lvlNum < currentLevel;
+                                            const isUnlocked = lvlNum <= unlockedLevel;
                                             return (
-                                                <div 
-                                                    key={lvlNum} 
-                                                    className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${
-                                                        isActive 
-                                                            ? 'bg-blue-50 border-blue-200 text-saBlue' 
+                                                <button
+                                                    key={lvlNum}
+                                                    type="button"
+                                                    disabled={!isUnlocked}
+                                                    onClick={() => switchLevel(lvlNum)}
+                                                    className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all text-left ${isActive
+                                                            ? 'bg-blue-50 border-blue-200 text-saBlue ring-1 ring-saBlue/30'
                                                             : isCleared
-                                                            ? 'bg-slate-50 border-slate-150 text-slate-400 line-through'
-                                                            : 'bg-white border-slate-100 text-slate-400'
-                                                    }`}
+                                                                ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer'
+                                                                : isUnlocked
+                                                                    ? 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50/50 cursor-pointer'
+                                                                    : 'bg-white border-slate-100 text-slate-300 cursor-not-allowed opacity-60'
+                                                        }`}
                                                 >
                                                     <span>Level {lvlNum}</span>
                                                     <span className="text-[10px] font-black uppercase">
-                                                        {isActive ? 'Active' : isCleared ? 'Cleared' : 'Locked'}
+                                                        {isActive ? 'Active' : isCleared ? 'Cleared' : isUnlocked ? 'Unlocked' : 'Locked'}
                                                     </span>
-                                                </div>
+                                                </button>
                                             );
                                         })}
-                                        {isInfiniteLevels && currentLevel > 8 && (
-                                            <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold bg-blue-50 border-blue-200 text-saBlue">
-                                                <span>Level {currentLevel}</span>
-                                                <span className="text-[10px] font-black uppercase">Active</span>
-                                            </div>
-                                        )}
                                     </div>
                                 </>
                             ) : (
@@ -713,21 +878,71 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
                         {/* Captured pieces by White (Black pieces captured) */}
                         <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-                          <h3 className="text-xs font-black mb-3 text-slate-400 uppercase tracking-wider text-center">White Captured</h3>
-                          <div className="flex flex-wrap gap-1.5 justify-center min-h-[40px]">
-                              {capturedPieces.black.map((piece, i) => (
-                                  <span key={i} className="text-2xl text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] font-light">
-                                      {pieceSymbols[piece.color][piece.type]}
-                                  </span>
-                              ))}
-                              {capturedPieces.black.length === 0 && (
-                                  <span className="text-xs text-slate-350 italic self-center">None</span>
-                              )}
-                          </div>
+                            <h3 className="text-xs font-black mb-3 text-slate-400 uppercase tracking-wider text-center">White Captured</h3>
+                            <div className="flex flex-wrap gap-1.5 justify-center min-h-[40px]">
+                                {capturedPieces.black.map((piece, i) => (
+                                    <span key={i} className="text-2xl text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)] font-light">
+                                        {pieceSymbols[piece.color][piece.type]}
+                                    </span>
+                                ))}
+                                {capturedPieces.black.length === 0 && (
+                                    <span className="text-xs text-slate-350 italic self-center">None</span>
+                                )}
+                            </div>
                         </Card>
                     </div>
                 </div>
             </div>
+
+            {/* Level Cleared Transition Overlay - Placed at root end of JSX with fixed high z-index */}
+            {showLevelUp && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <Card className="gamified-card p-8 sm:p-10 text-center relative overflow-hidden max-w-sm mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 pointer-events-none" />
+                        
+                        <div className="relative z-10">
+                            <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-3 animate-bounce" />
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-600 font-black text-xs uppercase tracking-wider mb-2">
+                                <Crown className="w-4 h-4" /> Checkmate Detected!
+                            </div>
+                            <h2 className="text-3xl font-black mb-1 text-slate-800">Level {currentLevel} Cleared!</h2>
+                            <p className="text-xs text-slate-400 mb-5 font-bold uppercase tracking-wider">Opponent King Defeated</p>
+                            
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6 space-y-2">
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                    <span className="text-slate-500">Level Clear Bonus:</span>
+                                    <span className="text-saVividOrange font-bold">+{pointsPerLevel} EXP</span>
+                                </div>
+                                <div className="h-px bg-slate-200/60" />
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                    <span className="text-slate-700 font-bold">Total Score:</span>
+                                    <span className="text-saBlue font-bold">{Math.round(score)} EXP</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                <Button 
+                                    onClick={handleNextLevel} 
+                                    className="w-full h-11 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold text-sm tracking-wide shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <span>Next Level (Level {currentLevel + 1})</span>
+                                    <span className="px-2 py-0.5 rounded-full bg-white/20 text-xs font-mono">{levelUpCountdown}s</span>
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        setShowLevelUp(false);
+                                        handleComplete(score);
+                                    }} 
+                                    variant="outline"
+                                    className="w-full h-11 border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 rounded-xl font-bold text-sm tracking-wide cursor-pointer"
+                                >
+                                    Finish & Save Score ({Math.round(score)} EXP)
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

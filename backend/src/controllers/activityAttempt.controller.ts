@@ -188,8 +188,12 @@ export const completeAttempt = async (req: Request, res: Response) => {
       return sendError(res, 'Attempt already completed', 400);
     }
 
-    // Calculate final score
-    const score = attempt.responses.reduce((sum, r) => sum + r.points, 0);
+    // Calculate final score: support client-submitted score for game types (Chess, Sudoku, etc.)
+    const calculatedScore = attempt.responses.reduce((sum, r) => sum + r.points, 0);
+    const score = (req.body.score !== undefined && req.body.score !== null && !isNaN(Number(req.body.score)))
+      ? Number(req.body.score)
+      : calculatedScore;
+    const max_score = Math.max(attempt.max_score, score);
 
     // Update attempt
     const updatedAttempt = await prisma.activityAttempt.update({
@@ -198,6 +202,7 @@ export const completeAttempt = async (req: Request, res: Response) => {
         is_completed: true,
         completed_at: new Date(),
         score,
+        max_score,
         time_taken,
       },
       include: {

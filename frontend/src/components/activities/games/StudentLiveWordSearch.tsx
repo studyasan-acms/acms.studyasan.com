@@ -7,6 +7,7 @@ import { X } from 'lucide-react';
 import WordSearchGame from './WordSearchGame';
 import { activityAttemptAPI, quizSessionAPI } from '../../../services/activity.service';
 import { useSound } from '../../../hooks/useSound';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 
 interface Props {
     joinCode: string;
@@ -153,39 +154,32 @@ export default function StudentLiveWordSearch({ joinCode, initialSession, onExit
 
     if (status === 'CONNECTING' || status === 'WAITING') {
         return (
-            <div className="fixed inset-0 z-50 bg-[#061a3a] text-white flex flex-col font-sans overflow-hidden">
-                {/* Background Effects */}
-                <div className="absolute top-0 left-0 w-full h-full -z-10">
-                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
-                </div>
-
-                {/* Header */}
-                <div className="p-6 flex justify-end bg-black/20 backdrop-blur-md border-b border-white/5 z-20">
-                    <Button variant="ghost" onClick={onExit} className="hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                        <X className="w-8 h-8" />
+            <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 -z-10" />
+                <div className="p-4 sm:p-5 flex justify-between items-center bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs">
+                    <div className="flex items-center gap-3">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-7 sm:h-8 object-contain" />
+                        <div className="h-5 sm:h-6 w-px bg-white/25" />
+                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wider">
+                            Live Word Search
+                        </h2>
+                    </div>
+                    <Button variant="ghost" onClick={onExit} className="hover:bg-white/10 text-white p-2 rounded-xl">
+                        <X className="w-5 h-5" />
                     </Button>
                 </div>
-
-                {/* Main Content */}
-                <div className="flex-1 flex items-center justify-center p-8">
-                    <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating">
-                        <div className="relative inline-block mb-8">
-                            <div className="w-24 h-24 mx-auto bg-saBlueLight/20 rounded-full flex items-center justify-center animate-pulse">
-                                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-saBlueLight"></div>
-                            </div>
-                            <div className="absolute inset-0 bg-saBlueLight/20 blur-2xl rounded-full -z-10" />
+                <div className="flex-1 flex items-center justify-center p-6">
+                    <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden">
+                        <div className="w-20 h-20 mx-auto mb-6 bg-blue-50 text-saBlue rounded-3xl flex items-center justify-center animate-pulse border border-blue-100 shadow-sm">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-saBlue"></div>
                         </div>
-                        <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight">
-                            {status === 'CONNECTING' ? 'Connecting to Session...' : 'Waiting for Teacher...'}
+                        <h2 className="text-2xl sm:text-3xl font-black text-slate-800 mb-2">
+                            {status === 'CONNECTING' ? 'Connecting to Room...' : 'Waiting for Teacher...'}
                         </h2>
                         {status === 'WAITING' && (
-                            <div className="space-y-4">
-                                <p className="text-blue-100/60 text-lg italic">
-                                    Welcome, <span className="text-saBlueLight font-bold">{studentName}</span>!
-                                </p>
-                                <p className="text-slate-400 text-sm">
-                                    The teacher controls which words you need to find.
+                            <div className="space-y-3 mt-4">
+                                <p className="text-sm text-slate-500 font-medium">
+                                    Welcome, <span className="text-saBlue font-black">{studentName}</span>! The teacher will reveal the target word shortly.
                                 </p>
                             </div>
                         )}
@@ -197,38 +191,13 @@ export default function StudentLiveWordSearch({ joinCode, initialSession, onExit
 
     if (status === 'FINISHED') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#061a3a] text-white overflow-hidden">
-                {/* Background Effects */}
-                <div className="absolute top-0 left-0 w-full h-full -z-10">
-                    <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-saVividOrange/25 blur-[100px] rounded-full" />
-                    <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-saBlue/40 blur-[100px] rounded-full" />
-                </div>
-
-                <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 floating relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/10 to-saVividOrange/10" />
-                    <div className="absolute top-4 right-4 z-20">
-                        <Button variant="ghost" onClick={onExit} className="hover:bg-red-500/20 hover:text-red-400 transition-colors">
-                            <X className="w-6 h-6" />
-                        </Button>
-                    </div>
-                    <div className="relative inline-block mb-8">
-                        <div className="w-24 h-24 mx-auto bg-saVividOrange/20 rounded-full flex items-center justify-center">
-                            <div className="text-4xl">🏆</div>
-                        </div>
-                        <div className="absolute inset-0 bg-saVividOrange/20 blur-2xl rounded-full -z-10" />
-                    </div>
-                    <h2 className="text-4xl font-extrabold mb-4 text-white tracking-tight relative z-10">Session Ended</h2>
-                    <div className="space-y-4 mb-8 relative z-10">
-                        <p className="text-3xl font-bold text-saBlueLight">Final Score: {score}</p>
-                        <p className="text-blue-100/60 text-lg italic">
-                            "Great work! You've completed the live session."
-                        </p>
-                    </div>
-                    <Button onClick={onExit} className="btn-3d-primary w-full py-4 text-xl font-bold relative z-10">
-                        Exit Game
-                    </Button>
-                </Card>
-            </div>
+            <VictoryCelebrationModal
+                title="Live Challenge Ended!"
+                activityTitle="Live Word Search"
+                score={score}
+                onContinue={onExit}
+                continueText="Exit Session"
+            />
         );
     }
 

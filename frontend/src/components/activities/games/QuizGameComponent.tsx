@@ -6,6 +6,7 @@ import type { Activity } from '../../../types/activity';
 import { activityAttemptAPI } from '../../../services/activity.service';
 import confetti from 'canvas-confetti';
 import { useSound } from '../../../hooks/useSound';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 
 interface Props {
   activity: Activity;
@@ -34,9 +35,9 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
 
   useEffect(() => {
     if (!isMuted) {
-      playSound('bg-music', { loop: true, volume: 0.3 });
+      playSound('bg-music-playful', { loop: true, volume: 0.15 });
     } else {
-      stopSound('bg-music');
+      stopSound('bg-music-playful');
     }
   }, [isMuted]);
 
@@ -155,17 +156,17 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
   };
 
   if (currentQuestion >= totalQuestions) {
+    const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
-        <Card className="gamified-card p-12 text-center max-w-lg w-full mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
-          <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-          <h2 className="text-5xl font-black mb-4 text-slate-800 tracking-tight relative z-10">Quiz Complete!</h2>
-          <div className="space-y-4 mb-8 relative z-10">
-            <p className="text-3xl font-bold text-saBlue">Final Score: {score} EXP</p>
-          </div>
-        </Card>
-      </div>
+      <VictoryCelebrationModal
+        title="Quiz Complete!"
+        activityTitle={activity.title || 'Multiple Choice Quiz'}
+        score={score}
+        timeTaken={timeTaken}
+        totalQuestions={totalQuestions}
+        onContinue={() => onComplete(score, timeTaken)}
+        continueText="Finish & Claim Rewards"
+      />
     );
   }
 

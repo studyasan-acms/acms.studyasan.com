@@ -100,7 +100,7 @@ export default function StudentActivitiesPage() {
     if (!attemptId) return;
 
     try {
-      await activityAttemptAPI.complete(attemptId, timeTaken);
+      await activityAttemptAPI.complete(attemptId, timeTaken, score);
       toast.success(`Activity completed! Score: ${score}`);
       setSelectedActivity(null);
       setAttemptId(null);

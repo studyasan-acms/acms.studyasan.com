@@ -6,6 +6,7 @@ import { activityAttemptAPI } from '../../../services/activity.service';
 import confetti from 'canvas-confetti';
 import { X, Trophy, Clock, Star, Volume2, VolumeX, RotateCcw, Eraser } from 'lucide-react';
 import { useSound } from '../../../hooks/useSound';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 
 interface Props {
     activity: Activity;
@@ -26,9 +27,25 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
     const [isMuted, setIsMuted] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
 
-    // Level progression & game settings from activity
-    const [currentLevel, setCurrentLevel] = useState(1);
+    // Level progression & game settings from activity with persistence
+    const [unlockedLevel, setUnlockedLevel] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem(`studyasan_sudoku_unlocked_${activity.id}`);
+            return saved ? Math.max(1, parseInt(saved, 10) || 1) : 1;
+        } catch {
+            return 1;
+        }
+    });
+    const [currentLevel, setCurrentLevel] = useState<number>(() => {
+        try {
+            const saved = localStorage.getItem(`studyasan_sudoku_level_${activity.id}`);
+            return saved ? Math.max(1, parseInt(saved, 10) || 1) : 1;
+        } catch {
+            return 1;
+        }
+    });
     const [showLevelUp, setShowLevelUp] = useState(false);
+    const [levelUpCountdown, setLevelUpCountdown] = useState<number>(5);
     const [hintsUsed, setHintsUsed] = useState(0);
     const [score, setScore] = useState(0);
 
@@ -42,6 +59,32 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
     const { playSound, stopSound, stopAll } = useSound();
 
+    // Winning graphics stay on screen for 5s countdown, then auto-advances
+    useEffect(() => {
+        if (!showLevelUp) {
+            setLevelUpCountdown(5);
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setLevelUpCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [showLevelUp]);
+
+    useEffect(() => {
+        if (showLevelUp && levelUpCountdown === 0) {
+            handleNextLevel();
+        }
+    }, [showLevelUp, levelUpCountdown]);
+
     useEffect(() => {
         const timer = setInterval(() => setTimeElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
         return () => clearInterval(timer);
@@ -49,9 +92,9 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
     useEffect(() => {
         if (!isMuted) {
-            playSound('bg-music', { loop: true, volume: 0.3 });
+            playSound('bg-music-zen', { loop: true, volume: 0.15 });
         } else {
-            stopSound('bg-music');
+            stopSound('bg-music-zen');
         }
         return () => stopAll();
     }, [isMuted]);
@@ -187,19 +230,41 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
             // Check if level is complete
             if (isPuzzleComplete(newGrid)) {
-                const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
-                if (isFinalLevel) {
-                    handleComplete(score + pointsPerLevel);
-                } else {
-                    playSound('correct');
-                    setShowLevelUp(true);
-                }
+                handleLevelClear();
             }
         } else {
             playSound('incorrect');
         }
 
         submitResponse({ row, col, value: num }, solution[row][col] === num);
+    };
+
+    const handleLevelClear = () => {
+        playSound('correct');
+        const newScore = score + pointsPerLevel;
+        setScore(newScore);
+
+        const nextLvl = currentLevel + 1;
+        setUnlockedLevel(prev => {
+            const updated = Math.max(prev, nextLvl);
+            try {
+                localStorage.setItem(`studyasan_sudoku_unlocked_${activity.id}`, String(updated));
+            } catch {}
+            return updated;
+        });
+        try {
+            localStorage.setItem(`studyasan_sudoku_level_${activity.id}`, String(nextLvl));
+        } catch {}
+
+        submitResponse({ level: currentLevel, cleared: true, totalScore: newScore }, true);
+
+        const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
+        if (isFinalLevel) {
+            handleComplete(newScore);
+        } else {
+            setShowLevelUp(true);
+            setLevelUpCountdown(5);
+        }
     };
 
     const handleRevealHint = () => {
@@ -239,21 +304,30 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
         });
 
         if (isPuzzleComplete(newGrid)) {
-            const isFinalLevel = !isInfiniteLevels && totalLevels !== null && currentLevel >= totalLevels;
-            if (isFinalLevel) {
-                handleComplete(score + pointsPerLevel);
-            } else {
-                playSound('correct');
-                setShowLevelUp(true);
-            }
+            handleLevelClear();
         }
     };
 
     const handleNextLevel = () => {
-        setCurrentLevel(prev => prev + 1);
-        setScore(prev => prev + pointsPerLevel);
-        loadSudokuForLevel(currentLevel + 1);
+        const nextLvl = currentLevel + 1;
+        setCurrentLevel(nextLvl);
+        try {
+            localStorage.setItem(`studyasan_sudoku_level_${activity.id}`, String(nextLvl));
+        } catch {}
+        loadSudokuForLevel(nextLvl);
         setShowLevelUp(false);
+    };
+
+    const switchLevel = (targetLevel: number) => {
+        if (targetLevel > unlockedLevel) return;
+        setShowLevelUp(false);
+        if (targetLevel === currentLevel) return;
+        setCurrentLevel(targetLevel);
+        try {
+            localStorage.setItem(`studyasan_sudoku_level_${activity.id}`, String(targetLevel));
+        } catch {}
+        loadSudokuForLevel(targetLevel);
+        playSound('click');
     };
 
     const handleErase = () => {
@@ -317,19 +391,14 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
     if (showCelebration) {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
-                <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
-                    <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
-                    <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-                    <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Sudoku Solved!</h2>
-                    <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
-                    <div className="flex justify-center gap-4 relative z-10">
-                        {[...Array(3)].map((_, i) => (
-                            <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
-                        ))}
-                    </div>
-                </Card>
-            </div>
+            <VictoryCelebrationModal
+                title="Sudoku Solved!"
+                activityTitle={activity.title || 'Sudoku Challenge'}
+                score={Math.round(score)}
+                timeTaken={timeElapsed}
+                onContinue={() => onComplete(score, timeElapsed)}
+                continueText="Finish & Claim Rewards"
+            />
         );
     }
 
@@ -388,36 +457,6 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                 </svg>
             </div>
 
-            {/* Level Cleared Transition Overlay */}
-            {showLevelUp && (
-                <div className="absolute inset-0 z-45 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
-                    <Card className="gamified-card p-10 text-center relative overflow-hidden max-w-sm mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl">
-                        <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5" />
-                        <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-5 animate-bounce relative z-10" />
-                        <h2 className="text-3xl font-black mb-1.5 relative z-10 text-slate-800">Level {currentLevel} Solved!</h2>
-                        
-                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6 relative z-10 space-y-2">
-                            <div className="flex justify-between items-center text-xs font-semibold">
-                                <span className="text-slate-505">Level Clear Bonus:</span>
-                                <span className="text-saVividOrange font-bold">+{pointsPerLevel} EXP</span>
-                            </div>
-                            <div className="h-px bg-slate-200/60" />
-                            <div className="flex justify-between items-center text-xs font-semibold">
-                                <span className="text-slate-550 font-bold">Total EXP:</span>
-                                <span className="text-saBlue font-bold">{Math.round(score + pointsPerLevel)} EXP</span>
-                            </div>
-                        </div>
-
-                        <Button 
-                            onClick={handleNextLevel} 
-                            className="w-full h-11 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold text-sm tracking-wide shadow-md shadow-blue-500/20 relative z-10"
-                        >
-                            Next Level (Level {currentLevel + 1})
-                        </Button>
-                    </Card>
-                </div>
-            )}
-
             {/* Header */}
             <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
                 <div className="flex items-center gap-4">
@@ -446,7 +485,18 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                     <Button variant="ghost" onClick={resetPuzzle} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
                         <RotateCcw className="w-5 h-5" />
                     </Button>
-                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => {
+                            if (score > 0 || currentLevel > 1) {
+                                handleComplete(score);
+                            } else {
+                                onCancel();
+                            }
+                        }} 
+                        className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors"
+                        title={score > 0 ? "Save & Exit" : "Exit"}
+                    >
                         <X className="w-5 h-5" />
                     </Button>
                 </div>
@@ -603,27 +653,33 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                         {/* Level Tracker Card */}
                         <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs flex-1 flex flex-col">
                             <h3 className="text-xs font-black mb-3 text-saBlue uppercase tracking-wider">Level Progression</h3>
-                            <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1 flex-1">
-                                {[...Array(totalLevels || 5)].map((_, i) => {
+                            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1 flex-1">
+                                {[...Array(Math.max(totalLevels || 5, unlockedLevel))].map((_, i) => {
                                     const lvlNum = i + 1;
                                     const isActive = lvlNum === currentLevel;
                                     const isCleared = lvlNum < currentLevel;
+                                    const isUnlocked = lvlNum <= unlockedLevel;
                                     return (
-                                        <div 
+                                        <button 
                                             key={lvlNum} 
-                                            className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                            type="button"
+                                            disabled={!isUnlocked}
+                                            onClick={() => switchLevel(lvlNum)}
+                                            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg border text-xs font-bold transition-all text-left ${
                                                 isActive 
-                                                    ? 'bg-blue-50 border-blue-200 text-saBlue' 
+                                                    ? 'bg-blue-50 border-blue-200 text-saBlue ring-1 ring-saBlue/30' 
                                                     : isCleared
-                                                    ? 'bg-slate-50 border-slate-150 text-slate-400 line-through'
-                                                    : 'bg-white border-slate-100 text-slate-400'
+                                                    ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer'
+                                                    : isUnlocked
+                                                    ? 'bg-white border-slate-200 text-slate-700 hover:bg-blue-50/50 cursor-pointer'
+                                                    : 'bg-white border-slate-100 text-slate-300 cursor-not-allowed opacity-60'
                                             }`}
                                         >
                                             <span>Level {lvlNum}</span>
                                             <span className="text-[10px] font-black uppercase">
-                                                {isActive ? 'Active' : isCleared ? 'Cleared' : 'Locked'}
+                                                {isActive ? 'Active' : isCleared ? 'Cleared' : isUnlocked ? 'Unlocked' : 'Locked'}
                                             </span>
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </div>
@@ -632,6 +688,53 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
                 </div>
             </div>
+
+            {/* Level Cleared Transition Overlay - Placed at root end of JSX with fixed high z-index */}
+            {showLevelUp && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <Card className="gamified-card p-8 sm:p-10 text-center relative overflow-hidden max-w-sm mx-4 bg-white border border-slate-200 shadow-2xl rounded-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 pointer-events-none" />
+                        
+                        <div className="relative z-10">
+                            <Trophy className="w-20 h-20 mx-auto text-saVividOrange mb-3 animate-bounce" />
+                            <h2 className="text-3xl font-black mb-1 text-slate-800">Level {currentLevel} Solved!</h2>
+                            <p className="text-xs text-slate-400 mb-5 font-bold uppercase tracking-wider">Puzzle Completed Successfully</p>
+                            
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6 space-y-2">
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                    <span className="text-slate-500">Level Clear Bonus:</span>
+                                    <span className="text-saVividOrange font-bold">+{pointsPerLevel} EXP</span>
+                                </div>
+                                <div className="h-px bg-slate-200/60" />
+                                <div className="flex justify-between items-center text-xs font-semibold">
+                                    <span className="text-slate-700 font-bold">Total EXP:</span>
+                                    <span className="text-saBlue font-bold">{Math.round(score)} EXP</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2.5">
+                                <Button 
+                                    onClick={handleNextLevel} 
+                                    className="w-full h-11 bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl font-bold text-sm tracking-wide shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <span>Next Level (Level {currentLevel + 1})</span>
+                                    <span className="px-2 py-0.5 rounded-full bg-white/20 text-xs font-mono">{levelUpCountdown}s</span>
+                                </Button>
+                                <Button 
+                                    onClick={() => {
+                                        setShowLevelUp(false);
+                                        handleComplete(score);
+                                    }} 
+                                    variant="outline"
+                                    className="w-full h-11 border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 rounded-xl font-bold text-sm tracking-wide cursor-pointer"
+                                >
+                                    Finish & Save Score ({Math.round(score)} EXP)
+                                </Button>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

@@ -151,9 +151,10 @@ export const activityAttemptAPI = {
     time_taken?: number;
   }) => api.post('/activity-attempts/response', data),
 
-  complete: (id: number, time_taken: number) =>
+  complete: (id: number, time_taken: number, score?: number) =>
     api.patch<{ data: ActivityAttempt }>(`/activity-attempts/${id}/complete`, {
       time_taken,
+      score,
     }),
 
   getById: (id: number) => api.get<{ data: ActivityAttempt }>(`/activity-attempts/${id}`),

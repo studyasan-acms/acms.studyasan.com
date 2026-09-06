@@ -6,6 +6,7 @@ import { activityAttemptAPI } from '../../../services/activity.service';
 import confetti from 'canvas-confetti';
 import { X, Trophy, Clock, Star, Volume2, VolumeX, CheckCircle } from 'lucide-react';
 import { useSound } from '../../../hooks/useSound';
+import VictoryCelebrationModal from '../common/VictoryCelebrationModal';
 
 interface Props {
   activity: Activity;
@@ -48,9 +49,9 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
 
   useEffect(() => {
     if (!isMuted) {
-      playSound('bg-music', { loop: true, volume: 0.3 });
+      playSound('bg-music-playful', { loop: true, volume: 0.15 });
     } else {
-      stopSound('bg-music');
+      stopSound('bg-music-playful');
     }
     return () => stopAll();
   }, [isMuted]);
@@ -325,19 +326,16 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
 
   if (showCelebration) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
-        <Card className="gamified-card p-12 text-center relative overflow-hidden bg-white border border-slate-200 shadow-2xl rounded-2xl max-w-md mx-4">
-          <div className="absolute inset-0 bg-gradient-to-br from-saBlue/5 to-saVividOrange/5 animate-pulse" />
-          <Trophy className="w-32 h-32 mx-auto text-saVividOrange mb-8 animate-bounce relative z-10" />
-          <h2 className="text-5xl font-black mb-2 relative z-10 text-slate-800">Word Search Complete!</h2>
-          <p className="text-4xl text-saBlue mb-8 font-black relative z-10">Score: {Math.round(score)} EXP</p>
-          <div className="flex justify-center gap-4 relative z-10">
-            {[...Array(3)].map((_, i) => (
-              <Star key={i} className="w-12 h-12 text-saVividOrange fill-current animate-spin-slow" style={{ animationDelay: `${i * 0.2}s` }} />
-            ))}
-          </div>
-        </Card>
-      </div>
+      <VictoryCelebrationModal
+        title="All Words Found!"
+        activityTitle={activity.title || 'Word Search'}
+        score={Math.round(score)}
+        timeTaken={timeElapsed}
+        totalQuestions={words.length}
+        correctAnswers={foundWords.size}
+        onContinue={() => onComplete(score, timeElapsed)}
+        continueText="Finish & Claim Rewards"
+      />
     );
   }
 
