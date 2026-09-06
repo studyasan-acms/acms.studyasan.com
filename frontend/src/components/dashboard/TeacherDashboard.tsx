@@ -225,7 +225,16 @@ export default function TeacherDashboard() {
                                         </div>
                                         <CardTitle className="text-sm font-bold line-clamp-1 text-gray-900">{a.title}</CardTitle>
                                     </CardHeader>
-                                    <CardContent className="py-2 px-4 pb-3">
+                                    <CardContent className="py-2 px-4 pb-3 space-y-2">
+                                        {a.image_url && (
+                                            <div className="rounded-xl overflow-hidden border border-slate-100 bg-slate-50 shadow-2xs">
+                                                <img 
+                                                    src={a.image_url} 
+                                                    alt={a.title} 
+                                                    className="w-full h-36 object-cover hover:scale-105 transition-transform duration-300" 
+                                                />
+                                            </div>
+                                        )}
                                         <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">{a.content}</p>
                                     </CardContent>
                                 </Card>

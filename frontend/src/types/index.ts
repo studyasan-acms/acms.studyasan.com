@@ -1312,6 +1312,7 @@ export interface Announcement {
   title: string;
   content: string;
   type: AnnouncementType;
+  image_url?: string | null;
   created_by: number;
   created_at: string;
   updated_at?: string;
@@ -1328,6 +1329,7 @@ export interface CreateAnnouncementData {
   title: string;
   content: string;
   type?: AnnouncementType;
+  image_url?: string | null;
   target_roles?: string[] | null;
   target_boards?: number[] | null;
   target_classes?: number[] | null;

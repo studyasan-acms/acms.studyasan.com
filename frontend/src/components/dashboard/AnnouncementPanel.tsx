@@ -141,6 +141,16 @@ export default function AnnouncementPanel({
                     <h3 className="text-sm font-bold text-slate-900 leading-tight group-hover:text-saBlue transition-colors">
                       {a.title}
                     </h3>
+
+                    {a.image_url && (
+                      <div className="rounded-xl overflow-hidden max-h-36 border border-slate-100 bg-slate-50">
+                        <img
+                          src={a.image_url}
+                          alt={a.title}
+                          className="w-full h-full object-cover max-h-36"
+                        />
+                      </div>
+                    )}
                     
                     <p className="text-xs text-slate-600 line-clamp-3 leading-relaxed">
                       {a.content}

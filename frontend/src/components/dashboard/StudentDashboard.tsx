@@ -957,7 +957,16 @@ export default function StudentDashboard() {
                                             </span>
                                         </div>
                                         <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1">{a.title}</h4>
-                                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-1 font-normal leading-relaxed">{a.content}</p>
+                                        {a.image_url && (
+                                            <div className="rounded-xl overflow-hidden border border-slate-200/60 bg-white/60 shadow-2xs mt-2">
+                                                <img 
+                                                    src={a.image_url} 
+                                                    alt={a.title} 
+                                                    className="w-full h-32 object-cover hover:scale-105 transition-transform duration-300" 
+                                                />
+                                            </div>
+                                        )}
+                                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-2 font-normal leading-relaxed">{a.content}</p>
                                     </div>
                                 </div>
                             );

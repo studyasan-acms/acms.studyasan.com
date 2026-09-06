@@ -1240,6 +1240,7 @@ model Announcement {
   title          String
   content        String
   type           AnnouncementType @default(GENERAL)
+  image_url      String?
   created_by     Int
   created_at     DateTime         @default(now())
   updated_at     DateTime         @updatedAt

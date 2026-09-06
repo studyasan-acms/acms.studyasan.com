@@ -2,8 +2,21 @@ import type { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import type { AuthRequest } from '../types/index.js';
+import { uploadToS3, deleteFromS3, extractS3KeyFromUrl } from '../utils/s3.js';
 
 const prisma = new PrismaClient();
+
+// Helper to safely parse JSON strings from multipart/form-data
+const parseJsonField = (field: any) => {
+    if (typeof field === 'string') {
+        try {
+            return JSON.parse(field);
+        } catch {
+            return field;
+        }
+    }
+    return field;
+};
 
 // Helper to check if array intersects
 const intersect = (arr1: any[] | null | undefined, arr2: any[] | null | undefined) => {
@@ -138,18 +151,34 @@ export const createAnnouncement = async (req: AuthRequest, res: Response) => {
 
         const announcementType = VALID_ANNOUNCEMENT_TYPES.includes(type) ? type : 'GENERAL';
 
+        let image_url: string | null = null;
+        if (req.file) {
+            const uploadResult = await uploadToS3(req.file, 'announcements');
+            image_url = uploadResult.url;
+        } else if (req.body.image_url) {
+            image_url = req.body.image_url;
+        }
+
+        const roles = parseJsonField(target_roles);
+        const boards = parseJsonField(target_boards);
+        const classes = parseJsonField(target_classes);
+        const subjects = parseJsonField(target_subjects);
+        const courses = parseJsonField(target_courses);
+        const groups = parseJsonField(target_groups);
+
         const announcement = await prisma.announcement.create({
             data: {
                 title,
                 content,
                 type: announcementType as any,
+                image_url,
                 created_by: user.id,
-                target_roles: target_roles || null,
-                target_boards: target_boards || null,
-                target_classes: target_classes || null,
-                target_subjects: target_subjects || null,
-                target_courses: target_courses || null,
-                target_groups: target_groups || null
+                target_roles: roles && roles.length > 0 ? roles : null,
+                target_boards: boards && boards.length > 0 ? boards.map(Number) : null,
+                target_classes: classes && classes.length > 0 ? classes.map(Number) : null,
+                target_subjects: subjects && subjects.length > 0 ? subjects.map(Number) : null,
+                target_courses: courses && courses.length > 0 ? courses.map(Number) : null,
+                target_groups: groups && groups.length > 0 ? groups.map(Number) : null
             }
         });
 
@@ -163,7 +192,7 @@ export const createAnnouncement = async (req: AuthRequest, res: Response) => {
 export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, content, type, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups } = req.body;
+        const { title, content, type, target_roles, target_boards, target_classes, target_subjects, target_courses, target_groups, remove_image } = req.body;
         const user = req.user!;
 
         if (user.role === 'TEACHER') {
@@ -179,18 +208,55 @@ export const updateAnnouncement = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Unauthorized', 403);
         }
 
+        const current = await prisma.announcement.findUnique({
+            where: { id: parseInt(id!) }
+        });
+        if (!current) {
+            return sendError(res, 'Announcement not found', 404);
+        }
+
+        let image_url: string | null | undefined = undefined;
+        if (req.file) {
+            const uploadResult = await uploadToS3(req.file, 'announcements');
+            image_url = uploadResult.url;
+            if (current.image_url) {
+                const oldKey = extractS3KeyFromUrl(current.image_url);
+                if (oldKey) {
+                    deleteFromS3(oldKey).catch(err => console.error('Failed to delete old announcement image from S3:', err));
+                }
+            }
+        } else if (remove_image === 'true' || remove_image === true) {
+            image_url = null;
+            if (current.image_url) {
+                const oldKey = extractS3KeyFromUrl(current.image_url);
+                if (oldKey) {
+                    deleteFromS3(oldKey).catch(err => console.error('Failed to delete removed announcement image from S3:', err));
+                }
+            }
+        } else if (req.body.image_url !== undefined) {
+            image_url = req.body.image_url;
+        }
+
+        const roles = target_roles !== undefined ? parseJsonField(target_roles) : undefined;
+        const boards = target_boards !== undefined ? parseJsonField(target_boards) : undefined;
+        const classes = target_classes !== undefined ? parseJsonField(target_classes) : undefined;
+        const subjects = target_subjects !== undefined ? parseJsonField(target_subjects) : undefined;
+        const courses = target_courses !== undefined ? parseJsonField(target_courses) : undefined;
+        const groups = target_groups !== undefined ? parseJsonField(target_groups) : undefined;
+
         const announcement = await prisma.announcement.update({
             where: { id: parseInt(id!) },
             data: {
                 ...(title && { title }),
                 ...(content && { content }),
                 ...(type && VALID_ANNOUNCEMENT_TYPES.includes(type) && { type: type as any }),
-                ...(target_roles !== undefined && { target_roles }),
-                ...(target_boards !== undefined && { target_boards }),
-                ...(target_classes !== undefined && { target_classes }),
-                ...(target_subjects !== undefined && { target_subjects }),
-                ...(target_courses !== undefined && { target_courses }),
-                ...(target_groups !== undefined && { target_groups }),
+                ...(image_url !== undefined && { image_url }),
+                ...(roles !== undefined && { target_roles: roles && roles.length > 0 ? roles : null }),
+                ...(boards !== undefined && { target_boards: boards && boards.length > 0 ? boards.map(Number) : null }),
+                ...(classes !== undefined && { target_classes: classes && classes.length > 0 ? classes.map(Number) : null }),
+                ...(subjects !== undefined && { target_subjects: subjects && subjects.length > 0 ? subjects.map(Number) : null }),
+                ...(courses !== undefined && { target_courses: courses && courses.length > 0 ? courses.map(Number) : null }),
+                ...(groups !== undefined && { target_groups: groups && groups.length > 0 ? groups.map(Number) : null }),
             }
         });
 
@@ -217,6 +283,20 @@ export const deleteAnnouncement = async (req: AuthRequest, res: Response) => {
             }
         } else if (user.role !== 'ADMIN') {
             return sendError(res, 'Unauthorized', 403);
+        }
+
+        const current = await prisma.announcement.findUnique({
+            where: { id: parseInt(id!) }
+        });
+        if (!current) {
+            return sendError(res, 'Announcement not found', 404);
+        }
+
+        if (current.image_url) {
+            const oldKey = extractS3KeyFromUrl(current.image_url);
+            if (oldKey) {
+                deleteFromS3(oldKey).catch(err => console.error('Failed to delete announcement image on delete:', err));
+            }
         }
 
         await prisma.announcement.delete({

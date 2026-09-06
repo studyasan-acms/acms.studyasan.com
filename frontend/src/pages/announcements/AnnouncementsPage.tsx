@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { usePermissions } from '@/hooks/usePermissions';
 import {
@@ -51,6 +51,8 @@ import {
   ChevronRight,
   Globe,
   Tag,
+  ImageIcon,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -113,6 +115,13 @@ export default function AnnouncementsPage() {
   const [targetSubjects, setTargetSubjects] = useState<number[]>([]);
   const [targetGroups, setTargetGroups] = useState<number[]>([]);
 
+  // Picture / Image state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const canManage =
     user?.role === 'ADMIN' ||
     (user?.role === 'TEACHER' && permissions.announcements?.manage);
@@ -161,6 +170,16 @@ export default function AnnouncementsPage() {
     setTargetClasses([]);
     setTargetSubjects([]);
     setTargetGroups([]);
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(null);
+    setExistingImageUrl(null);
+    setRemoveImage(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     setIsEditing(false);
     setCurrentId(null);
   };
@@ -180,9 +199,43 @@ export default function AnnouncementsPage() {
     setTargetClasses(a.target_classes || []);
     setTargetSubjects(a.target_subjects || []);
     setTargetGroups(a.target_groups || []);
+    setExistingImageUrl(a.image_url || null);
+    setRemoveImage(false);
     setIsEditing(true);
     setCurrentId(a.id);
     setIsModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (PNG, JPG, WEBP, GIF)');
+      return;
+    }
+
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error('Image size must be less than 25MB');
+      return;
+    }
+
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+    setRemoveImage(false);
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setImagePreview(null);
+    setExistingImageUrl(null);
+    setRemoveImage(true);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleDeleteClick = (a: Announcement) => {
@@ -211,23 +264,29 @@ export default function AnnouncementsPage() {
     }
 
     setSaving(true);
-    const payload = {
-      title: title.trim(),
-      content: content.trim(),
-      type,
-      target_roles: targetRoles.length > 0 ? targetRoles : null,
-      target_boards: targetBoards.length > 0 ? targetBoards : null,
-      target_classes: targetClasses.length > 0 ? targetClasses : null,
-      target_subjects: targetSubjects.length > 0 ? targetSubjects : null,
-      target_groups: targetGroups.length > 0 ? targetGroups : null,
-    };
+
+    const formData = new FormData();
+    formData.append('title', title.trim());
+    formData.append('content', content.trim());
+    formData.append('type', type);
+    if (targetRoles.length > 0) formData.append('target_roles', JSON.stringify(targetRoles));
+    if (targetBoards.length > 0) formData.append('target_boards', JSON.stringify(targetBoards));
+    if (targetClasses.length > 0) formData.append('target_classes', JSON.stringify(targetClasses));
+    if (targetSubjects.length > 0) formData.append('target_subjects', JSON.stringify(targetSubjects));
+    if (targetGroups.length > 0) formData.append('target_groups', JSON.stringify(targetGroups));
+
+    if (imageFile) {
+      formData.append('image', imageFile);
+    } else if (removeImage) {
+      formData.append('remove_image', 'true');
+    }
 
     try {
       if (isEditing && currentId) {
-        await announcementService.updateAnnouncement(currentId, payload);
+        await announcementService.updateAnnouncement(currentId, formData);
         toast.success('Announcement updated');
       } else {
-        await announcementService.createAnnouncement(payload);
+        await announcementService.createAnnouncement(formData);
         toast.success('Announcement published');
       }
       setIsModalOpen(false);
@@ -577,13 +636,26 @@ export default function AnnouncementsPage() {
 
                       {/* Title & Preview */}
                       <TableCell className="py-3">
-                        <div className="max-w-md">
-                          <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1 leading-snug hover:text-saBlue transition-colors">
-                            {a.title}
-                          </p>
-                          <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 font-normal">
-                            {a.content}
-                          </p>
+                        <div className="flex items-center gap-3 max-w-md">
+                          {a.image_url ? (
+                            <img
+                              src={a.image_url}
+                              alt={a.title}
+                              className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 border border-slate-200/60 shrink-0 flex items-center justify-center">
+                              <Megaphone className="w-4 h-4 opacity-40" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1 leading-snug hover:text-saBlue transition-colors">
+                              {a.title}
+                            </p>
+                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 font-normal">
+                              {a.content}
+                            </p>
+                          </div>
                         </div>
                       </TableCell>
 
@@ -765,6 +837,19 @@ export default function AnnouncementsPage() {
                 </CardHeader>
 
                 <CardContent className="p-4 sm:p-6 space-y-4">
+                  {a.image_url && (
+                    <div
+                      onClick={() => setViewingAnnouncement(a)}
+                      className="rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 cursor-pointer group/img max-h-72 flex items-center justify-center shadow-2xs hover:border-saBlue/40 transition-all"
+                    >
+                      <img
+                        src={a.image_url}
+                        alt={a.title}
+                        className="w-full h-full max-h-72 object-cover transition-transform duration-300 group-hover/img:scale-[1.01]"
+                      />
+                    </div>
+                  )}
+
                   {/* Content with expand/collapse */}
                   <div>
                     <p
@@ -972,6 +1057,16 @@ export default function AnnouncementsPage() {
 
             {/* Modal Content */}
             <div className="p-4 sm:p-6 overflow-y-auto space-y-4">
+              {viewingAnnouncement.image_url && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center shadow-xs">
+                  <img
+                    src={viewingAnnouncement.image_url}
+                    alt={viewingAnnouncement.title}
+                    className="w-full max-h-96 object-contain rounded-xl"
+                  />
+                </div>
+              )}
+
               <div className="text-slate-700 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
                 {viewingAnnouncement.content}
               </div>
@@ -1123,6 +1218,83 @@ export default function AnnouncementsPage() {
                   className="min-h-[120px] rounded-xl border-slate-200 focus-visible:ring-saBlue text-xs sm:text-sm leading-relaxed"
                   required
                 />
+              </div>
+
+              {/* Picture Upload */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] sm:text-xs font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-saBlue" />
+                    <span>Announcement Picture (Optional)</span>
+                  </label>
+                  {(imagePreview || (existingImageUrl && !removeImage)) && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <Trash2 className="w-3 h-3" /> Remove
+                    </button>
+                  )}
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                  onChange={handleImageChange}
+                  className="hidden"
+                  id="announcement-image-input"
+                />
+
+                {imagePreview || (existingImageUrl && !removeImage) ? (
+                  <div className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 group">
+                    <img
+                      src={imagePreview || existingImageUrl!}
+                      alt="Announcement Preview"
+                      className="w-full max-h-52 object-contain bg-slate-950/5 rounded-xl"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="rounded-xl text-xs font-semibold bg-white/95 hover:bg-white text-slate-800 shadow-md"
+                      >
+                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                        Change Picture
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleRemoveImage}
+                        className="rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-md"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-200 hover:border-saBlue/50 hover:bg-saBlue/[0.02] transition-all rounded-2xl p-5 text-center cursor-pointer flex flex-col items-center justify-center gap-2 group"
+                  >
+                    <div className="w-10 h-10 rounded-2xl bg-saBlue/10 text-saBlue flex items-center justify-center group-hover:scale-105 transition-transform">
+                      <ImageIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700 group-hover:text-saBlue transition-colors">
+                        Click to upload an announcement picture
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        PNG, JPG, WEBP, or GIF up to 25MB
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Targeting Options Container */}

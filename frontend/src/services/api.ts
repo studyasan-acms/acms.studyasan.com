@@ -1745,11 +1745,17 @@ export const announcementService = {
     return response.data;
   },
   createAnnouncement: async (data: any) => {
-    const response = await api.post('/announcements', data);
+    const isFormData = data instanceof FormData;
+    const response = await api.post('/announcements', data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
   updateAnnouncement: async (id: number, data: any) => {
-    const response = await api.put(`/announcements/${id}`, data);
+    const isFormData = data instanceof FormData;
+    const response = await api.put(`/announcements/${id}`, data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
     return response.data;
   },
   deleteAnnouncement: async (id: number) => {
