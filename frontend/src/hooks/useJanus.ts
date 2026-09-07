@@ -290,11 +290,14 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
 
             let stream: MediaStream;
             let mediaNotice: string | null = null;
+            const isBot = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('bot') === 'true';
 
-            if (forceFallback) {
-                console.warn('[useJanus] Force fallback requested. Entering classroom in listener mode...');
+            if (forceFallback || isBot) {
+                console.log('[useJanus] Entering classroom in listener/bot mode...');
                 stream = createFallbackMediaStream();
-                mediaNotice = 'Joined classroom in listener mode without camera/microphone.';
+                if (!isBot) {
+                    mediaNotice = 'Joined classroom in listener mode without camera/microphone.';
+                }
             } else {
                 console.log('[useJanus] Getting user media...');
                 try {

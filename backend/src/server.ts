@@ -9,6 +9,7 @@ import { NotificationProcessorService } from './services/notificationProcessor.s
 import { JanusCleanupService } from './services/janusCleanup.service.js';
 import { KnowYourChildScheduler } from './services/knowYourChildScheduler.service.js';
 import { RecordingCleanupService } from './services/recordingCleanup.service.js';
+import { ClassSessionScheduler } from './services/classSessionScheduler.service.js';
 
 dotenv.config();
 
@@ -18,6 +19,12 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
+app.use((req, _res, next) => {
+  if (req.url && req.url.includes('//')) {
+    req.url = req.url.replace(/\/{2,}/g, '/');
+  }
+  next();
+});
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ extended: true, limit: '100mb' }));
 
@@ -53,6 +60,7 @@ NotificationProcessorService.start();
 JanusCleanupService.start();
 KnowYourChildScheduler.start();
 RecordingCleanupService.start();
+ClassSessionScheduler.start();
 
 httpServer.listen(PORT, () => {
   console.log(` Server is running on port ${PORT}`);

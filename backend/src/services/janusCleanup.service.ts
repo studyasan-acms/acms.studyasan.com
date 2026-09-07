@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import { PrismaClient } from '@prisma/client';
+import { RecordingBotService } from './recordingBot.service.js';
 
 const prisma = new PrismaClient();
 
@@ -129,6 +130,11 @@ export class JanusCleanupService {
         // If session has ended OR room has no active participants, destroy room on Janus & reset DB state
         if (isSessionEnded || numParticipants === 0) {
           console.log(`[JanusCleanup] Room ${roomIdNumber} (Class Session #${room.class_session_id}) is empty/ended. Destroying...`);
+
+          // Finalize active recording if any
+          if (RecordingBotService.isRecording(room.class_session_id)) {
+            await RecordingBotService.stopRecording(room.class_session_id);
+          }
 
           // Destroy room on Janus server
           try {

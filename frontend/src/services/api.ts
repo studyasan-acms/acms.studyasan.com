@@ -97,7 +97,11 @@ const api = axios.create({
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    let token = localStorage.getItem('token');
+    if (!token && typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      token = searchParams.get('token');
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -1915,7 +1919,8 @@ export const recordingApi = {
   },
   getStreamUrl: (sessionId: number) => {
     const token = localStorage.getItem('token') || '';
-    const baseUrl = import.meta.env.VITE_API_URL || '/api';
+    const rawBaseUrl = import.meta.env.VITE_API_URL || '/api';
+    const baseUrl = rawBaseUrl.replace(/\/+$/, '');
     return `${baseUrl}/class-sessions/${sessionId}/recording/stream?token=${encodeURIComponent(token)}`;
   },
 };

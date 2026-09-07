@@ -181,17 +181,19 @@ export function useBackgroundProcessor(): UseBackgroundProcessorReturn {
 
     // Get processed stream from input stream
     const getProcessedStream = useCallback((inputStream: MediaStream): MediaStream | null => {
+        // Skip background canvas processing for recording bot or when background is not active
+        if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('bot') === 'true') {
+            return inputStream;
+        }
+
         console.log('[BackgroundProcessor] Creating processed stream...');
 
         initElements(inputStream);
 
         if (!canvasRef.current) {
             console.error('[BackgroundProcessor] Canvas not created!');
-            return null;
+            return inputStream;
         }
-
-        // Start loading MediaPipe in background
-        loadMediaPipe();
 
         // Create output stream from canvas
         const outputStream = canvasRef.current.captureStream(30);
@@ -211,16 +213,19 @@ export function useBackgroundProcessor(): UseBackgroundProcessorReturn {
         animationFrameRef.current = requestAnimationFrame(processFrame);
 
         return outputStream;
-    }, [initElements, loadMediaPipe, processFrame]);
+    }, [initElements, processFrame]);
 
     // Toggle background replacement
     const toggleBackground = useCallback(() => {
         setIsBackgroundActive(prev => {
             const newValue = !prev;
             console.log('[BackgroundProcessor] Toggle background:', newValue);
+            if (newValue) {
+                loadMediaPipe();
+            }
             return newValue;
         });
-    }, []);
+    }, [loadMediaPipe]);
 
     // Cleanup on unmount
     useEffect(() => {

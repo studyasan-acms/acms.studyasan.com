@@ -4,6 +4,7 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import type { AuthRequest } from '../types/index.js';
 import janusAdmin from '../services/janusAdmin.service.js';
 import { whiteboardCache } from '../services/whiteboardCache.service.js';
+import { RecordingBotService } from '../services/recordingBot.service.js';
 
 const prisma = new PrismaClient();
 
@@ -690,6 +691,15 @@ export const recordJoin = async (req: AuthRequest, res: Response) => {
     });
 
     console.log(`[Attendance] ✅ Join logged: User ${userId}, Log ID ${log.id}`);
+
+    // Auto-start recording bot if session is ONLINE and recording is not already active
+    if (videoRoom.class_session?.mode === 'ONLINE' && !RecordingBotService.isRecording(videoRoom.class_session_id)) {
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      RecordingBotService.startRecording(videoRoom.class_session_id, appUrl).catch((err) => {
+        console.warn(`[RecordingBot] Auto-start on join notice for session #${videoRoom.class_session_id}:`, err.message);
+      });
+    }
+
     sendSuccess(res, { logId: log.id, attendanceId: attendance.id }, 'Join recorded');
   } catch (error: any) {
     console.error('[Attendance] Error recording join:', error);

@@ -157,6 +157,40 @@ export const uploadSessionRecording = async (req: AuthRequest, res: Response) =>
   }
 };
 
+async function checkRecordingAccess(userId: number, userRole: string, classSession: any): Promise<boolean> {
+  if (userRole === 'ADMIN') return true;
+
+  if (userRole === 'TEACHER') {
+    const teacher = await prisma.teacher.findUnique({
+      where: { user_id: userId },
+    });
+    if (teacher && teacher.id === classSession.teacher_id) {
+      return true;
+    }
+    return false;
+  }
+
+  if (userRole === 'STUDENT') {
+    const student = await prisma.student.findUnique({
+      where: { user_id: userId },
+      include: {
+        enrollments: {
+          where: { subject_id: classSession.subject_id },
+        },
+        section_memberships: true,
+      },
+    });
+    if (!student) return false;
+    if (student.enrollments.length > 0) return true;
+    if (classSession.section_id) {
+      return student.section_memberships.some((m) => m.section_id === classSession.section_id);
+    }
+    return false;
+  }
+
+  return false;
+}
+
 /**
  * Get recording metadata for a class session
  * GET /api/class-sessions/:sessionId/recording
@@ -180,9 +214,9 @@ export const getSessionRecording = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Class session not found', 404);
     }
 
-    // Class recordings are strictly restricted to ADMIN role only
-    if (userRole !== 'ADMIN') {
-      return sendSuccess(res, { available: false }, 'Access restricted: Only administrators can view class recordings');
+    const hasAccess = await checkRecordingAccess(userId, userRole, classSession);
+    if (!hasAccess) {
+      return sendSuccess(res, { available: false }, 'Access restricted: You do not have permission to view this recording');
     }
 
     const recording = await (prisma as any).sessionRecording.findFirst({
@@ -239,9 +273,9 @@ export const streamSessionRecording = async (req: AuthRequest, res: Response) =>
       return sendError(res, 'Class session not found', 404);
     }
 
-    // Only ADMIN role can stream class session recordings
-    if (userRole !== 'ADMIN') {
-      return sendError(res, 'Access restricted: Only administrators can view or stream class recordings', 403);
+    const hasAccess = await checkRecordingAccess(userId, userRole, classSession);
+    if (!hasAccess) {
+      return sendError(res, 'Access restricted: You do not have permission to stream this recording', 403);
     }
 
     const recording = await (prisma as any).sessionRecording.findFirst({

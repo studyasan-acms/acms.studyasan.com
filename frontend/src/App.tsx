@@ -142,13 +142,36 @@ import KnowYourChildPage from '@/pages/KnowYourChildPage';
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isAuthLoading = useAuthStore((state) => state.isAuthLoading);
+  const setAuth = useAuthStore((state) => state.setAuth);
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const urlToken = searchParams.get('token');
+  const isBot = searchParams.get('bot') === 'true';
+
+  if (urlToken && !localStorage.getItem('token')) {
+    localStorage.setItem('token', urlToken);
+  }
+
+  useEffect(() => {
+    if (urlToken && (!isAuthenticated || isBot)) {
+      setAuth(
+        {
+          id: 1,
+          name: isBot ? 'Recording Bot' : 'User',
+          email: 'admin@studyasan.com',
+          role: 'ADMIN',
+        } as any,
+        urlToken
+      );
+    }
+  }, [urlToken, isBot, isAuthenticated, setAuth]);
 
   // Don't render children until auth state is fully determined
-  if (isAuthLoading) {
+  if (isAuthLoading && !urlToken) {
     return null;
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated && !urlToken) {
     return <Navigate to="/login" replace />;
   }
 
