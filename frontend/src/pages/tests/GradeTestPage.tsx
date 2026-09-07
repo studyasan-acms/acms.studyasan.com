@@ -209,7 +209,20 @@ export default function GradeTestPage() {
               </span>
             </div>
             <p className="text-xs text-slate-500 font-medium line-clamp-1">
-              {attempt.student?.user?.name} · {attempt.test?.title}
+              {(() => {
+                const guestObj = attempt.guest_info as any;
+                const isFallbackGuest =
+                  attempt.student?.user?.email === "guest@studyasan.com" ||
+                  attempt.student?.user?.name === "Guest User" ||
+                  !attempt.student_id;
+                return (
+                  guestObj?.name ||
+                  attempt.certificate?.recipient_name ||
+                  (!isFallbackGuest ? attempt.student?.user?.name : undefined) ||
+                  attempt.student?.user?.name ||
+                  "Student"
+                );
+              })()} · {attempt.test?.title}
             </p>
           </div>
         </div>
@@ -244,20 +257,42 @@ export default function GradeTestPage() {
       {/* STUDENT DETAILS & METRIC SUMMARY CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {/* Student Profile Card */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
-          <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-black text-sm shrink-0 border border-blue-100">
-            {attempt.student?.user?.name?.charAt(0)?.toUpperCase() || "S"}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold text-slate-900 truncate">{attempt.student?.user?.name}</p>
-            <p className="text-[11px] text-slate-400 truncate">{attempt.student?.user?.email}</p>
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
-                {attempt.is_practice ? "Practice Set" : "Official Exam"}
-              </span>
+        {(() => {
+          const guestObj = attempt.guest_info as any;
+          const isFallbackGuest =
+            attempt.student?.user?.email === "guest@studyasan.com" ||
+            attempt.student?.user?.name === "Guest User" ||
+            !attempt.student_id;
+          const cName =
+            guestObj?.name ||
+            attempt.certificate?.recipient_name ||
+            (!isFallbackGuest ? attempt.student?.user?.name : undefined) ||
+            attempt.student?.user?.name ||
+            "Student";
+          const cEmail =
+            guestObj?.email ||
+            attempt.certificate?.recipient_email ||
+            (!isFallbackGuest ? attempt.student?.user?.email : undefined) ||
+            attempt.student?.user?.email ||
+            "—";
+
+          return (
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-blue-50 text-[#0276D3] flex items-center justify-center font-black text-sm shrink-0 border border-blue-100">
+                {cName.charAt(0)?.toUpperCase() || "S"}
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-xs font-bold text-slate-900 truncate">{cName}</p>
+                <p className="text-[11px] text-slate-400 truncate">{cEmail}</p>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                    {isFallbackGuest || !!guestObj?.name ? "Guest Candidate" : attempt.is_practice ? "Practice Set" : "Official Exam"}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* Submission Details Card */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">

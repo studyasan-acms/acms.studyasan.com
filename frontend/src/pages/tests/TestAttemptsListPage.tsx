@@ -28,8 +28,8 @@ import {
 import { testService, testAttemptService } from "@/services/api";
 import type { Test, TestAttempt } from "@/types";
 import { Button } from "@/components/ui/button";
-import { printCertificateDocument } from "@/utils/printCertificate";
 import { Input } from "@/components/ui/input";
+import { printCertificateDocument, formatCertificateDate } from "@/utils/printCertificate";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -146,17 +146,27 @@ export default function TestAttemptsListPage() {
 
   // Helper to extract candidate name and email
   const getCandidateDetails = (attempt: TestAttempt) => {
+    const guestObj = attempt.guest_info as any;
+    const isFallbackGuest =
+      attempt.student?.user?.email === "guest@studyasan.com" ||
+      attempt.student?.user?.name === "Guest User" ||
+      !attempt.student_id;
+
     const name =
-      attempt.student?.user?.name ||
-      (attempt.guest_info as any)?.name ||
+      guestObj?.name ||
       attempt.certificate?.recipient_name ||
+      (!isFallbackGuest ? attempt.student?.user?.name : undefined) ||
+      attempt.student?.user?.name ||
       "Guest Candidate";
+
     const email =
-      attempt.student?.user?.email ||
-      (attempt.guest_info as any)?.email ||
+      guestObj?.email ||
       attempt.certificate?.recipient_email ||
+      (!isFallbackGuest ? attempt.student?.user?.email : undefined) ||
+      attempt.student?.user?.email ||
       "—";
-    const isGuest = !attempt.student_id;
+
+    const isGuest = isFallbackGuest || !!guestObj?.name || !!attempt.certificate?.recipient_name;
     return { name, email, isGuest };
   };
 
@@ -1010,130 +1020,84 @@ export default function TestAttemptsListPage() {
 
           {/* Printable Certificate View */}
           <div className="p-4 sm:p-8 bg-slate-100 overflow-x-auto flex justify-center">
-            {selectedCertAttempt && (
-              <div
-                id="admin-certificate-view"
-                className="flex flex-col items-center justify-center bg-white w-full max-w-[800px] min-h-[560px] box-border relative p-10 sm:p-12 text-center rounded-2xl shadow-xl border border-slate-200"
-                style={{
-                  backgroundImage: "radial-gradient(#0276D308 1px, transparent 1px)",
-                  backgroundSize: "24px 24px",
-                }}
-              >
-                {/* Embedded Fonts for Certificate */}
-                <style>{`
-                  @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Great+Vibes&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap');
-                  @media print {
-                    body * { visibility: hidden !important; }
-                    #admin-certificate-view, #admin-certificate-view * { visibility: visible !important; }
-                    #admin-certificate-view {
-                      position: fixed !important;
-                      left: 0 !important;
-                      top: 0 !important;
-                      width: 100vw !important;
-                      height: 100vh !important;
-                      margin: 0 !important;
-                      padding: 40px !important;
-                      box-shadow: none !important;
-                      border: none !important;
-                    }
-                  }
-                `}</style>
+            {selectedCertAttempt && (() => {
+              const candidate = getCandidateDetails(selectedCertAttempt);
+              const rawTitle = test?.certificate_title || "Certificate of Completion";
+              let certMainHeading = "CERTIFICATE";
+              let certSubHeading = "OF COMPLETION";
+              const match = rawTitle.match(/^certificate\s+(of\s+.*)/i);
+              if (match && match[1]) {
+                certSubHeading = match[1].toUpperCase();
+              } else if (/^certificate$/i.test(rawTitle.trim())) {
+                certSubHeading = "OF COMPLETION";
+              } else {
+                certSubHeading = rawTitle.toUpperCase();
+              }
 
-                {/* Frame Border */}
-                <div className="absolute inset-4 sm:inset-5 border-[3px] border-[#0276D3]/40 rounded-3xl pointer-events-none"></div>
-                <div className="absolute inset-6 sm:inset-7 border border-[#0276D3]/20 rounded-2xl pointer-events-none"></div>
+              const formattedDate = formatCertificateDate(selectedCertAttempt.submitted_at);
 
-                {/* Corner Accents */}
-                <div className="absolute top-6 left-6 w-10 h-10 border-t-4 border-l-4 border-[#0276D3] rounded-tl-xl pointer-events-none"></div>
-                <div className="absolute top-6 right-6 w-10 h-10 border-t-4 border-r-4 border-[#0276D3] rounded-tr-xl pointer-events-none"></div>
-                <div className="absolute bottom-6 left-6 w-10 h-10 border-b-4 border-l-4 border-[#0276D3] rounded-bl-xl pointer-events-none"></div>
-                <div className="absolute bottom-6 right-6 w-10 h-10 border-b-4 border-r-4 border-[#0276D3] rounded-br-xl pointer-events-none"></div>
-
-                {/* Watermark Icon */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
-                  <Award className="w-[420px] h-[420px] text-slate-900" />
-                </div>
-
-                {/* Header Brand */}
-                <div className="mb-4 flex flex-col items-center">
-                  <div className="flex items-center justify-center w-12 h-12 bg-[#0276D3] rounded-2xl mb-2 shadow-sm text-white">
-                    <Award className="w-7 h-7" />
-                  </div>
-                  <h2 className="text-xl sm:text-2xl font-black text-[#0276D3] tracking-wider uppercase font-['Outfit']">
-                    StudyAsan
-                  </h2>
-                  <span className="text-[9px] font-bold uppercase tracking-[0.25em] text-slate-400">
-                    Academy of Continuous Mastery & Skills
-                  </span>
-                </div>
-
-                {/* Certificate Title */}
-                <h1
-                  className="text-2xl sm:text-3xl font-extrabold text-slate-900 mb-4 uppercase tracking-[0.18em]"
-                  style={{ fontFamily: '"Cinzel", serif' }}
+              return (
+                <div
+                  id="admin-certificate-view"
+                  className="w-full max-w-[840px] aspect-[1.414/1] relative box-border overflow-hidden rounded-2xl shadow-2xl border border-slate-200 select-none bg-white"
+                  style={{
+                    backgroundImage: "url('/certificate_background.png')",
+                    backgroundSize: "100% 100%",
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "center center",
+                  }}
                 >
-                  {test?.certificate_title || "Certificate of Completion"}
-                </h1>
+                  {/* Content Layout */}
+                  <div className="absolute top-[17%] left-[14%] right-[14%] bottom-[28%] flex flex-col items-center justify-center text-center">
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#002b5b] tracking-[4px] uppercase leading-none font-['Outfit']">
+                      {certMainHeading}
+                    </h1>
+                    <h2 className="text-xs sm:text-sm lg:text-base font-bold text-[#002b5b] tracking-[6px] uppercase mt-1 sm:mt-1.5 font-['Outfit']">
+                      {certSubHeading}
+                    </h2>
+                    <div className="w-8 sm:w-11 h-1 bg-[#0276D3] rounded-full my-1.5 sm:my-2"></div>
 
-                <p className="text-xs sm:text-sm text-slate-500 mb-3 font-serif italic">
-                  This is proudly presented to
-                </p>
-
-                {/* Recipient Name */}
-                <h2
-                  className="text-3xl sm:text-4xl font-bold text-[#0276D3] mb-2 pb-1 px-6 inline-block"
-                  style={{ fontFamily: '"Outfit", sans-serif' }}
-                >
-                  {getCandidateDetails(selectedCertAttempt).name}
-                </h2>
-                <div className="w-40 h-0.5 bg-gradient-to-r from-transparent via-[#0276D3] to-transparent mb-5"></div>
-
-                {/* Body Text */}
-                <p className="text-xs sm:text-sm text-slate-700 max-w-xl mb-7 font-serif leading-relaxed px-4">
-                  {renderCertificateText(selectedCertAttempt)}
-                </p>
-
-                {/* Footer Signatures & Certificate ID */}
-                <div className="flex justify-between w-full max-w-2xl mt-4 px-4 sm:px-8 items-end gap-2">
-                  {/* Provider Signature */}
-                  <div className="text-center flex flex-col items-center min-w-[140px]">
-                    <div className="mb-1 h-10 flex items-end justify-center">
-                      <span className="text-2xl text-slate-800" style={{ fontFamily: '"Great Vibes", cursive' }}>
-                        Deepak
-                      </span>
+                    <p className="font-serif italic text-xs sm:text-sm text-slate-600 mb-0.5 sm:mb-1">
+                      This is to certify that
+                    </p>
+                    <div className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-[#002b5b] px-4 leading-tight font-['Outfit']">
+                      {candidate.name}
                     </div>
-                    <div className="w-36 h-px bg-slate-400 mb-1"></div>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Authorized Signature</p>
+                    <div className="w-48 sm:w-64 h-[1px] bg-slate-300 my-1 sm:my-1.5"></div>
+
+                    <p className="text-[11px] sm:text-xs text-slate-600">
+                      has successfully completed the course
+                    </p>
+                    <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#0276D3] my-0.5">
+                      {test?.title || "Certification Assessment"}
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-slate-600">
+                      offered by <strong className="text-[#002b5b] font-bold">StudyAsan</strong>
+                    </p>
+
+                    <p className="text-[9px] sm:text-[11px] text-slate-500 max-w-[560px] mx-auto mt-1 sm:mt-2 leading-relaxed px-2 line-clamp-2">
+                      {selectedCertAttempt.certificate?.certificate_text ||
+                        "We appreciate your dedication, curiosity and consistent effort in achieving this milestone. We wish you continued success in your learning journey."}
+                    </p>
                   </div>
 
-                  {/* Certificate ID */}
-                  <div className="text-center flex flex-col items-center">
-                    <div className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg mb-1">
-                      <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Certificate ID
-                      </span>
-                      <span className="font-mono font-bold text-[11px] text-[#0276D3]">
+                  {/* Bottom Left Meta */}
+                  <div className="absolute bottom-[11%] left-[6%] flex items-center gap-3 sm:gap-4 text-left z-10">
+                    <div>
+                      <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 block">Date of Issue</span>
+                      <span className="text-[10px] sm:text-xs font-extrabold text-slate-900">{formattedDate}</span>
+                    </div>
+                    <div className="w-px h-5 sm:h-7 bg-slate-300"></div>
+                    <div>
+                      <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 block">Certificate ID</span>
+                      <span className="text-[10px] sm:text-xs font-mono font-bold text-slate-900">
                         {selectedCertAttempt.certificate?.code || "SA-CERT-VERIFIED"}
                       </span>
                     </div>
-                    <p className="text-[8px] text-slate-400">Verified StudyAsan Certificate</p>
-                  </div>
-
-                  {/* Date */}
-                  <div className="text-center flex flex-col items-center justify-end min-w-[140px]">
-                    <div className="mb-1 h-10 flex items-end justify-center">
-                      <span className="text-xs font-semibold text-slate-800 font-['Outfit']">
-                        {selectedCertAttempt.submitted_at
-                          ? new Date(selectedCertAttempt.submitted_at).toLocaleDateString()
-                          : new Date().toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div className="w-36 h-px bg-slate-400 mb-1"></div>
-                    <p className="text-[9px] text-slate-500 uppercase tracking-widest font-bold">Date Issued</p>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Modal Footer */}

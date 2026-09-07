@@ -1,37 +1,77 @@
 /**
  * Robust Certificate Printing Utility
- * Opens an isolated print window with full styling, landscape orientation,
- * custom Google fonts, and high-DPI vector elements, avoiding any parent modal/dialog transform issues.
+ * Opens an isolated print window with full styling, landscape orientation (A4),
+ * custom Google fonts, and high-DPI vector elements, using the official StudyAsan
+ * certificate background template (/certificate_background.png).
+ *
+ * Strict single-page A4 landscape constraints prevent multi-page PDF generation.
  */
 
 export interface PrintCertificateOptions {
   title: string;
   candidateName: string;
-  certificateTitle: string;
-  certificateBodyText: string;
+  certificateTitle?: string;
+  certificateBodyText?: string;
   certificateCode: string;
-  dateStr: string;
+  dateStr?: string;
+}
+
+export function formatCertificateDate(dateInput?: string | Date | null): string {
+  if (!dateInput) {
+    return new Date().toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+  const parsed = new Date(dateInput);
+  if (isNaN(parsed.getTime())) {
+    return String(dateInput);
+  }
+  return parsed.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 }
 
 export function printCertificateDocument(options: PrintCertificateOptions) {
-  const printWindow = window.open('', '_blank', 'width=1150,height=800');
+  const printWindow = window.open('', '_blank', 'width=1123,height=794');
   if (!printWindow) {
     // Fallback if popup blocked
     window.print();
     return;
   }
 
+  // Parse title into Main Heading and Subheading
+  const rawTitle = options.certificateTitle || 'Certificate of Completion';
+  let certMainHeading = 'CERTIFICATE';
+  let certSubHeading = 'OF COMPLETION';
+
+  const match = rawTitle.match(/^certificate\s+(of\s+.*)/i);
+  if (match && match[1]) {
+    certSubHeading = match[1].toUpperCase();
+  } else if (/^certificate$/i.test(rawTitle.trim())) {
+    certSubHeading = 'OF COMPLETION';
+  } else {
+    certSubHeading = rawTitle.toUpperCase();
+  }
+
+  const formattedDate = formatCertificateDate(options.dateStr);
+  const examOrCourseName = options.title || 'Certification Assessment';
+  const customBody = options.certificateBodyText?.trim();
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>${options.title} - ${options.candidateName}</title>
+  <title>${examOrCourseName} - ${options.candidateName}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Great+Vibes&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,400;1,600&display=swap" rel="stylesheet">
   <style>
     @page {
-      size: landscape;
+      size: A4 landscape;
       margin: 0mm;
     }
     * {
@@ -40,297 +80,234 @@ export function printCertificateDocument(options: PrintCertificateOptions) {
       padding: 0;
     }
     html, body {
-      width: 100vw;
-      height: 100vh;
+      width: 297mm;
+      height: 210mm;
+      max-width: 297mm;
+      max-height: 210mm;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
       background: #ffffff;
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
       color-adjust: exact !important;
     }
-    .cert-container {
-      width: 100vw;
-      height: 100vh;
-      padding: 40px 52px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: center;
+    .cert-page {
+      width: 297mm;
+      height: 210mm;
+      max-width: 297mm;
+      max-height: 210mm;
       position: relative;
-      background-color: #ffffff;
-      background-image: radial-gradient(#0276D315 1.5px, transparent 1.5px);
-      background-size: 24px 24px;
-      text-align: center;
-    }
-    /* Frame Borders */
-    .border-outer {
-      position: absolute;
-      top: 18px;
-      left: 18px;
-      right: 18px;
-      bottom: 18px;
-      border: 3.5px solid #0276D3;
-      border-radius: 26px;
-      pointer-events: none;
-    }
-    .border-inner {
-      position: absolute;
-      top: 26px;
-      left: 26px;
-      right: 26px;
-      bottom: 26px;
-      border: 1.2px solid rgba(2, 118, 211, 0.3);
-      border-radius: 20px;
-      pointer-events: none;
-    }
-    /* Corners */
-    .corner {
-      position: absolute;
-      width: 48px;
-      height: 48px;
-      pointer-events: none;
-    }
-    .corner-tl { top: 32px; left: 32px; border-top: 4.5px solid #0276D3; border-left: 4.5px solid #0276D3; border-top-left-radius: 14px; }
-    .corner-tr { top: 32px; right: 32px; border-top: 4.5px solid #0276D3; border-right: 4.5px solid #0276D3; border-top-right-radius: 14px; }
-    .corner-bl { bottom: 32px; left: 32px; border-bottom: 4.5px solid #0276D3; border-left: 4.5px solid #0276D3; border-bottom-left-radius: 14px; }
-    .corner-br { bottom: 32px; right: 32px; border-bottom: 4.5px solid #0276D3; border-right: 4.5px solid #0276D3; border-bottom-right-radius: 14px; }
-
-    /* Watermark Icon */
-    .watermark {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      opacity: 0.035;
-      font-size: 380px;
-      user-select: none;
-      pointer-events: none;
-      line-height: 1;
-    }
-
-    /* Content Elements */
-    .brand-section {
+      overflow: hidden;
+      page-break-inside: avoid !important;
+      page-break-after: avoid !important;
+      page-break-before: avoid !important;
+      background-image: url('/certificate_background.png');
+      background-size: 100% 100%;
+      background-repeat: no-repeat;
+      background-position: center center;
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-top: 6px;
+      text-align: center;
+      box-sizing: border-box;
+      padding: 0 55mm;
     }
-    .brand-badge {
-      width: 46px;
-      height: 46px;
-      background: #0276D3;
-      border-radius: 14px;
+
+    /* Content Layout Container */
+    .cert-content {
+      position: absolute;
+      top: 17%;
+      left: 14%;
+      right: 14%;
+      bottom: 28%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      color: white;
-      margin-bottom: 6px;
-      box-shadow: 0 4px 10px rgba(2, 118, 211, 0.25);
+      text-align: center;
+      z-index: 10;
     }
-    .brand-title {
-      font-size: 24px;
+
+    /* Certificate Header */
+    .cert-title-main {
+      font-size: 34pt;
       font-weight: 900;
-      color: #0276D3;
+      color: #002b5b;
       text-transform: uppercase;
-      letter-spacing: 2.5px;
+      letter-spacing: 5px;
       line-height: 1;
+      margin: 0;
     }
-    .brand-sub {
-      font-size: 9.5px;
+    .cert-title-sub {
+      font-size: 15pt;
       font-weight: 700;
+      color: #002b5b;
       text-transform: uppercase;
-      letter-spacing: 0.26em;
-      color: #64748b;
-      margin-top: 4px;
+      letter-spacing: 7px;
+      line-height: 1.2;
+      margin-top: 5px;
+    }
+    .cert-pill {
+      width: 44px;
+      height: 4px;
+      background: #0276D3;
+      border-radius: 3px;
+      margin: 9px auto 10px auto;
     }
 
-    .main-body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: auto 0;
-      width: 100%;
-    }
-    .cert-heading {
-      font-family: 'Cinzel', serif;
-      font-size: 30px;
-      font-weight: 800;
-      color: #0f172a;
-      text-transform: uppercase;
-      letter-spacing: 0.18em;
-      margin: 0 0 6px 0;
-    }
-    .presented-text {
-      font-size: 14px;
+    /* Lead Text */
+    .cert-lead {
+      font-family: 'Playfair Display', serif;
+      font-size: 11.5pt;
       font-style: italic;
-      color: #64748b;
-      font-family: 'Playfair Display', serif;
-      margin-bottom: 8px;
-    }
-    .candidate-name {
-      font-family: 'Outfit', sans-serif;
-      font-size: 42px;
-      font-weight: 800;
-      color: #0276D3;
-      padding: 0 24px;
-      line-height: 1.15;
-    }
-    .divider-line {
-      width: 200px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #0276D3, transparent);
-      margin: 8px auto 16px auto;
-    }
-    .body-text {
-      font-family: 'Playfair Display', serif;
-      font-size: 15px;
-      line-height: 1.65;
-      color: #334155;
-      max-width: 740px;
-      margin: 0 auto;
-      padding: 0 20px;
-    }
-
-    /* Footer / Signatures */
-    .cert-footer {
-      width: 100%;
-      max-width: 860px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      padding: 0 28px;
-      margin-bottom: 8px;
-    }
-    .sig-col {
-      min-width: 170px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-    }
-    .sig-script {
-      font-family: 'Great Vibes', cursive;
-      font-size: 30px;
-      color: #1e293b;
-      height: 38px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      margin-bottom: 2px;
-    }
-    .date-display {
-      font-family: 'Outfit', sans-serif;
-      font-size: 13.5px;
-      font-weight: 600;
-      color: #1e293b;
-      height: 38px;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      margin-bottom: 2px;
-    }
-    .sig-line {
-      width: 160px;
-      height: 1px;
-      background: #94a3b8;
+      color: #475569;
       margin-bottom: 5px;
     }
-    .sig-label {
-      font-size: 9.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      color: #64748b;
-    }
-    .cert-code-box {
-      background: #f8fafc;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 6px 16px;
-      margin-bottom: 3px;
-    }
-    .cert-code-label {
-      font-size: 8.5px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #64748b;
-      display: block;
-    }
-    .cert-code-val {
-      font-family: monospace;
-      font-size: 12.5px;
-      font-weight: 700;
-      color: #0276D3;
+
+    /* Candidate Name */
+    .candidate-name {
+      font-size: 27pt;
+      font-weight: 800;
+      color: #002b5b;
       letter-spacing: 0.5px;
+      line-height: 1.15;
+      padding: 0 20px;
     }
-    .cert-verify-text {
-      font-size: 8.5px;
-      color: #94a3b8;
+    .name-divider {
+      width: 280px;
+      height: 1px;
+      background: #cbd5e1;
+      margin: 7px auto 10px auto;
+    }
+
+    /* Course / Assessment Details */
+    .completion-lead {
+      font-size: 10.5pt;
+      color: #475569;
+      line-height: 1.35;
+    }
+    .course-title {
+      font-size: 13.5pt;
+      font-weight: 800;
+      color: #0276D3;
+      margin: 2.5px 0;
+      line-height: 1.25;
+    }
+    .offered-by {
+      font-size: 10.5pt;
+      color: #475569;
+      font-weight: 500;
+    }
+    .offered-by strong {
+      color: #002b5b;
+      font-weight: 700;
+    }
+
+    /* Appreciation Note */
+    .appreciation-text {
+      font-size: 9pt;
+      line-height: 1.45;
+      color: #64748b;
+      max-width: 620px;
+      margin: 9px auto 0 auto;
+      padding: 0 10px;
+    }
+
+    /* Bottom-Left Meta: Date of Issue & Certificate ID */
+    .cert-meta-left {
+      position: absolute;
+      bottom: 12%;
+      left: 6%;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      text-align: left;
+      z-index: 15;
+    }
+    .meta-group {
+      display: flex;
+      flex-direction: column;
+    }
+    .meta-label {
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: capitalize;
+      letter-spacing: 0.3px;
+      margin-bottom: 2px;
+    }
+    .meta-value {
+      font-size: 9.5pt;
+      font-weight: 800;
+      color: #0f172a;
+      letter-spacing: 0.2px;
+    }
+    .meta-sep {
+      width: 1px;
+      height: 28px;
+      background: #cbd5e1;
     }
   </style>
 </head>
 <body>
-  <div class="cert-container">
-    <div class="border-outer"></div>
-    <div class="border-inner"></div>
-    <div class="corner corner-tl"></div>
-    <div class="corner corner-tr"></div>
-    <div class="corner corner-bl"></div>
-    <div class="corner corner-br"></div>
-    <div class="watermark">🏆</div>
+  <div class="cert-page">
+    <div class="cert-content">
+      <h1 class="cert-title-main">${certMainHeading}</h1>
+      <h2 class="cert-title-sub">${certSubHeading}</h2>
+      <div class="cert-pill"></div>
 
-    <div class="brand-section">
-      <div class="brand-badge">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="8" r="6"/>
-          <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
-        </svg>
-      </div>
-      <div class="brand-title">StudyAsan</div>
-      <div class="brand-sub">Academy of Continuous Mastery & Skills</div>
-    </div>
-
-    <div class="main-body">
-      <h1 class="cert-heading">${options.certificateTitle}</h1>
-      <p class="presented-text">This is proudly presented to</p>
+      <p class="cert-lead">This is to certify that</p>
       <div class="candidate-name">${options.candidateName}</div>
-      <div class="divider-line"></div>
-      <p class="body-text">${options.certificateBodyText}</p>
+      <div class="name-divider"></div>
+
+      <p class="completion-lead">has successfully completed the course</p>
+      <div class="course-title">${examOrCourseName}</div>
+      <p class="offered-by">offered by <strong>StudyAsan</strong></p>
+
+      <p class="appreciation-text">
+        ${customBody || 'We appreciate your dedication, curiosity and consistent effort in achieving this milestone. We wish you continued success in your learning journey.'}
+      </p>
     </div>
 
-    <div class="cert-footer">
-      <div class="sig-col">
-        <div class="sig-script">Deepak</div>
-        <div class="sig-line"></div>
-        <span class="sig-label">Authorized Signature</span>
+    <!-- Bottom Left Metadata -->
+    <div class="cert-meta-left">
+      <div class="meta-group">
+        <span class="meta-label">Date of Issue</span>
+        <span class="meta-value">${formattedDate}</span>
       </div>
-
-      <div class="sig-col">
-        <div class="cert-code-box">
-          <span class="cert-code-label">Certificate ID</span>
-          <span class="cert-code-val">${options.certificateCode}</span>
-        </div>
-        <span class="cert-verify-text">Verified StudyAsan Digital Credential</span>
-      </div>
-
-      <div class="sig-col">
-        <div class="date-display">${options.dateStr}</div>
-        <div class="sig-line"></div>
-        <span class="sig-label">Date Issued</span>
+      <div class="meta-sep"></div>
+      <div class="meta-group">
+        <span class="meta-label">Certificate ID</span>
+        <span class="meta-value">${options.certificateCode}</span>
       </div>
     </div>
   </div>
 
   <script>
-    window.onload = function() {
-      setTimeout(function() {
-        window.focus();
-        window.print();
-        setTimeout(function() { window.close(); }, 800);
-      }, 400);
-    };
+    window.addEventListener('load', function() {
+      // Ensure background template image is loaded before triggering print dialog
+      var bg = new Image();
+      bg.src = '/certificate_background.png';
+      var printed = false;
+
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        setTimeout(function() {
+          window.focus();
+          window.print();
+        }, 250);
+      }
+
+      if (bg.complete) {
+        doPrint();
+      } else {
+        bg.onload = doPrint;
+        bg.onerror = doPrint;
+      }
+    });
   </script>
 </body>
 </html>`;
@@ -339,3 +316,4 @@ export function printCertificateDocument(options: PrintCertificateOptions) {
   printWindow.document.write(html);
   printWindow.document.close();
 }
+

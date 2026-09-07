@@ -728,6 +728,7 @@ export const getTestAttempt = async (req: AuthRequest, res: Response) => {
             email: true,
           },
         },
+        certificate: true,
       },
     });
 

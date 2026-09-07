@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Loader2, CheckCircle, XCircle, Award, Clock, ArrowRight, User, Mail, ShieldAlert, ShieldCheck, Download, Printer, ExternalLink } from 'lucide-react';
 import type { Test, TestAttempt } from '@/types';
 import { toast } from 'sonner';
-import { printCertificateDocument } from '@/utils/printCertificate';
+import { printCertificateDocument, formatCertificateDate } from '@/utils/printCertificate';
 
 interface CertificationResult {
     score: number;
@@ -398,29 +398,6 @@ export default function CertificationPage() {
 
     return (
         <div className="min-h-screen bg-slate-50 font-sans text-gray-900">
-            <style>{`
-        @media print {
-          @page { size: landscape; margin: 0; }
-          body * { visibility: hidden; }
-          #certificate-view, #certificate-view * { visibility: visible; }
-          #certificate-view {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100vw;
-            height: 100vh;
-            margin: 0;
-            padding: 0;
-            display: flex !important;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            z-index: 9999;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
-
             {/* Header with Blue Background & Logo */}
             <header className="bg-blue-900 border-b border-blue-800/60 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-md no-print">
                 <div className="flex items-center gap-3">
@@ -763,114 +740,89 @@ export default function CertificationPage() {
                             </CardContent>
                         </Card>
 
-                        {/* Certificate View (Styled for Print & Screen Preview) */}
-                        {result.is_passed && (
-                            <div
-                                id="certificate-view"
-                                className="hidden flex-col items-center justify-center bg-white w-full h-full box-border relative p-12 text-center"
-                                style={{
-                                    backgroundImage: 'radial-gradient(#0276D308 1px, transparent 1px)',
-                                    backgroundSize: '24px 24px',
-                                }}
-                            >
-                                {/* Fonts */}
-                                <style>{`
-                                    @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800;900&family=Great+Vibes&family=Outfit:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap');
-                                `}</style>
+                        {/* Certificate View (Preview) */}
+                        {result.is_passed && (() => {
+                            const rawTitle = certificateTitleText;
+                            let certMainHeading = 'CERTIFICATE';
+                            let certSubHeading = 'OF COMPLETION';
+                            const match = rawTitle.match(/^certificate\s+(of\s+.*)/i);
+                            if (match && match[1]) {
+                                certSubHeading = match[1].toUpperCase();
+                            } else if (/^certificate$/i.test(rawTitle.trim())) {
+                                certSubHeading = 'OF COMPLETION';
+                            } else {
+                                certSubHeading = rawTitle.toUpperCase();
+                            }
 
-                                {/* Frame Border */}
-                                <div className="absolute inset-5 border-[3px] border-[#0276D3]/40 rounded-3xl pointer-events-none"></div>
-                                <div className="absolute inset-7 border border-[#0276D3]/20 rounded-2xl pointer-events-none"></div>
+                            const formattedDate = formatCertificateDate(result.certificateDate);
 
-                                {/* Corner Accents */}
-                                <div className="absolute top-8 left-8 w-12 h-12 border-t-4 border-l-4 border-[#0276D3] rounded-tl-xl pointer-events-none"></div>
-                                <div className="absolute top-8 right-8 w-12 h-12 border-t-4 border-r-4 border-[#0276D3] rounded-tr-xl pointer-events-none"></div>
-                                <div className="absolute bottom-8 left-8 w-12 h-12 border-b-4 border-l-4 border-[#0276D3] rounded-bl-xl pointer-events-none"></div>
-                                <div className="absolute bottom-8 right-8 w-12 h-12 border-b-4 border-r-4 border-[#0276D3] rounded-br-xl pointer-events-none"></div>
+                            return (
+                                <div className="mt-8">
+                                    <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 text-center">
+                                        Certificate Preview
+                                    </h3>
+                                    <div
+                                        id="certificate-view"
+                                        className="w-full max-w-[840px] mx-auto aspect-[1.414/1] relative box-border overflow-hidden rounded-2xl shadow-2xl border border-slate-200 select-none bg-white"
+                                        style={{
+                                            backgroundImage: "url('/certificate_background.png')",
+                                            backgroundSize: '100% 100%',
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'center center',
+                                        }}
+                                    >
+                                        {/* Content Layout */}
+                                        <div className="absolute top-[17%] left-[14%] right-[14%] bottom-[28%] flex flex-col items-center justify-center text-center">
+                                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#002b5b] tracking-[4px] uppercase leading-none font-['Outfit']">
+                                                {certMainHeading}
+                                            </h1>
+                                            <h2 className="text-xs sm:text-sm lg:text-base font-bold text-[#002b5b] tracking-[6px] uppercase mt-1 sm:mt-1.5 font-['Outfit']">
+                                                {certSubHeading}
+                                            </h2>
+                                            <div className="w-8 sm:w-11 h-1 bg-[#0276D3] rounded-full my-1.5 sm:my-2"></div>
 
-                                {/* Watermark */}
-                                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 opacity-[0.03] pointer-events-none">
-                                    <Award className="w-[500px] h-[500px] text-slate-900" />
-                                </div>
+                                            <p className="font-serif italic text-xs sm:text-sm text-slate-600 mb-0.5 sm:mb-1">
+                                                This is to certify that
+                                            </p>
+                                            <div className="text-lg sm:text-2xl lg:text-3xl font-extrabold text-[#002b5b] px-4 leading-tight font-['Outfit']">
+                                                {result.candidateName || candidateName}
+                                            </div>
+                                            <div className="w-48 sm:w-64 h-[1px] bg-slate-300 my-1 sm:my-1.5"></div>
 
-                                {/* Header: Brand */}
-                                <div className="mb-6 flex flex-col items-center">
-                                    <div className="flex items-center justify-center w-14 h-14 bg-[#0276D3] rounded-2xl mb-2 shadow-sm text-white">
-                                        <Award className="w-8 h-8" />
-                                    </div>
-                                    <h2 className="text-2xl font-black text-[#0276D3] tracking-wider uppercase font-['Outfit']">
-                                        StudyAsan
-                                    </h2>
-                                    <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-400">
-                                        Academy of Continuous Mastery & Skills
-                                    </span>
-                                </div>
+                                            <p className="text-[11px] sm:text-xs text-slate-600">
+                                                has successfully completed the course
+                                            </p>
+                                            <div className="text-xs sm:text-sm lg:text-base font-extrabold text-[#0276D3] my-0.5">
+                                                {test.title}
+                                            </div>
+                                            <p className="text-[11px] sm:text-xs text-slate-600">
+                                                offered by <strong className="text-[#002b5b] font-bold">StudyAsan</strong>
+                                            </p>
 
-                                {/* Certificate Title */}
-                                <h1
-                                    className="text-4xl font-extrabold text-slate-900 mb-6 uppercase tracking-[0.18em]"
-                                    style={{ fontFamily: '"Cinzel", serif' }}
-                                >
-                                    {certificateTitleText}
-                                </h1>
-
-                                <p className="text-sm text-slate-500 mb-4 font-serif italic">
-                                    This is proudly presented to
-                                </p>
-
-                                {/* Candidate Name */}
-                                <h2
-                                    className="text-5xl font-bold text-[#0276D3] mb-3 pb-1 px-8 inline-block"
-                                    style={{ fontFamily: '"Outfit", sans-serif' }}
-                                >
-                                    {result.candidateName || candidateName}
-                                </h2>
-                                <div className="w-48 h-0.5 bg-gradient-to-r from-transparent via-[#0276D3] to-transparent mb-6"></div>
-
-                                {/* Certificate Custom Body Text */}
-                                <p className="text-base text-slate-700 max-w-2xl mb-8 font-serif leading-relaxed px-6">
-                                    {certificateBodyText}
-                                </p>
-
-                                {/* Footer Information: Signatures & Unique Certificate ID */}
-                                <div className="flex justify-between w-full max-w-4xl mt-6 px-12 items-end">
-                                    {/* Provider Signature */}
-                                    <div className="text-center flex flex-col items-center min-w-[180px]">
-                                        <div className="mb-1 h-12 flex items-end justify-center">
-                                            <span className="text-3xl text-slate-800" style={{ fontFamily: '"Great Vibes", cursive' }}>
-                                                Deepak
-                                            </span>
+                                            <p className="text-[9px] sm:text-[11px] text-slate-500 max-w-[560px] mx-auto mt-1 sm:mt-2 leading-relaxed px-2 line-clamp-2">
+                                                {certificateBodyText ||
+                                                    'We appreciate your dedication, curiosity and consistent effort in achieving this milestone. We wish you continued success in your learning journey.'}
+                                            </p>
                                         </div>
-                                        <div className="w-44 h-px bg-slate-400 mb-1.5"></div>
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Authorized Signature</p>
-                                    </div>
 
-                                    {/* Unique Certificate ID & Verification Seal */}
-                                    <div className="text-center flex flex-col items-center">
-                                        <div className="px-4 py-1.5 bg-slate-50 border border-slate-200 rounded-lg mb-1">
-                                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                                                Certificate ID
-                                            </span>
-                                            <span className="font-mono font-bold text-xs text-[#0276D3]">
-                                                {result.certificateCode || 'SA-CERT-VERIFIED'}
-                                            </span>
+                                        {/* Bottom Left Meta */}
+                                        <div className="absolute bottom-[11%] left-[6%] flex items-center gap-3 sm:gap-4 text-left z-10">
+                                            <div>
+                                                <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 block">Date of Issue</span>
+                                                <span className="text-[10px] sm:text-xs font-extrabold text-slate-900">{formattedDate}</span>
+                                            </div>
+                                            <div className="w-px h-5 sm:h-7 bg-slate-300"></div>
+                                            <div>
+                                                <span className="text-[8px] sm:text-[10px] font-bold text-slate-500 block">Certificate ID</span>
+                                                <span className="text-[10px] sm:text-xs font-mono font-bold text-slate-900">
+                                                    {result.certificateCode || 'SA-CERT-VERIFIED'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <p className="text-[9px] text-slate-400">Verified & Recorded in StudyAsan Registry</p>
-                                    </div>
-
-                                    {/* Date */}
-                                    <div className="text-center flex flex-col items-center justify-end min-w-[180px]">
-                                        <div className="mb-1 h-12 flex items-end justify-center">
-                                            <span className="text-sm font-semibold text-slate-800 font-['Outfit']">
-                                                {result.certificateDate ? new Date(result.certificateDate).toLocaleDateString() : new Date().toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <div className="w-44 h-px bg-slate-400 mb-1.5"></div>
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Date Issued</p>
                                     </div>
                                 </div>
-                            </div>
-                        )}
+                            );
+                        })()}
                     </div>
                 )}
             </main>
