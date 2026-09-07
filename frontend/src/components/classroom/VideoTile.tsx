@@ -5,8 +5,8 @@
  * Includes teacher/admin controls for muting and removing students.
  */
 
-import React, { useRef, useEffect, useState } from 'react';
-import { Mic, MicOff, Video, VideoOff, User, MoreVertical, UserX, VolumeX, PenTool } from 'lucide-react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
+import { Mic, MicOff, Video, VideoOff, MoreVertical, UserX, VolumeX, PenTool } from 'lucide-react';
 import type { Participant } from '@/types/videoRoom';
 
 interface VideoTileProps {
@@ -23,6 +23,34 @@ interface VideoTileProps {
     onMuteParticipant?: (participantId: string | number) => void;
     onKickParticipant?: (participantId: string | number) => void;
     onToggleWhiteboardAccess?: (participantId: string | number) => void;
+}
+
+function getAvatarGradient(name?: string): string {
+    const gradients = [
+        'from-blue-600 via-indigo-700 to-slate-900',
+        'from-indigo-600 via-purple-700 to-slate-900',
+        'from-cyan-600 via-blue-700 to-slate-900',
+        'from-teal-600 via-emerald-700 to-slate-900',
+        'from-amber-600 via-orange-700 to-slate-900',
+        'from-rose-600 via-pink-700 to-slate-900',
+        'from-violet-600 via-fuchsia-700 to-slate-900',
+    ];
+    if (!name) return gradients[0];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % gradients.length;
+    return gradients[index];
+}
+
+function getInitials(name?: string): string {
+    if (!name) return 'U';
+    const clean = name.replace(/\(You\)|\(Screen\)/gi, '').trim();
+    const parts = clean.split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'U';
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export function VideoTile({
@@ -51,8 +79,8 @@ export function VideoTile({
             if (video.srcObject !== stream) {
                 video.srcObject = stream;
             }
-            // Force play in case autoPlay didn't fire (e.g. stream set before mount)
-            video.play().catch(() => {}); // Ignore NotAllowedError (autoplay policy)
+            // Force play in case autoPlay didn't fire
+            video.play().catch(() => {});
         } else {
             video.srcObject = null;
         }
@@ -75,6 +103,9 @@ export function VideoTile({
 
     // Show teacher controls only for non-local participants when user is teacher
     const canShowTeacherControls = isTeacher && !isLocal && !participant.isLocal;
+
+    const avatarGradient = useMemo(() => getAvatarGradient(participant.displayName), [participant.displayName]);
+    const initials = useMemo(() => getInitials(participant.displayName), [participant.displayName]);
 
     const handleMute = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -108,120 +139,119 @@ export function VideoTile({
         <div
             onClick={onClick}
             className={`
-        relative rounded-xl border border-slate-200
-        ${isMain ? 'w-full h-full bg-slate-900' : 'bg-slate-900'}
-        ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-sky-400 transition-all' : ''}
-        ${className}
-      `}
+                relative w-full h-full overflow-hidden rounded-xl bg-slate-950 isolate select-none
+                ${participant.isSpeaking ? 'ring-2 ring-emerald-400 ring-inset shadow-[0_0_12px_rgba(52,211,153,0.3)]' : ''}
+                ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-sky-400/80 transition-all' : ''}
+                ${className}
+            `}
         >
-            {/* Inner clipping wrapper for content */}
-            <div className="absolute inset-0 overflow-hidden rounded-xl">
-                {/* Video element */}
-                {shouldShowVideo ? (
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted={isLocal}
-                        className={`w-full h-full bg-slate-900 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''}`}
-                    />
-                ) : (
-                    /* Avatar placeholder when no video */
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900">
-                        <div className="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 rounded-full bg-sky-500/20 border border-sky-400/30 flex items-center justify-center shadow-inner">
-                            <User className="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7 text-sky-400" />
-                        </div>
-                    </div>
-                )}
-
-                {/* Overflow indicator */}
-                {showOverflow && showOverflow > 0 && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-slate-800/80 text-white">
-                        <span className="text-2xl font-bold">+{showOverflow}</span>
-                    </div>
-                )}
-
-                {/* Hand Raised Badge */}
-                {participant.isHandRaised && (
-                    <div className="absolute top-1 left-1 md:top-1.5 md:left-1.5 z-20 flex items-center gap-0.5 md:gap-1 bg-amber-500/95 backdrop-blur-md text-white px-1.5 py-0.5 rounded-full text-[9px] md:text-[10px] font-bold shadow-md border border-amber-300/40 animate-bounce pointer-events-none">
-                        <span>✋ Raised</span>
-                    </div>
-                )}
-
-                {/* Bottom overlay with name and status (hidden in screen share stage for unobstructed view) */}
-                {!isScreenShare && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1.5 md:p-2 pointer-events-none">
-                        <div className="flex items-center justify-between gap-1">
-                            <span className="text-white text-[10px] xs:text-[11px] md:text-xs font-semibold truncate flex-1">
-                                {participant.displayName}
-                                {isLocal && ' (You)'}
-                            </span>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                                {participant.isMuted ? (
-                                    <MicOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
-                                ) : (
-                                    <Mic className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400" />
-                                )}
-                                {participant.isVideoOff ? (
-                                    <VideoOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
-                                ) : (
-                                    <Video className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Speaking indicator */}
-                {participant.isSpeaking && (
-                    <div className="absolute inset-0 ring-4 ring-sky-400 ring-inset rounded-xl pointer-events-none" />
-                )}
-            </div>
-
-            {/* Click outside to close controls */}
-            {showControls && (
-                <div
-                    className="absolute inset-0 z-10"
-                    onClick={(e) => { e.stopPropagation(); setShowControls(false); }}
+            {/* Video element */}
+            {shouldShowVideo ? (
+                <video
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    muted={isLocal}
+                    className={`w-full h-full block bg-slate-950 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''}`}
                 />
+            ) : (
+                /* Avatar placeholder with modern gradient and initials */
+                <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${avatarGradient} p-2`}>
+                    <div className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg transform transition-transform hover:scale-105">
+                        <span className="text-white text-base xs:text-lg sm:text-xl font-bold tracking-wider drop-shadow-sm">
+                            {initials}
+                        </span>
+                    </div>
+                </div>
             )}
 
-            {/* Teacher Controls Button (Outside overflow-hidden so dropdown isn't clipped) */}
+            {/* Overflow indicator */}
+            {showOverflow && showOverflow > 0 && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/80 backdrop-blur-xs text-white">
+                    <span className="text-2xl font-bold">+{showOverflow}</span>
+                </div>
+            )}
+
+            {/* Hand Raised Badge */}
+            {participant.isHandRaised && (
+                <div className="absolute top-2 left-2 z-20 flex items-center gap-1 bg-amber-500/95 backdrop-blur-md text-white px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md border border-amber-300/40 animate-bounce pointer-events-none">
+                    <span>✋ Hand Raised</span>
+                </div>
+            )}
+
+            {/* Bottom overlay with name and status badge (hidden in screen share stage for unobstructed view) */}
+            {!isScreenShare && (
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 z-20 pointer-events-none flex items-center justify-between gap-1.5 px-2 py-1 bg-slate-950/75 backdrop-blur-md rounded-lg border border-white/10 text-white shadow-xs">
+                    <span className="text-[11px] sm:text-xs font-semibold truncate flex-1 leading-tight">
+                        {participant.displayName}
+                        {isLocal && ' (You)'}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                        {participant.isMuted ? (
+                            <span className="p-0.5 rounded bg-rose-500/20 text-rose-400" title="Muted">
+                                <MicOff className="w-3 h-3" />
+                            </span>
+                        ) : (
+                            <span className="p-0.5 rounded bg-emerald-500/20 text-emerald-400" title="Microphone Active">
+                                <Mic className="w-3 h-3" />
+                            </span>
+                        )}
+                        {participant.isVideoOff ? (
+                            <span className="p-0.5 rounded bg-rose-500/20 text-rose-400" title="Camera Off">
+                                <VideoOff className="w-3 h-3" />
+                            </span>
+                        ) : (
+                            <span className="p-0.5 rounded bg-sky-500/20 text-sky-300" title="Camera On">
+                                <Video className="w-3 h-3" />
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Teacher Controls Button */}
             {canShowTeacherControls && (
-                <div className="absolute top-2 right-2 z-20">
+                <div className="absolute top-2 right-2 z-30">
                     <button
                         onClick={handleControlsToggle}
-                        className="p-1.5 rounded-full bg-black/40 hover:bg-black/60 text-white transition-colors"
+                        className="p-1 rounded-full bg-slate-950/60 hover:bg-slate-900/90 text-white backdrop-blur-md border border-white/10 transition-colors shadow-sm"
                         title="Participant options"
                     >
-                        <MoreVertical className="w-4 h-4" />
+                        <MoreVertical className="w-3.5 h-3.5" />
                     </button>
 
                     {/* Dropdown Menu */}
                     {showControls && (
-                        <div className="absolute top-8 right-0 bg-white rounded-lg shadow-lg py-1 min-w-40 z-30 ring-1 ring-black/5">
-                            <button
-                                onClick={handleMute}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            >
-                                <VolumeX className="w-4 h-4" />
-                                {participant.isMuted ? 'Unmute' : 'Mute'}
-                            </button>
-                            <button
-                                onClick={handleKick}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                                <UserX className="w-4 h-4" />
-                                Remove
-                            </button>
-                            <button
-                                onClick={handleWhiteboardToggle}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-sky-600 hover:bg-sky-50"
-                            >
-                                <PenTool className="w-4 h-4" />
-                                {participant.hasWhiteboardAccess ? 'Revoke Whiteboard' : 'Allow Whiteboard'}
-                            </button>
-                        </div>
+                        <>
+                            <div
+                                className="fixed inset-0 z-40"
+                                onClick={(e) => { e.stopPropagation(); setShowControls(false); }}
+                            />
+                            <div className="absolute top-7 right-0 bg-slate-900 border border-slate-700/80 rounded-xl shadow-2xl py-1 min-w-44 z-50 animate-in fade-in zoom-in-95 duration-100 backdrop-blur-md">
+                                <button
+                                    onClick={handleMute}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+                                >
+                                    <VolumeX className="w-3.5 h-3.5 text-amber-400" />
+                                    {participant.isMuted ? 'Unmute' : 'Mute Audio'}
+                                </button>
+                                <button
+                                    onClick={handleWhiteboardToggle}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-sky-300 hover:bg-slate-800 hover:text-sky-200 transition-colors"
+                                >
+                                    <PenTool className="w-3.5 h-3.5" />
+                                    {participant.hasWhiteboardAccess ? 'Revoke Whiteboard' : 'Allow Whiteboard'}
+                                </button>
+                                <div className="h-px bg-slate-800 my-1" />
+                                <button
+                                    onClick={handleKick}
+                                    className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors"
+                                >
+                                    <UserX className="w-3.5 h-3.5" />
+                                    Remove Participant
+                                </button>
+                            </div>
+                        </>
                     )}
                 </div>
             )}

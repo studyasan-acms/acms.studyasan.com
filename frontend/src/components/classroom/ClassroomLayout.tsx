@@ -160,7 +160,16 @@ export function ClassroomLayout({
     }), [localUser, localStream, isTeacher]);
 
     const allParticipants = useMemo(() => {
-        return [localParticipant, ...Array.from(participants.values())];
+        const list: Participant[] = [localParticipant];
+        const seenIds = new Set<string>([String(localParticipant.id)]);
+
+        for (const p of participants.values()) {
+            const strId = String(p.id);
+            if (seenIds.has(strId)) continue;
+            seenIds.add(strId);
+            list.push(p);
+        }
+        return list;
     }, [localParticipant, participants]);
 
     // Identify Teacher Participant:
@@ -181,18 +190,17 @@ export function ClassroomLayout({
         const roleMatch = allParticipants.find(
             p => !p.isLocal && (
                 p.displayName?.toLowerCase().includes('teacher') ||
-                p.displayName?.toLowerCase().includes('instructor') ||
-                p.hasWhiteboardAccess
+                p.displayName?.toLowerCase().includes('instructor')
             )
         );
         if (roleMatch) return roleMatch;
 
         // Fallback to first remote participant if not explicitly found
-        const firstRemote = Array.from(participants.values()).find(
-            p => !p.displayName?.endsWith(' (Screen)')
+        const firstRemote = allParticipants.find(
+            p => !p.isLocal && !p.displayName?.endsWith(' (Screen)')
         );
         return firstRemote || null;
-    }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants, participants]);
+    }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants]);
 
     // Human participants only (excluding any separate screen publishers)
     const humanParticipants = useMemo(() => {
@@ -201,10 +209,17 @@ export function ClassroomLayout({
 
     // Student participants: all participants except the pinned teacher and separate screen feeds
     const studentParticipants = useMemo(() => {
-        return allParticipants.filter(p => 
-            (!teacherParticipant || String(p.id) !== String(teacherParticipant.id)) &&
-            !p.displayName?.endsWith(' (Screen)')
-        );
+        return allParticipants.filter(p => {
+            if (p.displayName?.endsWith(' (Screen)')) return false;
+            if (teacherParticipant) {
+                if (String(p.id) === String(teacherParticipant.id)) return false;
+                if (teacherParticipant.isLocal && p.isLocal) return false;
+                if (!teacherParticipant.isLocal && !p.isLocal && teacherParticipant.displayName && p.displayName?.trim().toLowerCase() === teacherParticipant.displayName.trim().toLowerCase()) {
+                    return false;
+                }
+            }
+            return true;
+        });
     }, [allParticipants, teacherParticipant]);
 
     // Active Screen Share detection:
@@ -482,9 +497,9 @@ export function ClassroomLayout({
                 </div>
 
                 {/* RIGHT SECTION: Video Gallery (Teacher Pinned + Scrollable Square Student Grid) */}
-                <div className="w-72 lg:w-80 xl:w-96 flex flex-col gap-2 h-full shrink-0 min-h-0">
+                <div className="w-72 lg:w-80 xl:w-96 flex flex-col gap-2.5 h-full shrink-0 min-h-0 bg-slate-200/50 p-2.5 rounded-2xl border border-slate-200/80 shadow-xs">
                     {/* Top Card: Teacher always pinned */}
-                    <div className="aspect-video w-full rounded-2xl overflow-hidden bg-slate-900 border-2 border-sky-400/80 shadow-md relative shrink-0">
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border-2 border-sky-400/90 shadow-md shrink-0 isolate">
                         {teacherParticipant ? (
                             <VideoTile
                                 participant={teacherParticipant}
@@ -498,7 +513,7 @@ export function ClassroomLayout({
                                 className="w-full h-full"
                             />
                         ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-4">
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-950 text-slate-400 p-4">
                                 <GraduationCap className="w-10 h-10 text-sky-400/70 mb-2 animate-pulse" />
                                 <span className="text-xs font-semibold text-slate-300">Teacher</span>
                                 <span className="text-[11px] text-slate-400">Waiting to join...</span>
@@ -506,7 +521,7 @@ export function ClassroomLayout({
                         )}
 
                         {/* Pinned Teacher Badge */}
-                        <div className="absolute top-2 left-2 z-20 flex items-center gap-1 px-2 py-0.5 bg-sky-600/90 backdrop-blur-md text-white rounded-full text-[10px] font-bold shadow-md border border-sky-300/40 pointer-events-none">
+                        <div className="absolute top-2 left-2 z-20 flex items-center gap-1.5 px-2.5 py-0.5 bg-gradient-to-r from-sky-600 to-blue-600 backdrop-blur-md text-white rounded-full text-[10px] font-bold shadow-md border border-sky-300/30 pointer-events-none">
                             <GraduationCap className="w-3 h-3" />
                             <span>Teacher (Pinned)</span>
                         </div>
@@ -524,30 +539,48 @@ export function ClassroomLayout({
                     </div>
 
                     {/* Middle Grid: Square Student Grid (Scrollable) */}
-                    <div className="grid grid-cols-2 gap-2 flex-1 min-h-0 overflow-y-auto pr-0.5 content-start scrollbar-thin">
-                        {studentParticipants.map((participant) => {
-                            const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
-                            return (
-                                <div key={String(participant.id)} className="aspect-square w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200">
-                                    <VideoTile
-                                        participant={participant}
-                                        stream={stream}
-                                        isLocal={participant.isLocal}
-                                        isTeacher={isTeacher}
-                                        onMuteParticipant={onMuteParticipant}
-                                        onKickParticipant={onKickParticipant}
-                                        onToggleWhiteboardAccess={onToggleWhiteboardAccess}
-                                        className="w-full h-full aspect-square"
-                                    />
-                                </div>
-                            );
-                        })}
-
-                        {studentParticipants.length === 0 && (
-                            <div className="col-span-2 py-8 flex flex-col items-center justify-center bg-white rounded-xl border border-dashed border-slate-200 text-slate-400">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-0.5 scrollbar-thin">
+                        {studentParticipants.length === 0 ? (
+                            <div className="w-full h-36 flex flex-col items-center justify-center bg-white/60 rounded-xl border border-dashed border-slate-300 text-slate-400 p-4">
                                 <Users className="w-8 h-8 text-slate-300 mb-1.5" />
-                                <span className="text-xs font-semibold text-slate-500">No Students Yet</span>
+                                <span className="text-xs font-semibold text-slate-600">No Students Yet</span>
                                 <span className="text-[11px] text-slate-400">Waiting for participants to join...</span>
+                            </div>
+                        ) : studentParticipants.length === 1 ? (
+                            <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-xs isolate">
+                                <VideoTile
+                                    participant={studentParticipants[0]}
+                                    stream={studentParticipants[0].isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, studentParticipants[0].id)}
+                                    isLocal={studentParticipants[0].isLocal}
+                                    isTeacher={isTeacher}
+                                    onMuteParticipant={onMuteParticipant}
+                                    onKickParticipant={onKickParticipant}
+                                    onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                    className="w-full h-full"
+                                />
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-2 auto-rows-min">
+                                {studentParticipants.map((participant) => {
+                                    const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
+                                    return (
+                                        <div
+                                            key={String(participant.id)}
+                                            className="relative w-full aspect-square rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-xs isolate"
+                                        >
+                                            <VideoTile
+                                                participant={participant}
+                                                stream={stream}
+                                                isLocal={participant.isLocal}
+                                                isTeacher={isTeacher}
+                                                onMuteParticipant={onMuteParticipant}
+                                                onKickParticipant={onKickParticipant}
+                                                onToggleWhiteboardAccess={onToggleWhiteboardAccess}
+                                                className="w-full h-full"
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
@@ -654,7 +687,7 @@ export function ClassroomLayout({
                         /* Case 1: 1 or 2 participants - 1 row side-by-side (no empty slots) */
                         <div className={`grid ${humanParticipants.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'} gap-1.5 w-full`}>
                             {teacherParticipant && (
-                                <div className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative">
+                                <div className="h-[140px] xs:h-[160px] sm:h-[180px] w-full rounded-xl overflow-hidden bg-slate-950 border-2 border-sky-400 shadow-xs relative isolate">
                                     <VideoTile
                                         participant={teacherParticipant}
                                         stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
@@ -665,8 +698,8 @@ export function ClassroomLayout({
                                         onToggleWhiteboardAccess={onToggleWhiteboardAccess}
                                         className="w-full h-full"
                                     />
-                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-600/90 text-white rounded-full text-[8px] font-bold shadow-xs pointer-events-none">
-                                        <GraduationCap className="w-2.5 h-2.5" />
+                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-full text-[9px] font-bold shadow-xs pointer-events-none">
+                                        <GraduationCap className="w-3 h-3" />
                                         <span>Teacher</span>
                                     </div>
                                 </div>
@@ -677,7 +710,7 @@ export function ClassroomLayout({
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}
-                                        className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200"
+                                        className="h-[140px] xs:h-[160px] sm:h-[180px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-950 border border-slate-800 isolate"
                                     >
                                         <VideoTile
                                             participant={participant}
@@ -698,7 +731,7 @@ export function ClassroomLayout({
                         <div className="grid grid-rows-2 grid-flow-col auto-cols-[calc(50%-3px)] gap-1.5 overflow-x-auto scrollbar-hide no-scrollbar pb-0.5 px-0.5 snap-x">
                             {/* Teacher Tile */}
                             {teacherParticipant ? (
-                                <div className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative snap-start">
+                                <div className="h-[125px] xs:h-[140px] sm:h-[160px] w-full rounded-xl overflow-hidden bg-slate-950 border-2 border-sky-400 shadow-xs relative snap-start isolate">
                                     <VideoTile
                                         participant={teacherParticipant}
                                         stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
@@ -709,14 +742,14 @@ export function ClassroomLayout({
                                         onToggleWhiteboardAccess={onToggleWhiteboardAccess}
                                         className="w-full h-full"
                                     />
-                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-1.5 py-0.5 bg-sky-600/90 text-white rounded-full text-[8px] font-bold shadow-xs pointer-events-none">
-                                        <GraduationCap className="w-2.5 h-2.5" />
+                                    <div className="absolute top-1 left-1 z-20 flex items-center gap-0.5 px-2 py-0.5 bg-gradient-to-r from-sky-600 to-blue-600 text-white rounded-full text-[9px] font-bold shadow-xs pointer-events-none">
+                                        <GraduationCap className="w-3 h-3" />
                                         <span>Teacher</span>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl bg-slate-800 border-2 border-dashed border-sky-400/50 flex flex-col items-center justify-center text-slate-400 text-[9px] snap-start">
-                                    <GraduationCap className="w-3.5 h-3.5 text-sky-400 mb-0.5" />
+                                <div className="h-[125px] xs:h-[140px] sm:h-[160px] w-full rounded-xl bg-slate-900 border-2 border-dashed border-sky-400/50 flex flex-col items-center justify-center text-slate-400 text-[10px] snap-start">
+                                    <GraduationCap className="w-4 h-4 text-sky-400 mb-0.5" />
                                     <span>Teacher</span>
                                 </div>
                             )}
@@ -727,7 +760,7 @@ export function ClassroomLayout({
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}
-                                        className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200 snap-start"
+                                        className="h-[125px] xs:h-[140px] sm:h-[160px] w-full rounded-xl overflow-hidden shadow-xs bg-slate-950 border border-slate-800 snap-start isolate"
                                     >
                                         <VideoTile
                                             participant={participant}
