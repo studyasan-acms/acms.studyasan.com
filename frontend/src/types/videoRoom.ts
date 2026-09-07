@@ -184,7 +184,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction' | 'screen-share';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction' | 'screen-share' | 'leave';
 
 /**
  * Generic DataChannel message

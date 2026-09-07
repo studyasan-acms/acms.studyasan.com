@@ -376,18 +376,29 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     });
                 },
                 onParticipantLeft: (participantId) => {
+                    console.log('[useJanus] Participant left:', participantId);
                     setParticipants(prev => {
                         const next = new Map(prev);
+                        for (const [id] of prev.entries()) {
+                            if (String(id) === String(participantId)) {
+                                next.delete(id);
+                            }
+                        }
                         next.delete(participantId);
                         return next;
                     });
                     setRemoteStreams(prev => {
                         const next = new Map(prev);
+                        for (const [id] of prev.entries()) {
+                            if (String(id) === String(participantId)) {
+                                next.delete(id);
+                            }
+                        }
                         next.delete(participantId);
                         return next;
                     });
 
-                    setMainParticipantId(prevId => prevId === participantId ? null : prevId);
+                    setMainParticipantId(prevId => (prevId && String(prevId) === String(participantId)) ? null : prevId);
                 },
                 onKicked: () => {
                     console.warn('[useJanus] onKicked event received from Janus client');
@@ -403,19 +414,91 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                 },
                 onDataMessage: (message: DataChannelMessage) => {
                     // Handle screen share broadcast message
-                    if (message.type === 'screen-share' && message.participantId) {
+                    if (message.type === 'screen-share') {
                         const targetId = message.participantId;
                         const isSharing = !!message.isSharing;
+                        const displayName = message.displayName;
+
                         setParticipants(prev => {
                             const next = new Map(prev);
-                            for (const [id, p] of next.entries()) {
-                                if (String(id) === String(targetId)) {
-                                    next.set(id, { ...p, isScreenSharing: isSharing });
-                                    break;
+                            if (targetId) {
+                                for (const [id, p] of next.entries()) {
+                                    if (String(id) === String(targetId)) {
+                                        next.set(id, { ...p, isScreenSharing: isSharing });
+                                    }
                                 }
+                            }
+                            // When a remote user stops sharing, immediately remove their screen publisher participant
+                            if (!isSharing) {
+                                const sharerName = displayName || '';
+                                const toDelete: (string | number)[] = [];
+                                for (const [id, p] of next.entries()) {
+                                    if (p.displayName?.endsWith(' (Screen)')) {
+                                        if (!sharerName || p.displayName.startsWith(sharerName)) {
+                                            toDelete.push(id);
+                                        }
+                                    }
+                                }
+                                toDelete.forEach(id => next.delete(id));
                             }
                             return next;
                         });
+
+                        if (!isSharing) {
+                            setRemoteStreams(prev => {
+                                const next = new Map(prev);
+                                const sharerName = displayName || '';
+                                for (const [id] of prev.entries()) {
+                                    const p = participants.get(id);
+                                    if (p?.displayName?.endsWith(' (Screen)')) {
+                                        if (!sharerName || p.displayName.startsWith(sharerName)) {
+                                            next.delete(id);
+                                        }
+                                    }
+                                }
+                                return next;
+                            });
+                        }
+                    }
+
+                    // Handle participant leave broadcast message
+                    if (message.type === 'leave') {
+                        const leavingId = message.participantId;
+                        const leavingName = message.displayName;
+                        console.log('[useJanus] 👋 Participant announced leave via DataChannel:', leavingId, leavingName);
+
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            const toDelete: (string | number)[] = [];
+                            for (const [id, p] of next.entries()) {
+                                if ((leavingId !== undefined && String(id) === String(leavingId)) ||
+                                    (leavingName && (p.displayName === leavingName || p.displayName === `${leavingName} (Screen)`))) {
+                                    toDelete.push(id);
+                                }
+                            }
+                            if (leavingId !== undefined) {
+                                toDelete.push(leavingId);
+                            }
+                            toDelete.forEach(id => next.delete(id));
+                            return next;
+                        });
+
+                        setRemoteStreams(prev => {
+                            const next = new Map(prev);
+                            const toDelete: (string | number)[] = [];
+                            for (const [id] of next.entries()) {
+                                if (leavingId !== undefined && String(id) === String(leavingId)) {
+                                    toDelete.push(id);
+                                }
+                            }
+                            if (leavingId !== undefined) {
+                                toDelete.push(leavingId);
+                            }
+                            toDelete.forEach(id => next.delete(id));
+                            return next;
+                        });
+
+                        setMainParticipantId(prevId => (prevId && (leavingId !== undefined && String(prevId) === String(leavingId))) ? null : prevId);
                     }
 
                     // Handle whiteboard messages

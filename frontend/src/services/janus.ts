@@ -235,13 +235,31 @@ class ScreenJanusPublisher {
         }
 
         if (this.pc) {
-            this.pc.close();
+            try {
+                this.pc.close();
+            } catch (e) {}
             this.pc = null;
         }
 
         if (this.ws) {
             if (this.ws.readyState === WebSocket.OPEN) {
                 try {
+                    if (this.sessionId && this.handleId) {
+                        this.ws.send(JSON.stringify({
+                            janus: 'message',
+                            session_id: this.sessionId,
+                            handle_id: this.handleId,
+                            body: { request: 'unpublish' },
+                            transaction: generateTransactionId(),
+                        }));
+                        this.ws.send(JSON.stringify({
+                            janus: 'message',
+                            session_id: this.sessionId,
+                            handle_id: this.handleId,
+                            body: { request: 'leave' },
+                            transaction: generateTransactionId(),
+                        }));
+                    }
                     if (this.sessionId) {
                         this.ws.send(JSON.stringify({
                             janus: 'destroy',
@@ -250,7 +268,9 @@ class ScreenJanusPublisher {
                         }));
                     }
                 } catch (e) {}
-                this.ws.close();
+                try {
+                    this.ws.close();
+                } catch (e) {}
             }
             this.ws = null;
         }
@@ -420,10 +440,15 @@ export class JanusClient {
 
             if (janus === 'error') {
                 pending.reject(new Error((message.error as { reason?: string })?.reason || 'Unknown error'));
+                return;
             } else {
                 pending.resolve(message);
             }
-            return;
+
+            // If this is a simple acknowledgement or success without plugin event/jsep payload, we are done
+            if (janus === 'ack' || (janus === 'success' && !message.plugindata && !message.jsep)) {
+                return;
+            }
         }
 
         switch (janus) {
@@ -444,6 +469,12 @@ export class JanusClient {
             case 'hangup':
                 console.log('[Janus] Hangup received');
                 break;
+        }
+
+        // Handle JSEP if present and not already handled in handlePluginEvent
+        const jsep = message.jsep as RTCSessionDescriptionInit | undefined;
+        if (jsep && janus !== 'event') {
+            this.handleJsep(message, jsep);
         }
     }
 
@@ -479,14 +510,14 @@ export class JanusClient {
                     this.subscribeToPublishers(newPublishers);
                 }
 
-                if (data.unpublished && typeof data.unpublished === 'number') {
-                    const unpublishedId = data.unpublished as number;
+                if (data.unpublished && data.unpublished !== 'ok') {
+                    const unpublishedId = data.unpublished as number | string;
                     console.log(`[Janus] Publisher unpublished: ${unpublishedId}`);
                     this.handlePublisherLeft(unpublishedId);
                 }
 
-                if (data.leaving && typeof data.leaving === 'number') {
-                    const leavingId = data.leaving as number;
+                if (data.leaving && data.leaving !== 'ok') {
+                    const leavingId = data.leaving as number | string;
                     console.log(`[Janus] Participant leaving: ${leavingId}`);
                     this.handlePublisherLeft(leavingId);
                 }
@@ -504,6 +535,26 @@ export class JanusClient {
             case 'kicked':
                 console.warn('[Janus] Received kicked event from VideoRoom');
                 this.config.onKicked?.();
+                break;
+
+            case 'unpublished':
+                if (data.id || data.unpublished) {
+                    const unpubId = (data.id ?? data.unpublished) as number | string;
+                    if (unpubId !== 'ok') {
+                        console.log(`[Janus] Direct unpublished event: ${unpubId}`);
+                        this.handlePublisherLeft(unpubId);
+                    }
+                }
+                break;
+
+            case 'leaving':
+                if (data.id || data.leaving) {
+                    const leaveId = (data.id ?? data.leaving) as number | string;
+                    if (leaveId !== 'ok') {
+                        console.log(`[Janus] Direct leaving event: ${leaveId}`);
+                        this.handlePublisherLeft(leaveId);
+                    }
+                }
                 break;
 
             case 'destroyed':
@@ -525,15 +576,15 @@ export class JanusClient {
     private async handleJsep(message: Record<string, unknown>, jsep: RTCSessionDescriptionInit): Promise<void> {
         const senderId = (message as { sender?: number }).sender;
 
-        if (senderId === this.publisherHandleId) {
+        if (senderId === this.publisherHandleId || (!senderId && jsep.type === 'answer')) {
             if (jsep.type === 'answer' && this.publisherPc) {
                 console.log('[Janus] Setting remote description for publisher');
                 await this.publisherPc.setRemoteDescription(new RTCSessionDescription(jsep));
             }
-        } else {
+        } else if (senderId) {
             const feedId = this.getFeedIdFromHandle(senderId as number);
             if (feedId !== null) {
-                const pc = this.peerConnections.get(feedId);
+                const pc = this.peerConnections.get(feedId) || this.peerConnections.get(String(feedId)) || this.peerConnections.get(Number(feedId));
                 if (pc && jsep.type === 'offer') {
                     console.log(`[Janus] Handling offer for subscriber feed ${feedId}`);
                     await pc.setRemoteDescription(new RTCSessionDescription(jsep));
@@ -669,8 +720,12 @@ export class JanusClient {
 
     private async subscribeToPublishers(publishers: Publisher[]): Promise<void> {
         for (const publisher of publishers) {
-            if (publisher.id === this.myId) continue;
+            if (publisher.id === this.myId || String(publisher.id) === String(this.myId)) continue;
             if (publisher.display === `${this.config.displayName} (Screen)`) continue;
+            if (this.subscriberHandles.has(publisher.id) || this.subscriberHandles.has(String(publisher.id))) {
+                console.log(`[Janus] Already subscribed to publisher ${publisher.id}`);
+                continue;
+            }
 
             console.log(`[Janus] Subscribing to publisher ${publisher.id} (${publisher.display})`);
 
@@ -780,21 +835,31 @@ export class JanusClient {
         };
     }
 
-    private handlePublisherLeft(publisherId: number): void {
-        const pc = this.peerConnections.get(publisherId);
-        if (pc) {
-            pc.close();
-            this.peerConnections.delete(publisherId);
+    private handlePublisherLeft(publisherId: number | string): void {
+        const idStr = String(publisherId);
+
+        // Find and clean up peer connection
+        for (const [key, pc] of this.peerConnections.entries()) {
+            if (String(key) === idStr) {
+                try {
+                    pc.close();
+                } catch (e) {}
+                this.peerConnections.delete(key);
+            }
         }
 
-        const handleId = this.subscriberHandles.get(publisherId);
-        if (handleId) {
-            this.sendMessage({
-                janus: 'detach',
-                session_id: this.sessionId,
-                handle_id: handleId,
-            }).catch(console.error);
-            this.subscriberHandles.delete(publisherId);
+        // Find and detach subscriber handle
+        for (const [key, handleId] of this.subscriberHandles.entries()) {
+            if (String(key) === idStr) {
+                if (this.sessionId && this.ws?.readyState === WebSocket.OPEN) {
+                    this.sendMessage({
+                        janus: 'detach',
+                        session_id: this.sessionId,
+                        handle_id: handleId,
+                    }).catch(console.error);
+                }
+                this.subscriberHandles.delete(key);
+            }
         }
 
         this.config.onParticipantLeft?.(publisherId);
@@ -910,13 +975,16 @@ export class JanusClient {
             offerToReceiveVideo: false,
         });
 
-        // Apply codec preference (VP9 > H264 > VP8) and bandwidth constraints for less buffering
+        // Apply codec preference (H264 > VP8) and bandwidth constraints for less buffering
         if (offer.sdp) {
-            let optimizedSdp = offer.sdp;
-            optimizedSdp = this.setPreferredCodec(optimizedSdp, 'VP9');
-            optimizedSdp = this.setPreferredCodec(optimizedSdp, 'H264');
-            optimizedSdp = this.applySDPBitrateConstraints(optimizedSdp, 500, 64);
-            offer = new RTCSessionDescription({ type: offer.type, sdp: optimizedSdp });
+            try {
+                let optimizedSdp = offer.sdp;
+                optimizedSdp = this.setPreferredCodec(optimizedSdp, 'H264');
+                optimizedSdp = this.applySDPBitrateConstraints(optimizedSdp, 500, 64);
+                offer = new RTCSessionDescription({ type: offer.type, sdp: optimizedSdp });
+            } catch (e) {
+                console.warn('[Janus] SDP optimization ignored:', e);
+            }
         }
 
         await this.publisherPc.setLocalDescription(offer);
@@ -960,6 +1028,11 @@ export class JanusClient {
 
     async shareScreen(): Promise<MediaStream> {
         try {
+            // Stop existing screen share session cleanly before starting a new one
+            if (this.screenStream || this.screenPublisher) {
+                await this.stopScreenShare();
+            }
+
             // Try to capture system/tab audio alongside screen video for richer screen share
             let screenStream: MediaStream;
             try {
@@ -985,9 +1058,13 @@ export class JanusClient {
 
             this.screenStream = screenStream;
 
-            screenStream.getVideoTracks()[0].onended = () => {
-                this.stopScreenShare();
-            };
+            // Handle when user stops sharing via browser chrome/native UI or changes window
+            screenStream.getVideoTracks().forEach(track => {
+                track.onended = () => {
+                    console.log('[Janus] Screen share track ended by browser/user');
+                    this.stopScreenShare();
+                };
+            });
 
             // Publish via isolated ScreenJanusPublisher WebSocket
             try {
@@ -1240,7 +1317,43 @@ export class JanusClient {
      */
     private setupBeforeUnloadHandler(): void {
         this.boundBeforeUnload = () => {
-            console.log('[Janus] Page unloading, recording leave attendance');
+            console.log('[Janus] Page unloading, notifying leave');
+            try {
+                this.sendData({
+                    type: 'leave',
+                    participantId: this.myId ?? undefined,
+                    displayName: this.config.displayName,
+                });
+            } catch (e) {}
+
+            if (this.ws && this.ws.readyState === WebSocket.OPEN && this.sessionId) {
+                if (this.publisherHandleId) {
+                    try {
+                        this.ws.send(JSON.stringify({
+                            janus: 'message',
+                            session_id: this.sessionId,
+                            handle_id: this.publisherHandleId,
+                            body: { request: 'unpublish' },
+                            transaction: generateTransactionId(),
+                        }));
+                        this.ws.send(JSON.stringify({
+                            janus: 'message',
+                            session_id: this.sessionId,
+                            handle_id: this.publisherHandleId,
+                            body: { request: 'leave' },
+                            transaction: generateTransactionId(),
+                        }));
+                    } catch (e) {}
+                }
+                try {
+                    this.ws.send(JSON.stringify({
+                        janus: 'destroy',
+                        session_id: this.sessionId,
+                        transaction: generateTransactionId(),
+                    }));
+                } catch (e) {}
+            }
+
             this.recordLeaveAttendanceSync();
         };
 
@@ -1260,65 +1373,69 @@ export class JanusClient {
     async disconnect(): Promise<void> {
         console.log('[Janus] Disconnecting...');
 
-        // Record leave before disconnecting
+        // 1. Broadcast instant leave notification via DataChannel to all other participants
+        try {
+            this.sendData({
+                type: 'leave',
+                participantId: this.myId ?? undefined,
+                displayName: this.config.displayName,
+            });
+        } catch (e) {}
+
+        // 2. Record leave before disconnecting
         await this.recordLeaveAttendance();
 
-        // Remove beforeunload handler
+        // 3. Remove beforeunload handler
         this.removeBeforeUnloadHandler();
 
         this.stopKeepalive();
 
-        // Send leave message for each subscriber
+        // 4. Send unpublish & leave plugin requests for publisher
+        if (this.publisherHandleId && this.sessionId && this.ws?.readyState === WebSocket.OPEN) {
+            try {
+                await this.sendMessage({
+                    janus: 'message',
+                    session_id: this.sessionId,
+                    handle_id: this.publisherHandleId,
+                    body: { request: 'unpublish' },
+                });
+            } catch (e) {}
+            try {
+                await this.sendMessage({
+                    janus: 'message',
+                    session_id: this.sessionId,
+                    handle_id: this.publisherHandleId,
+                    body: { request: 'leave' },
+                });
+            } catch (e) {}
+        }
+
+        // 5. Detach all subscriber handles
         for (const [participantId, handleId] of this.subscriberHandles) {
             try {
                 await this.sendMessage({
-                    janus: 'leave',
+                    janus: 'detach',
                     session_id: this.sessionId,
                     handle_id: handleId,
                 });
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
 
-        // Send leave for publisher
-        if (this.publisherHandleId && this.sessionId) {
-            try {
-                await this.sendMessage({
-                    janus: 'leave',
-                    session_id: this.sessionId,
-                    handle_id: this.publisherHandleId,
-                });
-            } catch (e) {
-                // Ignore
-            }
-        }
-
-        // Destroy session
-        if (this.sessionId) {
+        // 6. Destroy session
+        if (this.sessionId && this.ws?.readyState === WebSocket.OPEN) {
             try {
                 await this.sendMessage({
                     janus: 'destroy',
                     session_id: this.sessionId,
                 });
-            } catch (e) {
-                // Ignore
-            }
+            } catch (e) {}
         }
 
-        // Close WebSocket
+        // 7. Close WebSocket
         if (this.ws) {
-            if (this.ws.readyState === WebSocket.OPEN) {
-                try {
-                    await this.sendMessage({
-                        janus: 'destroy',
-                        session_id: this.sessionId,
-                    });
-                } catch (e) {
-                    // Ignore
-                }
-            }
-            this.ws.close();
+            try {
+                this.ws.close();
+            } catch (e) {}
             this.ws = null;
         }
 

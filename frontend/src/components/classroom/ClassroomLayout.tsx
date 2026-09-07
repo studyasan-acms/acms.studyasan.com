@@ -5,7 +5,7 @@
  * the wireframe designs for Desktop / Tablet and Mobile Phone.
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
     Clock,
     GraduationCap,
@@ -16,7 +16,11 @@ import {
     Users,
     Monitor,
     PenTool,
+    Maximize2,
+    ZoomIn,
+    ZoomOut,
 } from 'lucide-react';
+
 import { VideoTile } from './VideoTile';
 import { ControlBar } from './ControlBar';
 import { Whiteboard } from './Whiteboard';
@@ -77,6 +81,19 @@ interface ClassroomLayoutProps {
     // Whiteboard
     sendWhiteboardMessage: (message: WhiteboardMessage) => void;
     setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
+}
+
+function getStreamForParticipant(
+    streams: Map<string | number, MediaStream>,
+    participantId: string | number | undefined
+): MediaStream | undefined {
+    if (participantId === undefined || participantId === null) return undefined;
+    if (streams.has(participantId)) return streams.get(participantId);
+    const strId = String(participantId);
+    for (const [key, stream] of streams.entries()) {
+        if (String(key) === strId) return stream;
+    }
+    return undefined;
 }
 
 export function ClassroomLayout({
@@ -180,18 +197,34 @@ export function ClassroomLayout({
     // Student participants: all participants except the pinned teacher and separate screen feeds
     const studentParticipants = useMemo(() => {
         return allParticipants.filter(p => 
-            (!teacherParticipant || p.id !== teacherParticipant.id) &&
+            (!teacherParticipant || String(p.id) !== String(teacherParticipant.id)) &&
             !p.displayName?.endsWith(' (Screen)')
         );
     }, [allParticipants, teacherParticipant]);
 
-    // Active Screen Share detection (local or any remote participant)
+    // Active Screen Share detection:
+    // Priority 1: If local user is screen sharing and has screenStream, use localParticipant immediately
+    // Priority 2: Dedicated remote screen publisher (has " (Screen)" suffix)
+    // Priority 3: Any remote participant with isScreenSharing: true
     const screenShareParticipant = useMemo(() => {
-        if (isScreenSharing && localParticipant.isScreenSharing) {
+        if (isScreenSharing && screenStream) {
             return localParticipant;
         }
-        return allParticipants.find(p => p.displayName?.endsWith(' (Screen)') || p.isScreenSharing) || null;
-    }, [isScreenSharing, localParticipant, allParticipants]);
+
+        // First, look for the dedicated screen publisher (has " (Screen)" suffix)
+        const screenPublisher = allParticipants.find(
+            p => !p.isLocal && p.displayName?.endsWith(' (Screen)')
+        );
+        if (screenPublisher) return screenPublisher;
+
+        // Fallback: check remote participant with isScreenSharing flag
+        const remoteSharing = allParticipants.find(
+            p => !p.isLocal && p.isScreenSharing && !p.displayName?.endsWith(' (Screen)')
+        );
+        if (remoteSharing) return remoteSharing;
+
+        return null;
+    }, [isScreenSharing, screenStream, localParticipant, allParticipants]);
 
     const isScreenShareActive = !!screenShareParticipant;
 
@@ -204,6 +237,46 @@ export function ClassroomLayout({
         }
     }, [isScreenShareActive]);
 
+    // Screen share zoom & pan state
+    const [screenZoom, setScreenZoom] = useState(1);
+    const [screenPan, setScreenPan] = useState({ x: 0, y: 0 });
+    const screenPanStart = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
+    const screenContainerRef = useRef<HTMLDivElement>(null);
+
+    const handleScreenWheel = useCallback((e: React.WheelEvent) => {
+        e.preventDefault();
+        setScreenZoom(prev => Math.min(4, Math.max(1, prev - e.deltaY * 0.001)));
+    }, []);
+
+    const handleScreenMouseDown = useCallback((e: React.MouseEvent) => {
+        if (screenZoom <= 1) return;
+        screenPanStart.current = { mx: e.clientX, my: e.clientY, px: screenPan.x, py: screenPan.y };
+    }, [screenZoom, screenPan]);
+
+    const handleScreenMouseMove = useCallback((e: React.MouseEvent) => {
+        if (!screenPanStart.current) return;
+        setScreenPan({
+            x: screenPanStart.current.px + (e.clientX - screenPanStart.current.mx),
+            y: screenPanStart.current.py + (e.clientY - screenPanStart.current.my),
+        });
+    }, []);
+
+    const handleScreenMouseUp = useCallback(() => { screenPanStart.current = null; }, []);
+
+    // Reset pan when zoom returns to 1
+    useEffect(() => { if (screenZoom <= 1) setScreenPan({ x: 0, y: 0 }); }, [screenZoom]);
+
+    // Reset zoom/pan when screen share ends
+    useEffect(() => { if (!isScreenShareActive) { setScreenZoom(1); setScreenPan({ x: 0, y: 0 }); } }, [isScreenShareActive]);
+
+    const handleScreenFullscreen = useCallback(() => {
+        if (!screenContainerRef.current) return;
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            screenContainerRef.current.requestFullscreen().catch(() => {});
+        }
+    }, []);
 
 
     return (
@@ -268,101 +341,114 @@ export function ClassroomLayout({
                     <div className="flex-1 relative rounded-2xl overflow-hidden bg-white border border-slate-200 shadow-sm min-h-0">
                         {/* 1. Active Screen Share Stage */}
                         {stageView === 'screen' && screenShareParticipant ? (
-                            <div className="w-full h-full relative bg-slate-950 flex flex-col items-center justify-center">
-                                <VideoTile
-                                    participant={screenShareParticipant}
-                                    stream={screenShareParticipant.isLocal ? (screenStream || undefined) : (remoteStreams.get(screenShareParticipant.id) || screenShareParticipant.stream)}
-                                    isLocal={screenShareParticipant.isLocal}
-                                    isMain
-                                    isScreenShare
-                                    isTeacher={isTeacher}
-                                    className="w-full h-full"
-                                />
-
-                                {/* Top switcher floating pill */}
-                                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
-                                    <Monitor className="w-3.5 h-3.5 text-emerald-400" />
-                                    <span>
-                                        Screen Share: <strong>{screenShareParticipant.displayName?.replace(' (Screen)', '')}</strong>
-                                    </span>
-                                    <button
-                                        onClick={() => setStageView('whiteboard')}
-                                        className="ml-2 px-2.5 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[11px] font-semibold transition-colors shadow-xs"
-                                    >
-                                        View Whiteboard
-                                    </button>
-                                </div>
-
-                                {/* PiP Camera: Show screen sharer's camera in bottom-right corner */}
-                                {(() => {
-                                    // The camera participant is the same person sharing screen (without " (Screen)" suffix)
-                                    const cameraParticipant = screenShareParticipant.isLocal
-                                        ? null // Local PiP not needed — they see themselves in sidebar
-                                        : allParticipants.find(p =>
-                                            !p.displayName?.endsWith(' (Screen)') &&
-                                            p.displayName === screenShareParticipant.displayName?.replace(' (Screen)', '')
-                                          );
-                                    const cameraStream = cameraParticipant
-                                        ? remoteStreams.get(cameraParticipant.id)
-                                        : undefined;
-                                    if (!cameraParticipant || !cameraStream) return null;
-                                    return (
-                                        <div className="absolute bottom-4 right-4 z-40 w-44 aspect-video rounded-xl overflow-hidden border-2 border-sky-400/80 shadow-2xl bg-slate-900">
+                            <div
+                                ref={screenContainerRef}
+                                className="w-full h-full relative bg-slate-950 overflow-hidden select-none"
+                                onWheel={handleScreenWheel}
+                                onMouseDown={handleScreenMouseDown}
+                                onMouseMove={handleScreenMouseMove}
+                                onMouseUp={handleScreenMouseUp}
+                                onMouseLeave={handleScreenMouseUp}
+                                style={{ cursor: screenZoom > 1 ? (screenPanStart.current ? 'grabbing' : 'grab') : 'default' }}
+                            >
+                                {/* Zoomable/pannable screen content */}
+                                <div
+                                    className="w-full h-full transition-none"
+                                    style={{
+                                        transform: `scale(${screenZoom}) translate(${screenPan.x / screenZoom}px, ${screenPan.y / screenZoom}px)`,
+                                        transformOrigin: 'center center',
+                                    }}
+                                >
+                                    {(() => {
+                                        const localUserIsSharing = isScreenSharing && (
+                                            screenShareParticipant.isLocal ||
+                                            screenShareParticipant.displayName?.replace(' (Screen)', '') === localUser.displayName
+                                        );
+                                        const screenStream_ = localUserIsSharing
+                                            ? (screenStream || undefined)
+                                            : (getStreamForParticipant(remoteStreams, screenShareParticipant.id) || screenShareParticipant.stream);
+                                        return (
                                             <VideoTile
-                                                participant={cameraParticipant}
-                                                stream={cameraStream}
-                                                isLocal={false}
+                                                participant={screenShareParticipant}
+                                                stream={screenStream_}
+                                                isLocal={localUserIsSharing}
+                                                isMain
+                                                isScreenShare
                                                 isTeacher={isTeacher}
                                                 className="w-full h-full"
                                             />
-                                            <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 bg-black/70 rounded-full text-[9px] text-white font-semibold">
-                                                Camera
-                                            </div>
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                        ) : isWhiteboardActive ? (
-                            /* 2. Whiteboard Stage (Open by default) */
-                            <div className="w-full h-full relative">
-                                <Whiteboard
-                                    isActive={isWhiteboardActive}
-                                    onClose={() => setIsWhiteboardActive(false)}
-                                    sendMessage={sendWhiteboardMessage}
-                                    onRemoteMessage={setWhiteboardMessageHandler}
-                                    canEdit={localUser.hasWhiteboardAccess ?? false}
-                                />
-
-                                {/* Switch to active screen share if one is ongoing */}
-                                {isScreenShareActive && screenShareParticipant && (
-                                    <div className="absolute top-3 right-16 z-30 flex items-center gap-1.5 px-3 py-1 bg-slate-900/85 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                                        <span>Screen Share Active</span>
-                                        <button
-                                            onClick={() => setStageView('screen')}
-                                            className="ml-1.5 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 rounded-full text-[11px] font-semibold transition-colors"
-                                        >
-                                            View Screen
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            /* 3. Whiteboard Minimized Placeholder Stage */
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-600 p-6">
-                                <div className="w-14 h-14 rounded-2xl bg-sky-100 flex items-center justify-center mb-3">
-                                    <PenTool className="w-7 h-7 text-sky-600" />
+                                        );
+                                    })()}
                                 </div>
-                                <h3 className="text-base font-semibold text-slate-800 mb-1">Whiteboard is Hidden</h3>
-                                <p className="text-xs text-slate-500 mb-4 text-center max-w-sm">
-                                    Open the interactive whiteboard to draw, collaborate, or take notes.
-                                </p>
+
+                                {/* Top control bar */}
+                                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
+                                    <Monitor className="w-3.5 h-3.5 text-emerald-400" />
+                                    <span>
+                                        <strong>{screenShareParticipant.displayName?.replace(' (Screen)', '')}</strong>'s Screen
+                                    </span>
+                                    <div className="w-px h-3.5 bg-white/30" />
+                                    <button
+                                        onClick={() => setScreenZoom(z => Math.min(4, Math.round((z + 0.25) * 100) / 100))}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                        title="Zoom in"
+                                    >
+                                        <ZoomIn className="w-3.5 h-3.5" />
+                                    </button>
+                                    <span className="text-[11px] font-mono w-9 text-center">{Math.round(screenZoom * 100)}%</span>
+                                    <button
+                                        onClick={() => setScreenZoom(z => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                        title="Zoom out"
+                                    >
+                                        <ZoomOut className="w-3.5 h-3.5" />
+                                    </button>
+                                    {screenZoom > 1 && (
+                                        <button
+                                            onClick={() => { setScreenZoom(1); setScreenPan({ x: 0, y: 0 }); }}
+                                            className="px-1.5 py-0.5 bg-white/10 hover:bg-white/20 rounded text-[10px] font-medium transition-colors"
+                                            title="Reset zoom"
+                                        >
+                                            Reset
+                                        </button>
+                                    )}
+                                    <div className="w-px h-3.5 bg-white/30" />
+                                    <button
+                                        onClick={handleScreenFullscreen}
+                                        className="p-1 hover:bg-white/10 rounded transition-colors"
+                                        title="Fullscreen"
+                                    >
+                                        <Maximize2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <div className="w-px h-3.5 bg-white/30" />
+                                    <button
+                                        onClick={() => setStageView('whiteboard')}
+                                        className="px-2.5 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[11px] font-semibold transition-colors"
+                                    >
+                                        Whiteboard
+                                    </button>
+                                </div>
+                            </div>
+
+                        ) : isWhiteboardActive ? (
+                            <Whiteboard
+                                isActive={isWhiteboardActive}
+                                onClose={() => setIsWhiteboardActive(false)}
+                                sendMessage={sendWhiteboardMessage}
+                                onRemoteMessage={setWhiteboardMessageHandler}
+                                canEdit={localUser.hasWhiteboardAccess ?? false}
+                                showCloseButton={false}
+                            />
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-slate-50 text-slate-600">
+                                <PenTool className="w-10 h-10 text-sky-600 mb-2" />
+                                <span className="text-sm font-semibold text-slate-800">Whiteboard is Closed</span>
+                                <span className="text-xs text-slate-600 mb-4">Click below to open the collaborative whiteboard</span>
                                 <button
                                     onClick={() => setIsWhiteboardActive(true)}
-                                    className="flex items-center gap-1.5 px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+                                    className="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
                                 >
-                                    <PenTool className="w-3.5 h-3.5" />
-                                    <span>Open Whiteboard</span>
+                                    Open Whiteboard
                                 </button>
                             </div>
                         )}
@@ -397,7 +483,7 @@ export function ClassroomLayout({
                         {teacherParticipant ? (
                             <VideoTile
                                 participant={teacherParticipant}
-                                stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
                                 isLocal={teacherParticipant.isLocal}
                                 isMain={false}
                                 isTeacher={isTeacher}
@@ -435,12 +521,12 @@ export function ClassroomLayout({
                     {/* Middle Grid: Square Student Grid (Scrollable) */}
                     <div className="grid grid-cols-2 gap-2 flex-1 min-h-0 overflow-y-auto pr-0.5 content-start scrollbar-thin">
                         {studentParticipants.map((participant) => {
-                            const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                            const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
                             return (
                                 <div key={String(participant.id)} className="aspect-square w-full rounded-xl overflow-hidden shadow-xs bg-slate-900 border border-slate-200">
                                     <VideoTile
                                         participant={participant}
-                                        stream={stream || undefined}
+                                        stream={stream}
                                         isLocal={participant.isLocal}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
@@ -470,55 +556,42 @@ export function ClassroomLayout({
                 {/* Top Stage: Whiteboard / Screen Share (Fills remaining height) */}
                 <div className="w-full rounded-xl overflow-hidden bg-white border border-slate-200 shadow-xs relative flex flex-col flex-1 min-h-[220px]">
                     {stageView === 'screen' && screenShareParticipant ? (
-                        <div className="w-full h-full relative bg-slate-950 flex flex-col items-center justify-center">
-                            <VideoTile
-                                participant={screenShareParticipant}
-                                stream={screenShareParticipant.isLocal ? (screenStream || undefined) : (remoteStreams.get(screenShareParticipant.id) || screenShareParticipant.stream)}
-                                isLocal={screenShareParticipant.isLocal}
-                                isMain
-                                isScreenShare
-                                isTeacher={isTeacher}
-                                className="w-full h-full"
-                            />
-                            {/* Switcher pill on top of screen share on mobile */}
-                            <div className="absolute top-2 left-2 z-30 flex items-center gap-1.5 px-2.5 py-1 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-md">
-                                <Monitor className="w-3.5 h-3.5 text-emerald-400" />
-                                <span className="font-medium">Screen Share</span>
+                        <div className="w-full h-full relative bg-slate-950 flex flex-col items-center justify-center overflow-hidden">
+                            {/* Local / Remote screen stream resolution for mobile */}
+                            {(() => {
+                                const localUserIsSharing = isScreenSharing && (
+                                    screenShareParticipant.isLocal ||
+                                    screenShareParticipant.displayName?.replace(' (Screen)', '') === localUser.displayName
+                                );
+                                const screenStream_ = localUserIsSharing
+                                    ? (screenStream || undefined)
+                                    : (getStreamForParticipant(remoteStreams, screenShareParticipant.id) || screenShareParticipant.stream);
+                                return (
+                                    <VideoTile
+                                        participant={screenShareParticipant}
+                                        stream={screenStream_}
+                                        isLocal={localUserIsSharing}
+                                        isMain
+                                        isScreenShare
+                                        isTeacher={isTeacher}
+                                        className="w-full h-full"
+                                    />
+                                );
+                            })()}
+
+                            {/* Top info/switcher pill on mobile */}
+                            <div className="absolute top-2 left-2 right-2 z-30 flex items-center justify-between px-2.5 py-1 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-md">
+                                <div className="flex items-center gap-1.5 truncate">
+                                    <Monitor className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    <span className="font-medium truncate">{screenShareParticipant.displayName?.replace(' (Screen)', '')}'s Screen</span>
+                                </div>
                                 <button
                                     onClick={() => setStageView('whiteboard')}
-                                    className="ml-1 px-2 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[10px] font-bold text-white transition-colors"
+                                    className="shrink-0 ml-1 px-2.5 py-0.5 bg-sky-500 hover:bg-sky-600 rounded-full text-[10px] font-bold text-white transition-colors"
                                 >
                                     View Board
                                 </button>
                             </div>
-
-                            {/* PiP Camera: Show screen sharer's camera bottom-right on mobile */}
-                            {(() => {
-                                const cameraParticipant = screenShareParticipant.isLocal
-                                    ? null
-                                    : allParticipants.find(p =>
-                                        !p.displayName?.endsWith(' (Screen)') &&
-                                        p.displayName === screenShareParticipant.displayName?.replace(' (Screen)', '')
-                                      );
-                                const cameraStream = cameraParticipant
-                                    ? remoteStreams.get(cameraParticipant.id)
-                                    : undefined;
-                                if (!cameraParticipant || !cameraStream) return null;
-                                return (
-                                    <div className="absolute bottom-3 right-3 z-40 w-28 aspect-video rounded-lg overflow-hidden border-2 border-sky-400/80 shadow-2xl bg-slate-900">
-                                        <VideoTile
-                                            participant={cameraParticipant}
-                                            stream={cameraStream}
-                                            isLocal={false}
-                                            isTeacher={isTeacher}
-                                            className="w-full h-full"
-                                        />
-                                        <div className="absolute top-1 left-1 z-10 px-1 py-0.5 bg-black/70 rounded-full text-[8px] text-white font-semibold">
-                                            Cam
-                                        </div>
-                                    </div>
-                                );
-                            })()}
                         </div>
 
                     ) : isWhiteboardActive ? (
@@ -579,7 +652,7 @@ export function ClassroomLayout({
                                 <div className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative">
                                     <VideoTile
                                         participant={teacherParticipant}
-                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
                                         isLocal={teacherParticipant.isLocal}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
@@ -595,7 +668,7 @@ export function ClassroomLayout({
                             )}
 
                             {studentParticipants.map((participant) => {
-                                const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                                const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}
@@ -603,7 +676,7 @@ export function ClassroomLayout({
                                     >
                                         <VideoTile
                                             participant={participant}
-                                            stream={stream || undefined}
+                                            stream={stream}
                                             isLocal={participant.isLocal}
                                             isTeacher={isTeacher}
                                             onMuteParticipant={onMuteParticipant}
@@ -623,7 +696,7 @@ export function ClassroomLayout({
                                 <div className="h-[130px] xs:h-[150px] sm:h-[170px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative snap-start">
                                     <VideoTile
                                         participant={teacherParticipant}
-                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : remoteStreams.get(teacherParticipant.id)}
+                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
                                         isLocal={teacherParticipant.isLocal}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
@@ -645,7 +718,7 @@ export function ClassroomLayout({
 
                             {/* Student Participants */}
                             {studentParticipants.map((participant) => {
-                                const stream = participant.isLocal ? localStream : remoteStreams.get(participant.id);
+                                const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}
@@ -653,7 +726,7 @@ export function ClassroomLayout({
                                     >
                                         <VideoTile
                                             participant={participant}
-                                            stream={stream || undefined}
+                                            stream={stream}
                                             isLocal={participant.isLocal}
                                             isTeacher={isTeacher}
                                             onMuteParticipant={onMuteParticipant}

@@ -43,14 +43,35 @@ export function VideoTile({
     const [showControls, setShowControls] = useState(false);
 
     useEffect(() => {
-        if (videoRef.current && stream) {
-            videoRef.current.srcObject = stream;
+        const video = videoRef.current;
+        if (!video) return;
+
+        if (stream) {
+            // Only update if stream reference actually changed
+            if (video.srcObject !== stream) {
+                video.srcObject = stream;
+            }
+            // Force play in case autoPlay didn't fire (e.g. stream set before mount)
+            video.play().catch(() => {}); // Ignore NotAllowedError (autoplay policy)
+        } else {
+            video.srcObject = null;
         }
     }, [stream]);
 
-    const hasVideo = stream?.getVideoTracks().some(t => t.enabled) ?? false;
-    const hasAudio = stream?.getAudioTracks().some(t => t.enabled) ?? false;
-    const shouldShowVideo = stream && hasVideo && !participant.isVideoOff;
+    // Force srcObject on mount in case stream is already set
+    useEffect(() => {
+        const video = videoRef.current;
+        if (video && stream && video.srcObject !== stream) {
+            video.srcObject = stream;
+            video.play().catch(() => {});
+        }
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0 && stream!.getVideoTracks().some(t => t.readyState !== 'ended');
+    const hasAudio = (stream?.getAudioTracks().length ?? 0) > 0 && stream!.getAudioTracks().some(t => t.enabled);
+    // For screen share streams, ignore isVideoOff (camera off doesn't mean screen off)
+    const isScreenStream = isScreenShare || participant.displayName?.endsWith(' (Screen)');
+    const shouldShowVideo = !!stream && hasVideo && (isScreenStream || !participant.isVideoOff);
     const isScreen = isScreenShare || isMain || participant.displayName?.endsWith(' (Screen)');
     const shouldMirror = isLocal && !isScreen;
 
@@ -129,27 +150,29 @@ export function VideoTile({
                     </div>
                 )}
 
-                {/* Bottom overlay with name and status */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1.5 md:p-2 pointer-events-none">
-                    <div className="flex items-center justify-between gap-1">
-                        <span className="text-white text-[10px] xs:text-[11px] md:text-xs font-semibold truncate flex-1">
-                            {participant.displayName}
-                            {isLocal && ' (You)'}
-                        </span>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                            {participant.isMuted || !hasAudio ? (
-                                <MicOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
-                            ) : (
-                                <Mic className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400" />
-                            )}
-                            {participant.isVideoOff || !hasVideo ? (
-                                <VideoOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
-                            ) : (
-                                <Video className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />
-                            )}
+                {/* Bottom overlay with name and status (hidden in screen share stage for unobstructed view) */}
+                {!isScreenShare && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1.5 md:p-2 pointer-events-none">
+                        <div className="flex items-center justify-between gap-1">
+                            <span className="text-white text-[10px] xs:text-[11px] md:text-xs font-semibold truncate flex-1">
+                                {participant.displayName}
+                                {isLocal && ' (You)'}
+                            </span>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                                {participant.isMuted || !hasAudio ? (
+                                    <MicOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
+                                ) : (
+                                    <Mic className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400" />
+                                )}
+                                {participant.isVideoOff || !hasVideo ? (
+                                    <VideoOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
+                                ) : (
+                                    <Video className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Speaking indicator */}
                 {participant.isSpeaking && (
