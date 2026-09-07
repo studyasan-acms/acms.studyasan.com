@@ -194,6 +194,11 @@ export function ClassroomLayout({
         return firstRemote || null;
     }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants, participants]);
 
+    // Human participants only (excluding any separate screen publishers)
+    const humanParticipants = useMemo(() => {
+        return allParticipants.filter(p => !p.displayName?.endsWith(' (Screen)'));
+    }, [allParticipants]);
+
     // Student participants: all participants except the pinned teacher and separate screen feeds
     const studentParticipants = useMemo(() => {
         return allParticipants.filter(p => 
@@ -638,16 +643,16 @@ export function ClassroomLayout({
                     <div className="flex items-center justify-between px-1 mb-1 text-[11px] text-slate-600 font-medium">
                         <span className="flex items-center gap-1">
                             <Users className="w-3.5 h-3.5 text-sky-500" />
-                            <span>Participants ({allParticipants.length})</span>
+                            <span>Participants ({humanParticipants.length})</span>
                         </span>
-                        {allParticipants.length > 4 && (
+                        {humanParticipants.length > 4 && (
                             <span className="text-[10px] text-slate-400">Scroll right for more →</span>
                         )}
                     </div>
 
-                    {allParticipants.length <= 2 ? (
+                    {humanParticipants.length <= 2 ? (
                         /* Case 1: 1 or 2 participants - 1 row side-by-side (no empty slots) */
-                        <div className={`grid ${allParticipants.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'} gap-1.5 w-full`}>
+                        <div className={`grid ${humanParticipants.length === 1 ? 'grid-cols-1 max-w-xs mx-auto' : 'grid-cols-2'} gap-1.5 w-full`}>
                             {teacherParticipant && (
                                 <div className="h-[150px] xs:h-[175px] sm:h-[200px] w-full rounded-xl overflow-hidden bg-slate-900 border-2 border-sky-400 shadow-xs relative">
                                     <VideoTile

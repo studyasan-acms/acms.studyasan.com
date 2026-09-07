@@ -68,10 +68,8 @@ export function VideoTile({
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0 && stream!.getVideoTracks().some(t => t.readyState !== 'ended');
-    const hasAudio = (stream?.getAudioTracks().length ?? 0) > 0 && stream!.getAudioTracks().some(t => t.enabled);
-    // For screen share streams, ignore isVideoOff (camera off doesn't mean screen off)
     const isScreenStream = isScreenShare || participant.displayName?.endsWith(' (Screen)');
-    const shouldShowVideo = !!stream && hasVideo && (isScreenStream || !participant.isVideoOff);
+    const shouldShowVideo = isScreenStream ? !!stream : (!participant.isVideoOff && !!stream && hasVideo);
     const isScreen = isScreenShare || isMain || participant.displayName?.endsWith(' (Screen)');
     const shouldMirror = isLocal && !isScreen;
 
@@ -159,12 +157,12 @@ export function VideoTile({
                                 {isLocal && ' (You)'}
                             </span>
                             <div className="flex items-center gap-0.5 shrink-0">
-                                {participant.isMuted || !hasAudio ? (
+                                {participant.isMuted ? (
                                     <MicOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
                                 ) : (
                                     <Mic className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400" />
                                 )}
-                                {participant.isVideoOff || !hasVideo ? (
+                                {participant.isVideoOff ? (
                                     <VideoOff className="w-3 h-3 md:w-3.5 md:h-3.5 text-rose-400" />
                                 ) : (
                                     <Video className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />

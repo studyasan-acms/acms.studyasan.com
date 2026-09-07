@@ -734,8 +734,8 @@ export class JanusClient {
                 id: publisher.id,
                 displayName: publisher.display || `User ${publisher.id}`,
                 isLocal: false,
-                isMuted: false,
-                isVideoOff: false,
+                isMuted: true,
+                isVideoOff: !isScreenFeed,
                 isScreenSharing: !!isScreenFeed,
                 isSpeaking: false,
             };

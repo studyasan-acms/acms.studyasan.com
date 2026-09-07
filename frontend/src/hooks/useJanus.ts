@@ -554,12 +554,13 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         }
                     }
 
-                    // Handle mute message - mute audio if we are the target
-                    if (message.type === 'mute' && message.participantId) {
+                    // Handle mute message
+                    if (message.type === 'mute' && message.participantId !== undefined) {
                         const myId = janusClientRef.current?.getMyId();
-                        if (myId && message.participantId === myId) {
+                        const isForMe = myId && String(message.participantId) === String(myId);
+
+                        if (isForMe && message.muted) {
                             console.warn('[useJanus] 🔇 You have been muted by the teacher');
-                            // Actually mute the local audio
                             if (localStreamRef.current) {
                                 localStreamRef.current.getAudioTracks().forEach(track => {
                                     track.enabled = false;
@@ -567,17 +568,29 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                             }
                             setLocalUser(prev => ({ ...prev, isMuted: true }));
                         }
+
+                        // Update remote participant's isMuted status
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            for (const [id, p] of next.entries()) {
+                                if (String(id) === String(message.participantId)) {
+                                    next.set(id, { ...p, isMuted: !!message.muted });
+                                }
+                            }
+                            return next;
+                        });
                     }
 
                     // Handle video-off message - update remote participant's video state
                     if (message.type === 'video-off' && (message as any).videoOff !== undefined) {
-                        const janusId = (message as any).janusId;
-                        if (janusId) {
+                        const targetId = (message as any).participantId ?? (message as any).janusId;
+                        if (targetId !== undefined) {
                             setParticipants(prev => {
                                 const next = new Map(prev);
-                                const participant = next.get(janusId);
-                                if (participant) {
-                                    next.set(janusId, { ...participant, isVideoOff: (message as any).videoOff });
+                                for (const [id, p] of next.entries()) {
+                                    if (String(id) === String(targetId)) {
+                                        next.set(id, { ...p, isVideoOff: !!(message as any).videoOff });
+                                    }
                                 }
                                 return next;
                             });
@@ -665,6 +678,14 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         setLocalUser(prev => {
             const newMuted = !prev.isMuted;
             janusClientRef.current?.toggleMic(newMuted);
+
+            const myId = janusClientRef.current?.getMyId();
+            janusClientRef.current?.sendData({
+                type: 'mute',
+                participantId: myId ?? undefined,
+                muted: newMuted,
+            });
+
             return { ...prev, isMuted: newMuted };
         });
     }, []);
@@ -684,9 +705,11 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             });
 
             // Broadcast camera state to remote participants
+            const myId = janusClientRef.current?.getMyId();
             janusClientRef.current?.sendData({
                 type: 'video-off',
                 videoOff: newHidden,
+                participantId: myId ?? undefined,
             });
 
             return { ...prev, isVideoOff: newHidden };
