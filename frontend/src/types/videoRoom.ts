@@ -73,6 +73,8 @@ export interface Publisher {
     display?: string;
     audioCodec?: string;
     videoCodec?: string;
+    audio_codec?: string;
+    video_codec?: string;
     talking?: boolean;
 }
 
@@ -184,7 +186,7 @@ export interface ChatMessage {
 /**
  * DataChannel message type (supports both chat and whiteboard)
  */
-export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction' | 'screen-share' | 'leave';
+export type DataChannelMessageType = 'chat' | 'whiteboard' | 'mute' | 'kick' | 'video-off' | 'whiteboard-access' | 'raise-hand' | 'reaction' | 'screen-share' | 'leave' | 'state-sync';
 
 /**
  * Generic DataChannel message
@@ -203,6 +205,11 @@ export interface DataChannelMessage {
     emoji?: string;
     isSharing?: boolean;
     screenFeedId?: string | number;
+    // Full state sync payload (sent when new participant joins so they can immediately
+    // know the correct mic/camera/hand state of the sender)
+    stateMuted?: boolean;
+    stateVideoOff?: boolean;
+    stateHandRaised?: boolean;
 }
 
 // ============ Room Types ============

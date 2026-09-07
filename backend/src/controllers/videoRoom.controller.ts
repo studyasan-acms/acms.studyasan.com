@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { sendSuccess, sendError } from '../utils/response.js';
 import type { AuthRequest } from '../types/index.js';
 import janusAdmin from '../services/janusAdmin.service.js';
+import { whiteboardCache } from '../services/whiteboardCache.service.js';
 
 const prisma = new PrismaClient();
 
@@ -459,66 +460,30 @@ export const sendChatMessage = async (req: AuthRequest, res: Response) => {
 };
 
 /**
- * Get whiteboard strokes
+ * Get whiteboard strokes (fast in-memory cached)
  */
 export const getWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
 
     if (!janusRoomId) {
       return sendError(res, 'Janus room ID is required', 400);
     }
 
-    const videoRoom = await prisma.videoRoom.findUnique({
-      where: { janus_room_id: BigInt(janusRoomId) },
-      include: { class_session: true },
-    });
-
-    if (!videoRoom) {
-      return sendError(res, 'Room not found', 404);
-    }
-
-    // Check access
-    const access = await checkRoomAccess(userId, userRole, videoRoom.class_session);
-    if (!access.hasAccess) {
-      return sendError(res, access.reason || 'Access denied', 403);
-    }
-
-    const strokes = await prisma.whiteboardStroke.findMany({
-      where: { room_id: videoRoom.id },
-      orderBy: { created_at: 'asc' },
-    });
-
-    sendSuccess(res, {
-      strokes: strokes.map((s) => ({
-        id: s.stroke_id,
-        tool: s.tool,
-        color: s.color,
-        size: s.size,
-        points: s.points,
-        text: s.text,
-        imageUrl: s.image_url,
-        board: s.board,
-        timestamp: s.created_at.getTime(),
-        updatedAt: s.updated_at.getTime(),
-      })),
-    });
+    const strokes = whiteboardCache.getStrokes(janusRoomId);
+    return sendSuccess(res, { strokes });
   } catch (error: any) {
-    sendError(res, error.message, 500);
+    return sendError(res, error.message, 500);
   }
 };
 
 /**
- * Add or update a whiteboard stroke
+ * Add or update a whiteboard stroke (fast in-memory cached)
  */
 export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
     const { stroke } = req.body;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
 
     if (!janusRoomId) {
       return sendError(res, 'Janus room ID is required', 400);
@@ -528,66 +493,20 @@ export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Stroke data is required', 400);
     }
 
-    const videoRoom = await prisma.videoRoom.findUnique({
-      where: { janus_room_id: BigInt(janusRoomId) },
-      include: { class_session: true },
-    });
-
-    if (!videoRoom) {
-      return sendError(res, 'Room not found', 404);
-    }
-
-    // Check access
-    const access = await checkRoomAccess(userId, userRole, videoRoom.class_session);
-    if (!access.hasAccess) {
-      return sendError(res, access.reason || 'Access denied', 403);
-    }
-
-    // Upsert stroke
-    const savedStroke = await prisma.whiteboardStroke.upsert({
-      where: {
-        room_id_stroke_id: {
-          room_id: videoRoom.id,
-          stroke_id: stroke.id,
-        },
-      },
-      update: {
-        tool: stroke.tool,
-        color: stroke.color,
-        size: stroke.size,
-        points: stroke.points,
-        text: stroke.text,
-        image_url: stroke.imageUrl,
-        board: stroke.board || 1,
-      },
-      create: {
-        room_id: videoRoom.id,
-        stroke_id: stroke.id,
-        tool: stroke.tool,
-        color: stroke.color,
-        size: stroke.size,
-        points: stroke.points,
-        text: stroke.text,
-        image_url: stroke.imageUrl,
-        board: stroke.board || 1,
-      },
-    });
-
-    sendSuccess(res, { id: savedStroke.stroke_id }, 'Stroke saved', 201);
+    const saved = whiteboardCache.addStroke(janusRoomId, stroke);
+    return sendSuccess(res, { id: saved.id }, 'Stroke saved', 201);
   } catch (error: any) {
-    sendError(res, error.message, 500);
+    return sendError(res, error.message, 500);
   }
 };
 
 /**
- * Delete specific whiteboard strokes
+ * Delete specific whiteboard strokes (fast in-memory cached)
  */
 export const deleteWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
     const { strokeIds, strokeId } = req.body;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
 
     if (!janusRoomId) {
       return sendError(res, 'Janus room ID is required', 400);
@@ -598,73 +517,28 @@ export const deleteWhiteboardStrokes = async (req: AuthRequest, res: Response) =
       return sendError(res, 'Stroke IDs are required', 400);
     }
 
-    const videoRoom = await prisma.videoRoom.findUnique({
-      where: { janus_room_id: BigInt(janusRoomId) },
-      include: { class_session: true },
-    });
-
-    if (!videoRoom) {
-      return sendError(res, 'Room not found', 404);
-    }
-
-    // Check access
-    const access = await checkRoomAccess(userId, userRole, videoRoom.class_session);
-    if (!access.hasAccess) {
-      return sendError(res, access.reason || 'Access denied', 403);
-    }
-
-    await prisma.whiteboardStroke.deleteMany({
-      where: {
-        room_id: videoRoom.id,
-        stroke_id: { in: idsToDelete },
-      },
-    });
-
-    sendSuccess(res, { deletedCount: idsToDelete.length }, 'Strokes deleted');
+    const deletedCount = whiteboardCache.deleteStrokes(janusRoomId, idsToDelete);
+    return sendSuccess(res, { deletedCount }, 'Strokes deleted');
   } catch (error: any) {
-    sendError(res, error.message, 500);
+    return sendError(res, error.message, 500);
   }
 };
 
 /**
- * Clear whiteboard
+ * Clear whiteboard (fast in-memory cached)
  */
 export const clearWhiteboard = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
-    const userId = req.user!.id;
-    const userRole = req.user!.role;
 
     if (!janusRoomId) {
       return sendError(res, 'Janus room ID is required', 400);
     }
 
-    const videoRoom = await prisma.videoRoom.findUnique({
-      where: { janus_room_id: BigInt(janusRoomId) },
-      include: { class_session: true },
-    });
-
-    if (!videoRoom) {
-      return sendError(res, 'Room not found', 404);
-    }
-
-    // Check access - only teacher can clear
-    const access = await checkRoomAccess(userId, userRole, videoRoom.class_session);
-    if (!access.hasAccess) {
-      return sendError(res, access.reason || 'Access denied', 403);
-    }
-
-    if (!access.isTeacher) {
-      return sendError(res, 'Only teachers can clear the whiteboard', 403);
-    }
-
-    await prisma.whiteboardStroke.deleteMany({
-      where: { room_id: videoRoom.id },
-    });
-
-    sendSuccess(res, null, 'Whiteboard cleared');
+    whiteboardCache.clearWhiteboard(janusRoomId);
+    return sendSuccess(res, null, 'Whiteboard cleared');
   } catch (error: any) {
-    sendError(res, error.message, 500);
+    return sendError(res, error.message, 500);
   }
 };
 
@@ -795,15 +669,16 @@ export const recordJoin = async (req: AuthRequest, res: Response) => {
     });
 
     if (!attendance) {
+      const attendanceRole: 'TEACHER' | 'STUDENT' = userRole === 'STUDENT' ? 'STUDENT' : 'TEACHER';
       attendance = await prisma.classSessionAttendance.create({
         data: {
           class_session_id: videoRoom.class_session_id,
           user_id: userId,
-          role: userRole as any,
+          role: attendanceRole as any,
           joined_at: new Date(),
         },
       });
-      console.log(`[Attendance] Created new attendance record for user ${userId}`);
+      console.log(`[Attendance] Created new attendance record for user ${userId} with role ${attendanceRole}`);
     }
 
     // Create attendance log entry

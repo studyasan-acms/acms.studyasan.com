@@ -420,7 +420,12 @@ export function Whiteboard({
 
     useEffect(() => {
         if (onRemoteMessage) {
-            onRemoteMessage(handleRemoteMessage);
+            const unregister = onRemoteMessage(handleRemoteMessage);
+            return () => {
+                if (typeof unregister === 'function') {
+                    unregister();
+                }
+            };
         }
     }, [onRemoteMessage, handleRemoteMessage]);
 

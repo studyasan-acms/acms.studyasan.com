@@ -190,6 +190,12 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
     const screenStreamRef = useRef<MediaStream | null>(null);
     const rawStreamRef = useRef<MediaStream | null>(null);
 
+    // Keep a ref to localUser so callbacks always see the latest values without stale closures
+    const localUserRef = useRef(localUser);
+    useEffect(() => {
+        localUserRef.current = localUser;
+    });
+
     // Background processor
     const backgroundProcessor = useBackgroundProcessor();
 
@@ -219,17 +225,25 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
 
     const sendWhiteboardMessage = useCallback((message: WhiteboardMessage) => {
         console.log('[useJanus] sendWhiteboardMessage triggered:', message.type);
+
+        // Attach our ID as senderId so that the API-poll deduplication can skip
+        // strokes we drew ourselves (prevents the ~1.5s flicker after drawing).
+        const myId = janusClientRef.current?.getMyId();
+        const msgWithSender: WhiteboardMessage = myId
+            ? { ...message, senderId: String(myId) }
+            : message;
+
         try {
             janusClientRef.current?.sendData({
                 type: 'whiteboard',
-                whiteboard: message,
+                whiteboard: msgWithSender,
             });
         } catch (err) {
             console.error('[useJanus] Error sending whiteboard via dataChannel:', err);
         }
 
         try {
-            apiSync.sendWhiteboardMessage(message);
+            apiSync.sendWhiteboardMessage(msgWithSender);
         } catch (err) {
             console.error('[useJanus] Error sending whiteboard via API:', err);
         }
@@ -347,6 +361,9 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     rawStreamRef.current = newStream;
                 },
                 onRemoteStream: (participantId, remoteStream) => {
+                    const hasAudioTracks = remoteStream.getAudioTracks().length > 0;
+                    const hasVideoTracks = remoteStream.getVideoTracks().length > 0;
+
                     setRemoteStreams(prev => {
                         const next = new Map(prev);
                         next.set(participantId, remoteStream);
@@ -357,10 +374,27 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         const next = new Map(prev);
                         const participant = next.get(participantId);
                         if (participant) {
-                            next.set(participantId, { ...participant, stream: remoteStream });
+                            next.set(participantId, {
+                                ...participant,
+                                stream: remoteStream,
+                                isVideoOff: hasVideoTracks ? false : participant.isVideoOff,
+                                isMuted: hasAudioTracks ? false : participant.isMuted,
+                            });
                         }
                         return next;
                     });
+
+                    // Immediately trigger state-sync so both sides know exact status
+                    setTimeout(() => {
+                        client.sendData({
+                            type: 'state-sync',
+                            participantId: client.getMyId() ?? undefined,
+                            displayName,
+                            stateMuted: localUserRef.current.isMuted,
+                            stateVideoOff: localUserRef.current.isVideoOff,
+                            stateHandRaised: localUserRef.current.isHandRaised ?? false,
+                        });
+                    }, 300);
                 },
                 onParticipantJoined: (participant) => {
                     // Play join notification sound
@@ -374,6 +408,21 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         next.set(participant.id, participant);
                         return next;
                     });
+
+                    // Bug 1/2/3 fix: When a new participant joins, immediately broadcast
+                    // our current state so they know our real mic/camera/hand status.
+                    // Use a short delay to ensure the data channel is ready.
+                    setTimeout(() => {
+                        const myId = client.getMyId();
+                        client.sendData({
+                            type: 'state-sync',
+                            participantId: myId ?? undefined,
+                            displayName,
+                            stateMuted: localUserRef.current.isMuted,
+                            stateVideoOff: localUserRef.current.isVideoOff,
+                            stateHandRaised: localUserRef.current.isHandRaised ?? false,
+                        });
+                    }, 800);
                 },
                 onParticipantLeft: (participantId) => {
                     console.log('[useJanus] Participant left:', participantId);
@@ -445,17 +494,24 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         });
 
                         if (!isSharing) {
-                            setRemoteStreams(prev => {
-                                const next = new Map(prev);
+                            // Bug 8 fix: Collect the IDs to remove from streams by reading
+                            // them from within setParticipants (which has the fresh state),
+                            // then apply deletions to remoteStreams using the collected IDs.
+                            const idsToRemoveFromStreams: (string | number)[] = [];
+                            setParticipants(prevParts => {
                                 const sharerName = displayName || '';
-                                for (const [id] of prev.entries()) {
-                                    const p = participants.get(id);
-                                    if (p?.displayName?.endsWith(' (Screen)')) {
+                                for (const [id, p] of prevParts.entries()) {
+                                    if (p.displayName?.endsWith(' (Screen)')) {
                                         if (!sharerName || p.displayName.startsWith(sharerName)) {
-                                            next.delete(id);
+                                            idsToRemoveFromStreams.push(id);
                                         }
                                     }
                                 }
+                                return prevParts; // no change here, just reading
+                            });
+                            setRemoteStreams(prev => {
+                                const next = new Map(prev);
+                                idsToRemoveFromStreams.forEach(id => next.delete(id));
                                 return next;
                             });
                         }
@@ -569,11 +625,12 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                             setLocalUser(prev => ({ ...prev, isMuted: true }));
                         }
 
-                        // Update remote participant's isMuted status
+                        // Update remote participant's isMuted status (match by ID or displayName)
                         setParticipants(prev => {
                             const next = new Map(prev);
                             for (const [id, p] of next.entries()) {
-                                if (String(id) === String(message.participantId)) {
+                                if ((message.participantId !== undefined && String(id) === String(message.participantId)) ||
+                                    (message.displayName && p.displayName === message.displayName)) {
                                     next.set(id, { ...p, isMuted: !!message.muted });
                                 }
                             }
@@ -584,25 +641,52 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     // Handle video-off message - update remote participant's video state
                     if (message.type === 'video-off' && (message as any).videoOff !== undefined) {
                         const targetId = (message as any).participantId ?? (message as any).janusId;
-                        if (targetId !== undefined) {
-                            setParticipants(prev => {
-                                const next = new Map(prev);
-                                for (const [id, p] of next.entries()) {
-                                    if (String(id) === String(targetId)) {
-                                        next.set(id, { ...p, isVideoOff: !!(message as any).videoOff });
-                                    }
+                        const targetName = message.displayName;
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            for (const [id, p] of next.entries()) {
+                                if ((targetId !== undefined && String(id) === String(targetId)) ||
+                                    (targetName && p.displayName === targetName)) {
+                                    next.set(id, { ...p, isVideoOff: !!(message as any).videoOff });
                                 }
-                                return next;
-                            });
-                        }
+                            }
+                            return next;
+                        });
+                    }
+
+                    // Handle state-sync message - update remote participant's full state
+                    // This is sent when a new participant joins so everyone knows each other's state
+                    if (message.type === 'state-sync' && (message.participantId !== undefined || message.displayName)) {
+                        const targetId = message.participantId;
+                        const targetName = message.displayName;
+                        setParticipants(prev => {
+                            const next = new Map(prev);
+                            for (const [id, p] of next.entries()) {
+                                if ((targetId !== undefined && String(id) === String(targetId)) ||
+                                    (targetName && p.displayName === targetName)) {
+                                    next.set(id, {
+                                        ...p,
+                                        isMuted: message.stateMuted !== undefined ? message.stateMuted : p.isMuted,
+                                        isVideoOff: message.stateVideoOff !== undefined ? message.stateVideoOff : p.isVideoOff,
+                                        isHandRaised: message.stateHandRaised !== undefined ? message.stateHandRaised : p.isHandRaised,
+                                    });
+                                }
+                            }
+                            return next;
+                        });
                     }
 
                     // Handle whiteboard-access message
                     if (message.type === 'whiteboard-access' && message.participantId) {
                         const myId = janusClientRef.current?.getMyId();
-                        console.log(`[useJanus] Received 'whiteboard-access' targeting: ${message.participantId}, My local ID is: ${myId}, Granted: ${message.whiteboardAccess}`);
-                        // If we are the target, update our local permission
-                        if (myId && String(message.participantId) === String(myId)) {
+                        const myDisplayName = localUserRef.current.displayName;
+                        console.log(`[useJanus] Received 'whiteboard-access' targeting: ${message.participantId} (${message.displayName}), My local ID is: ${myId} (${myDisplayName}), Granted: ${message.whiteboardAccess}`);
+
+                        // Match by Janus ID OR by displayName (fallback for race conditions)
+                        const idMatch = myId && String(message.participantId) === String(myId);
+                        const nameMatch = message.displayName && message.displayName === myDisplayName;
+
+                        if (idMatch || nameMatch) {
                             console.log(`[useJanus] 📝 Whiteboard access ${message.whiteboardAccess ? 'GRANTED' : 'REVOKED'} for ME`);
                             setLocalUser(prev => ({ ...prev, hasWhiteboardAccess: message.whiteboardAccess }));
                         } else {
@@ -652,9 +736,20 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                 track.enabled = false;
             });
 
-            // Broadcast camera-off state to remote participants once data channel is ready
+            // Bug 3 fix: Always include participantId in the initial video-off broadcast
+            // so remote participants can match the message to the correct person.
             setTimeout(() => {
-                client.sendData({ type: 'video-off', videoOff: true });
+                const currentMyId = client.getMyId();
+                client.sendData({ type: 'video-off', videoOff: true, participantId: currentMyId ?? undefined });
+                // Also broadcast full state-sync so anyone already in the room knows our initial state
+                client.sendData({
+                    type: 'state-sync',
+                    participantId: currentMyId ?? undefined,
+                    displayName,
+                    stateMuted: true,
+                    stateVideoOff: true,
+                    stateHandRaised: false,
+                });
             }, 1000);
 
             console.log('[useJanus] Successfully connected and publishing (cam/mic off by default)!');
@@ -679,6 +774,13 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             const newMuted = !prev.isMuted;
             janusClientRef.current?.toggleMic(newMuted);
 
+            rawStreamRef.current?.getAudioTracks().forEach(track => {
+                track.enabled = !newMuted;
+            });
+            localStreamRef.current?.getAudioTracks().forEach(track => {
+                track.enabled = !newMuted;
+            });
+
             const myId = janusClientRef.current?.getMyId();
             janusClientRef.current?.sendData({
                 type: 'mute',
@@ -695,13 +797,16 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             const newHidden = !prev.isVideoOff;
             const shouldEnable = !newHidden;
 
-            janusClientRef.current?.toggleCamera(shouldEnable).then(() => {
-                if (localStreamRef.current && shouldEnable) {
-                    setLocalStream(new MediaStream(localStreamRef.current.getTracks()));
-                }
-            }).catch(e => {
+            janusClientRef.current?.toggleCamera(shouldEnable).catch(e => {
                 console.error('Toggle camera failed:', e);
                 setLocalUser(p => ({ ...p, isVideoOff: !newHidden }));
+            });
+
+            rawStreamRef.current?.getVideoTracks().forEach(track => {
+                track.enabled = shouldEnable;
+            });
+            localStreamRef.current?.getVideoTracks().forEach(track => {
+                track.enabled = shouldEnable;
             });
 
             // Broadcast camera state to remote participants
@@ -799,11 +904,14 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
             const participant = next.get(participantId);
             if (participant) {
                 const newAccess = !participant.hasWhiteboardAccess;
-                console.log(`[useJanus] Sending 'whiteboard-access' command data channel to group. Target: ${participantId}. Access: ${newAccess}`);
+                console.log(`[useJanus] Sending 'whiteboard-access' command data channel to group. Target: ${participantId} (${participant.displayName}). Access: ${newAccess}`);
                 
                 janusClientRef.current?.sendData({
                     type: 'whiteboard-access',
                     participantId,
+                    // Include displayName so the receiver can match by name as fallback
+                    // in case Janus IDs haven't been fully resolved yet
+                    displayName: participant.displayName,
                     whiteboardAccess: newAccess,
                 });
 
@@ -842,6 +950,28 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
         });
         addFloatingReaction(emoji, `${localUser.displayName} (You)`);
     }, [localUser.displayName, addFloatingReaction]);
+
+    // Periodic state-sync heartbeat to keep all participant icons in sync
+    useEffect(() => {
+        if (connectionState !== 'connected') return;
+
+        const interval = setInterval(() => {
+            const client = janusClientRef.current;
+            if (client) {
+                const myId = client.getMyId();
+                client.sendData({
+                    type: 'state-sync',
+                    participantId: myId ?? undefined,
+                    displayName: localUserRef.current.displayName,
+                    stateMuted: localUserRef.current.isMuted,
+                    stateVideoOff: localUserRef.current.isVideoOff,
+                    stateHandRaised: localUserRef.current.isHandRaised ?? false,
+                });
+            }
+        }, 2500);
+
+        return () => clearInterval(interval);
+    }, [connectionState]);
 
     // Cleanup on unmount ONLY
     const disconnectRef = useRef(disconnect);

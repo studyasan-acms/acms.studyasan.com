@@ -31,6 +31,21 @@ export function useClassroomAPISync({
     const pollingInterval = useRef<ReturnType<typeof setInterval> | null>(null);
     const processedChatIds = useRef<Set<string>>(new Set());
     const processedStrokeVersions = useRef<Map<string, number>>(new Map());
+    // Track strokes we sent locally so the poll doesn't re-apply them (prevents canvas flicker)
+    // Maps strokeId -> timestamp when we sent it. Entries expire after 5 seconds.
+    const locallySentStrokes = useRef<Map<string, number>>(new Map());
+
+    // Prune expired locally-sent stroke records every 10 seconds
+    useEffect(() => {
+        if (!enabled) return;
+        const prune = setInterval(() => {
+            const now = Date.now();
+            for (const [id, sentAt] of locallySentStrokes.current.entries()) {
+                if (now - sentAt > 5000) locallySentStrokes.current.delete(id);
+            }
+        }, 10000);
+        return () => clearInterval(prune);
+    }, [enabled]);
 
     // Poll for new messages
     useEffect(() => {
@@ -63,73 +78,43 @@ export function useClassroomAPISync({
                 if (whiteboardRes.data.success) {
                     const strokes = whiteboardRes.data.data.strokes as (Stroke & { updatedAt?: number })[];
 
-                    // Detect if whiteboard was cleared
-                    if (strokes.length === 0 && processedStrokeVersions.current.size > 0) {
-                        console.log('[APISync] Whiteboard was cleared');
-                        processedStrokeVersions.current.clear();
-                        whiteboardHandlersRef.current.forEach(fn => {
+                    // Process new and updated strokes from server
+                    for (const stroke of strokes) {
+                        if (!stroke.board) stroke.board = 1;
+                        if (stroke.tool === 'table' && stroke.text && (!stroke.tableRows || !stroke.tableData)) {
                             try {
-                                fn({
-                                    type: 'clear',
-                                    timestamp: Date.now(),
-                                });
-                            } catch (e) {
-                                console.error('[APISync] Error in whiteboard handler:', e);
-                            }
-                        });
-                    } else {
-                        // Detect deleted strokes that were previously present in client state
-                        const serverStrokeIds = new Set(strokes.map((s) => s.id));
-                        const deletedIds: string[] = [];
-                        for (const id of processedStrokeVersions.current.keys()) {
-                            if (!serverStrokeIds.has(id)) {
-                                deletedIds.push(id);
-                            }
+                                const parsed = JSON.parse(stroke.text);
+                                if (parsed.rows) stroke.tableRows = parsed.rows;
+                                if (parsed.cols) stroke.tableCols = parsed.cols;
+                                if (parsed.data) stroke.tableData = parsed.data;
+                            } catch {}
                         }
-                        if (deletedIds.length > 0) {
-                            deletedIds.forEach((id) => processedStrokeVersions.current.delete(id));
+                        const storedVersion = processedStrokeVersions.current.get(stroke.id);
+                        const strokeVersion = stroke.updatedAt || stroke.timestamp || 0;
+
+                        if (storedVersion === undefined || storedVersion < strokeVersion) {
+                            // New stroke or updated stroke
+                            processedStrokeVersions.current.set(stroke.id, strokeVersion);
+
+                            // Flicker fix: skip strokes we sent ourselves within the last 5 seconds.
+                            // DataChannel already applied them instantly; the API poll is just echo.
+                            const sentAt = locallySentStrokes.current.get(stroke.id);
+                            if (sentAt && Date.now() - sentAt < 5000) {
+                                // Still in dedup window — don't re-notify handlers
+                                continue;
+                            }
+
                             whiteboardHandlersRef.current.forEach(fn => {
                                 try {
                                     fn({
-                                        type: 'delete-strokes',
-                                        strokeIds: deletedIds,
+                                        type: 'stroke',
+                                        data: stroke,
                                         timestamp: Date.now(),
                                     });
                                 } catch (e) {
                                     console.error('[APISync] Error in whiteboard handler:', e);
                                 }
                             });
-                        }
-
-                        // Process new and updated strokes
-                        for (const stroke of strokes) {
-                            if (!stroke.board) stroke.board = 1;
-                            if (stroke.tool === 'table' && stroke.text && (!stroke.tableRows || !stroke.tableData)) {
-                                try {
-                                    const parsed = JSON.parse(stroke.text);
-                                    if (parsed.rows) stroke.tableRows = parsed.rows;
-                                    if (parsed.cols) stroke.tableCols = parsed.cols;
-                                    if (parsed.data) stroke.tableData = parsed.data;
-                                } catch {}
-                            }
-                            const storedVersion = processedStrokeVersions.current.get(stroke.id);
-                            const strokeVersion = stroke.updatedAt || stroke.timestamp || 0;
-
-                            if (storedVersion === undefined || storedVersion < strokeVersion) {
-                                // New stroke or updated stroke
-                                processedStrokeVersions.current.set(stroke.id, strokeVersion);
-                                whiteboardHandlersRef.current.forEach(fn => {
-                                    try {
-                                        fn({
-                                            type: 'stroke',
-                                            data: stroke,
-                                            timestamp: Date.now(),
-                                        });
-                                    } catch (e) {
-                                        console.error('[APISync] Error in whiteboard handler:', e);
-                                    }
-                                });
-                            }
                         }
                     }
                 }
@@ -141,8 +126,8 @@ export function useClassroomAPISync({
         // Initial poll
         poll();
 
-        // Poll every 1.5 seconds for near-real-time whiteboard sync (DataChannel handles instants)
-        pollingInterval.current = setInterval(poll, 1500);
+        // Poll every 800ms for fast cached whiteboard sync (DataChannel handles 0ms instants)
+        pollingInterval.current = setInterval(poll, 800);
 
         return () => {
             console.log('[APISync] Stopping polling');
@@ -184,6 +169,8 @@ export function useClassroomAPISync({
         try {
             if (message.type === 'stroke' && message.data) {
                 const stroke = message.data as Stroke;
+                // Mark this stroke as locally sent so the poll won't re-apply it
+                locallySentStrokes.current.set(stroke.id, Date.now());
                 processedStrokeVersions.current.set(stroke.id, Date.now());
 
                 await api.post(`/video-rooms/${roomCode}/whiteboard`, { stroke });

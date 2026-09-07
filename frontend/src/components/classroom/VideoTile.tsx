@@ -27,13 +27,13 @@ interface VideoTileProps {
 
 function getAvatarGradient(name?: string): string {
     const gradients = [
-        'from-blue-600 via-indigo-700 to-slate-900',
-        'from-indigo-600 via-purple-700 to-slate-900',
-        'from-cyan-600 via-blue-700 to-slate-900',
-        'from-teal-600 via-emerald-700 to-slate-900',
-        'from-amber-600 via-orange-700 to-slate-900',
-        'from-rose-600 via-pink-700 to-slate-900',
-        'from-violet-600 via-fuchsia-700 to-slate-900',
+        'from-blue-600 via-blue-800 to-slate-900',
+        'from-orange-500 via-orange-700 to-slate-900',
+        'from-blue-500 via-indigo-800 to-slate-900',
+        'from-amber-500 via-orange-800 to-slate-900',
+        'from-sky-500 via-blue-800 to-slate-900',
+        'from-orange-600 via-amber-800 to-slate-900',
+        'from-blue-700 via-blue-900 to-slate-900',
     ];
     if (!name) return gradients[0];
     let hash = 0;
@@ -70,34 +70,32 @@ export function VideoTile({
     const videoRef = useRef<HTMLVideoElement>(null);
     const [showControls, setShowControls] = useState(false);
 
+    // Keep video element's srcObject synchronized with stream
     useEffect(() => {
         const video = videoRef.current;
         if (!video) return;
 
         if (stream) {
-            // Only update if stream reference actually changed
             if (video.srcObject !== stream) {
                 video.srcObject = stream;
             }
-            // Force play in case autoPlay didn't fire
             video.play().catch(() => {});
         } else {
             video.srcObject = null;
         }
     }, [stream]);
 
-    // Force srcObject on mount in case stream is already set
-    useEffect(() => {
-        const video = videoRef.current;
-        if (video && stream && video.srcObject !== stream) {
-            video.srcObject = stream;
-            video.play().catch(() => {});
-        }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const hasVideo = (stream?.getVideoTracks().length ?? 0) > 0 && stream!.getVideoTracks().some(t => t.readyState !== 'ended');
+    const videoTracks = stream?.getVideoTracks() ?? [];
+    const hasVideoTrack = videoTracks.length > 0;
     const isScreenStream = isScreenShare || participant.displayName?.endsWith(' (Screen)');
-    const shouldShowVideo = isScreenStream ? !!stream : (!participant.isVideoOff && !!stream && hasVideo);
+
+    // Should display the video (vs avatar placeholder):
+    // - Screen share: show whenever there's a stream with video tracks
+    // - Local/Remote user: show if participant's camera is NOT off and stream has video tracks
+    const shouldShowVideo = isScreenStream
+        ? (!!stream && hasVideoTrack)
+        : (!participant.isVideoOff && !!stream && hasVideoTrack);
+
     const isScreen = isScreenShare || isMain || participant.displayName?.endsWith(' (Screen)');
     const shouldMirror = isLocal && !isScreen;
 
@@ -145,18 +143,23 @@ export function VideoTile({
                 ${className}
             `}
         >
-            {/* Video element */}
-            {shouldShowVideo ? (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    muted={isLocal}
-                    className={`w-full h-full block bg-slate-950 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''}`}
-                />
-            ) : (
-                /* Avatar placeholder with modern gradient and initials */
-                <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br ${avatarGradient} p-2`}>
+            {/* 
+              Video element: Kept in DOM at all times!
+              - For remote participants: plays audio continuously even when camera is off
+              - For local participant: muted={true} prevents feedback
+              - When camera is off: absolute inset-0 opacity-0 pointer-events-none keeps decoding active without showing black box
+            */}
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted={isLocal}
+                className={`w-full h-full block bg-slate-950 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''} ${shouldShowVideo ? 'relative z-10' : 'absolute inset-0 opacity-0 pointer-events-none'}`}
+            />
+
+            {/* Avatar placeholder with modern gradient and initials when video is off */}
+            {!shouldShowVideo && (
+                <div className={`absolute inset-0 z-10 flex flex-col items-center justify-center bg-gradient-to-br ${avatarGradient} p-2`}>
                     <div className="w-12 h-12 xs:w-14 xs:h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg transform transition-transform hover:scale-105">
                         <span className="text-white text-base xs:text-lg sm:text-xl font-bold tracking-wider drop-shadow-sm">
                             {initials}

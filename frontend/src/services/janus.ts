@@ -117,6 +117,8 @@ class ScreenJanusPublisher {
 
                         // 3. Create PeerConnection
                         this.pc = new RTCPeerConnection({ iceServers: this.iceServers });
+                        // Bug 9 fix: Init SCTP so PeerConnection can handle data channel sections
+                        try { this.pc.createDataChannel('sctp-init'); } catch(e) {}
                         this.pc.onicecandidate = (event) => {
                             if (event.candidate && this.sessionId && this.handleId && this.ws?.readyState === WebSocket.OPEN) {
                                 this.ws.send(JSON.stringify({
@@ -303,10 +305,12 @@ export class JanusClient {
     private screenPublisher: ScreenJanusPublisher | null = null;
     private peerConnections: Map<string | number, RTCPeerConnection> = new Map();
     private publisherPc: RTCPeerConnection | null = null;
-    private dataChannel: RTCDataChannel | null = null;
+    private publisherDataChannel: RTCDataChannel | null = null;
+    private subscriberDataChannels: Set<RTCDataChannel> = new Set();
     private myId: string | number | null = null;
     private localUniqueId = generateUniqueId();
     private attendanceTracked = false; // Track if we've recorded join
+    private intentionalDisconnect = false; // Prevents reconnection loop on clean disconnect
 
     // ICE servers configuration
     private iceServers: RTCIceServer[] = [
@@ -374,7 +378,10 @@ export class JanusClient {
 
                 this.ws.onclose = (event) => {
                     console.log(`[Janus] WebSocket closed: ${event.code} - ${event.reason}`);
-                    this.handleDisconnection();
+                    // Only reconnect if not intentionally disconnecting
+                    if (!this.intentionalDisconnect) {
+                        this.handleDisconnection();
+                    }
                 };
 
                 this.ws.onerror = (error) => {
@@ -394,14 +401,27 @@ export class JanusClient {
 
     private handleDisconnection(): void {
         this.stopKeepalive();
-        this.cleanup();
+        // Don't stop local/screen streams on reconnect — we'll re-publish them
+        const streamToRePublish = this.localStream;
+        this.cleanupPeerConnections();
 
         if (this.reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             this.setConnectionState('reconnecting');
             const delay = RECONNECT_BASE_DELAY * Math.pow(2, this.reconnectAttempts);
             this.reconnectAttempts++;
             console.log(`[Janus] Attempting reconnection in ${delay}ms (attempt ${this.reconnectAttempts})`);
-            setTimeout(() => this.connect().catch(() => { }), delay);
+            setTimeout(async () => {
+                try {
+                    await this.connect();
+                    // Bug 13 fix: Re-publish stream after successful reconnection
+                    if (streamToRePublish && this.sessionId && this.publisherHandleId) {
+                        console.log('[Janus] Re-publishing stream after reconnection');
+                        await this.publish(streamToRePublish);
+                    }
+                } catch(e) {
+                    console.error('[Janus] Reconnect failed:', e);
+                }
+            }, delay);
         } else {
             // Max reconnect attempts reached - record leave attendance
             console.log('[Janus] Max reconnect attempts reached, recording leave attendance');
@@ -409,6 +429,28 @@ export class JanusClient {
             this.setConnectionState('failed');
             this.config.onError?.(new Error('Max reconnection attempts reached'));
         }
+    }
+
+    /** Clean up peer connections and handles without stopping media tracks (used for reconnect) */
+    private cleanupPeerConnections(): void {
+        this.peerConnections.forEach(pc => pc.close());
+        this.peerConnections.clear();
+
+        if (this.publisherPc) {
+            this.publisherPc.close();
+            this.publisherPc = null;
+        }
+
+        this.pendingTransactions.forEach(({ timeout, reject }) => {
+            clearTimeout(timeout);
+            reject(new Error('Connection closed'));
+        });
+        this.pendingTransactions.clear();
+        this.subscriberHandles.clear();
+        this.sessionId = null;
+        this.publisherHandleId = null;
+        this.publisherDataChannel = null;
+        this.subscriberDataChannels.clear();
     }
 
     private async sendMessage(message: Record<string, unknown>): Promise<unknown> {
@@ -730,12 +772,14 @@ export class JanusClient {
             console.log(`[Janus] Subscribing to publisher ${publisher.id} (${publisher.display})`);
 
             const isScreenFeed = publisher.display?.endsWith(' (Screen)');
+            const hasAudio = !publisher.audio_codec || publisher.audio_codec !== 'none';
+            const hasVideo = isScreenFeed || (!publisher.video_codec || publisher.video_codec !== 'none');
             const participant: Participant = {
                 id: publisher.id,
                 displayName: publisher.display || `User ${publisher.id}`,
                 isLocal: false,
-                isMuted: true,
-                isVideoOff: !isScreenFeed,
+                isMuted: !hasAudio,
+                isVideoOff: !hasVideo,
                 isScreenSharing: !!isScreenFeed,
                 isSpeaking: false,
             };
@@ -793,16 +837,17 @@ export class JanusClient {
         };
 
         pc.ontrack = (event) => {
-            if (feedId !== undefined && event.streams[0]) {
-                console.log(`[Janus] Received remote track from feed ${feedId}`);
-                this.config.onRemoteStream?.(feedId, event.streams[0]);
+            if (feedId !== undefined) {
+                const stream = event.streams[0] || new MediaStream([event.track]);
+                console.log(`[Janus] Received remote track (${event.track.kind}) from feed ${feedId}`);
+                this.config.onRemoteStream?.(feedId, stream);
             }
         };
 
         pc.ondatachannel = (event) => {
             const channel = event.channel;
-            console.log(`[Janus] Received data channel: ${channel.label}`);
-            this.setupDataChannelHandlers(channel);
+            console.log(`[Janus] Received subscriber data channel from feed ${feedId}: ${channel.label}`);
+            this.setupSubscriberDataChannel(channel);
         };
 
         pc.onconnectionstatechange = () => {
@@ -812,15 +857,18 @@ export class JanusClient {
         return pc;
     }
 
-    private setupDataChannelHandlers(channel: RTCDataChannel): void {
-        this.dataChannel = channel;
+    private setupPublisherDataChannel(channel: RTCDataChannel): void {
+        this.publisherDataChannel = channel;
 
         channel.onopen = () => {
-            console.log('[Janus] Data channel opened');
+            console.log('[Janus] Publisher data channel opened');
         };
 
         channel.onclose = () => {
-            console.log('[Janus] Data channel closed');
+            console.log('[Janus] Publisher data channel closed');
+            if (this.publisherDataChannel === channel) {
+                this.publisherDataChannel = null;
+            }
         };
 
         channel.onmessage = (event) => {
@@ -830,7 +878,31 @@ export class JanusClient {
                     this.config.onDataMessage?.(message);
                 }
             } catch (error) {
-                console.error('[Janus] Error parsing data channel message:', error);
+                console.error('[Janus] Error parsing publisher data channel message:', error);
+            }
+        };
+    }
+
+    private setupSubscriberDataChannel(channel: RTCDataChannel): void {
+        this.subscriberDataChannels.add(channel);
+
+        channel.onopen = () => {
+            console.log('[Janus] Subscriber data channel opened');
+        };
+
+        channel.onclose = () => {
+            console.log('[Janus] Subscriber data channel closed');
+            this.subscriberDataChannels.delete(channel);
+        };
+
+        channel.onmessage = (event) => {
+            try {
+                const message = JSON.parse(event.data) as DataChannelMessage & { senderId?: string };
+                if (message.senderId !== this.localUniqueId) {
+                    this.config.onDataMessage?.(message);
+                }
+            } catch (error) {
+                console.error('[Janus] Error parsing subscriber data channel message:', error);
             }
         };
     }
@@ -965,10 +1037,10 @@ export class JanusClient {
             this.publisherPc!.addTrack(track, stream);
         });
 
-        this.dataChannel = this.publisherPc.createDataChannel('whiteboard', {
+        this.publisherDataChannel = this.publisherPc.createDataChannel('whiteboard', {
             ordered: true,
         });
-        this.setupDataChannelHandlers(this.dataChannel);
+        this.setupPublisherDataChannel(this.publisherDataChannel);
 
         let offer = await this.publisherPc.createOffer({
             offerToReceiveAudio: false,
@@ -989,21 +1061,26 @@ export class JanusClient {
 
         await this.publisherPc.setLocalDescription(offer);
 
+        // Bug 10 fix: use track.enabled (not track existence) so listener-mode users
+        // correctly tell Janus they have no active audio/video.
+        const hasEnabledAudio = stream.getAudioTracks().some(t => t.enabled);
+        const hasEnabledVideo = stream.getVideoTracks().some(t => t.enabled);
+
         await this.sendMessage({
             janus: 'message',
             session_id: this.sessionId,
             handle_id: this.publisherHandleId,
             body: {
                 request: 'configure',
-                audio: stream.getAudioTracks().length > 0,
-                video: stream.getVideoTracks().length > 0,
+                audio: hasEnabledAudio,
+                video: hasEnabledVideo,
                 data: true,
                 bitrate: 500000, // Hint Janus to cap video at 500kbps
             },
             jsep: offer,
         });
 
-        console.log('[Janus] Publishing local stream (VP9 preferred, 500kbps cap)');
+        console.log(`[Janus] Publishing local stream (audio:${hasEnabledAudio}, video:${hasEnabledVideo}, 500kbps cap)`);
         this.config.onLocalStream?.(stream);
     }
 
@@ -1015,15 +1092,43 @@ export class JanusClient {
             track.enabled = !muted;
         });
         console.log(`[Janus] Microphone ${muted ? 'muted' : 'unmuted'}`);
+
+        // Bug 4 fix: Notify Janus SFU of audio state change so it properly
+        // controls whether the audio track is relayed to subscribers.
+        if (this.sessionId && this.publisherHandleId && this.ws?.readyState === WebSocket.OPEN) {
+            this.sendMessage({
+                janus: 'message',
+                session_id: this.sessionId,
+                handle_id: this.publisherHandleId,
+                body: {
+                    request: 'configure',
+                    audio: !muted,
+                },
+            }).catch(e => console.warn('[Janus] configure audio failed:', e));
+        }
     }
 
     async toggleCamera(enabled: boolean): Promise<void> {
-        if (!this.localStream || !this.publisherPc) return;
+        if (!this.localStream) return;
 
         this.localStream.getVideoTracks().forEach(track => {
             track.enabled = enabled;
         });
         console.log(`[Janus] Camera ${enabled ? 'enabled' : 'disabled'}`);
+
+        // Bug 5 fix: Notify Janus SFU of video state change so it properly
+        // controls whether the video track is relayed to subscribers.
+        if (this.sessionId && this.publisherHandleId && this.ws?.readyState === WebSocket.OPEN) {
+            this.sendMessage({
+                janus: 'message',
+                session_id: this.sessionId,
+                handle_id: this.publisherHandleId,
+                body: {
+                    request: 'configure',
+                    video: enabled,
+                },
+            }).catch(e => console.warn('[Janus] configure video failed:', e));
+        }
     }
 
     async shareScreen(): Promise<MediaStream> {
@@ -1121,23 +1226,52 @@ export class JanusClient {
     }
 
     sendData(message: DataChannelMessage): void {
-        if (this.dataChannel && this.dataChannel.readyState === 'open') {
-            try {
-                const messageWithSender = {
-                    ...message,
-                    senderId: this.localUniqueId,
-                    janusId: this.myId,
-                };
-                const serialized = JSON.stringify(messageWithSender);
-                // Safe WebRTC limit for standard DataChannel packet
-                if (serialized.length < 60000) {
-                    this.dataChannel.send(serialized);
-                } else {
-                    console.warn('[Janus] Message size (' + serialized.length + ' bytes) exceeds DataChannel safe packet limit; syncing via API instead');
-                }
-            } catch (err) {
-                console.error('[Janus] Error sending data via DataChannel:', err);
+        try {
+            const messageWithSender = {
+                ...message,
+                senderId: this.localUniqueId,
+                janusId: this.myId,
+            };
+            const serialized = JSON.stringify(messageWithSender);
+            // Safe WebRTC limit for standard DataChannel packet
+            if (serialized.length >= 60000) {
+                console.warn('[Janus] Message size exceeds DataChannel safe packet limit; syncing via API instead');
+                return;
             }
+
+            // 1. Send via primary publisher DataChannel
+            if (this.publisherDataChannel && this.publisherDataChannel.readyState === 'open') {
+                try {
+                    this.publisherDataChannel.send(serialized);
+                } catch (err) {
+                    console.error('[Janus] Error sending via publisherDataChannel:', err);
+                }
+            }
+
+            // 2. Also broadcast over all open subscriber DataChannels
+            for (const ch of this.subscriberDataChannels) {
+                if (ch.readyState === 'open') {
+                    try {
+                        ch.send(serialized);
+                    } catch (e) {}
+                }
+            }
+
+            // 3. Dual-delivery via Janus VideoRoom WebSocket data request
+            if (this.sessionId && this.publisherHandleId && this.ws?.readyState === WebSocket.OPEN) {
+                this.sendMessage({
+                    janus: 'message',
+                    session_id: this.sessionId,
+                    handle_id: this.publisherHandleId,
+                    body: {
+                        request: 'data',
+                        data: serialized,
+                        text: serialized,
+                    },
+                }).catch(() => {});
+            }
+        } catch (err) {
+            console.error('[Janus] Error in sendData:', err);
         }
     }
 
@@ -1169,6 +1303,15 @@ export class JanusClient {
             this.publisherPc = null;
         }
 
+        if (this.publisherDataChannel) {
+            try { this.publisherDataChannel.close(); } catch (e) {}
+            this.publisherDataChannel = null;
+        }
+        this.subscriberDataChannels.forEach(ch => {
+            try { ch.close(); } catch (e) {}
+        });
+        this.subscriberDataChannels.clear();
+
         if (this.screenPublisher) {
             this.screenPublisher.stop();
             this.screenPublisher = null;
@@ -1193,7 +1336,8 @@ export class JanusClient {
         this.subscriberHandles.clear();
         this.sessionId = null;
         this.publisherHandleId = null;
-        this.dataChannel = null;
+        this.publisherDataChannel = null;
+        this.subscriberDataChannels.clear();
     }
 
     /**
@@ -1372,6 +1516,7 @@ export class JanusClient {
 
     async disconnect(): Promise<void> {
         console.log('[Janus] Disconnecting...');
+        this.intentionalDisconnect = true; // Prevent auto-reconnect
 
         // 1. Broadcast instant leave notification via DataChannel to all other participants
         try {
