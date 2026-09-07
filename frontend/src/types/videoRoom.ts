@@ -214,6 +214,7 @@ export interface VideoRoomInfo {
     janusRoomId: string;  // Numeric room ID as string for JS BigInt compatibility
     sessionId: number;
     isTeacher: boolean;
+    isAdmin: boolean;     // True if user is admin (observer) — should NOT be pinned as teacher
     isCreated: boolean;   // Whether room was already created on Janus
     subject: number;
     teacherName?: string | null;

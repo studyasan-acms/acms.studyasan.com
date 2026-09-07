@@ -141,8 +141,8 @@ export function useClassroomAPISync({
         // Initial poll
         poll();
 
-        // Poll every 2 seconds
-        pollingInterval.current = setInterval(poll, 2000);
+        // Poll every 1.5 seconds for near-real-time whiteboard sync (DataChannel handles instants)
+        pollingInterval.current = setInterval(poll, 1500);
 
         return () => {
             console.log('[APISync] Stopping polling');

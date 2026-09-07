@@ -129,9 +129,9 @@ function generateJanusRoomId(classSessionId: number): bigint {
 
 /**
  * Check if user has access to a class session
- * - Admin: Always has access
+ * - Admin: Always has access (observer/moderator — NOT pinned as teacher)
  * - Teacher: Has access if they are assigned to the session
- * - Student: Has access if enrolled in the subject
+ * - Student: Has access if enrolled in the subject OR is a member of the session's section
  */
 async function checkRoomAccess(
   userId: number,
@@ -141,11 +141,12 @@ async function checkRoomAccess(
     subject_id: number;
     class_id: number | null;
     board_id: number | null;
+    section_id?: number | null;
   }
-): Promise<{ hasAccess: boolean; reason?: string; isTeacher?: boolean }> {
-  // Admin always has access
+): Promise<{ hasAccess: boolean; reason?: string; isTeacher?: boolean; isAdmin?: boolean }> {
+  // Admin always has access — but they are NOT the teacher (do not pin them as teacher)
   if (userRole === 'ADMIN') {
-    return { hasAccess: true, isTeacher: true };
+    return { hasAccess: true, isTeacher: false, isAdmin: true };
   }
 
   // Check if user is the assigned teacher
@@ -154,18 +155,23 @@ async function checkRoomAccess(
       where: { user_id: userId },
     });
     if (teacher && teacher.id === classSession.teacher_id) {
-      return { hasAccess: true, isTeacher: true };
+      return { hasAccess: true, isTeacher: true, isAdmin: false };
     }
     return { hasAccess: false, reason: 'You are not assigned to this class session' };
   }
 
-  // For students, check enrollment
+  // For students, check enrollment OR section membership
   if (userRole === 'STUDENT') {
     const student = await prisma.student.findUnique({
       where: { user_id: userId },
       include: {
         enrollments: {
           where: { subject_id: classSession.subject_id },
+        },
+        section_memberships: {
+          include: {
+            section: true,
+          },
         },
       },
     });
@@ -174,13 +180,32 @@ async function checkRoomAccess(
       return { hasAccess: false, reason: 'Student profile not found' };
     }
 
-    // Check if enrolled in the subject
-    if (student.enrollments.length === 0) {
-      return { hasAccess: false, reason: 'You are not enrolled in this subject' };
+    // Check 1: Direct subject enrollment
+    if (student.enrollments.length > 0) {
+      return { hasAccess: true, isTeacher: false, isAdmin: false };
     }
 
-    // If enrolled in the subject, student has access!
-    return { hasAccess: true, isTeacher: false };
+    // Check 2: If the session is for a specific section, check section membership
+    if (classSession.section_id) {
+      const inSection = student.section_memberships.some(
+        (m) => m.section_id === classSession.section_id
+      );
+      if (inSection) {
+        return { hasAccess: true, isTeacher: false, isAdmin: false };
+      }
+    }
+
+    // Check 3: Student belongs to any section of this subject (for subject-scoped sessions)
+    if (!classSession.section_id) {
+      const inSubjectSection = student.section_memberships.some(
+        (m) => m.section.subject_id === classSession.subject_id
+      );
+      if (inSubjectSection) {
+        return { hasAccess: true, isTeacher: false, isAdmin: false };
+      }
+    }
+
+    return { hasAccess: false, reason: 'You are not enrolled in this subject or assigned to this class section' };
   }
 
   return { hasAccess: false, reason: 'Invalid user role' };
@@ -243,7 +268,8 @@ export const getOrCreateRoom = async (req: AuthRequest, res: Response) => {
     sendSuccess(res, {
       janusRoomId: videoRoom.janus_room_id.toString(), // Send as string for JS BigInt compatibility
       sessionId: classSession.id,
-      isTeacher: access.isTeacher,
+      isTeacher: access.isTeacher || false,
+      isAdmin: access.isAdmin || false,
       isCreated: videoRoom.is_created,
       subject: classSession.subject_id,
       teacherName: classSession.teacher?.user?.name || null,

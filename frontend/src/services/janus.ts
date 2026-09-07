@@ -437,7 +437,9 @@ export class JanusClient {
                 console.log(`[Janus] Media ${message.type} is ${message.receiving ? 'flowing' : 'stopped'}`);
                 break;
             case 'slowlink':
-                console.warn('[Janus] Slow link detected');
+                // Slow link detected — reduce video bitrate to ease network congestion
+                console.warn('[Janus] Slow link detected — reducing video bitrate to 200kbps');
+                this.applyEncoderBitrate(200).catch(() => {});
                 break;
             case 'hangup':
                 console.log('[Janus] Hangup received');
@@ -798,6 +800,94 @@ export class JanusClient {
         this.config.onParticipantLeft?.(publisherId);
     }
 
+    /**
+     * Set preferred codec order in SDP (prioritize VP9 for better compression, then H264, then VP8)
+     */
+    private setPreferredCodec(sdp: string, codec: 'VP9' | 'H264' | 'VP8'): string {
+        const lines = sdp.split('\r\n');
+        const mVideoLine = lines.findIndex(l => l.startsWith('m=video'));
+        if (mVideoLine === -1) return sdp;
+
+        // Find pt numbers for the preferred codec
+        const rtpmapLines = lines.filter(l => l.includes(`a=rtpmap:`) && l.toLowerCase().includes(codec.toLowerCase()));
+        const preferredPts = rtpmapLines.map(l => {
+            const match = l.match(/a=rtpmap:(\d+)/);
+            return match ? match[1] : null;
+        }).filter(Boolean) as string[];
+
+        if (preferredPts.length === 0) return sdp; // Codec not available
+
+        // Reorder the m=video line payload types
+        const mLine = lines[mVideoLine];
+        const parts = mLine.split(' ');
+        const header = parts.slice(0, 3); // "m=video port RTP/SAVPF"
+        const existingPts = parts.slice(3);
+
+        const otherPts = existingPts.filter(pt => !preferredPts.includes(pt));
+        lines[mVideoLine] = [...header, ...preferredPts, ...otherPts].join(' ');
+
+        return lines.join('\r\n');
+    }
+
+    /**
+     * Apply SDP bandwidth constraints to reduce buffering
+     * Sets max video bitrate to 500kbps, audio to 64kbps
+     */
+    private applySDPBitrateConstraints(sdp: string, videoKbps = 500, audioKbps = 64): string {
+        const lines = sdp.split('\r\n');
+        const result: string[] = [];
+
+        let inVideo = false;
+        let inAudio = false;
+
+        for (const line of lines) {
+            result.push(line);
+            if (line.startsWith('m=video')) {
+                inVideo = true;
+                inAudio = false;
+            } else if (line.startsWith('m=audio')) {
+                inAudio = true;
+                inVideo = false;
+            } else if (line.startsWith('m=')) {
+                inVideo = false;
+                inAudio = false;
+            }
+
+            // Inject bandwidth line after the m= line
+            if (line.startsWith('m=video') && videoKbps > 0) {
+                result.push(`b=AS:${videoKbps}`);
+                result.push(`b=TIAS:${videoKbps * 1000}`);
+            } else if (line.startsWith('m=audio') && audioKbps > 0) {
+                result.push(`b=AS:${audioKbps}`);
+            }
+        }
+
+        return result.join('\r\n');
+    }
+
+    /**
+     * Apply encoder bitrate constraints via RTCRtpSender setParameters
+     * Used for dynamic quality adaptation on slow link events
+     */
+    private async applyEncoderBitrate(maxBitrateKbps: number): Promise<void> {
+        if (!this.publisherPc) return;
+        const senders = this.publisherPc.getSenders();
+        for (const sender of senders) {
+            if (sender.track?.kind !== 'video') continue;
+            try {
+                const params = sender.getParameters();
+                if (!params.encodings || params.encodings.length === 0) {
+                    params.encodings = [{}];
+                }
+                params.encodings[0].maxBitrate = maxBitrateKbps * 1000;
+                await sender.setParameters(params);
+                console.log(`[Janus] Applied encoder max bitrate: ${maxBitrateKbps}kbps`);
+            } catch (e) {
+                console.warn('[Janus] Could not set encoder bitrate:', e);
+            }
+        }
+    }
+
     async publish(stream: MediaStream): Promise<void> {
         if (!this.sessionId || !this.publisherHandleId) {
             throw new Error('Not connected to Janus');
@@ -815,10 +905,20 @@ export class JanusClient {
         });
         this.setupDataChannelHandlers(this.dataChannel);
 
-        const offer = await this.publisherPc.createOffer({
+        let offer = await this.publisherPc.createOffer({
             offerToReceiveAudio: false,
             offerToReceiveVideo: false,
         });
+
+        // Apply codec preference (VP9 > H264 > VP8) and bandwidth constraints for less buffering
+        if (offer.sdp) {
+            let optimizedSdp = offer.sdp;
+            optimizedSdp = this.setPreferredCodec(optimizedSdp, 'VP9');
+            optimizedSdp = this.setPreferredCodec(optimizedSdp, 'H264');
+            optimizedSdp = this.applySDPBitrateConstraints(optimizedSdp, 500, 64);
+            offer = new RTCSessionDescription({ type: offer.type, sdp: optimizedSdp });
+        }
+
         await this.publisherPc.setLocalDescription(offer);
 
         await this.sendMessage({
@@ -830,13 +930,15 @@ export class JanusClient {
                 audio: stream.getAudioTracks().length > 0,
                 video: stream.getVideoTracks().length > 0,
                 data: true,
+                bitrate: 500000, // Hint Janus to cap video at 500kbps
             },
             jsep: offer,
         });
 
-        console.log('[Janus] Publishing local stream');
+        console.log('[Janus] Publishing local stream (VP9 preferred, 500kbps cap)');
         this.config.onLocalStream?.(stream);
     }
+
 
     toggleMic(muted: boolean): void {
         if (!this.localStream) return;
@@ -858,12 +960,28 @@ export class JanusClient {
 
     async shareScreen(): Promise<MediaStream> {
         try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    frameRate: { ideal: 30, max: 60 },
-                },
-                audio: false,
-            });
+            // Try to capture system/tab audio alongside screen video for richer screen share
+            let screenStream: MediaStream;
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        frameRate: { ideal: 30, max: 30 },
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                    },
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        sampleRate: 44100,
+                    } as any, // system audio — browser support varies
+                });
+            } catch {
+                // Fallback: screen video only (user denied audio or browser doesn't support)
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: { frameRate: { ideal: 30, max: 30 } },
+                    audio: false,
+                });
+            }
 
             this.screenStream = screenStream;
 
@@ -885,6 +1003,7 @@ export class JanusClient {
             }
 
             // Broadcast screen-share event via main data channel
+            // Include myId so remote clients can find the camera participant for PiP
             this.sendData({
                 type: 'screen-share',
                 isSharing: true,
@@ -899,6 +1018,7 @@ export class JanusClient {
             throw error;
         }
     }
+
 
     async stopScreenShare(): Promise<void> {
         if (this.screenStream) {

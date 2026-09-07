@@ -61,6 +61,7 @@ interface ClassroomLayoutProps {
 
     // Teacher controls
     isTeacher: boolean;
+    isAdmin?: boolean;        // Admin observer — NOT pinned as teacher
     teacherName?: string | null;
     onMuteParticipant?: (participantId: string | number) => void;
     onKickParticipant?: (participantId: string | number) => void;
@@ -98,6 +99,7 @@ export function ClassroomLayout({
     onToggleHandRaise,
     onSendReaction,
     isTeacher,
+    isAdmin = false,
     teacherName,
     onMuteParticipant,
     onKickParticipant,
@@ -145,10 +147,12 @@ export function ClassroomLayout({
     }, [localParticipant, participants]);
 
     // Identify Teacher Participant:
-    // If local user is the teacher, teacher is localParticipant.
-    // Otherwise, find remote participant whose displayName matches teacherName or has whiteboard permissions.
+    // - If local user is the actual teacher (isTeacher=true AND not admin), pin local user.
+    // - Admin (isAdmin=true) is NEVER pinned as teacher even if they have elevated permissions.
+    // - Otherwise, find remote participant whose displayName matches teacherName.
     const teacherParticipant = useMemo<Participant | null>(() => {
-        if (isTeacher) {
+        // Only pin local as teacher if they are the actual teacher (not an admin observer)
+        if (isTeacher && !isAdmin) {
             return localParticipant;
         }
         if (teacherName) {
@@ -167,9 +171,11 @@ export function ClassroomLayout({
         if (roleMatch) return roleMatch;
 
         // Fallback to first remote participant if not explicitly found
-        const firstRemote = Array.from(participants.values())[0];
+        const firstRemote = Array.from(participants.values()).find(
+            p => !p.displayName?.endsWith(' (Screen)')
+        );
         return firstRemote || null;
-    }, [isTeacher, teacherName, localParticipant, allParticipants, participants]);
+    }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants, participants]);
 
     // Student participants: all participants except the pinned teacher and separate screen feeds
     const studentParticipants = useMemo(() => {
@@ -277,7 +283,7 @@ export function ClassroomLayout({
                                 <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 backdrop-blur-md border border-white/20 rounded-full text-white text-xs shadow-lg">
                                     <Monitor className="w-3.5 h-3.5 text-emerald-400" />
                                     <span>
-                                        Screen Share: <strong>{screenShareParticipant.displayName}</strong>
+                                        Screen Share: <strong>{screenShareParticipant.displayName?.replace(' (Screen)', '')}</strong>
                                     </span>
                                     <button
                                         onClick={() => setStageView('whiteboard')}
@@ -286,6 +292,35 @@ export function ClassroomLayout({
                                         View Whiteboard
                                     </button>
                                 </div>
+
+                                {/* PiP Camera: Show screen sharer's camera in bottom-right corner */}
+                                {(() => {
+                                    // The camera participant is the same person sharing screen (without " (Screen)" suffix)
+                                    const cameraParticipant = screenShareParticipant.isLocal
+                                        ? null // Local PiP not needed — they see themselves in sidebar
+                                        : allParticipants.find(p =>
+                                            !p.displayName?.endsWith(' (Screen)') &&
+                                            p.displayName === screenShareParticipant.displayName?.replace(' (Screen)', '')
+                                          );
+                                    const cameraStream = cameraParticipant
+                                        ? remoteStreams.get(cameraParticipant.id)
+                                        : undefined;
+                                    if (!cameraParticipant || !cameraStream) return null;
+                                    return (
+                                        <div className="absolute bottom-4 right-4 z-40 w-44 aspect-video rounded-xl overflow-hidden border-2 border-sky-400/80 shadow-2xl bg-slate-900">
+                                            <VideoTile
+                                                participant={cameraParticipant}
+                                                stream={cameraStream}
+                                                isLocal={false}
+                                                isTeacher={isTeacher}
+                                                className="w-full h-full"
+                                            />
+                                            <div className="absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 bg-black/70 rounded-full text-[9px] text-white font-semibold">
+                                                Camera
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         ) : isWhiteboardActive ? (
                             /* 2. Whiteboard Stage (Open by default) */
@@ -456,7 +491,36 @@ export function ClassroomLayout({
                                     View Board
                                 </button>
                             </div>
+
+                            {/* PiP Camera: Show screen sharer's camera bottom-right on mobile */}
+                            {(() => {
+                                const cameraParticipant = screenShareParticipant.isLocal
+                                    ? null
+                                    : allParticipants.find(p =>
+                                        !p.displayName?.endsWith(' (Screen)') &&
+                                        p.displayName === screenShareParticipant.displayName?.replace(' (Screen)', '')
+                                      );
+                                const cameraStream = cameraParticipant
+                                    ? remoteStreams.get(cameraParticipant.id)
+                                    : undefined;
+                                if (!cameraParticipant || !cameraStream) return null;
+                                return (
+                                    <div className="absolute bottom-3 right-3 z-40 w-28 aspect-video rounded-lg overflow-hidden border-2 border-sky-400/80 shadow-2xl bg-slate-900">
+                                        <VideoTile
+                                            participant={cameraParticipant}
+                                            stream={cameraStream}
+                                            isLocal={false}
+                                            isTeacher={isTeacher}
+                                            className="w-full h-full"
+                                        />
+                                        <div className="absolute top-1 left-1 z-10 px-1 py-0.5 bg-black/70 rounded-full text-[8px] text-white font-semibold">
+                                            Cam
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
+
                     ) : isWhiteboardActive ? (
                         <div className="w-full h-full relative flex-1 min-h-0">
                             <Whiteboard

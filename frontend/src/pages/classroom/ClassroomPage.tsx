@@ -237,6 +237,7 @@ export function ClassroomPage() {
                 onToggleHandRaise={janus.toggleHandRaise}
                 onSendReaction={janus.sendReaction}
                 isTeacher={roomInfo?.isTeacher || false}
+                isAdmin={roomInfo?.isAdmin || false}
                 teacherName={roomInfo?.teacherName || null}
                 onMuteParticipant={janus.muteParticipant}
                 onKickParticipant={janus.kickParticipant}
