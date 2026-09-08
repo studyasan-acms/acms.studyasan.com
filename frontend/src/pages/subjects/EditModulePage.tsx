@@ -29,12 +29,14 @@ import {
   Eye,
   ExternalLink,
   X,
+  Music,
 } from "lucide-react";
 import { moduleService } from "@/services/api";
 import type { Module, ModuleContent, UpdateModuleData } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import ErrorModal from "@/components/ui/errorModal";
 import SuccessModal from "@/components/ui/successModal";
+import FilePreviewModal from "@/components/FilePreviewModal";
 import { cn, resolveImageUrl } from "@/lib/utils";
 import {
   Dialog,
@@ -64,6 +66,7 @@ export default function EditModulePage() {
   const [textContent, setTextContent] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedTextContent, setSelectedTextContent] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<{ url: string; title: string } | null>(null);
 
   const handleViewContent = (content: ModuleContent) => {
     if (content.type === "text") {
@@ -77,7 +80,10 @@ export default function EditModulePage() {
     const rawUrl = content.s3_url || (content as any).url || (content as any).file_url;
     const fileUrl = resolveImageUrl(rawUrl);
     if (fileUrl) {
-      window.open(fileUrl, "_blank", "noopener,noreferrer");
+      setPreviewFile({
+        url: fileUrl,
+        title: (content as any).filename || content.file_name || "Module Asset",
+      });
     } else {
       setError("Unable to open file: Document URL is missing.");
     }
@@ -190,6 +196,8 @@ export default function EditModulePage() {
         return <ImageIcon className="w-4 h-4 text-emerald-500" />;
       case "video":
         return <Video className="w-4 h-4 text-purple-500" />;
+      case "audio":
+        return <Music className="w-4 h-4 text-amber-500" />;
       case "pdf":
         return <File className="w-4 h-4 text-red-500" />;
       default:
@@ -371,12 +379,12 @@ export default function EditModulePage() {
                     <span>{uploading ? "Uploading..." : "Upload Files"}</span>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-1 text-center">
-                    PDF, Documents, Video, Images
+                    Audio, PDF, Documents, Video, Images
                   </p>
                   <input
                     type="file"
                     multiple
-                    accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx"
+                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.ppt,.pptx,.mp3,.wav,.ogg,.m4a,.aac,.flac,.wma,.opus"
                     onChange={handleFileUpload}
                     className="hidden"
                     disabled={uploading}
@@ -492,6 +500,14 @@ export default function EditModulePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* FILE PREVIEW MODAL */}
+      <FilePreviewModal
+        isOpen={previewFile !== null}
+        onClose={() => setPreviewFile(null)}
+        url={previewFile?.url}
+        title={previewFile?.title}
+      />
 
       {/* MODALS */}
       <ErrorModal

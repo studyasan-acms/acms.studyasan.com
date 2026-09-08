@@ -670,7 +670,7 @@ export interface UpdateAttendanceData {
 // Module-related types
 export interface ModuleContent {
   content_id: number;
-  type: 'text' | 'image' | 'video' | 'pdf' | 'document';
+  type: 'text' | 'image' | 'video' | 'pdf' | 'audio' | 'document' | 'docx' | 'pptx' | 'zip' | 'other';
   text_content?: string;
   file_name?: string;
   file_size?: number;

@@ -228,13 +228,28 @@ export const createSubject = async (req: Request, res: Response) => {
       cover_image = uploadResult.key;
     }
 
+    let parsedSyllabus: any = null;
+    if (syllabus) {
+      parsedSyllabus = typeof syllabus === 'string' ? JSON.parse(syllabus) : syllabus;
+      if (Array.isArray(parsedSyllabus?.units) && (!parsedSyllabus.modules || parsedSyllabus.modules.length === 0)) {
+        parsedSyllabus.modules = parsedSyllabus.units.map((unit: any, index: number) => ({
+          module_id: index + 1,
+          title: unit.name || `Unit ${index + 1}`,
+          description: unit.content || unit.name || '',
+          order: index + 1,
+          content: [],
+          estimated_time_minutes: 0,
+        }));
+      }
+    }
+
     const subject = await prisma.subject.create({
       data: {
         name,
         ...(cover_image && { cover_image }),
         ...(class_id && { class_id: parseInt(class_id) }),
         ...(board_id && { board_id: parseInt(board_id) }),
-        ...(syllabus && { syllabus: JSON.parse(syllabus) }),
+        ...(parsedSyllabus && { syllabus: parsedSyllabus }),
         ...(end_date && { end_date: new Date(end_date) }),
         ...(price !== undefined && price !== '' && { price: parseFloat(price) }),
         ...(actual_price !== undefined && actual_price !== '' && { actual_price: parseFloat(actual_price) }),
@@ -266,6 +281,40 @@ export const updateSubject = async (req: Request, res: Response) => {
       cover_image = uploadResult.key;
     }
 
+    const existingSubject = await prisma.subject.findUnique({
+      where: { id: parseInt(id!) },
+      select: { syllabus: true },
+    });
+
+    const existingSyllabus = (existingSubject?.syllabus as any) || {};
+    let finalSyllabus: any = undefined;
+
+    if (syllabus !== undefined && syllabus !== '') {
+      const parsedSyllabus = syllabus ? (typeof syllabus === 'string' ? JSON.parse(syllabus) : syllabus) : null;
+      if (parsedSyllabus) {
+        finalSyllabus = {
+          ...existingSyllabus,
+          ...parsedSyllabus,
+          units: parsedSyllabus.units !== undefined ? parsedSyllabus.units : (existingSyllabus.units || []),
+          modules: (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0)
+            ? parsedSyllabus.modules
+            : (existingSyllabus.modules || []),
+        };
+
+        // If modules is empty but units exist, initialize modules from units
+        if ((!finalSyllabus.modules || finalSyllabus.modules.length === 0) && Array.isArray(finalSyllabus.units) && finalSyllabus.units.length > 0) {
+          finalSyllabus.modules = finalSyllabus.units.map((unit: any, index: number) => ({
+            module_id: index + 1,
+            title: unit.name || `Unit ${index + 1}`,
+            description: unit.content || unit.name || '',
+            order: index + 1,
+            content: [],
+            estimated_time_minutes: 0,
+          }));
+        }
+      }
+    }
+
     const subject = await prisma.subject.update({
       where: { id: parseInt(id!) },
       data: {
@@ -273,7 +322,7 @@ export const updateSubject = async (req: Request, res: Response) => {
         ...(cover_image && { cover_image }),
         ...(class_id && { class_id: parseInt(class_id) }),
         ...(board_id && { board_id: parseInt(board_id) }),
-        ...(syllabus && { syllabus: JSON.parse(syllabus) }),
+        ...(finalSyllabus !== undefined && { syllabus: finalSyllabus }),
         ...(end_date !== undefined && { end_date: end_date ? new Date(end_date) : null }),
         ...(price !== undefined && { price: price !== '' && price !== null ? parseFloat(price) : null }),
         ...(actual_price !== undefined && { actual_price: actual_price !== '' && actual_price !== null ? parseFloat(actual_price) : null }),

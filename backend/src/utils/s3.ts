@@ -50,6 +50,11 @@ const getContentType = (filename: string): string => {
     '.mp3': 'audio/mpeg',
     '.wav': 'audio/wav',
     '.ogg': 'audio/ogg',
+    '.m4a': 'audio/mp4',
+    '.aac': 'audio/aac',
+    '.flac': 'audio/flac',
+    '.wma': 'audio/x-ms-wma',
+    '.opus': 'audio/opus',
     '.zip': 'application/zip',
     '.rar': 'application/x-rar-compressed',
     '.7z': 'application/x-7z-compressed',
@@ -66,7 +71,7 @@ export const getFileType = (filename: string): string => {
   
   if (['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'].includes(ext)) return 'image';
   if (['.mp4', '.webm', '.mov', '.avi', '.mkv'].includes(ext)) return 'video';
-  if (['.mp3', '.wav', '.ogg', '.m4a'].includes(ext)) return 'audio';
+  if (['.mp3', '.wav', '.ogg', '.m4a', '.aac', '.flac', '.wma', '.opus'].includes(ext)) return 'audio';
   if (['.pdf'].includes(ext)) return 'pdf';
   if (['.doc', '.docx'].includes(ext)) return 'docx';
   if (['.ppt', '.pptx'].includes(ext)) return 'pptx';

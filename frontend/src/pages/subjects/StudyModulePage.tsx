@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,14 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
+  RotateCcw,
+  Music,
+  Volume2,
+  VolumeX,
+  Play,
+  Pause,
+  Headphones,
+  Sparkles,
 } from "lucide-react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
@@ -53,7 +61,7 @@ export default function StudyModulePage() {
   // PDF state
   const [numPages, setNumPages] = useState<number>(0);
   const [pdfPage, setPdfPage] = useState(1);
-  const [pdfScale, setPdfScale] = useState(1.2);
+  const [pdfScale, setPdfScale] = useState(1.0);
 
   // Strictly block right click, copy, cut, inspect globally on this page
   useEffect(() => {
@@ -97,7 +105,7 @@ export default function StudyModulePage() {
   useEffect(() => {
     setContentLoading(true);
     setPdfPage(1);
-    setPdfScale(1.2);
+    setPdfScale(1.0);
     setNumPages(0);
   }, [currentContentIndex]);
 
@@ -284,6 +292,211 @@ export default function StudyModulePage() {
       </div>
     </div>
   );
+
+  // ── Audio Player Component ─────────────────────────────────────────────
+  const AudioPlayer = ({ url, title }: { url: string; title: string }) => {
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [duration, setDuration] = useState(0);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const [isMuted, setIsMuted] = useState(false);
+
+    useEffect(() => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    }, [url]);
+
+    const togglePlay = () => {
+      if (!audioRef.current) return;
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    };
+
+    const handleTimeUpdate = () => {
+      if (audioRef.current) {
+        setCurrentTime(audioRef.current.currentTime);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      if (audioRef.current) {
+        setDuration(audioRef.current.duration);
+        setContentLoading(false);
+      }
+    };
+
+    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const time = parseFloat(e.target.value);
+      setCurrentTime(time);
+      if (audioRef.current) {
+        audioRef.current.currentTime = time;
+      }
+    };
+
+    const handleSpeedChange = (rate: number) => {
+      setPlaybackRate(rate);
+      if (audioRef.current) {
+        audioRef.current.playbackRate = rate;
+      }
+    };
+
+    const handleSkip = (seconds: number) => {
+      if (audioRef.current) {
+        audioRef.current.currentTime = Math.max(0, Math.min(duration, audioRef.current.currentTime + seconds));
+      }
+    };
+
+    const formatTime = (timeInSeconds: number) => {
+      if (isNaN(timeInSeconds) || timeInSeconds === 0) return "00:00";
+      const mins = Math.floor(timeInSeconds / 60);
+      const secs = Math.floor(timeInSeconds % 60);
+      return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    };
+
+    return (
+      <div className="w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-b from-slate-900 via-slate-950 to-black select-none relative">
+        {contentLoading && <LoadingOverlay />}
+        <audio
+          ref={audioRef}
+          src={url}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onCanPlay={() => setContentLoading(false)}
+          onEnded={() => setIsPlaying(false)}
+          onPause={() => setIsPlaying(false)}
+          onPlay={() => setIsPlaying(true)}
+          controlsList="nodownload"
+          className="hidden"
+        />
+
+        <div className="w-full max-w-lg bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col items-center relative overflow-hidden">
+          {/* Ambient Glow */}
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Animated Album Art / Soundwave Icon */}
+          <div className="relative mb-6">
+            <div className={cn(
+              "w-28 h-28 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-amber-500/20 via-saBlue/20 to-purple-500/20 border border-white/10 flex items-center justify-center shadow-xl transition-transform duration-500",
+              isPlaying && "scale-105"
+            )}>
+              <div className="flex items-end gap-1.5 h-12">
+                {[40, 70, 90, 60, 100, 50, 80, 45, 75].map((h, i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      "w-1.5 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full transition-all duration-300",
+                      isPlaying ? "animate-pulse" : "opacity-40"
+                    )}
+                    style={{
+                      height: isPlaying ? `${Math.max(15, (h * (0.5 + (i % 3) * 0.25)))}%` : "20%",
+                      animationDelay: `${i * 100}ms`
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="absolute -bottom-2 -right-2 p-2 bg-amber-500 text-slate-950 rounded-xl shadow-md">
+              <Headphones className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Audio Title */}
+          <div className="text-center w-full mb-6">
+            <h3 className="text-base sm:text-lg font-black text-slate-100 truncate px-4">
+              {title || "Educational Audio Lesson"}
+            </h3>
+            <p className="text-xs text-slate-400 mt-1 font-medium flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              Interactive Audio Session
+            </p>
+          </div>
+
+          {/* Progress Bar & Time */}
+          <div className="w-full space-y-2 mb-6">
+            <div className="relative">
+              <input
+                type="range"
+                min={0}
+                max={duration || 100}
+                value={currentTime}
+                onChange={handleSeek}
+                className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+            </div>
+            <div className="flex justify-between text-[11px] font-bold text-slate-400 tracking-wider">
+              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+
+          {/* Main Controls Row */}
+          <div className="flex items-center gap-4 sm:gap-6 mb-6">
+            <button
+              onClick={() => handleSkip(-10)}
+              className="p-2.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+              title="Rewind 10s"
+            >
+              <RotateCcw className="w-5 h-5" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className="w-14 h-14 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 flex items-center justify-center shadow-lg shadow-amber-500/25 transition-all active:scale-95 font-bold cursor-pointer"
+            >
+              {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 ml-0.5 fill-current" />}
+            </button>
+
+            <button
+              onClick={() => handleSkip(10)}
+              className="p-2.5 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+              title="Fast Forward 10s"
+            >
+              <RotateCw className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Bottom Toolbar: Speed pills & Mute */}
+          <div className="flex items-center justify-between w-full pt-4 border-t border-slate-800/80">
+            <div className="flex items-center gap-1">
+              {[0.75, 1, 1.25, 1.5].map((speed) => (
+                <button
+                  key={speed}
+                  onClick={() => handleSpeedChange(speed)}
+                  className={cn(
+                    "px-2 py-1 rounded-lg text-[10px] font-bold transition-all",
+                    playbackRate === speed
+                      ? "bg-amber-500/20 text-amber-400 border border-amber-500/40"
+                      : "text-slate-400 hover:text-white hover:bg-slate-800"
+                  )}
+                >
+                  {speed}x
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => {
+                if (audioRef.current) {
+                  audioRef.current.muted = !isMuted;
+                  setIsMuted(!isMuted);
+                }
+              }}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+              title={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // ── Loading overlay ──────────────────────────────────────────────────────
   const LoadingOverlay = () => (
@@ -540,6 +753,21 @@ export default function StudyModulePage() {
               className="absolute inset-0 z-10"
               onContextMenu={block}
               style={{ pointerEvents: "none", userSelect: "none" }}
+            />
+          </div>
+        )}
+
+        {/* AUDIO */}
+        {currentContent.type === "audio" && (
+          <div className="w-full h-full" onContextMenu={block}>
+            <AudioPlayer
+              url={assetUrl as string}
+              title={
+                (currentContent as any).filename ||
+                currentContent.file_name ||
+                module.title ||
+                "Audio Material"
+              }
             />
           </div>
         )}

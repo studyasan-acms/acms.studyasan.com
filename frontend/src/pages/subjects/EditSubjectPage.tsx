@@ -185,8 +185,12 @@ export default function EditSubjectPage() {
     setIsSaving(true);
 
     try {
-      const syllabusData =
-        syllabusUnits.length > 0 ? { units: syllabusUnits } : null;
+      const existingModules = subject?.syllabus?.modules || [];
+      const syllabusData = {
+        ...(subject?.syllabus || {}),
+        units: syllabusUnits,
+        modules: existingModules,
+      };
 
       const submitData: UpdateSubjectData = {
         ...formData,
@@ -499,9 +503,21 @@ export default function EditSubjectPage() {
 
         {/* Syllabus Card */}
         <Card className="rounded-2xl border-gray-100 shadow-sm">
-          <CardHeader className="p-4 pb-2">
-            <CardTitle className='text-lg text-gray-700'>Syllabus</CardTitle>
-            <CardDescription className="text-xs">Define the curriculum and learning units</CardDescription>
+          <CardHeader className="p-4 pb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <CardTitle className='text-lg text-gray-700'>Syllabus & Curriculum</CardTitle>
+              <CardDescription className="text-xs">Define curriculum units and instructional modules</CardDescription>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/dashboard/subjects/${id}/modules`)}
+              className="h-8 text-xs font-bold text-saBlue border-saBlue/30 bg-saBlue/5 hover:bg-saBlue/10 rounded-xl w-fit"
+            >
+              <BookOpen className="w-3.5 h-3.5 mr-1.5" />
+              Manage Curriculum Modules ({subject?.syllabus?.modules?.length || 0})
+            </Button>
           </CardHeader>
 
           <CardContent className="space-y-4 p-4 pt-2">
