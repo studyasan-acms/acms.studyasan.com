@@ -37,7 +37,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import DeleteConfirmationModal from "@/components/ui/deleteConfirmationModal";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface ChatAttachmentItem {
@@ -815,117 +815,144 @@ export default function AdminChatsPage() {
                     <p className="text-xs">Type below to send an admin message to the participants.</p>
                   </div>
                 ) : (
-                  <div className="space-y-3 pb-2">
-                    {modalMessages.map((message) => {
+                  <div className="space-y-3 pb-4">
+                    {modalMessages.map((message, index) => {
                       const isOwnMessage = message.sender_id === user?.id;
+                      const currentDate = new Date(message.created_at);
+                      const prevDate = index > 0 ? new Date(modalMessages[index - 1].created_at) : null;
+                      const showDateDivider =
+                        index === 0 ||
+                        (prevDate &&
+                          !isNaN(currentDate.getTime()) &&
+                          !isNaN(prevDate.getTime()) &&
+                          !isSameDay(currentDate, prevDate));
+
+                      const formatDateDivider = (dateString: string) => {
+                        const d = new Date(dateString);
+                        if (isNaN(d.getTime())) return '';
+                        if (isToday(d)) return 'Today';
+                        if (isYesterday(d)) return 'Yesterday';
+                        return format(d, 'EEEE, d MMMM yyyy');
+                      };
 
                       return (
-                        <div
-                          key={message.id}
-                          className={cn(
-                            "group/adminMsg flex items-end gap-1.5",
-                            isOwnMessage ? "justify-end" : "justify-start"
-                          )}
-                        >
-                          {/* Delete icon on hover (Admin can delete any message) */}
-                          {isOwnMessage && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover/adminMsg:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg"
-                              title="Delete message"
-                              onClick={() => setDeletingMessageId(message.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                        <div key={message.id} className="space-y-2">
+                          {showDateDivider && (
+                            <div className="flex items-center justify-center my-3 select-none">
+                              <div className="h-px bg-slate-200/80 flex-1 max-w-[80px]" />
+                              <span className="bg-slate-200/90 text-slate-700 text-[11px] font-semibold px-3 py-1 rounded-full shadow-2xs border border-slate-300/70 mx-2">
+                                {formatDateDivider(message.created_at)}
+                              </span>
+                              <div className="h-px bg-slate-200/80 flex-1 max-w-[80px]" />
+                            </div>
                           )}
 
                           <div
                             className={cn(
-                              "flex space-x-2 max-w-[85%] md:max-w-[75%]",
-                              isOwnMessage ? "flex-row-reverse space-x-reverse" : ""
+                              "group/adminMsg flex items-end gap-1.5",
+                              isOwnMessage ? "justify-end" : "justify-start"
                             )}
                           >
-                            {!isOwnMessage && (
-                              <Avatar className="h-7 w-7 shrink-0 mt-0.5 border border-slate-200">
-                                <AvatarFallback className="text-[10px] font-bold bg-slate-100 text-slate-700">
-                                  {message.sender?.name?.charAt(0).toUpperCase() || "?"}
-                                </AvatarFallback>
-                              </Avatar>
+                            {/* Delete icon on hover (Admin can delete any message) */}
+                            {isOwnMessage && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover/adminMsg:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg"
+                                title="Delete message"
+                                onClick={() => setDeletingMessageId(message.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
                             )}
 
                             <div
                               className={cn(
-                                "rounded-2xl p-3 shadow-xs",
-                                isOwnMessage
-                                  ? "bg-saBlue text-white rounded-br-xs"
-                                  : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs"
+                                "flex space-x-2 max-w-[85%] md:max-w-[75%]",
+                                isOwnMessage ? "flex-row-reverse space-x-reverse" : ""
                               )}
                             >
-                              {!isOwnMessage && message.sender && (
-                                <div className="text-[11px] font-bold mb-1 text-saBlue">
-                                  {message.sender.name}
-                                </div>
-                              )}
-
-                              {message.content && (
-                                <div className="text-sm whitespace-pre-wrap leading-relaxed">
-                                  {message.content}
-                                </div>
-                              )}
-
-                              {message.attachment_url && (
-                                <div className={cn("rounded-xl overflow-hidden", message.content ? "mt-2" : "")}>
-                                  {message.message_type === "IMAGE" ? (
-                                    <img
-                                      src={message.attachment_url}
-                                      alt="Attachment"
-                                      className="max-w-full h-auto rounded-xl cursor-pointer max-h-64 object-cover hover:opacity-95 transition-opacity"
-                                      onClick={() => window.open(message.attachment_url!, "_blank")}
-                                    />
-                                  ) : (
-                                    <div
-                                      className={cn(
-                                        "flex items-center space-x-2 p-2.5 rounded-xl cursor-pointer transition-colors",
-                                        isOwnMessage
-                                          ? "bg-white/10 hover:bg-white/20 text-white"
-                                          : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
-                                      )}
-                                      onClick={() => window.open(message.attachment_url!, "_blank")}
-                                    >
-                                      {getFileIcon(message.message_type)}
-                                      <span className="text-xs font-semibold truncate max-w-[180px]">
-                                        {message.attachment_url.split("/").pop()}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
+                              {!isOwnMessage && (
+                                <Avatar className="h-7 w-7 shrink-0 mt-0.5 border border-slate-200">
+                                  <AvatarFallback className="text-[10px] font-bold bg-slate-100 text-slate-700">
+                                    {message.sender?.name?.charAt(0).toUpperCase() || "?"}
+                                  </AvatarFallback>
+                                </Avatar>
                               )}
 
                               <div
                                 className={cn(
-                                  "text-[10px] text-right mt-1 font-medium flex items-center justify-end gap-1",
-                                  isOwnMessage ? "text-blue-100" : "text-slate-400"
+                                  "rounded-2xl p-3 shadow-xs",
+                                  isOwnMessage
+                                    ? "bg-saBlue text-white rounded-br-xs"
+                                    : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs"
                                 )}
                               >
-                                <span>{format(new Date(message.created_at), "d MMM yyyy, h:mm a")}</span>
-                                {isOwnMessage && <CheckCheck className="w-3 h-3 text-blue-100" />}
+                                {!isOwnMessage && message.sender && (
+                                  <div className="text-[11px] font-bold mb-1 text-saBlue">
+                                    {message.sender.name}
+                                  </div>
+                                )}
+
+                                {message.content && (
+                                  <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                                    {message.content}
+                                  </div>
+                                )}
+
+                                {message.attachment_url && (
+                                  <div className={cn("rounded-xl overflow-hidden", message.content ? "mt-2" : "")}>
+                                    {message.message_type === "IMAGE" ? (
+                                      <img
+                                        src={message.attachment_url}
+                                        alt="Attachment"
+                                        className="max-w-full h-auto rounded-xl cursor-pointer max-h-64 object-cover hover:opacity-95 transition-opacity"
+                                        onClick={() => window.open(message.attachment_url!, "_blank")}
+                                      />
+                                    ) : (
+                                      <div
+                                        className={cn(
+                                          "flex items-center space-x-2 p-2.5 rounded-xl cursor-pointer transition-colors",
+                                          isOwnMessage
+                                            ? "bg-white/10 hover:bg-white/20 text-white"
+                                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200"
+                                        )}
+                                        onClick={() => window.open(message.attachment_url!, "_blank")}
+                                      >
+                                        {getFileIcon(message.message_type)}
+                                        <span className="text-xs font-semibold truncate max-w-[180px]">
+                                          {message.attachment_url.split("/").pop()}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+
+                                <div
+                                  className={cn(
+                                    "text-[10px] text-right mt-1 font-medium flex items-center justify-end gap-1 select-none",
+                                    isOwnMessage ? "text-blue-100" : "text-slate-400"
+                                  )}
+                                >
+                                  <span>{format(new Date(message.created_at), "d MMM yyyy, h:mm a")}</span>
+                                  {isOwnMessage && <CheckCheck className="w-3 h-3 text-blue-100" />}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Delete button for other participant messages */}
-                          {!isOwnMessage && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 opacity-0 group-hover/adminMsg:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg"
-                              title="Delete message (Admin)"
-                              onClick={() => setDeletingMessageId(message.id)}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                            {/* Delete button for other participant messages */}
+                            {!isOwnMessage && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 opacity-0 group-hover/adminMsg:opacity-100 transition-opacity text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0 rounded-lg"
+                                title="Delete message (Admin)"
+                                onClick={() => setDeletingMessageId(message.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

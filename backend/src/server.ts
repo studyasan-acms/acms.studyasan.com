@@ -49,6 +49,7 @@ app.use(errorHandler);
 
 // SPA Fallback: Serve index.html for any unknown route NOT starting with /api
 app.get(/.*/, (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
