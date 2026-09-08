@@ -1386,10 +1386,14 @@ export default function AnnouncementsPage() {
                     </label>
                     <MultiSelect
                       options={subjects.map((s) => {
-                        const details = [s.class?.name, s.board?.name].filter(Boolean).join(' • ');
+                        const parts = [
+                          s.name?.trim(),
+                          s.class?.name?.trim(),
+                          s.board?.name?.trim(),
+                        ].filter(Boolean);
                         return {
                           value: s.id,
-                          label: `${s.name}${details ? ` (${details})` : ''}`,
+                          label: parts.join(', '),
                         };
                       })}
                       selectedValues={targetSubjects}

@@ -670,10 +670,14 @@ export default function TeacherDetailPage() {
                 emptyLabel="No subjects found"
                 triggerClassName="bg-slate-50 border-slate-200"
                 options={subjects.map((s) => {
-                  const details = [s.class?.name, s.board?.name].filter(Boolean).join(' • ');
+                  const parts = [
+                    s.name?.trim(),
+                    s.class?.name?.trim(),
+                    s.board?.name?.trim(),
+                  ].filter(Boolean);
                   return {
                     value: s.id.toString(),
-                    label: `${s.name}${details ? ` (${details})` : ''}`,
+                    label: parts.join(', '),
                     searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
                   };
                 })}
