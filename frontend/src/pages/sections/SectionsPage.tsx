@@ -1043,11 +1043,14 @@ export default function SectionsPage() {
                 searchPlaceholder="Search subject by name, class, or board..."
                 emptyLabel="No subjects found"
                 triggerClassName="bg-slate-50 border-slate-200"
-                options={subjects.map((sub) => ({
-                  value: sub.id.toString(),
-                  label: `${sub.name}${sub.class?.name ? ` (${sub.class.name})` : ''}`,
-                  searchText: `${sub.name} ${sub.class?.name || ''} ${sub.board?.name || ''}`,
-                }))}
+                options={subjects.map((sub) => {
+                  const details = [sub.class?.name, sub.board?.name].filter(Boolean).join(' • ');
+                  return {
+                    value: sub.id.toString(),
+                    label: `${sub.name}${details ? ` (${details})` : ''}`,
+                    searchText: `${sub.name} ${sub.class?.name || ''} ${sub.board?.name || ''}`,
+                  };
+                })}
               />
             </div>
 

@@ -109,8 +109,8 @@ export const getAllInvoices = async (req: Request, res: Response) => {
           items: {
             include: {
               subject: { select: { id: true, name: true, price: true, actual_price: true } },
-              test_series: { select: { id: true, title: true, price: true } },
-              activity_group: { select: { id: true, name: true, price: true } },
+              test_series: { select: { id: true, title: true, price: true, actual_price: true } },
+              activity_group: { select: { id: true, name: true, price: true, actual_price: true } },
             },
           },
         },
@@ -283,14 +283,14 @@ export const createInvoice = async (req: Request, res: Response) => {
         if (ts) {
           itemName = itemName || ts.title;
           unitPrice = unitPrice || ts.price || 0;
-          actualPrice = actualPrice || ts.price || 0;
+          actualPrice = actualPrice || ts.actual_price || ts.price || 0;
         }
       } else if (type === 'ACTIVITY_GROUP' && item.activity_group_id) {
         const ag = await prisma.activityGroup.findUnique({ where: { id: item.activity_group_id } });
         if (ag) {
           itemName = itemName || ag.name;
           unitPrice = unitPrice || ag.price || 0;
-          actualPrice = actualPrice || ag.price || 0;
+          actualPrice = actualPrice || ag.actual_price || ag.price || 0;
         }
       }
 

@@ -187,6 +187,7 @@ export const getAllGlobalTestSeriesEnrollments = async (req: AuthRequest, res: R
                             id: true,
                             title: true,
                             price: true,
+                            actual_price: true,
                         }
                     },
                     student: {
@@ -303,7 +304,7 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
             });
 
             if (!enrollment) {
-                return sendError(res, 'Test series not found', 404);
+                return sendError(res, 'You are not enrolled in this test series', 403);
             }
 
             // Add enrollment status to response
@@ -345,7 +346,7 @@ export const getTestSeriesById = async (req: AuthRequest, res: Response) => {
 // Create test series
 export const createTestSeries = async (req: AuthRequest, res: Response) => {
     try {
-        const { title, description, cover_image, price, currency_id, is_published } = req.body;
+        const { title, description, cover_image, price, actual_price, currency_id, is_published } = req.body;
         const userId = req.user!.id;
 
         const testSeries = await prisma.testSeries.create({
@@ -353,7 +354,8 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
                 title,
                 description,
                 cover_image,
-                price: price ? parseInt(price) : null,
+                ...(price !== undefined && price !== '' && price !== null && { price: parseFloat(price) }),
+                ...(actual_price !== undefined && actual_price !== '' && actual_price !== null && { actual_price: parseFloat(actual_price) }),
                 ...(currency_id && { currency_id: parseInt(currency_id) }),
                 is_published: is_published || false,
                 created_by: userId,
@@ -381,7 +383,7 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
 export const updateTestSeries = async (req: AuthRequest, res: Response) => {
     try {
         const { id } = req.params;
-        const { title, description, cover_image, price, currency_id, is_published } = req.body;
+        const { title, description, cover_image, price, actual_price, currency_id, is_published } = req.body;
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
@@ -427,7 +429,8 @@ export const updateTestSeries = async (req: AuthRequest, res: Response) => {
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (cover_image !== undefined) updateData.cover_image = cover_image;
-        if (price !== undefined) updateData.price = price ? parseInt(price) : null;
+        if (price !== undefined) updateData.price = price !== '' && price !== null ? parseFloat(price) : null;
+        if (actual_price !== undefined) updateData.actual_price = actual_price !== '' && actual_price !== null ? parseFloat(actual_price) : null;
         if (currency_id !== undefined) updateData.currency_id = currency_id ? parseInt(currency_id) : null;
         if (is_published !== undefined) updateData.is_published = is_published;
 

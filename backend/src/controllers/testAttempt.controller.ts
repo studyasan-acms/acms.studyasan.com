@@ -1165,8 +1165,16 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
     const { testId } = req.params;
     const { candidateName, candidateEmail } = req.body;
 
-    if (!testId || !candidateName) {
-      return sendError(res, 'Test ID and Name are required', 400);
+    if (!testId) {
+      return sendError(res, 'Test ID is required', 400);
+    }
+
+    if (!candidateName || !candidateName.trim()) {
+      return sendError(res, 'Candidate Full Name is required', 400);
+    }
+
+    if (!candidateEmail || !candidateEmail.trim()) {
+      return sendError(res, 'Candidate Email address is required', 400);
     }
 
     const test = await prisma.test.findUnique({
@@ -1187,32 +1195,36 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
 
     if (!test.is_published) return sendError(res, 'Test is not active', 403);
 
-    // Whitelist check: if allowed_candidates is configured, enforce candidate email
-    let allowedList: { name: string; email: string }[] = [];
+    // Whitelist check: STRICTLY ENFORCE candidate whitelist
+    let allowedList: { name?: string; email: string }[] = [];
     try {
       const raw = typeof (test as any).allowed_candidates === 'string'
         ? JSON.parse((test as any).allowed_candidates)
         : (test as any).allowed_candidates;
       if (Array.isArray(raw)) {
-        allowedList = raw.filter((c: any) => c && c.email);
+        allowedList = raw.filter((c: any) => c && typeof c.email === 'string' && c.email.trim().length > 0);
       }
     } catch (e) {}
 
-    if (allowedList.length > 0) {
-      if (!candidateEmail || !candidateEmail.trim()) {
-        return sendError(res, 'Email address is required for this certification exam', 400);
-      }
-      const normalizedEmail = candidateEmail.trim().toLowerCase();
-      const matchedCandidate = allowedList.find(
-        (c) => c.email && c.email.trim().toLowerCase() === normalizedEmail
+    // If whitelist does not exist or has 0 candidates, do NOT allow anyone!
+    if (allowedList.length === 0) {
+      return sendError(
+        res,
+        'Access Denied: This certification exam requires candidate whitelisting, and no candidates are currently whitelisted. Please contact the exam administrator to get access.',
+        403
       );
-      if (!matchedCandidate) {
-        return sendError(
-          res,
-          `Access Denied: The email "${candidateEmail}" is not authorized to take this certification exam. Only invited candidate emails are permitted. Please contact the administrator.`,
-          403
-        );
-      }
+    }
+
+    const normalizedEmail = candidateEmail.trim().toLowerCase();
+    const matchedCandidate = allowedList.find(
+      (c) => c.email && c.email.trim().toLowerCase() === normalizedEmail
+    );
+    if (!matchedCandidate) {
+      return sendError(
+        res,
+        `Access Denied: The email "${candidateEmail.trim()}" is not authorized to take this certification exam. Only invited candidate emails are permitted. Please contact the administrator.`,
+        403
+      );
     }
 
     // Check dates
@@ -1221,16 +1233,17 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
       return sendError(res, 'Test is not available at this time', 403);
     }
 
-    // Check if candidate has already completed this exam and earned a certificate
-    const normalizedEmail = candidateEmail ? candidateEmail.trim().toLowerCase() : null;
-    const normalizedName = candidateName.trim().toLowerCase();
+    const finalCandidateName = (matchedCandidate.name && matchedCandidate.name.trim())
+      ? matchedCandidate.name.trim()
+      : candidateName.trim();
 
+    // Check if candidate has already completed this exam and earned a certificate
     const existingCertificate = await prisma.certificate.findFirst({
       where: {
         test_id: parseInt(testId),
         OR: [
-          ...(normalizedEmail ? [{ recipient_email: { equals: normalizedEmail, mode: 'insensitive' as const } }] : []),
-          { recipient_name: { equals: normalizedName, mode: 'insensitive' as const } },
+          { recipient_email: { equals: normalizedEmail, mode: 'insensitive' as const } },
+          { recipient_name: { equals: finalCandidateName.toLowerCase(), mode: 'insensitive' as const } },
         ],
       },
       include: {
@@ -1258,7 +1271,7 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
         test_id: parseInt(testId),
         student_id: guestStudentId,
         total_marks: effectiveTotalMarks,
-        guest_info: { name: candidateName, email: candidateEmail },
+        guest_info: { name: finalCandidateName, email: normalizedEmail },
       },
       include: {
         test: {
@@ -1279,10 +1292,9 @@ export const startPublicTestAttempt = async (req: Request, res: Response) => {
       },
     });
 
-    return sendSuccess(res, { attempt: testAttempt, candidateName }, 'Test started successfully', 201);
+    return sendSuccess(res, { attempt: testAttempt, candidateName: finalCandidateName }, 'Test started successfully', 201);
   } catch (error) {
     console.error('Error starting public test:', error);
-    return sendError(res, 'Failed to start test');
   }
 };
 
@@ -1430,6 +1442,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
     let renderedCertificateText: string | undefined;
     const guestInfo = attempt.guest_info as any;
     const candidateEmail = guestInfo?.email;
+    const verifiedCandidateName = guestInfo?.name || candidateName;
 
     if (isPassed) {
       // Generate Unique Code (e.g., SA-CERT-<TESTID>-<ATTEMPTID>-<RANDOM>)
@@ -1442,7 +1455,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
       renderedCertificateText = renderCertificateText(
         (attempt.test as any)?.certificate_template,
         {
-          name: candidateName,
+          name: verifiedCandidateName,
           test_title: attempt.test.title,
           date: formattedDate,
           score,
@@ -1455,7 +1468,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
       certificate = await prisma.certificate.upsert({
         where: { test_attempt_id: attempt.id },
         update: {
-          recipient_name: candidateName,
+          recipient_name: verifiedCandidateName,
           recipient_email: candidateEmail || null,
           code: certificateCode,
           certificate_text: renderedCertificateText,
@@ -1463,7 +1476,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
         create: {
           test_id: attempt.test_id,
           test_attempt_id: attempt.id,
-          recipient_name: candidateName,
+          recipient_name: verifiedCandidateName,
           recipient_email: candidateEmail || null,
           code: certificateCode,
           certificate_text: renderedCertificateText,
@@ -1474,7 +1487,7 @@ export const submitPublicTest = async (req: Request, res: Response) => {
         // Send email asynchronously (don't await to block response)
         sendCertificateEmail(
           candidateEmail,
-          candidateName,
+          verifiedCandidateName,
           attempt.test.title,
           certificateCode,
           score,

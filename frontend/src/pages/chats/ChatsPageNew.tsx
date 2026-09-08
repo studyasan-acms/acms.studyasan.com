@@ -431,7 +431,11 @@ const ChatsPageNew = () => {
   };
 
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const d = new Date(dateString);
+    if (isNaN(d.getTime())) return '';
+    const dateStr = d.toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${dateStr}, ${timeStr}`;
   };
 
   const handleDeleteMessage = async () => {

@@ -173,14 +173,14 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
       if (ts) {
         itemName = ts.title;
         unitPrice = ts.price ?? 0;
-        actualPrice = ts.price ?? 0;
+        actualPrice = ts.actual_price ?? ts.price ?? 0;
       }
     } else if (selectedItemType === 'ACTIVITY_GROUP') {
       const ag = activityGroups.find((a) => a.id === selectedItemId);
       if (ag) {
         itemName = ag.name;
         unitPrice = ag.price ?? 0;
-        actualPrice = ag.price ?? 0;
+        actualPrice = ag.actual_price ?? ag.price ?? 0;
       }
     }
 

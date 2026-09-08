@@ -1062,6 +1062,7 @@ export interface ActivityGroup {
   cover_image?: string;
   is_active: boolean;
   price: number | null;
+  actual_price?: number | null;
   currency_id: number | null;
   created_by: number;
   created_at: string;
@@ -1105,7 +1106,8 @@ export interface TestSeries {
   title: string;
   description?: string;
   cover_image?: string;
-  price?: number;
+  price?: number | null;
+  actual_price?: number | null;
   currency_id: number | null;
   is_published: boolean;
   created_by: number;

@@ -95,8 +95,12 @@ export function Chat({
                                     )}
                                     <p className="text-sm break-words">{msg.text}</p>
                                 </div>
-                                <span className="text-xs text-slate-400 mt-1 px-2">
-                                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                                <span className="text-[11px] text-slate-400 mt-1 px-2">
+                                    {new Date(msg.timestamp).toLocaleDateString([], {
+                                        day: 'numeric',
+                                        month: 'short',
+                                        year: 'numeric',
+                                    })}, {new Date(msg.timestamp).toLocaleTimeString([], {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                     })}

@@ -21,8 +21,8 @@ const ENROLLMENT_INCLUDE = {
     },
   },
   subject: { select: { id: true, name: true, price: true, actual_price: true } },
-  test_series: { select: { id: true, title: true, price: true } },
-  activity_group: { select: { id: true, name: true, price: true } },
+  test_series: { select: { id: true, title: true, price: true, actual_price: true } },
+  activity_group: { select: { id: true, name: true, price: true, actual_price: true } },
   invoice: {
     select: {
       id: true,
@@ -505,11 +505,17 @@ async function _generateInvoiceForEnrollments(
     } else if (enrollment.type === 'TEST_SERIES' && enrollment.test_series) {
       itemName = enrollment.test_series.title;
       finalPrice = typeof enrollment.price === 'number' ? enrollment.price : (enrollment.test_series.price ?? 0);
-      actualPrice = finalPrice;
+      actualPrice = enrollment.test_series.actual_price ?? finalPrice;
+      if (actualPrice > finalPrice) {
+        itemDiscount = actualPrice - finalPrice;
+      }
     } else if (enrollment.type === 'ACTIVITY_GROUP' && enrollment.activity_group) {
       itemName = enrollment.activity_group.name;
       finalPrice = typeof enrollment.price === 'number' ? enrollment.price : (enrollment.activity_group.price ?? 0);
-      actualPrice = finalPrice;
+      actualPrice = enrollment.activity_group.actual_price ?? finalPrice;
+      if (actualPrice > finalPrice) {
+        itemDiscount = actualPrice - finalPrice;
+      }
     } else {
       itemName = 'Learning Item';
     }

@@ -764,7 +764,8 @@ model TestSeries {
   title        String
   description  String?
   cover_image  String?
-  price        Int? // Optional pricing for paid test series
+  price        Float? // Optional pricing for paid test series (Discounted Selling Price)
+  actual_price Float? // Actual / Original MRP price before discount
   currency_id  Int?
   currency     Currency? @relation(fields: [currency_id], references: [id])
   is_published Boolean   @default(false)
@@ -817,17 +818,18 @@ enum ActivityType {
 
 // Activity Group - Collection of activities for organizing
 model ActivityGroup {
-  id          Int       @id @default(autoincrement())
-  name        String
-  description String?
-  cover_image String?
-  is_active   Boolean   @default(true)
-  price       Float? // Optional pricing for paid activity groups
-  currency_id Int?
-  currency    Currency? @relation(fields: [currency_id], references: [id])
-  created_by  Int
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+  id           Int       @id @default(autoincrement())
+  name         String
+  description  String?
+  cover_image  String?
+  is_active    Boolean   @default(true)
+  price        Float? // Optional pricing for paid activity groups (Discounted Selling Price)
+  actual_price Float? // Actual / Original MRP price before discount
+  currency_id  Int?
+  currency     Currency? @relation(fields: [currency_id], references: [id])
+  created_by   Int
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
 
   creator           User                           @relation("ActivityGroupCreator", fields: [created_by], references: [id])
   activities        Activity[]

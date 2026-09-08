@@ -1104,7 +1104,25 @@ export const getPublicTestById = async (req: Request, res: Response) => {
       return sendError(res, 'This test is not currently available', 403);
     }
 
-    return sendSuccess(res, test, 'Test fetched successfully');
+    let allowedList: any[] = [];
+    try {
+      const raw = typeof (test as any).allowed_candidates === 'string'
+        ? JSON.parse((test as any).allowed_candidates)
+        : (test as any).allowed_candidates;
+      if (Array.isArray(raw)) {
+        allowedList = raw.filter((c: any) => c && typeof c.email === 'string' && c.email.trim().length > 0);
+      }
+    } catch (e) {}
+
+    // Sanitize test response to prevent leaking whitelisted candidates' emails in public endpoints
+    const sanitizedTest = {
+      ...test,
+      has_allowed_candidates: allowedList.length > 0,
+      allowed_candidates_count: allowedList.length,
+      allowed_candidates: allowedList.length > 0 ? true : false,
+    };
+
+    return sendSuccess(res, sanitizedTest, 'Test fetched successfully');
   } catch (error) {
     console.error('Error fetching public test:', error);
     return sendError(res, 'Failed to fetch test');

@@ -49,6 +49,7 @@ export default function ActivityGroupForm({ group, onSuccess, onCancel }: Props)
         description: group.description || '',
         cover_image: group.cover_image || '',
         price: group.price || null,
+        actual_price: group.actual_price || null,
         currency_id: group.currency_id || null,
       });
     }
@@ -146,21 +147,58 @@ export default function ActivityGroupForm({ group, onSuccess, onCancel }: Props)
 
           {isAdmin && (
             <>
-              <div>
-                <Label htmlFor="price" className="block text-sm font-medium mb-2">
-                  Price
-                </Label>
-                <Input
-                  id="price"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={formData.price ?? ''}
-                  onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
-                  disabled={loading}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="actual_price" className="block text-sm font-medium mb-2">
+                    Actual Price (MRP)
+                  </Label>
+                  <Input
+                    id="actual_price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 500"
+                    value={formData.actual_price ?? ''}
+                    onChange={(e) => handleChange('actual_price', e.target.value ? parseFloat(e.target.value) : null)}
+                    disabled={loading}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Original price (strikethrough)</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="price" className="block text-sm font-medium mb-2">
+                    Discounted Price (Selling Price)
+                  </Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 299"
+                    value={formData.price ?? ''}
+                    onChange={(e) => handleChange('price', e.target.value ? parseFloat(e.target.value) : null)}
+                    disabled={loading}
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Actual price student will pay</p>
+                </div>
               </div>
+
+              {/* Live Discount Calculation Badge */}
+              {formData.actual_price !== null && formData.actual_price !== undefined && formData.price !== null && formData.price !== undefined && formData.actual_price > formData.price && (
+                <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 line-through font-semibold">
+                      ₹{formData.actual_price.toLocaleString()}
+                    </span>
+                    <span className="text-sm font-black text-slate-900">
+                      ₹{formData.price.toLocaleString()}
+                    </span>
+                  </div>
+                  <span className="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full">
+                    {Math.round(((formData.actual_price - formData.price) / formData.actual_price) * 100)}% DISCOUNT
+                  </span>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="currency_id" className="block text-sm font-medium mb-2">

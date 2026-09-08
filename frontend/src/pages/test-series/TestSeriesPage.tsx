@@ -109,6 +109,7 @@ export default function TestSeriesPage() {
         title: "",
         description: "",
         price: "",
+        actual_price: "",
         currency_id: "",
         is_published: false,
     });
@@ -154,7 +155,7 @@ export default function TestSeriesPage() {
     }, [isAdmin]);
 
     const resetForm = () => {
-        setFormData({ title: "", description: "", price: "", currency_id: "", is_published: false });
+        setFormData({ title: "", description: "", price: "", actual_price: "", currency_id: "", is_published: false });
         setEditingSeries(null);
     };
 
@@ -168,7 +169,8 @@ export default function TestSeriesPage() {
         setFormData({
             title: series.title || "",
             description: series.description || "",
-            price: series.price?.toString() || "",
+            price: series.price !== undefined && series.price !== null ? series.price.toString() : "",
+            actual_price: series.actual_price !== undefined && series.actual_price !== null ? series.actual_price.toString() : "",
             currency_id: series.currency_id?.toString() || "",
             is_published: series.is_published || false,
         });
@@ -184,7 +186,8 @@ export default function TestSeriesPage() {
             const payload = {
                 title: formData.title,
                 description: formData.description || undefined,
-                price: formData.price ? parseInt(formData.price) : undefined,
+                price: formData.price !== "" ? parseFloat(formData.price) : null,
+                actual_price: formData.actual_price !== "" ? parseFloat(formData.actual_price) : null,
                 currency_id: formData.currency_id ? parseInt(formData.currency_id) : undefined,
                 is_published: formData.is_published,
             };
@@ -314,41 +317,76 @@ export default function TestSeriesPage() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <Label htmlFor="price" className="font-semibold text-xs text-slate-700">Price</Label>
+                                <Label htmlFor="actual_price" className="font-semibold text-xs text-slate-700">Actual Price (MRP)</Label>
+                                <Input
+                                    id="actual_price"
+                                    name="actual_price"
+                                    type="number"
+                                    step="0.01"
+                                    value={formData.actual_price}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 500"
+                                    min="0"
+                                    className="rounded-xl border-slate-200 focus:ring-saBlue"
+                                />
+                                <p className="text-[10px] text-slate-400">Original price (strikethrough)</p>
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="price" className="font-semibold text-xs text-slate-700">Discounted Price (Selling Price)</Label>
                                 <Input
                                     id="price"
                                     name="price"
                                     type="number"
+                                    step="0.01"
                                     value={formData.price}
                                     onChange={handleChange}
-                                    placeholder="0"
+                                    placeholder="e.g. 299"
                                     min="0"
                                     className="rounded-xl border-slate-200 focus:ring-saBlue"
                                 />
+                                <p className="text-[10px] text-slate-400">Actual price student will pay</p>
                             </div>
-                            {isAdmin && (
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="currency_id" className="font-semibold text-xs text-slate-700">Currency</Label>
-                                    <Select
-                                        value={formData.currency_id}
-                                        onValueChange={(value) =>
-                                            setFormData((prev) => ({ ...prev, currency_id: value }))
-                                        }
-                                    >
-                                        <SelectTrigger id="currency_id" className="rounded-xl border-slate-200">
-                                            <SelectValue placeholder="Select" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {currencies.map((c) => (
-                                                <SelectItem key={c.id} value={c.id.toString()}>
-                                                    {c.name} ({c.code})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
                         </div>
+
+                        {/* Live Discount Calculation Badge */}
+                        {formData.actual_price !== "" && formData.price !== "" && parseFloat(formData.actual_price) > parseFloat(formData.price) && (
+                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs animate-in fade-in">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 line-through font-semibold">
+                                        ₹{parseFloat(formData.actual_price).toLocaleString()}
+                                    </span>
+                                    <span className="text-sm font-black text-slate-900">
+                                        ₹{parseFloat(formData.price).toLocaleString()}
+                                    </span>
+                                </div>
+                                <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 border-none">
+                                    {Math.round(((parseFloat(formData.actual_price) - parseFloat(formData.price)) / parseFloat(formData.actual_price)) * 100)}% DISCOUNT
+                                </Badge>
+                            </div>
+                        )}
+
+                        {isAdmin && (
+                            <div className="space-y-1.5">
+                                <Label htmlFor="currency_id" className="font-semibold text-xs text-slate-700">Currency</Label>
+                                <Select
+                                    value={formData.currency_id}
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({ ...prev, currency_id: value }))
+                                    }
+                                >
+                                    <SelectTrigger id="currency_id" className="rounded-xl border-slate-200">
+                                        <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {currencies.map((c) => (
+                                            <SelectItem key={c.id} value={c.id.toString()}>
+                                                {c.name} ({c.code})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        )}
                         <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
                             <div className="space-y-0.5">
                                 <Label htmlFor="is_published" className="font-bold text-slate-800 text-sm">Publish Immediately</Label>
@@ -613,10 +651,26 @@ export default function TestSeriesPage() {
 
                                 {/* Tags & Price */}
                                 <div className="flex items-center justify-between pt-1">
-                                    {series.price !== undefined && series.price !== null ? (
-                                        <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
-                                            <IndianRupee className="h-3 w-3 mr-0.5" />{series.price}
-                                        </Badge>
+                                    {(series.price !== undefined && series.price !== null) || (series.actual_price !== undefined && series.actual_price !== null) ? (
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {series.actual_price && series.price && series.actual_price > series.price ? (
+                                                <>
+                                                    <span className="text-[11px] text-slate-400 line-through font-semibold">
+                                                        {series.currency?.symbol || '₹'}{series.actual_price.toLocaleString()}
+                                                    </span>
+                                                    <span className="text-xs font-black text-slate-900">
+                                                        {series.currency?.symbol || '₹'}{series.price.toLocaleString()}
+                                                    </span>
+                                                    <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                                                        {Math.round(((series.actual_price - series.price) / series.actual_price) * 100)}% OFF
+                                                    </Badge>
+                                                </>
+                                            ) : (
+                                                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
+                                                    {series.currency?.symbol || '₹'}{(series.price ?? series.actual_price)?.toLocaleString()}
+                                                </Badge>
+                                            )}
+                                        </div>
                                     ) : (
                                         <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg">
                                             Free
@@ -705,9 +759,21 @@ export default function TestSeriesPage() {
                                             {series.is_published ? "Published" : "Draft"}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-xs font-semibold text-slate-700">
-                                        {series.price ? `₹${series.price}` : "Free"}
-                                    </TableCell>
+                                     <TableCell className="text-xs font-semibold text-slate-700">
+                                         {series.actual_price && series.price && series.actual_price > series.price ? (
+                                             <div className="flex items-center gap-1.5 flex-wrap">
+                                                 <span className="text-slate-400 line-through text-[11px]">{series.currency?.symbol || '₹'}{series.actual_price.toLocaleString()}</span>
+                                                 <span className="font-bold text-slate-900">{series.currency?.symbol || '₹'}{series.price.toLocaleString()}</span>
+                                                 <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                                                     {Math.round(((series.actual_price - series.price) / series.actual_price) * 100)}% OFF
+                                                 </Badge>
+                                             </div>
+                                         ) : (series.price !== null && series.price !== undefined) || (series.actual_price !== null && series.actual_price !== undefined) ? (
+                                             `${series.currency?.symbol || '₹'}${Number(series.price ?? series.actual_price).toLocaleString()}`
+                                         ) : (
+                                             "Free"
+                                         )}
+                                     </TableCell>
                                     <TableCell className="text-xs text-slate-600 font-medium">
                                         {series._count?.tests || 0}
                                     </TableCell>

@@ -73,6 +73,7 @@ export interface ActivityGroup {
   cover_image?: string;
   is_active: boolean;
   price: number | null;
+  actual_price?: number | null;
   currency_id: number | null;
   created_by: number;
   created_at: string;
@@ -118,19 +119,13 @@ export interface ActivityAttempt {
   score: number;
   max_score: number;
   time_taken?: number;
+  accuracy?: number;
+  details?: any; // JSON attempt details
   is_completed: boolean;
   created_at: string;
   updated_at: string;
   activity?: Activity;
-  student?: {
-    id: number;
-    user_id: number;
-    user: {
-      id: number;
-      name: string;
-      email: string;
-    };
-  };
+  student?: any;
   responses?: ActivityResponse[];
 }
 
@@ -138,9 +133,9 @@ export interface ActivityResponse {
   id: number;
   attempt_id: number;
   item_id: number;
-  response: any; // JSON response
+  user_response: any; // JSON user response
   is_correct: boolean;
-  points: number;
+  points_earned: number;
   time_taken?: number;
   created_at: string;
   item?: ActivityItem;
@@ -152,6 +147,7 @@ export interface CreateActivityGroupInput {
   description?: string;
   cover_image?: string;
   price?: number | null;
+  actual_price?: number | null;
   currency_id?: number | null;
 }
 

@@ -31,6 +31,7 @@ import {
   X,
   Upload,
   ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 
 import { testService, testAttemptService, uploadService } from "@/services/api";
@@ -772,10 +773,14 @@ export default function TestDetailPage() {
                 >
                   <Award className="w-3.5 h-3.5 mr-1 text-emerald-600" /> View Issued Certificates
                 </Button>
-                <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold px-2.5 py-0.5 text-xs">
+                <Badge className={`font-bold px-2.5 py-0.5 text-xs ${
+                  parsedAllowedCandidates.length > 0
+                    ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                    : "bg-amber-100 text-amber-900 border-amber-300"
+                }`}>
                   {parsedAllowedCandidates.length > 0
-                    ? `${parsedAllowedCandidates.length} Whitelisted Candidates`
-                    : "Open Access Mode"}
+                    ? `${parsedAllowedCandidates.length} Whitelisted Candidates (Protected)`
+                    : "Whitelist Required — Exam Locked"}
                 </Badge>
               </div>
             </div>
@@ -870,8 +875,14 @@ export default function TestDetailPage() {
                   </table>
                 </div>
               ) : (
-                <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900">
-                  <strong>Open Access:</strong> No emails are whitelisted. Anyone who visits the link can enter their name and email to take the certification exam.
+                <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-start gap-2.5">
+                  <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong className="block font-bold">Candidate Whitelist Required (Exam Locked)</strong>
+                    <p className="mt-0.5 text-amber-800">
+                      Certification exams strictly require authorized candidate emails. Because no candidates have been whitelisted yet, the public certification exam page is currently locked and will reject all attempt attempts. Click <strong>Manage Whitelist</strong> to add candidates.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>

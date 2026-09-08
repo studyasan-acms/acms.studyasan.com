@@ -27,6 +27,7 @@ import {
   UserPlus,
   Mail,
   Info,
+  ShieldAlert,
 } from "lucide-react";
 import { testService, subjectService, testSeriesService, uploadService } from "@/services/api";
 import type { TestSeries, Subject, CreateTestData, QuestionType, TestType, AllowedCandidate } from "@/types";
@@ -1632,13 +1633,13 @@ export default function CreateTestPage() {
                       <Badge
                         className={`text-xs font-bold ${
                           (formData.allowed_candidates as any[])?.length > 0
-                            ? "bg-blue-100 text-blue-800 border-blue-200"
-                            : "bg-amber-100 text-amber-800 border-amber-200"
+                            ? "bg-emerald-100 text-emerald-800 border-emerald-300"
+                            : "bg-amber-100 text-amber-900 border-amber-300"
                         }`}
                       >
                         {(formData.allowed_candidates as any[])?.length > 0
-                          ? `${(formData.allowed_candidates as any[]).length} Invited Candidate(s)`
-                          : "Open Access (No restriction)"}
+                          ? `${(formData.allowed_candidates as any[]).length} Whitelisted Candidate(s) (Protected)`
+                          : "Whitelist Required — Exam Locked"}
                       </Badge>
                     </div>
                   </div>
@@ -1713,11 +1714,14 @@ export default function CreateTestPage() {
                       </table>
                     </div>
                   ) : (
-                    <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
-                      <Info className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                      <p>
-                        <strong>Open Access Mode:</strong> No candidates have been whitelisted yet. Any person who opens the public certification link and inputs their name and email will be able to take the exam. Add emails above to enforce access control.
-                      </p>
+                    <div className="p-4 bg-amber-50/70 border border-amber-200/90 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                      <ShieldAlert className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <strong className="block font-bold">Candidate Whitelist Required (Exam Locked)</strong>
+                        <p className="mt-0.5 text-amber-800">
+                          All certification exams strictly require candidate whitelisting. If no candidates are added to the whitelist, the public exam page remains locked and will reject all attempt attempts. Add authorized candidate names and emails above to grant access.
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>

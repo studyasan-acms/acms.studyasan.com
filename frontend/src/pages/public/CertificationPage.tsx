@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Loader2, CheckCircle, XCircle, Award, Clock, ArrowRight, User, Mail, ShieldAlert, ShieldCheck, Download, Printer, ExternalLink } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Award, Clock, ArrowRight, User, Mail, ShieldAlert, ShieldCheck, Download, Printer, ExternalLink, Lock } from 'lucide-react';
 import type { Test, TestAttempt } from '@/types';
 import { toast } from 'sonner';
 import { printCertificateDocument, formatCertificateDate } from '@/utils/printCertificate';
@@ -271,7 +271,14 @@ export default function CertificationPage() {
     };
 
     const hasAllowedCandidates = useMemo(() => {
-        if (!test?.allowed_candidates) return false;
+        if (!test) return false;
+        if ((test as any).has_allowed_candidates !== undefined) {
+            return Boolean((test as any).has_allowed_candidates);
+        }
+        if (typeof test.allowed_candidates === 'boolean') {
+            return test.allowed_candidates;
+        }
+        if (!test.allowed_candidates) return false;
         try {
             const raw = typeof test.allowed_candidates === 'string'
                 ? JSON.parse(test.allowed_candidates)
@@ -280,11 +287,18 @@ export default function CertificationPage() {
         } catch (e) {
             return false;
         }
-    }, [test?.allowed_candidates]);
+    }, [test]);
 
     const handleStart = async (e: React.FormEvent) => {
         e.preventDefault();
         setStartError(null);
+
+        if (!hasAllowedCandidates) {
+            const msg = 'This exam is locked because no candidates have been whitelisted by the administrator.';
+            setStartError(msg);
+            toast.error(msg);
+            return;
+        }
 
         if (!candidateName.trim()) {
             toast.error('Please enter your full name');
@@ -292,7 +306,7 @@ export default function CertificationPage() {
         }
 
         if (!candidateEmail.trim()) {
-            toast.error('Please enter your email address');
+            toast.error('Please enter your whitelisted email address');
             return;
         }
 
@@ -453,86 +467,105 @@ export default function CertificationPage() {
                                     </div>
                                 </div>
 
-                                {hasAllowedCandidates && (
-                                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-[#0276D3] flex items-start gap-2">
-                                        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
-                                        <p>
-                                            <strong>Whitelist Protected Exam:</strong> Only candidates with pre-authorized emails can attempt this certification test.
-                                        </p>
+                                {!hasAllowedCandidates ? (
+                                    <div className="space-y-4 py-2">
+                                        <div className="p-4 bg-amber-50/90 border border-amber-200/90 rounded-2xl text-center space-y-3">
+                                            <div className="mx-auto w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-700 shadow-inner">
+                                                <Lock className="w-6 h-6" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-sm text-amber-950">Access Restricted — Whitelist Required</h3>
+                                                <p className="mt-1 text-xs text-amber-800 leading-relaxed max-w-sm mx-auto">
+                                                    This certification exam is restricted to pre-authorized candidates only. Currently, no candidate emails have been whitelisted for this exam by the administrator.
+                                                </p>
+                                            </div>
+                                            <div className="p-2.5 bg-white/90 rounded-xl border border-amber-200 text-[11px] text-slate-600 font-medium">
+                                                Please contact your instructor or exam administrator to request authorization.
+                                            </div>
+                                        </div>
                                     </div>
-                                )}
-
-                                {startError && (
-                                    <div
-                                        className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
-                                            startError.includes('already completed') || startError.includes('already earned')
-                                                ? 'bg-amber-50 border border-amber-200 text-amber-900'
-                                                : 'bg-red-50 border border-red-200 text-red-800'
-                                        }`}
-                                    >
-                                        {startError.includes('already completed') || startError.includes('already earned') ? (
-                                            <Award className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                                        ) : (
-                                            <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                                        )}
-                                        <div>
-                                            <p className="font-bold">
-                                                {startError.includes('already completed') || startError.includes('already earned')
-                                                    ? 'Already Certified'
-                                                    : 'Access Denied'}
+                                ) : (
+                                    <>
+                                        <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-[#0276D3] flex items-start gap-2">
+                                            <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+                                            <p>
+                                                <strong>Whitelist Protected Exam:</strong> Only candidates with pre-authorized emails can attempt this certification test.
                                             </p>
-                                            <p className="mt-0.5 text-[11px] leading-relaxed">{startError}</p>
                                         </div>
-                                    </div>
-                                )}
 
-                                <form onSubmit={handleStart} className="space-y-4">
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="name" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                            Full Name (Printed on Certificate) *
-                                        </Label>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                            <Input
-                                                id="name"
-                                                placeholder="e.g. John Doe"
-                                                className="pl-9 rounded-xl text-sm"
-                                                value={candidateName}
-                                                onChange={(e) => setCandidateName(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-1.5">
-                                        <Label htmlFor="email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                            Candidate Email Address *
-                                        </Label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="e.g. john@example.com"
-                                                className="pl-9 rounded-xl text-sm"
-                                                value={candidateEmail}
-                                                onChange={(e) => setCandidateEmail(e.target.value)}
-                                                required
-                                            />
-                                        </div>
-                                        <p className="text-[10px] text-slate-400">Your digital certificate link will be issued to this email.</p>
-                                    </div>
-
-                                    <Button type="submit" className="w-full text-sm font-bold h-11 rounded-xl bg-[#0276D3] hover:bg-[#015bb5]" disabled={starting}>
-                                        {starting ? (
-                                            <>
-                                                <Loader2 className="w-4 h-4 animate-spin mr-2" /> Validating Candidate...
-                                            </>
-                                        ) : (
-                                            'Start Certification Exam'
+                                        {startError && (
+                                            <div
+                                                className={`p-3.5 rounded-xl text-xs flex items-start gap-2.5 ${
+                                                    startError.includes('already completed') || startError.includes('already earned')
+                                                        ? 'bg-amber-50 border border-amber-200 text-amber-900'
+                                                        : 'bg-red-50 border border-red-200 text-red-800'
+                                                }`}
+                                            >
+                                                {startError.includes('already completed') || startError.includes('already earned') ? (
+                                                    <Award className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                                                ) : (
+                                                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                                                )}
+                                                <div>
+                                                    <p className="font-bold">
+                                                        {startError.includes('already completed') || startError.includes('already earned')
+                                                            ? 'Already Certified'
+                                                            : 'Access Denied'}
+                                                    </p>
+                                                    <p className="mt-0.5 text-[11px] leading-relaxed">{startError}</p>
+                                                </div>
+                                            </div>
                                         )}
-                                    </Button>
-                                </form>
+
+                                        <form onSubmit={handleStart} className="space-y-4">
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="name" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                                    Full Name (Printed on Certificate) *
+                                                </Label>
+                                                <div className="relative">
+                                                    <User className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                                                    <Input
+                                                        id="name"
+                                                        placeholder="e.g. John Doe"
+                                                        className="pl-9 rounded-xl text-sm"
+                                                        value={candidateName}
+                                                        onChange={(e) => setCandidateName(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="email" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                                    Whitelisted Candidate Email *
+                                                </Label>
+                                                <div className="relative">
+                                                    <Mail className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
+                                                    <Input
+                                                        id="email"
+                                                        type="email"
+                                                        placeholder="e.g. john@example.com"
+                                                        className="pl-9 rounded-xl text-sm"
+                                                        value={candidateEmail}
+                                                        onChange={(e) => setCandidateEmail(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <p className="text-[10px] text-slate-400">Must match the exact email address authorized by your administrator.</p>
+                                            </div>
+
+                                            <Button type="submit" className="w-full text-sm font-bold h-11 rounded-xl bg-[#0276D3] hover:bg-[#015bb5]" disabled={starting}>
+                                                {starting ? (
+                                                    <>
+                                                        <Loader2 className="w-4 h-4 animate-spin mr-2" /> Validating Candidate...
+                                                    </>
+                                                ) : (
+                                                    'Start Certification Exam'
+                                                )}
+                                            </Button>
+                                        </form>
+                                    </>
+                                )}
                             </CardContent>
                         </Card>
                     </div>

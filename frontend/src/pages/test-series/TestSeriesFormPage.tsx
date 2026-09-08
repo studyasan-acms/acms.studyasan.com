@@ -30,7 +30,8 @@ import {
 import { testSeriesService, teacherService, currencyService } from "@/services/api";
 import type { TestSeriesTeacherJunction, Currency } from "@/types";
 import { useAuthStore } from "@/store/authStore";
-import { ArrowLeft, Loader2, Save, Users, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Users, UserPlus, X, Coins } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { usePageTitle } from "@/hooks/usePageTitle";
 
@@ -64,6 +65,7 @@ export default function TestSeriesFormPage() {
         title: "",
         description: "",
         price: "",
+        actual_price: "",
         currency_id: "",
         is_published: false,
     });
@@ -84,7 +86,8 @@ export default function TestSeriesFormPage() {
             setFormData({
                 title: data.title || "",
                 description: data.description || "",
-                price: data.price?.toString() || "",
+                price: data.price !== undefined && data.price !== null ? data.price.toString() : "",
+                actual_price: data.actual_price !== undefined && data.actual_price !== null ? data.actual_price.toString() : "",
                 currency_id: data.currency_id?.toString() || "",
                 is_published: data.is_published || false,
             });
@@ -136,7 +139,8 @@ export default function TestSeriesFormPage() {
             const payload = {
                 title: formData.title,
                 description: formData.description || undefined,
-                price: parseInt(formData.price),
+                price: formData.price !== "" ? parseFloat(formData.price) : null,
+                actual_price: formData.actual_price !== "" ? parseFloat(formData.actual_price) : null,
                 currency_id: formData.currency_id ? parseInt(formData.currency_id) : undefined,
                 is_published: formData.is_published,
             };
@@ -270,45 +274,85 @@ export default function TestSeriesFormPage() {
                             />
                         </div>
 
-                        {/* Price */}
-                        <div className="space-y-2">
-                            <Label htmlFor="price">Price *</Label>
-                            <Input
-                                id="price"
-                                name="price"
-                                type="number"
-                                value={formData.price}
-                                onChange={handleChange}
-                                placeholder="Enter price"
-                                min="0"
-                                required
-                            />
+                        {/* Pricing Grid */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <Label htmlFor="actual_price" className="flex items-center gap-1.5 font-medium text-sm text-gray-700">
+                                    <Coins className="w-4 h-4 text-slate-500" />
+                                    Actual Price (MRP)
+                                </Label>
+                                <Input
+                                    id="actual_price"
+                                    name="actual_price"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.actual_price}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 500"
+                                    className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
+                                />
+                                <p className="text-[11px] text-slate-400">Original price (shown with strike-through)</p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="price" className="flex items-center gap-1.5 font-medium text-sm text-gray-700">
+                                    <Coins className="w-4 h-4 text-slate-500" />
+                                    Discounted Price (Selling Price)
+                                </Label>
+                                <Input
+                                    id="price"
+                                    name="price"
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={formData.price}
+                                    onChange={handleChange}
+                                    placeholder="e.g. 299"
+                                    className="h-10 rounded-xl bg-gray-50 border-gray-200 focus:bg-white transition-colors text-sm"
+                                />
+                                <p className="text-[11px] text-slate-400">Actual price student will pay</p>
+                            </div>
                         </div>
 
-                        {isAdmin && (
-                            <>
-                                {/* Currency */}
-                                <div className="space-y-2">
-                                    <Label htmlFor="currency_id">Currency</Label>
-                                    <Select
-                                        value={formData.currency_id}
-                                        onValueChange={(value) =>
-                                            setFormData((prev) => ({ ...prev, currency_id: value }))
-                                        }
-                                    >
-                                        <SelectTrigger id="currency_id">
-                                            <SelectValue placeholder="Select currency" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {currencies.map((currency) => (
-                                                <SelectItem key={currency.id} value={currency.id.toString()}>
-                                                    {currency.name} ({currency.code})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                        {/* Live Discount Calculation Badge */}
+                        {formData.actual_price !== "" && formData.price !== "" && parseFloat(formData.actual_price) > parseFloat(formData.price) && (
+                            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs animate-in fade-in">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 line-through font-semibold">
+                                        ₹{parseFloat(formData.actual_price).toLocaleString()}
+                                    </span>
+                                    <span className="text-sm font-black text-slate-900">
+                                        ₹{parseFloat(formData.price).toLocaleString()}
+                                    </span>
                                 </div>
-                            </>
+                                <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 border-none">
+                                    {Math.round(((parseFloat(formData.actual_price) - parseFloat(formData.price)) / parseFloat(formData.actual_price)) * 100)}% DISCOUNT
+                                </Badge>
+                            </div>
+                        )}
+
+                        {isAdmin && (
+                            <div className="space-y-2">
+                                <Label htmlFor="currency_id">Currency</Label>
+                                <Select
+                                    value={formData.currency_id}
+                                    onValueChange={(value) =>
+                                        setFormData((prev) => ({ ...prev, currency_id: value }))
+                                    }
+                                >
+                                    <SelectTrigger id="currency_id" className="h-10 rounded-xl bg-gray-50 border-gray-200 text-sm">
+                                        <SelectValue placeholder="Select currency" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {currencies.map((currency) => (
+                                            <SelectItem key={currency.id} value={currency.id.toString()}>
+                                                {currency.name} ({currency.code})
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         )}
 
                         {/* Published */}

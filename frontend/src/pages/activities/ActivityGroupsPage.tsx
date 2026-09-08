@@ -111,6 +111,7 @@ export default function ActivityGroupsPage() {
     description: '',
     cover_image: '',
     price: null,
+    actual_price: null,
     currency_id: null,
   });
 
@@ -141,17 +142,21 @@ export default function ActivityGroupsPage() {
       if (statusFilter !== 'all') params.status = statusFilter;
       if (sortOption) params.sort = sortOption;
 
-      const response = await activityGroupAPI.getAll(params);
-      setActivityGroups(response.data.data.activityGroups || []);
-      if (response.data.data.pagination) {
-        setTotalPages(response.data.data.pagination.totalPages || 1);
-        setTotal(response.data.data.pagination.total || 0);
+      const res = await activityGroupAPI.getAll(params);
+      const data = (res.data as any)?.data || res.data;
+      setActivityGroups(data.activityGroups || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setTotal(data.pagination?.total || 0);
+      if (data.stats) {
+        setStats({
+          total: data.stats.total || 0,
+          active: data.stats.active || 0,
+          inactive: data.stats.inactive || 0,
+        });
       }
-      if (response.data.data.stats) {
-        setStats(response.data.data.stats);
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to fetch activity groups');
+    } catch (err: any) {
+      console.error('Failed to fetch activity groups:', err);
+      toast.error('Failed to load activity groups');
     } finally {
       setLoading(false);
     }
@@ -180,7 +185,7 @@ export default function ActivityGroupsPage() {
 
   // Form helpers
   const resetForm = () => {
-    setFormData({ name: '', description: '', cover_image: '', price: null, currency_id: null });
+    setFormData({ name: '', description: '', cover_image: '', price: null, actual_price: null, currency_id: null });
     setEditingGroup(null);
   };
 
@@ -196,6 +201,7 @@ export default function ActivityGroupsPage() {
       description: group.description || '',
       cover_image: group.cover_image || '',
       price: group.price ? Number(group.price) : null,
+      actual_price: group.actual_price ? Number(group.actual_price) : null,
       currency_id: group.currency_id,
     });
     setFormOpen(true);
@@ -385,20 +391,55 @@ export default function ActivityGroupsPage() {
               )}
             </div>
             {isAdmin && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="ag-price" className="font-semibold text-xs text-slate-700">Price</Label>
-                  <Input
-                    id="ag-price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="0.00"
-                    value={formData.price ?? ''}
-                    onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value ? parseFloat(e.target.value) : null }))}
-                    className="rounded-xl border-slate-200 focus:ring-saBlue"
-                  />
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ag-actual-price" className="font-semibold text-xs text-slate-700">Actual Price (MRP)</Label>
+                    <Input
+                      id="ag-actual-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 500"
+                      value={formData.actual_price ?? ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, actual_price: e.target.value ? parseFloat(e.target.value) : null }))}
+                      className="rounded-xl border-slate-200 focus:ring-saBlue text-sm"
+                    />
+                    <p className="text-[10px] text-slate-400">Original price (strikethrough)</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ag-price" className="font-semibold text-xs text-slate-700">Discounted Price (Selling Price)</Label>
+                    <Input
+                      id="ag-price"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 299"
+                      value={formData.price ?? ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value ? parseFloat(e.target.value) : null }))}
+                      className="rounded-xl border-slate-200 focus:ring-saBlue text-sm"
+                    />
+                    <p className="text-[10px] text-slate-400">Actual price student will pay</p>
+                  </div>
                 </div>
+
+                {/* Live Discount Calculation Badge */}
+                {formData.actual_price !== null && formData.actual_price !== undefined && formData.price !== null && formData.price !== undefined && formData.actual_price > formData.price && (
+                  <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between text-xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-400 line-through font-semibold">
+                        ₹{formData.actual_price.toLocaleString()}
+                      </span>
+                      <span className="text-sm font-black text-slate-900">
+                        ₹{formData.price.toLocaleString()}
+                      </span>
+                    </div>
+                    <Badge className="bg-emerald-600 text-white font-extrabold text-[10px] px-2 py-0.5 border-none">
+                      {Math.round(((formData.actual_price - formData.price) / formData.actual_price) * 100)}% DISCOUNT
+                    </Badge>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
                   <Label htmlFor="ag-currency" className="font-semibold text-xs text-slate-700">Currency</Label>
                   <Select
@@ -406,7 +447,7 @@ export default function ActivityGroupsPage() {
                     onValueChange={(value) => setFormData(prev => ({ ...prev, currency_id: value ? parseInt(value) : null }))}
                   >
                     <SelectTrigger id="ag-currency" className="rounded-xl border-slate-200">
-                      <SelectValue placeholder="Select" />
+                      <SelectValue placeholder="Select currency" />
                     </SelectTrigger>
                     <SelectContent>
                       {currencies.map((c) => (
@@ -417,7 +458,7 @@ export default function ActivityGroupsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              </>
             )}
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => { setFormOpen(false); resetForm(); }} className="rounded-xl">
@@ -664,10 +705,26 @@ export default function ActivityGroupsPage() {
 
                 {/* Price Tag */}
                 <div className="flex items-center justify-between">
-                  {group.price !== undefined && group.price !== null ? (
-                    <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
-                      <IndianRupee className="h-3 w-3 mr-0.5" />{group.price}
-                    </Badge>
+                  {(group.price !== undefined && group.price !== null) || (group.actual_price !== undefined && group.actual_price !== null) ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {group.actual_price && group.price && group.actual_price > group.price ? (
+                        <>
+                          <span className="text-[11px] text-slate-400 line-through font-semibold">
+                            {group.currency?.symbol || '₹'}{group.actual_price.toLocaleString()}
+                          </span>
+                          <span className="text-xs font-black text-slate-900">
+                            {group.currency?.symbol || '₹'}{group.price.toLocaleString()}
+                          </span>
+                          <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                            {Math.round(((group.actual_price - group.price) / group.actual_price) * 100)}% OFF
+                          </Badge>
+                        </>
+                      ) : (
+                        <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
+                          {group.currency?.symbol || '₹'}{(group.price ?? group.actual_price)?.toLocaleString()}
+                        </Badge>
+                      )}
+                    </div>
                   ) : (
                     <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg">
                       Free
@@ -763,7 +820,19 @@ export default function ActivityGroupsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-xs font-semibold text-slate-700">
-                    {group.price ? `₹${group.price}` : "Free"}
+                    {group.actual_price && group.price && group.actual_price > group.price ? (
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-slate-400 line-through text-[11px]">{group.currency?.symbol || '₹'}{group.actual_price.toLocaleString()}</span>
+                        <span className="font-bold text-slate-900">{group.currency?.symbol || '₹'}{group.price.toLocaleString()}</span>
+                        <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                          {Math.round(((group.actual_price - group.price) / group.actual_price) * 100)}% OFF
+                        </Badge>
+                      </div>
+                    ) : (group.price !== null && group.price !== undefined) || (group.actual_price !== null && group.actual_price !== undefined) ? (
+                      `${group.currency?.symbol || '₹'}${Number(group.price ?? group.actual_price).toLocaleString()}`
+                    ) : (
+                      "Free"
+                    )}
                   </TableCell>
                   <TableCell className="text-xs text-slate-600 font-medium">
                     {group._count?.activities || 0}

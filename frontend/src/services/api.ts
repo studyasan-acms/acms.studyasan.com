@@ -1276,7 +1276,8 @@ export const testSeriesService = {
     title: string;
     description?: string;
     cover_image?: string;
-    price?: number;
+    price?: number | null;
+    actual_price?: number | null;
     currency_id?: number | null;
     is_published?: boolean;
   }): Promise<{ success: boolean; data: TestSeries }> => {
@@ -1291,7 +1292,8 @@ export const testSeriesService = {
       title?: string;
       description?: string;
       cover_image?: string;
-      price?: number;
+      price?: number | null;
+      actual_price?: number | null;
       currency_id?: number | null;
       is_published?: boolean;
     }
@@ -1370,6 +1372,7 @@ export const activityGroupService = {
     description?: string;
     cover_image?: string;
     price?: number | null;
+    actual_price?: number | null;
     currency_id?: number | null;
   }): Promise<{ success: boolean; data: ActivityGroup }> => {
     const response = await api.post('/activity-groups', data);
@@ -1385,6 +1388,7 @@ export const activityGroupService = {
       cover_image?: string;
       is_active?: boolean;
       price?: number | null;
+      actual_price?: number | null;
       currency_id?: number | null;
     }
   ): Promise<{ success: boolean; data: ActivityGroup }> => {

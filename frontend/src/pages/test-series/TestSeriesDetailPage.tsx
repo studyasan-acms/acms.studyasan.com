@@ -320,7 +320,29 @@ export default function TestSeriesDetailPage() {
             <Card>
                 <CardContent className="pt-6">
                     <p className="text-sm text-muted-foreground">Price</p>
-                    <p className="text-2xl font-bold">₹{testSeries.price || 0}</p>
+                    {(testSeries.price !== null && testSeries.price !== undefined) || (testSeries.actual_price !== null && testSeries.actual_price !== undefined) ? (
+                        <div className="flex items-center gap-2 mt-1">
+                            {testSeries.actual_price && testSeries.price && testSeries.actual_price > testSeries.price ? (
+                                <>
+                                    <span className="text-base text-slate-400 line-through font-semibold">
+                                        {testSeries.currency?.symbol || '₹'}{testSeries.actual_price.toLocaleString()}
+                                    </span>
+                                    <span className="text-2xl font-bold text-slate-900">
+                                        {testSeries.currency?.symbol || '₹'}{testSeries.price.toLocaleString()}
+                                    </span>
+                                    <Badge className="bg-emerald-600 text-white font-black text-xs px-2 py-0.5 border-none">
+                                        {Math.round(((testSeries.actual_price - testSeries.price) / testSeries.actual_price) * 100)}% OFF
+                                    </Badge>
+                                </>
+                            ) : (
+                                <p className="text-2xl font-bold text-slate-900">
+                                    {testSeries.currency?.symbol || '₹'}{(testSeries.price ?? testSeries.actual_price)?.toLocaleString()}
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <p className="text-2xl font-bold text-slate-900 mt-1">Free</p>
+                    )}
                 </CardContent>
             </Card>
 

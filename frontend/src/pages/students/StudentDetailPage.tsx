@@ -1196,7 +1196,14 @@ export default function StudentDetailPage() {
                   placeholder="Choose Subject"
                   searchPlaceholder="Search subject..."
                   triggerClassName="h-12 rounded-xl border-gray-200 bg-gray-50"
-                  options={subjects.map((s) => ({ value: s.id.toString(), label: s.name }))}
+                  options={subjects.map((s) => {
+                    const details = [s.class?.name, s.board?.name].filter(Boolean).join(' • ');
+                    return {
+                      value: s.id.toString(),
+                      label: `${s.name}${details ? ` (${details})` : ''}`,
+                      searchText: `${s.name} ${s.class?.name || ''} ${s.board?.name || ''}`,
+                    };
+                  })}
                 />
               </div>
 

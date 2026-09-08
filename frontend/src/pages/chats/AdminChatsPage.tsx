@@ -908,7 +908,7 @@ export default function AdminChatsPage() {
                                   isOwnMessage ? "text-blue-100" : "text-slate-400"
                                 )}
                               >
-                                <span>{format(new Date(message.created_at), "h:mm a")}</span>
+                                <span>{format(new Date(message.created_at), "d MMM yyyy, h:mm a")}</span>
                                 {isOwnMessage && <CheckCheck className="w-3 h-3 text-blue-100" />}
                               </div>
                             </div>

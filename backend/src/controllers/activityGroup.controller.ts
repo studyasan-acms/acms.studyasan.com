@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 // Create Activity Group
 export const createActivityGroup = async (req: Request, res: Response) => {
   try {
-    const { name, description, cover_image, price, currency_id } = req.body;
+    const { name, description, cover_image, price, actual_price, currency_id } = req.body;
     const userId = (req as any).user.id;
 
     const activityGroup = await prisma.activityGroup.create({
@@ -26,7 +26,8 @@ export const createActivityGroup = async (req: Request, res: Response) => {
         name,
         description,
         cover_image,
-        ...(price && { price: parseFloat(price) }),
+        ...(price !== undefined && price !== '' && price !== null && { price: parseFloat(price) }),
+        ...(actual_price !== undefined && actual_price !== '' && actual_price !== null && { actual_price: parseFloat(actual_price) }),
         ...(currency_id && { currency_id: parseInt(currency_id) }),
         created_by: userId,
       },
@@ -231,7 +232,7 @@ export const getActivityGroupById = async (req: Request, res: Response) => {
 export const updateActivityGroup = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { name, description, cover_image, is_active, price, currency_id } = req.body;
+    const { name, description, cover_image, is_active, price, actual_price, currency_id } = req.body;
 
     const activityGroup = await prisma.activityGroup.update({
       where: { id: Number(id) },
@@ -240,7 +241,8 @@ export const updateActivityGroup = async (req: Request, res: Response) => {
         description,
         cover_image,
         is_active,
-        ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+        ...(price !== undefined && { price: price !== '' && price !== null ? parseFloat(price) : null }),
+        ...(actual_price !== undefined && { actual_price: actual_price !== '' && actual_price !== null ? parseFloat(actual_price) : null }),
         ...(currency_id !== undefined && { currency_id: currency_id ? parseInt(currency_id) : null }),
       },
       include: {
