@@ -416,7 +416,7 @@ export const togglePublishActivity = async (req: Request, res: Response) => {
 export const getActivitiesForStudent = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.id;
-    const { page = 1, limit = 10, activity_type, difficulty } = req.query;
+    const { page = 1, limit = 1000, activity_type, difficulty, group_id } = req.query;
     const skip = (Number(page) - 1) * Number(limit);
 
     // Get student
@@ -459,17 +459,62 @@ export const getActivitiesForStudent = async (req: Request, res: Response) => {
       },
     });
 
+    // Also find individual activity IDs where student is directly enrolled
+    const individualEnrollments = await prisma.activityEnrollment.findMany({
+      where: {
+        student_id: student.id,
+        activity: {
+          is_published: true,
+        },
+      },
+      select: {
+        activity_id: true,
+      },
+    });
+    const individualActivityIds = individualEnrollments.map(ie => ie.activity_id);
+
     const groupIdsFromActivities = enrolledGroups.map(eg => eg.activity.group_id);
     const groupIdsFromGroups = groupEnrollments.map(ge => ge.activity_group_id).filter((id): id is number => id !== null);
     
     const groupIds = [...new Set([...groupIdsFromActivities, ...groupIdsFromGroups])];
 
+    // Fetch all enrolled activity groups so student knows which groups they have
+    const activityGroups = await prisma.activityGroup.findMany({
+      where: {
+        id: {
+          in: groupIds,
+        },
+        is_active: true,
+      },
+      include: {
+        _count: {
+          select: {
+            activities: {
+              where: {
+                is_published: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    });
+
     const where: any = {
       is_published: true,
-      group_id: {
-        in: groupIds,
-      },
+      OR: [
+        { group_id: { in: groupIds } },
+        { id: { in: individualActivityIds } },
+      ],
     };
+
+    if (group_id && !isNaN(Number(group_id))) {
+      delete where.OR;
+      where.group_id = Number(group_id);
+    }
+
     if (activity_type) where.activity_type = activity_type;
     if (difficulty) where.difficulty = difficulty;
 
@@ -521,6 +566,7 @@ export const getActivitiesForStudent = async (req: Request, res: Response) => {
 
     return sendSuccess(res, {
       activities,
+      activityGroups,
       pagination: {
         total,
         page: Number(page),

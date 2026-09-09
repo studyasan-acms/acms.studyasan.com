@@ -80,10 +80,12 @@ export const activityAPI = {
     limit?: number;
     activity_type?: string;
     difficulty?: string;
+    group_id?: number;
   }) =>
     api.get<{
       data: {
         activities: Activity[];
+        activityGroups?: ActivityGroup[];
         pagination: any;
       };
     }>('/activities/student/available', { params }),
