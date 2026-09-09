@@ -24,6 +24,7 @@ import {
     Play,
     CheckCircle2,
     LayoutDashboard,
+    Compass,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -364,6 +365,15 @@ export default function StudentDashboardPage() {
                 subtitle="Track your learning progress, test performance, and academic metrics"
                 icon={LayoutDashboard}
                 badge="Student Portal"
+                actions={
+                    <Button
+                        onClick={() => navigate('/dashboard/explore')}
+                        className="bg-saBlue hover:bg-saBlue/90 text-white font-bold text-xs sm:text-sm h-9 px-4 rounded-xl flex items-center gap-2 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                        <Compass className="w-4 h-4" />
+                        <span>Explore</span>
+                    </Button>
+                }
             />
 
             {/* 🎂 Birthday Banner */}

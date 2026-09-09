@@ -7,9 +7,10 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Loader2, PlayCircle, Clock, Calendar, AlertCircle, HardDrive, ShieldAlert } from 'lucide-react';
+import { Loader2, PlayCircle, Clock, Calendar, AlertCircle, HardDrive, ShieldAlert, Download } from 'lucide-react';
 import { recordingApi, type SessionRecordingInfo } from '@/services/api';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 interface RecordingPlayerModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
   sessionTitle,
 }) => {
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [recordingInfo, setRecordingInfo] = useState<SessionRecordingInfo | null>(null);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,6 +60,44 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      const streamUrl = `${recordingApi.getStreamUrl(sessionId)}&download=true`;
+      const safeTitle = (sessionTitle || `session_${sessionId}`)
+        .replace(/[^a-zA-Z0-9_-]/g, '_')
+        .toLowerCase();
+      const filename = `${safeTitle}_recording.mp4`;
+
+      const response = await fetch(streamUrl);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      toast.success('Recording download completed');
+    } catch (err: any) {
+      console.error('Download error:', err);
+      // Fallback: direct browser navigation to download URL
+      const streamUrl = `${recordingApi.getStreamUrl(sessionId)}&download=true`;
+      const a = document.createElement('a');
+      a.href = streamUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.info('Initiating recording download...');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const formatFileSize = (bytesStr?: string) => {
     if (!bytesStr) return 'Unknown size';
     const bytes = Number(bytesStr);
@@ -82,13 +122,13 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-3xl border border-slate-200 bg-white shadow-2xl">
         <DialogHeader className="p-5 pb-3 border-b border-slate-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="p-2 rounded-xl bg-blue-50 text-blue-600 shrink-0">
                 <PlayCircle className="w-5 h-5" />
               </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-slate-900">
+              <div className="min-w-0">
+                <DialogTitle className="text-lg font-bold text-slate-900 truncate">
                   {sessionTitle ? `${sessionTitle} - Class Recording` : 'Class Session Recording'}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-slate-500">
@@ -96,6 +136,23 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
                 </DialogDescription>
               </div>
             </div>
+            {recordingInfo?.available && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={downloading}
+                onClick={handleDownload}
+                className="h-8 px-3 text-xs font-bold rounded-xl border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 flex items-center gap-1.5 shrink-0 transition-all"
+              >
+                {downloading ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>{downloading ? 'Downloading...' : 'Download Video'}</span>
+              </Button>
+            )}
           </div>
         </DialogHeader>
 
@@ -164,7 +221,7 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 text-slate-600">
+                <div className="flex items-center gap-3 text-slate-600">
                   {recordingInfo.durationSeconds && (
                     <div className="flex items-center gap-1.5" title="Duration">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
@@ -177,6 +234,20 @@ export const RecordingPlayerModal: React.FC<RecordingPlayerModalProps> = ({
                       <span>{formatFileSize(recordingInfo.fileSizeBytes)}</span>
                     </div>
                   )}
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={downloading}
+                    onClick={handleDownload}
+                    className="h-7 px-2.5 text-[11px] font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-xs"
+                  >
+                    {downloading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5" />
+                    )}
+                    <span>Download</span>
+                  </Button>
                 </div>
               </div>
 

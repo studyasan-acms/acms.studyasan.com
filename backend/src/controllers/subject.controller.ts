@@ -217,6 +217,53 @@ export const getSubjectById = async (req: Request, res: Response) => {
   }
 };
 
+const parseSyllabusHelper = (raw: any): { units: any[]; modules: any[] } | null => {
+  if (!raw) return null;
+  let parsed = raw;
+  while (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      break;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return null;
+
+  if (Array.isArray(parsed)) {
+    const units = parsed.map((item: any, idx: number) => ({
+      name: item?.name || item?.title || `Unit ${idx + 1}`,
+      content: item?.content || item?.description || '',
+    }));
+    return {
+      units,
+      modules: units.map((u: any, idx: number) => ({
+        module_id: idx + 1,
+        title: u.name,
+        description: u.content,
+        order: idx + 1,
+        content: [],
+        estimated_time_minutes: 0,
+      })),
+    };
+  }
+
+  const units = Array.isArray(parsed.units) ? parsed.units : [];
+  let modules = Array.isArray(parsed.modules) ? parsed.modules : [];
+
+  if (modules.length === 0 && units.length > 0) {
+    modules = units.map((unit: any, index: number) => ({
+      module_id: index + 1,
+      title: unit.name || `Unit ${index + 1}`,
+      description: unit.content || unit.name || '',
+      order: index + 1,
+      content: [],
+      estimated_time_minutes: 0,
+    }));
+  }
+
+  return { units, modules };
+};
+
 export const createSubject = async (req: Request, res: Response) => {
   try {
     const { name, class_id, board_id, syllabus, is_course, end_date, price, actual_price, currency_id } = req.body;
@@ -230,17 +277,7 @@ export const createSubject = async (req: Request, res: Response) => {
 
     let parsedSyllabus: any = null;
     if (syllabus) {
-      parsedSyllabus = typeof syllabus === 'string' ? JSON.parse(syllabus) : syllabus;
-      if (Array.isArray(parsedSyllabus?.units) && (!parsedSyllabus.modules || parsedSyllabus.modules.length === 0)) {
-        parsedSyllabus.modules = parsedSyllabus.units.map((unit: any, index: number) => ({
-          module_id: index + 1,
-          title: unit.name || `Unit ${index + 1}`,
-          description: unit.content || unit.name || '',
-          order: index + 1,
-          content: [],
-          estimated_time_minutes: 0,
-        }));
-      }
+      parsedSyllabus = parseSyllabusHelper(syllabus);
     }
 
     const subject = await prisma.subject.create({
@@ -286,32 +323,28 @@ export const updateSubject = async (req: Request, res: Response) => {
       select: { syllabus: true },
     });
 
-    const existingSyllabus = (existingSubject?.syllabus as any) || {};
+    const existingSyllabus = parseSyllabusHelper(existingSubject?.syllabus) || { units: [], modules: [] };
     let finalSyllabus: any = undefined;
 
     if (syllabus !== undefined && syllabus !== '') {
-      const parsedSyllabus = syllabus ? (typeof syllabus === 'string' ? JSON.parse(syllabus) : syllabus) : null;
+      const parsedSyllabus = parseSyllabusHelper(syllabus);
       if (parsedSyllabus) {
-        finalSyllabus = {
-          ...existingSyllabus,
-          ...parsedSyllabus,
-          units: parsedSyllabus.units !== undefined ? parsedSyllabus.units : (existingSyllabus.units || []),
-          modules: (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0)
-            ? parsedSyllabus.modules
-            : (existingSyllabus.modules || []),
-        };
+        const units = parsedSyllabus.units.length > 0
+          ? parsedSyllabus.units
+          : existingSyllabus.units;
 
-        // If modules is empty but units exist, initialize modules from units
-        if ((!finalSyllabus.modules || finalSyllabus.modules.length === 0) && Array.isArray(finalSyllabus.units) && finalSyllabus.units.length > 0) {
-          finalSyllabus.modules = finalSyllabus.units.map((unit: any, index: number) => ({
-            module_id: index + 1,
-            title: unit.name || `Unit ${index + 1}`,
-            description: unit.content || unit.name || '',
-            order: index + 1,
-            content: [],
-            estimated_time_minutes: 0,
-          }));
-        }
+        const modules = parsedSyllabus.modules.length > 0
+          ? parsedSyllabus.modules
+          : (existingSyllabus.modules.length > 0 ? existingSyllabus.modules : units.map((u: any, i: number) => ({
+              module_id: i + 1,
+              title: u.name || `Unit ${i + 1}`,
+              description: u.content || u.name || '',
+              order: i + 1,
+              content: [],
+              estimated_time_minutes: 0,
+            })));
+
+        finalSyllabus = { units, modules };
       }
     }
 

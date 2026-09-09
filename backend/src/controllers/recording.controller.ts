@@ -319,21 +319,29 @@ export const streamSessionRecording = async (req: AuthRequest, res: Response) =>
       const chunksize = end - start + 1;
       const fileStream = fs.createReadStream(filePath, { start, end });
 
-      const head = {
+      const head: Record<string, any> = {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
         'Content-Type': mimeType,
       };
 
+      if (req.query.download === 'true' || req.query.download === '1') {
+        head['Content-Disposition'] = `attachment; filename="session_${sessionId}_recording.mp4"`;
+      }
+
       res.writeHead(206, head);
       fileStream.pipe(res);
     } else {
-      const head = {
+      const head: Record<string, any> = {
         'Content-Length': fileSize,
         'Content-Type': mimeType,
         'Accept-Ranges': 'bytes',
       };
+
+      if (req.query.download === 'true' || req.query.download === '1') {
+        head['Content-Disposition'] = `attachment; filename="session_${sessionId}_recording.mp4"`;
+      }
 
       res.writeHead(200, head);
       fs.createReadStream(filePath).pipe(res);

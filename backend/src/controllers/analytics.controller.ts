@@ -94,7 +94,6 @@ export const getTeacherStudentsAnalytics = async (req: Request, res: Response) =
                 return {
                     studentId: student.id,
                     studentName: student.user.name,
-                    studentEmail: student.user.email,
                     ...analytics
                 };
             })
@@ -160,7 +159,6 @@ export const getTeacherSubjectAnalytics = async (req: Request, res: Response) =>
                 return {
                     studentId: enrollment.student.id,
                     studentName: enrollment.student.user.name,
-                    studentEmail: enrollment.student.user.email,
                     ...analytics
                 };
             })

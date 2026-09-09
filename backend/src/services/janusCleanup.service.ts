@@ -122,7 +122,11 @@ export class JanusCleanupService {
           });
           const listData = await listParticipantsRes.json();
           const participants = listData?.plugindata?.data?.participants || [];
-          numParticipants = participants.length;
+          const humanParticipants = participants.filter((p: any) => {
+            const name = String(p?.display || '').toLowerCase();
+            return !name.includes('recording bot') && !name.includes('[bot]');
+          });
+          numParticipants = humanParticipants.length;
         } catch (e) {
           console.warn(`[JanusCleanup] Could not query participants for room ${roomIdNumber}`);
         }

@@ -21,6 +21,7 @@ import {
 import { progressService, subjectService, moduleService } from "@/services/api";
 import type { Subject, Module, StudentModuleProgress } from "@/types";
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,7 +35,7 @@ import {
 interface StudentProgress {
   student_id: number;
   student_name: string;
-  student_email: string;
+  student_email?: string;
   modules: StudentModuleProgress[];
   total_modules: number;
   completed_modules: number;
@@ -44,6 +45,8 @@ interface StudentProgress {
 
 export default function SubjectProgressPage() {
   usePageTitle("Analytics & Progress");
+  const { user } = useAuthStore();
+  const isTeacher = user?.role === "TEACHER";
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
   const [subject, setSubject] = useState<Subject | null>(null);
@@ -97,7 +100,7 @@ export default function SubjectProgressPage() {
   const filteredProgress = studentProgress.filter((sp) => {
     const matchesSearch =
       sp.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sp.student_email.toLowerCase().includes(searchTerm.toLowerCase());
+      (!isTeacher && !!sp.student_email && sp.student_email.toLowerCase().includes(searchTerm.toLowerCase()));
 
     if (!matchesSearch) return false;
 
@@ -241,7 +244,7 @@ export default function SubjectProgressPage() {
         <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
-            placeholder="Search student by name or email..."
+            placeholder={isTeacher ? "Search student by name..." : "Search student by name or email..."}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 h-9 text-xs rounded-xl border-slate-200 focus-visible:ring-saBlue"
@@ -322,10 +325,12 @@ export default function SubjectProgressPage() {
                             <p className="font-bold text-slate-900 text-xs truncate">
                               {sp.student_name}
                             </p>
-                            <p className="text-[11px] text-slate-500 truncate flex items-center gap-1">
-                              <Mail className="w-3 h-3 text-slate-400" />
-                              {sp.student_email}
-                            </p>
+                            {!isTeacher && sp.student_email && (
+                              <p className="text-[11px] text-slate-500 truncate flex items-center gap-1">
+                                <Mail className="w-3 h-3 text-slate-400" />
+                                {sp.student_email}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>

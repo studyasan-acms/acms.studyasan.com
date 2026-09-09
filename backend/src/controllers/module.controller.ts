@@ -30,8 +30,34 @@ interface Module {
 }
 
 interface Syllabus {
+  units?: any[];
   modules: Module[];
 }
+
+const parseSyllabusHelper = (raw: any): { units: any[]; modules: Module[]; [key: string]: any } => {
+  if (!raw) return { units: [], modules: [] };
+  let parsed = raw;
+  while (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      break;
+    }
+  }
+  if (!parsed || typeof parsed !== 'object') return { units: [], modules: [] };
+  if (Array.isArray(parsed)) {
+    const units = parsed.map((item: any, idx: number) => ({
+      name: item?.name || item?.title || `Unit ${idx + 1}`,
+      content: item?.content || item?.description || '',
+    }));
+    return { units, modules: [] };
+  }
+  return {
+    ...parsed,
+    units: Array.isArray(parsed.units) ? parsed.units : [],
+    modules: Array.isArray(parsed.modules) ? parsed.modules : [],
+  };
+};
 
 // Get all modules for a subject
 export const getModulesBySubject = async (req: Request, res: Response) => {
@@ -47,7 +73,7 @@ export const getModulesBySubject = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     let modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
 
     // If modules is empty but syllabus has units (from subject creation/editing), convert them to modules
@@ -68,7 +94,7 @@ export const getModulesBySubject = async (req: Request, res: Response) => {
           syllabus: {
             ...syllabus,
             modules,
-          },
+          } as any,
         },
       });
     }
@@ -97,7 +123,7 @@ export const getModuleById = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     let modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
 
     // If modules is empty but syllabus has units, auto-convert
@@ -117,7 +143,7 @@ export const getModuleById = async (req: Request, res: Response) => {
           syllabus: {
             ...syllabus,
             modules,
-          },
+          } as any,
         },
       });
     }
@@ -153,7 +179,7 @@ export const createModule = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus.modules) ? [...syllabus.modules] : [];
 
     const newModuleId = modules.length > 0 
@@ -206,7 +232,7 @@ export const updateModule = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
@@ -254,7 +280,7 @@ export const deleteModule = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleToDelete = modules.find((m) => m.module_id === parseInt(moduleId!));
 
@@ -320,7 +346,7 @@ export const reorderModules = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
 
     module_orders.forEach(({ module_id, order }) => {
@@ -368,7 +394,7 @@ export const uploadContentToModule = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
@@ -436,7 +462,7 @@ export const addTextContent = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
@@ -491,7 +517,7 @@ export const removeContentFromModule = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
@@ -552,7 +578,7 @@ export const updateContent = async (req: Request, res: Response) => {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = (subject.syllabus as any) || {};
+    const syllabus = parseSyllabusHelper(subject.syllabus);
     const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 

@@ -83,6 +83,26 @@ interface ClassroomLayoutProps {
     setWhiteboardMessageHandler: (handler: (message: WhiteboardMessage) => void) => void;
 }
 
+function isBotUser(p: Participant | { displayName?: string } | null | undefined): boolean {
+    if (!p || !p.displayName) return false;
+    const name = p.displayName.trim().toLowerCase();
+    return name === 'recording bot' || name.includes('recording bot') || name.startsWith('[bot]');
+}
+
+function RemoteAudioPlayer({ stream }: { stream: MediaStream }) {
+    const audioRef = useRef<HTMLAudioElement>(null);
+    useEffect(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        if (el.srcObject !== stream) {
+            el.srcObject = stream;
+        }
+        el.play().catch(() => {});
+    }, [stream]);
+
+    return <audio ref={audioRef} autoPlay playsInline />;
+}
+
 function getStreamForParticipant(
     streams: Map<string | number, MediaStream>,
     participantId: string | number | undefined
@@ -144,7 +164,9 @@ export function ClassroomLayout({
         return () => clearInterval(timer);
     }, []);
 
-    // Build complete participant list including local user
+    const isLocalBot = (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('bot') === 'true') || isBotUser(localUser);
+
+    // Build complete participant list including local user (excluding bot)
     const localParticipant: Participant = useMemo(() => ({
         id: 'local',
         displayName: localUser.displayName,
@@ -160,35 +182,39 @@ export function ClassroomLayout({
     }), [localUser, localStream, isTeacher]);
 
     const allParticipants = useMemo(() => {
-        const list: Participant[] = [localParticipant];
-        const seenIds = new Set<string>([String(localParticipant.id)]);
+        const list: Participant[] = [];
+        if (!isLocalBot) {
+            list.push(localParticipant);
+        }
+        const seenIds = new Set<string>(list.map(p => String(p.id)));
 
         for (const p of participants.values()) {
+            if (isBotUser(p)) continue;
             const strId = String(p.id);
             if (seenIds.has(strId)) continue;
             seenIds.add(strId);
             list.push(p);
         }
         return list;
-    }, [localParticipant, participants]);
+    }, [localParticipant, participants, isLocalBot]);
 
     // Identify Teacher Participant:
     // - If local user is the actual teacher (isTeacher=true AND not admin), pin local user.
     // - Admin (isAdmin=true) is NEVER pinned as teacher even if they have elevated permissions.
     // - Otherwise, find remote participant whose displayName matches teacherName.
     const teacherParticipant = useMemo<Participant | null>(() => {
-        // Only pin local as teacher if they are the actual teacher (not an admin observer)
-        if (isTeacher && !isAdmin) {
+        // Only pin local as teacher if they are the actual teacher (not an admin observer and not bot)
+        if (isTeacher && !isAdmin && !isLocalBot) {
             return localParticipant;
         }
         if (teacherName) {
             const match = allParticipants.find(
-                p => !p.isLocal && p.displayName?.trim().toLowerCase() === teacherName.trim().toLowerCase()
+                p => !p.isLocal && !isBotUser(p) && p.displayName?.trim().toLowerCase() === teacherName.trim().toLowerCase()
             );
             if (match) return match;
         }
         const roleMatch = allParticipants.find(
-            p => !p.isLocal && (
+            p => !p.isLocal && !isBotUser(p) && (
                 p.displayName?.toLowerCase().includes('teacher') ||
                 p.displayName?.toLowerCase().includes('instructor')
             )
@@ -197,19 +223,20 @@ export function ClassroomLayout({
 
         // Fallback to first remote participant if not explicitly found
         const firstRemote = allParticipants.find(
-            p => !p.isLocal && !p.displayName?.endsWith(' (Screen)')
+            p => !p.isLocal && !isBotUser(p) && !p.displayName?.endsWith(' (Screen)')
         );
         return firstRemote || null;
-    }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants]);
+    }, [isTeacher, isAdmin, teacherName, localParticipant, allParticipants, isLocalBot]);
 
-    // Human participants only (excluding any separate screen publishers)
+    // Human participants only (excluding any separate screen publishers and bots)
     const humanParticipants = useMemo(() => {
-        return allParticipants.filter(p => !p.displayName?.endsWith(' (Screen)'));
+        return allParticipants.filter(p => !isBotUser(p) && !p.displayName?.endsWith(' (Screen)'));
     }, [allParticipants]);
 
     // Student participants: all participants except the pinned teacher and separate screen feeds
     const studentParticipants = useMemo(() => {
         return allParticipants.filter(p => {
+            if (isBotUser(p)) return false;
             if (p.displayName?.endsWith(' (Screen)')) return false;
             if (teacherParticipant) {
                 if (String(p.id) === String(teacherParticipant.id)) return false;
@@ -798,6 +825,13 @@ export function ClassroomLayout({
                         onToggleBackground={onToggleBackground}
                         onLeave={onLeave}
                     />
+                </div>
+
+                {/* Hidden background audio elements to guarantee continuous audio from all remote participants */}
+                <div className="hidden pointer-events-none" aria-hidden="true">
+                    {Array.from(remoteStreams.entries()).map(([id, stream]) => (
+                        <RemoteAudioPlayer key={String(id)} stream={stream} />
+                    ))}
                 </div>
             </div>
         </div>

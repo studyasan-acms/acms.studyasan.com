@@ -30,3 +30,69 @@ export function resolveImageUrl(url: string | null | undefined) {
 
   return `${baseUrl}${url}`;
 }
+
+export interface SyllabusUnit {
+  name: string;
+  content: string;
+}
+
+export interface SyllabusData {
+  units: SyllabusUnit[];
+  modules: any[];
+}
+
+export function normalizeSyllabus(rawSyllabus: any): SyllabusData {
+  if (!rawSyllabus) {
+    return { units: [], modules: [] };
+  }
+
+  let parsed = rawSyllabus;
+  while (typeof parsed === 'string') {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      break;
+    }
+  }
+
+  if (!parsed) {
+    return { units: [], modules: [] };
+  }
+
+  // If parsed is an array directly
+  if (Array.isArray(parsed)) {
+    const units: SyllabusUnit[] = parsed.map((item: any, idx: number) => ({
+      name: item?.name || item?.title || `Unit ${idx + 1}`,
+      content: item?.content || item?.description || '',
+    }));
+    return { units, modules: [] };
+  }
+
+  if (typeof parsed === 'object') {
+    let units: SyllabusUnit[] = [];
+    let modules: any[] = [];
+
+    if (Array.isArray(parsed.units)) {
+      units = parsed.units.map((u: any, idx: number) => ({
+        name: typeof u === 'string' ? u : (u?.name || u?.title || `Unit ${idx + 1}`),
+        content: typeof u === 'string' ? '' : (u?.content || u?.description || ''),
+      }));
+    }
+
+    if (Array.isArray(parsed.modules)) {
+      modules = parsed.modules;
+    }
+
+    // Fallback: If units is empty but modules has items, populate units from modules
+    if (units.length === 0 && modules.length > 0) {
+      units = modules.map((m: any, idx: number) => ({
+        name: m?.title || m?.name || `Unit ${idx + 1}`,
+        content: m?.description || (typeof m?.content === 'string' ? m.content : '') || '',
+      }));
+    }
+
+    return { units, modules };
+  }
+
+  return { units: [], modules: [] };
+}

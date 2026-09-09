@@ -718,7 +718,10 @@ router.post('/video-rooms/:janusRoomId/chat', authenticate, videoRoomController.
 // Whiteboard endpoints (Live classroom)
 router.get('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.getWhiteboardStrokes);
 router.post('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.addWhiteboardStroke);
+router.post('/video-rooms/:janusRoomId/whiteboard/sync', authenticate, videoRoomController.syncWhiteboard);
+router.post('/video-rooms/:janusRoomId/whiteboard/board', authenticate, videoRoomController.setWhiteboardBoard);
 router.delete('/video-rooms/:janusRoomId/whiteboard/strokes', authenticate, videoRoomController.deleteWhiteboardStrokes);
+router.post('/video-rooms/:janusRoomId/whiteboard/strokes/delete', authenticate, videoRoomController.deleteWhiteboardStrokes);
 router.delete('/video-rooms/:janusRoomId/whiteboard', authenticate, videoRoomController.clearWhiteboard);
 
 // Saved Whiteboards (Admin & Teacher)

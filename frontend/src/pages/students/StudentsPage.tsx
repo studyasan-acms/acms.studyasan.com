@@ -581,7 +581,7 @@ export default function StudentsPage() {
                   </Avatar>
                   <div className="mb-1">
                     <h3 className="text-base font-bold text-slate-900 leading-snug">{student.user.name}</h3>
-                    <p className="text-xs text-slate-400">{student.user.email}</p>
+                    {!isTeacher && <p className="text-xs text-slate-400">{student.user.email}</p>}
                   </div>
                 </div>
 
@@ -594,10 +594,12 @@ export default function StudentsPage() {
                     <span className="text-slate-400">Board:</span>
                     <span className="font-semibold text-slate-700">{student.board?.name || "N/A"}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Phone:</span>
-                    <span className="font-mono text-slate-700">{student.user.phone || "N/A"}</span>
-                  </div>
+                  {!isTeacher && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400">Phone:</span>
+                      <span className="font-mono text-slate-700">{student.user.phone || "N/A"}</span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="text-slate-400">Gender:</span>
                     <span className="font-semibold text-slate-700">

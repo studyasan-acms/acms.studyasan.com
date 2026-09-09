@@ -228,25 +228,29 @@ export default function ClassAttendancePage() {
       return;
     }
 
+    const escapeCsv = (val: any) => `"${String(val ?? '').replace(/"/g, '""')}"`;
+
     const headers = ['Name', 'Role', 'Email', 'First Joined', 'Last Left', 'Total Joins', 'Total Duration (Mins)'];
     const rows = data.attendances.map((att) => [
-      `"${att.user.name.replace(/"/g, '""')}"`,
-      att.role,
-      `"${att.user.email || ''}"`,
-      att.joined_at ? formatSafeFullDateTime(att.joined_at) : '—',
-      att.left_at ? formatSafeFullDateTime(att.left_at) : 'Still in class',
-      att.total_joins,
-      att.total_duration || 0,
+      escapeCsv(att.user?.name || 'Unknown'),
+      escapeCsv(att.role || 'STUDENT'),
+      escapeCsv(att.user?.email || ''),
+      escapeCsv(att.joined_at ? formatSafeFullDateTime(att.joined_at) : '—'),
+      escapeCsv(att.left_at ? formatSafeFullDateTime(att.left_at) : 'Still in class'),
+      escapeCsv(att.total_joins ?? 1),
+      escapeCsv(att.total_duration ?? 0),
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = [headers.map(escapeCsv).join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
+    link.setAttribute('href', url);
     link.setAttribute('download', `attendance_session_${sessionId}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     toast.success('Attendance CSV downloaded successfully');
   };
 

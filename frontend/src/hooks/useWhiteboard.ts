@@ -1044,20 +1044,17 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 const addedIds = action.added.map(s => s.id);
                 if (addedIds.length > 0) {
                     addedIds.forEach(id => strokes.current.delete(id));
-                    sendMessage({
-                        type: 'delete-strokes',
-                        strokeIds: addedIds,
-                        timestamp: Date.now(),
-                    });
                 }
                 for (const s of action.removed) {
                     strokes.current.set(s.id, s);
-                    sendMessage({
-                        type: 'stroke',
-                        data: s,
-                        timestamp: Date.now(),
-                    });
                 }
+                sendMessage({
+                    type: 'sync-strokes',
+                    removedIds: addedIds,
+                    addedStrokes: action.removed,
+                    board: currentBoardRef.current,
+                    timestamp: Date.now(),
+                });
                 break;
             }
             case 'clear': {
@@ -1118,20 +1115,17 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 const removedIds = action.removed.map(s => s.id);
                 if (removedIds.length > 0) {
                     removedIds.forEach(id => strokes.current.delete(id));
-                    sendMessage({
-                        type: 'delete-strokes',
-                        strokeIds: removedIds,
-                        timestamp: Date.now(),
-                    });
                 }
                 for (const s of action.added) {
                     strokes.current.set(s.id, s);
-                    sendMessage({
-                        type: 'stroke',
-                        data: s,
-                        timestamp: Date.now(),
-                    });
                 }
+                sendMessage({
+                    type: 'sync-strokes',
+                    removedIds: removedIds,
+                    addedStrokes: action.added,
+                    board: currentBoardRef.current,
+                    timestamp: Date.now(),
+                });
                 break;
             }
             case 'clear': {
@@ -1199,11 +1193,6 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                     setSelectedStrokeId(null);
                 }
                 redrawCanvas();
-                sendMessage({
-                    type: 'delete-strokes',
-                    strokeIds: strokesIdsToDelete,
-                    timestamp: Date.now(),
-                });
             }
         } else {
             // PIXEL ERASER (Precision stroke trimming)
@@ -1247,22 +1236,9 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
                 }
 
                 redrawCanvas();
-
-                sendMessage({
-                    type: 'delete-strokes',
-                    strokeIds: idsToDelete,
-                    timestamp: Date.now(),
-                });
-                for (const newStroke of strokesToAdd) {
-                    sendMessage({
-                        type: 'stroke',
-                        data: newStroke,
-                        timestamp: Date.now(),
-                    });
-                }
             }
         }
-    }, [canvasRef, currentSize, eraserType, redrawCanvas, selectedStrokeId, sendMessage]);
+    }, [canvasRef, currentSize, eraserType, redrawCanvas, selectedStrokeId]);
 
     const deleteSelected = useCallback(() => {
         if (selectedStrokeId) {
@@ -1520,11 +1496,23 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
         // 2. Finalize eraser session
         if (eraserSessionRef.current) {
             const { removed, added } = eraserSessionRef.current;
-            if (removed.size > 0 || added.size > 0) {
+            const removedList = Array.from(removed.values());
+            const addedList = Array.from(added.values());
+            const removedIds = Array.from(removed.keys());
+
+            if (removedList.length > 0 || addedList.length > 0) {
                 pushHistory({
                     type: 'replace',
-                    removed: Array.from(removed.values()),
-                    added: Array.from(added.values()),
+                    removed: removedList,
+                    added: addedList,
+                });
+
+                sendMessage({
+                    type: 'sync-strokes',
+                    removedIds,
+                    addedStrokes: addedList,
+                    board: currentBoardRef.current,
+                    timestamp: Date.now(),
                 });
             }
             eraserSessionRef.current = null;
@@ -1968,6 +1956,32 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             }
             strokes.current.set(stroke.id, stroke);
             redrawCanvas();
+        } else if (message.type === 'sync-strokes') {
+            const removedIds = message.removedIds || message.strokeIds || [];
+            const addedStrokes = (message.addedStrokes || (Array.isArray(message.data) ? message.data : [])) as Stroke[];
+
+            if (Array.isArray(removedIds) && removedIds.length > 0) {
+                removedIds.forEach((id) => {
+                    strokes.current.delete(String(id));
+                });
+                if (selectedStrokeId && removedIds.includes(selectedStrokeId)) {
+                    setSelectedStrokeId(null);
+                }
+            }
+
+            if (Array.isArray(addedStrokes) && addedStrokes.length > 0) {
+                addedStrokes.forEach((s) => {
+                    if (s && s.id) {
+                        const stroke = hydrateStroke(s);
+                        if (!stroke.board) {
+                            stroke.board = message.board || currentBoardRef.current || 1;
+                        }
+                        strokes.current.set(String(stroke.id), stroke);
+                    }
+                });
+            }
+
+            redrawCanvas();
         } else if (message.type === 'clear') {
             strokes.current.clear();
             loadedImages.current.clear();
@@ -1986,7 +2000,7 @@ export function useWhiteboard({ canvasRef, sendMessage, initialStrokes }: UseWhi
             const idsToDelete = message.strokeIds || (Array.isArray(message.data) ? (message.data as string[]) : []);
             if (Array.isArray(idsToDelete) && idsToDelete.length > 0) {
                 idsToDelete.forEach((id) => {
-                    strokes.current.delete(id);
+                    strokes.current.delete(String(id));
                 });
                 if (selectedStrokeId && idsToDelete.includes(selectedStrokeId)) {
                     setSelectedStrokeId(null);

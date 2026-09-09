@@ -146,6 +146,11 @@ async function checkRoomAccess(
     section_id?: number | null;
   }
 ): Promise<{ hasAccess: boolean; reason?: string; isTeacher?: boolean; isAdmin?: boolean }> {
+  // Recording Bot always has access (headless background recorder)
+  if (userRole === 'RECORDING_BOT' || userId === 999999) {
+    return { hasAccess: true, isTeacher: false, isAdmin: false };
+  }
+
   // Admin always has access — but they are NOT the teacher (do not pin them as teacher)
   if (userRole === 'ADMIN') {
     return { hasAccess: true, isTeacher: false, isAdmin: true };
@@ -472,7 +477,28 @@ export const getWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
     }
 
     const strokes = whiteboardCache.getStrokes(janusRoomId);
-    return sendSuccess(res, { strokes });
+    const currentBoard = whiteboardCache.getBoard(janusRoomId);
+    return sendSuccess(res, { strokes, currentBoard });
+  } catch (error: any) {
+    return sendError(res, error.message, 500);
+  }
+};
+
+/**
+ * Set active whiteboard board (fast in-memory cached)
+ */
+export const setWhiteboardBoard = async (req: AuthRequest, res: Response) => {
+  try {
+    const { janusRoomId } = req.params;
+    const { board } = req.body || {};
+
+    if (!janusRoomId) {
+      return sendError(res, 'Janus room ID is required', 400);
+    }
+
+    const boardNum = typeof board === 'number' ? board : parseInt(board, 10) || 1;
+    whiteboardCache.setBoard(janusRoomId, boardNum);
+    return sendSuccess(res, { currentBoard: boardNum }, 'Active board updated');
   } catch (error: any) {
     return sendError(res, error.message, 500);
   }
@@ -503,23 +529,64 @@ export const addWhiteboardStroke = async (req: AuthRequest, res: Response) => {
 
 /**
  * Delete specific whiteboard strokes (fast in-memory cached)
+ * Supports receiving stroke IDs via body (strokeIds/strokeId) and query params.
  */
 export const deleteWhiteboardStrokes = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
-    const { strokeIds, strokeId } = req.body;
+    const body = req.body || {};
+    const query = req.query || {};
 
     if (!janusRoomId) {
       return sendError(res, 'Janus room ID is required', 400);
     }
 
-    const idsToDelete: string[] = strokeIds || (strokeId ? [strokeId] : []);
-    if (!idsToDelete || idsToDelete.length === 0) {
+    const idsToDelete: string[] = [];
+    if (body.strokeIds && Array.isArray(body.strokeIds)) {
+      idsToDelete.push(...body.strokeIds.map(String));
+    } else if (body.strokeId) {
+      idsToDelete.push(String(body.strokeId));
+    }
+
+    if (query.strokeIds) {
+      const qIds = typeof query.strokeIds === 'string' ? query.strokeIds.split(',') : query.strokeIds;
+      if (Array.isArray(qIds)) {
+        idsToDelete.push(...qIds.map(String));
+      }
+    } else if (query.strokeId) {
+      idsToDelete.push(String(query.strokeId));
+    }
+
+    if (idsToDelete.length === 0) {
       return sendError(res, 'Stroke IDs are required', 400);
     }
 
     const deletedCount = whiteboardCache.deleteStrokes(janusRoomId, idsToDelete);
     return sendSuccess(res, { deletedCount }, 'Strokes deleted');
+  } catch (error: any) {
+    return sendError(res, error.message, 500);
+  }
+};
+
+/**
+ * Atomic batch synchronization for additions and deletions (fast in-memory cached)
+ */
+export const syncWhiteboard = async (req: AuthRequest, res: Response) => {
+  try {
+    const { janusRoomId } = req.params;
+    const { addStrokes, deleteStrokeIds, currentBoard } = req.body || {};
+
+    if (!janusRoomId) {
+      return sendError(res, 'Janus room ID is required', 400);
+    }
+
+    const result = whiteboardCache.syncStrokes(janusRoomId, {
+      addStrokes,
+      deleteStrokeIds,
+      currentBoard,
+    });
+
+    return sendSuccess(res, result, 'Whiteboard synchronized');
   } catch (error: any) {
     return sendError(res, error.message, 500);
   }
@@ -640,9 +707,16 @@ export const recordJoin = async (req: AuthRequest, res: Response) => {
     const { janusRoomId } = req.params;
     const userId = req.user!.id;
     const userRole = req.user!.role;
+    const userEmail = req.user!.email;
 
     if (!janusRoomId) {
       return sendError(res, 'Room ID is required', 400);
+    }
+
+    // Exclude recording bot from attendance records
+    if ((userRole as string) === 'RECORDING_BOT' || userEmail === 'recording-bot@studyasan.com' || (req.user as any)?.isBot) {
+      console.log(`[Attendance] Recording Bot joined room ${janusRoomId} (skipped attendance logging)`);
+      return sendSuccess(res, { isBot: true }, 'Bot join acknowledged');
     }
 
     console.log(`[Attendance] User ${userId} (${userRole}) joining room ${janusRoomId}`);
@@ -714,9 +788,16 @@ export const recordLeave = async (req: AuthRequest, res: Response) => {
   try {
     const { janusRoomId } = req.params;
     const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const userEmail = req.user!.email;
 
     if (!janusRoomId) {
       return sendError(res, 'Room ID is required', 400);
+    }
+
+    // Exclude recording bot from attendance leave tracking
+    if ((userRole as string) === 'RECORDING_BOT' || userEmail === 'recording-bot@studyasan.com' || (req.user as any)?.isBot) {
+      return sendSuccess(res, { isBot: true }, 'Bot leave acknowledged');
     }
 
     console.log(`[Attendance] User ${userId} leaving room ${janusRoomId}`);

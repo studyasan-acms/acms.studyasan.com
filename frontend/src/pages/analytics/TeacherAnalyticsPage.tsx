@@ -24,7 +24,7 @@ import { usePageTitle } from "@/hooks/usePageTitle";
 interface StudentAnalytics {
     studentId: number;
     studentName: string;
-    studentEmail: string;
+    studentEmail?: string;
     classes: { attended: number; totalHours: number };
     tests: { attempted: number; averageScore: number };
     activities: { played: number; averageScore: number; totalHours: number };
@@ -203,7 +203,6 @@ export default function TeacherAnalyticsPage() {
                                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                             <div>
                                                 <h3 className="font-semibold text-lg">{student.studentName}</h3>
-                                                <p className="text-sm text-muted-foreground">{student.studentEmail}</p>
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 <Badge variant="outline">

@@ -222,6 +222,8 @@ export const markModuleComplete = async (req: Request, res: Response) => {
 export const getSubjectProgressStats = async (req: Request, res: Response) => {
   try {
     const { subjectId } = req.params;
+    const userRole = (req as any).user?.role;
+    const isTeacher = userRole === 'TEACHER';
 
     const allProgress = await prisma.studentModuleProgress.findMany({
       where: {
@@ -245,7 +247,7 @@ export const getSubjectProgressStats = async (req: Request, res: Response) => {
         acc[studentId] = {
           student_id: studentId,
           student_name: progress.student.user.name,
-          student_email: progress.student.user.email,
+          ...(!isTeacher ? { student_email: progress.student.user.email } : {}),
           modules: [],
           total_modules: 0,
           completed_modules: 0,
@@ -253,7 +255,19 @@ export const getSubjectProgressStats = async (req: Request, res: Response) => {
           total_time_spent: 0,
         };
       }
-      acc[studentId].modules.push(progress);
+      const sanitizedProgress = isTeacher && progress.student?.user
+        ? {
+            ...progress,
+            student: {
+              ...progress.student,
+              user: {
+                name: progress.student.user.name,
+              },
+            },
+          }
+        : progress;
+
+      acc[studentId].modules.push(sanitizedProgress);
       acc[studentId].total_modules++;
       if (progress.is_completed) acc[studentId].completed_modules++;
       acc[studentId].total_time_spent += progress.time_spent_minutes;

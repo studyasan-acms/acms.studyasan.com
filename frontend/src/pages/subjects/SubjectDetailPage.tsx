@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { resolveImageUrl } from "@/lib/utils";
+import { resolveImageUrl, normalizeSyllabus } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -183,6 +183,7 @@ export default function SubjectDetailPage() {
     </Button>
   );
 
+  const normalizedSyllabus = useMemo(() => normalizeSyllabus(subject?.syllabus), [subject?.syllabus]);
   const isCourseEnded = subject.is_course && subject.end_date && new Date(subject.end_date) < new Date();
 
   return (
@@ -376,9 +377,9 @@ export default function SubjectDetailPage() {
               <SectionTitle icon={BookOpen} title="Course Syllabus" description="Curriculum Structure" />
             </CardHeader>
             <CardContent className="p-5">
-              {subject.syllabus?.units?.length > 0 ? (
+              {normalizedSyllabus.units.length > 0 ? (
                 <div className="space-y-4">
-                  {subject.syllabus.units.map((unit: { name: string; content: string }, index: number) => (
+                  {normalizedSyllabus.units.map((unit: { name: string; content: string }, index: number) => (
                     <div key={index} className="flex gap-4 p-4 rounded-xl bg-gray-50/50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all group">
                       <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center text-saBlue font-bold text-xs shadow-sm shrink-0 group-hover:bg-saBlue group-hover:text-white transition-colors">
                         {index + 1}

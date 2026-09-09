@@ -706,7 +706,7 @@ export interface StudentModuleProgress {
     user: {
       id: number;
       name: string;
-      email: string;
+      email?: string;
     };
   };
   module?: Module;

@@ -19,6 +19,9 @@ interface ActiveRecording {
   sessionId: number;
   browser: any;
   ffmpegProcess: ChildProcess;
+  xvfbProcess?: ChildProcess | undefined;
+  displayNum: string;
+  pulseModuleId?: string | undefined;
   outputFilePath: string;
   startTime: Date;
 }
@@ -49,15 +52,32 @@ export class RecordingBotService {
   }
 
   /**
-   * Generate a valid signed ADMIN JWT token for the recording bot
+   * Allocate a unique X11 display number per recording session
+   */
+  private static allocateDisplay(sessionId: number): string {
+    const base = 100 + (sessionId % 500);
+    let display = `:${base}`;
+    const usedDisplays = new Set(Array.from(activeRecordings.values()).map(r => r.displayNum));
+    let offset = 0;
+    while (usedDisplays.has(display)) {
+      offset++;
+      display = `:${base + offset}`;
+    }
+    return display;
+  }
+
+  /**
+   * Generate a valid signed RECORDING_BOT JWT token for the headless recorder
    */
   private static generateBotToken(): string {
     const secret = process.env.JWT_SECRET || 'your_super_secret_jwt_key';
     return jwt.sign(
       {
-        id: 1,
-        email: 'admin@studyasan.com',
-        role: 'ADMIN',
+        id: 999999,
+        name: 'Recording Bot',
+        email: 'recording-bot@studyasan.com',
+        role: 'RECORDING_BOT',
+        isBot: true,
       },
       secret,
       { expiresIn: '24h' }
@@ -65,60 +85,57 @@ export class RecordingBotService {
   }
 
   /**
-   * Ensure Xvfb and PulseAudio are running on the server
+   * Ensure PulseAudio daemon is running
    */
-  private static async ensureDisplayAndAudio(display = ':99'): Promise<string> {
-    process.env.DISPLAY = display;
-
-    // 1. Ensure Xvfb is running
-    await new Promise<void>((resolve) => {
-      exec(`pgrep -f "Xvfb ${display}"`, (_err, stdout) => {
-        if (!stdout || stdout.trim() === '') {
-          console.log(`[RecordingBot] Xvfb on ${display} not detected. Spawning Xvfb...`);
-          try {
-            const xvfbProcess = spawn('Xvfb', [display, '-screen', '0', '1280x720x24', '-ac'], {
-              detached: true,
-              stdio: 'ignore',
-            });
-            xvfbProcess.unref();
-          } catch (e) {
-            console.warn('[RecordingBot] Notice spawning Xvfb:', e);
-          }
-          setTimeout(resolve, 1000);
+  private static ensurePulseDaemon(): Promise<void> {
+    return new Promise((resolve) => {
+      exec('pulseaudio --check', (err) => {
+        if (err) {
+          exec('pulseaudio --start --exit-idle-time=-1', () => {
+            setTimeout(resolve, 500);
+          });
         } else {
           resolve();
         }
       });
     });
+  }
 
-    // 2. Ensure PulseAudio is running and find available source
-    return new Promise<string>((resolve) => {
-      exec('pactl list sources short', (err, stdout) => {
+  /**
+   * Start a dedicated Xvfb virtual display for this session
+   */
+  private static async startXvfb(displayNum: string): Promise<ChildProcess | undefined> {
+    return new Promise((resolve) => {
+      try {
+        console.log(`[RecordingBot] Spawning dedicated Xvfb on display ${displayNum}...`);
+        const xvfb = spawn('Xvfb', [displayNum, '-screen', '0', '1280x720x24', '-ac'], {
+          detached: true,
+          stdio: 'ignore',
+        });
+        xvfb.unref();
+        setTimeout(() => resolve(xvfb), 800);
+      } catch (err) {
+        console.warn(`[RecordingBot] Warning spawning Xvfb on ${displayNum}:`, err);
+        resolve(undefined);
+      }
+    });
+  }
+
+  /**
+   * Create an isolated PulseAudio null sink for this specific session
+   */
+  private static async createSessionAudioSink(sessionId: number): Promise<{ sinkName: string; moduleId?: string }> {
+    await this.ensurePulseDaemon();
+    const sinkName = `rec_sink_${sessionId}_${Date.now()}`;
+    return new Promise((resolve) => {
+      exec(`pactl load-module module-null-sink sink_name=${sinkName} sink_properties=device.description=RecSink_${sessionId}`, (err, stdout) => {
         if (err || !stdout || stdout.trim() === '') {
-          // Attempt to start pulseaudio daemon
-          exec('pulseaudio --start --exit-idle-time=-1', () => {
-            setTimeout(() => {
-              exec('pactl list sources short', (_e2, out2) => {
-                if (out2 && out2.includes('auto_null.monitor')) {
-                  resolve('auto_null.monitor');
-                } else if (out2 && out2.includes('.monitor')) {
-                  const match = out2.match(/(\S+\.monitor)/);
-                  resolve(match && match[1] ? match[1] : 'default');
-                } else {
-                  resolve('default');
-                }
-              });
-            }, 800);
-          });
+          console.warn(`[RecordingBot] Warning creating isolated pulse sink:`, err?.message || 'Empty response');
+          resolve({ sinkName: 'auto_null' });
         } else {
-          if (stdout.includes('auto_null.monitor')) {
-            resolve('auto_null.monitor');
-          } else if (stdout.includes('.monitor')) {
-            const match = stdout.match(/(\S+\.monitor)/);
-            resolve(match && match[1] ? match[1] : 'default');
-          } else {
-            resolve('default');
-          }
+          const moduleId = stdout.trim();
+          console.log(`[RecordingBot] Created isolated Pulse sink ${sinkName} (module ${moduleId})`);
+          resolve({ sinkName, moduleId });
         }
       });
     });
@@ -133,29 +150,33 @@ export class RecordingBotService {
       return;
     }
 
-    console.log(`[RecordingBot] 🚀 Initializing Recording Bot for session #${sessionId}...`);
+    console.log(`[RecordingBot] 🚀 Initializing Isolated Recording Bot for session #${sessionId}...`);
 
     const outputFileName = `recording_session_${sessionId}_${Date.now()}.mp4`;
     const outputFilePath = path.join(RECORDINGS_DIR, outputFileName);
-    const displayNum = process.env.DISPLAY || ':99';
-    process.env.DISPLAY = displayNum;
+    const displayNum = this.allocateDisplay(sessionId);
     const chromiumPath = this.getChromiumPath();
     const baseUrl = appUrl || process.env.APP_URL || 'http://localhost:3000';
     const token = botToken || this.generateBotToken();
 
     try {
-      // 1. Ensure Xvfb & Audio are running
-      const audioSource = await this.ensureDisplayAndAudio(displayNum);
-      console.log(`[RecordingBot] Display: ${displayNum}, Audio source: ${audioSource}`);
+      // 1. Start dedicated isolated Xvfb virtual display
+      const xvfbProcess = await this.startXvfb(displayNum);
 
-      // 2. Launch Chromium via Puppeteer connected to Virtual Display
+      // 2. Create dedicated isolated PulseAudio sink
+      const { sinkName, moduleId: pulseModuleId } = await this.createSessionAudioSink(sessionId);
+      const audioSource = sinkName === 'auto_null' ? 'auto_null.monitor' : `${sinkName}.monitor`;
+      console.log(`[RecordingBot] Session #${sessionId} -> Display: ${displayNum}, Audio Sink: ${sinkName} (Monitor: ${audioSource})`);
+
+      // 3. Launch Chromium via Puppeteer connected exclusively to the session's Virtual Display & Audio Sink
       const browser = await puppeteer.launch({
         executablePath: chromiumPath,
-        headless: false, // Runs inside Xvfb virtual screen
+        headless: false, // Runs inside dedicated Xvfb virtual screen
         ignoreDefaultArgs: ['--enable-automation'],
         env: {
           ...process.env,
           DISPLAY: displayNum,
+          PULSE_SINK: sinkName,
         },
         args: [
           `--display=${displayNum}`,
@@ -171,7 +192,6 @@ export class RecordingBotService {
           '--use-fake-device-for-media-stream',
           '--disable-gpu',
           '--hide-scrollbars',
-          '--mute-audio=false',
           '--no-default-browser-check',
           '--disable-infobars',
           '--disable-blink-features=AutomationControlled',
@@ -189,15 +209,15 @@ export class RecordingBotService {
         await dialog.dismiss().catch(() => {});
       });
 
-      // 3. Open Classroom with Bot Token
+      // 4. Open Classroom with Bot Token & bot=true param
       const classroomUrl = `${baseUrl}/classroom/${sessionId}?bot=true&token=${token}`;
       console.log(`[RecordingBot] Navigating to: ${classroomUrl}`);
 
-      await page.goto(classroomUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch((err) => {
+      await page.goto(classroomUrl, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch((err) => {
         console.warn(`[RecordingBot] Page navigation notice for session #${sessionId}:`, err.message);
       });
 
-      // 4. Spawn Linux FFmpeg with storage-efficient settings (CRF 28, 15fps, 64k aac, +faststart)
+      // 5. Spawn Linux FFmpeg capturing exclusively from this session's display and audio sink
       const ffmpegArgs = [
         '-y',
         '-f', 'x11grab',
@@ -222,7 +242,7 @@ export class RecordingBotService {
       ffmpegProcess.stderr?.on('data', (data) => {
         const msg = data.toString();
         if (msg.includes('Error') || msg.includes('error') || msg.includes('fatal')) {
-          console.warn(`[RecordingBot FFmpeg] ${msg.trim()}`);
+          console.warn(`[RecordingBot FFmpeg #${sessionId}] ${msg.trim()}`);
         }
       });
 
@@ -230,18 +250,21 @@ export class RecordingBotService {
         sessionId,
         browser,
         ffmpegProcess,
+        xvfbProcess,
+        displayNum,
+        pulseModuleId,
         outputFilePath,
         startTime: new Date(),
       });
 
-      console.log(`[RecordingBot] 🔴 Recording ACTIVE for session #${sessionId} -> ${outputFilePath}`);
+      console.log(`[RecordingBot] 🔴 Recording ACTIVE for session #${sessionId} -> ${outputFilePath} on ${displayNum}`);
     } catch (error: any) {
       console.error(`[RecordingBot] Failed to start recording for session #${sessionId}:`, error);
     }
   }
 
   /**
-   * Stop recording when class ends and save to database
+   * Stop recording when class ends, clean up isolated display/audio sink, and save to database
    */
   static async stopRecording(sessionId: number) {
     const active = activeRecordings.get(sessionId);
@@ -261,16 +284,36 @@ export class RecordingBotService {
       }
 
       // 2. Stop FFmpeg gracefully (send SIGINT so MP4 headers and +faststart index are written)
-      active.ffmpegProcess.kill('SIGINT');
+      try {
+        active.ffmpegProcess.kill('SIGINT');
+      } catch (e: any) {
+        console.warn(`[RecordingBot] Error killing FFmpeg for session #${sessionId}:`, e.message);
+      }
 
       // Wait 3 seconds for FFmpeg to finalize file
       await new Promise((resolve) => setTimeout(resolve, 3000));
+
+      // 3. Clean up isolated PulseAudio sink
+      if (active.pulseModuleId) {
+        exec(`pactl unload-module ${active.pulseModuleId}`, (err) => {
+          if (err) console.warn(`[RecordingBot] Notice unloading pulse module ${active.pulseModuleId}:`, err.message);
+          else console.log(`[RecordingBot] Unloaded PulseAudio module ${active.pulseModuleId}`);
+        });
+      }
+
+      // 4. Clean up isolated Xvfb process
+      if (active.xvfbProcess) {
+        try {
+          active.xvfbProcess.kill('SIGKILL');
+        } catch (e) {}
+      }
+      exec(`pkill -f "Xvfb ${active.displayNum}"`, () => {});
 
       const durationSeconds = Math.max(1, Math.round((Date.now() - active.startTime.getTime()) / 1000));
       const stats = fs.existsSync(active.outputFilePath) ? fs.statSync(active.outputFilePath) : null;
       const fileSizeBytes = stats ? stats.size : 0;
 
-      // 3. Save recording metadata in Database with 30-day retention
+      // 5. Save recording metadata in Database with 30-day retention
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
       await (prisma as any).sessionRecording.create({

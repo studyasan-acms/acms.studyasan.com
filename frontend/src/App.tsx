@@ -156,10 +156,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     if (urlToken && (!isAuthenticated || isBot)) {
       setAuth(
         {
-          id: 1,
+          id: isBot ? 999999 : 1,
           name: isBot ? 'Recording Bot' : 'User',
-          email: 'admin@studyasan.com',
-          role: 'ADMIN',
+          email: isBot ? 'recording-bot@studyasan.com' : 'admin@studyasan.com',
+          role: isBot ? 'RECORDING_BOT' : 'ADMIN',
+          isBot: isBot,
         } as any,
         urlToken
       );

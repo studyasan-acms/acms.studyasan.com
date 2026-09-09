@@ -4,6 +4,7 @@ import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import type { Activity, ActivityAttempt } from '../../../types/activity';
 import { activityAttemptAPI } from '../../../services/activity.service';
+import { useAuthStore } from '../../../store/authStore';
 import { toast } from 'sonner';
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 }
 
 export default function ActivityAttemptsModal({ activity, onClose }: Props) {
+  const { user } = useAuthStore();
+  const isTeacher = user?.role === 'TEACHER';
   const [attempts, setAttempts] = useState<ActivityAttempt[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -127,7 +130,7 @@ export default function ActivityAttemptsModal({ activity, onClose }: Props) {
                       <p className="font-semibold text-sm">
                         {attempt.student?.user?.name || `Student #${attempt.student_id}`}
                       </p>
-                      {attempt.student?.user?.email && (
+                      {!isTeacher && attempt.student?.user?.email && (
                         <p className="text-xs text-gray-500">
                           {attempt.student.user.email}
                         </p>

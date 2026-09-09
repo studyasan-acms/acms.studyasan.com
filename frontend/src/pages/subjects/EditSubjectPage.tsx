@@ -21,7 +21,7 @@ import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
 import { usePageTitle } from "@/hooks/usePageTitle";
-import { resolveImageUrl } from '@/lib/utils';
+import { resolveImageUrl, normalizeSyllabus } from '@/lib/utils';
 
 import { usePermissions } from '@/hooks/usePermissions';
 
@@ -85,15 +85,16 @@ export default function EditSubjectPage() {
     try {
       const response = await subjectService.getById(subjectId);
       const data: Subject = response.data;
+      const normalizedSyllabus = normalizeSyllabus(data.syllabus);
 
-      setSubject(data);
+      setSubject({ ...data, syllabus: normalizedSyllabus });
 
       setFormData({
         name: data.name,
         cover_image: data.cover_image ?? null,
         class_id: data.class_id ?? null,
         board_id: data.board_id ?? null,
-        syllabus: data.syllabus ?? null,
+        syllabus: normalizedSyllabus,
         is_course: data.is_course ?? false,
         end_date: data.end_date ? data.end_date.split('T')[0] : null,
         price: data.price ?? null,
@@ -105,9 +106,7 @@ export default function EditSubjectPage() {
         setImagePreview(resolveImageUrl(data.cover_image) || '');
       }
 
-      if (data.syllabus?.units) {
-        setSyllabusUnits(data.syllabus.units);
-      }
+      setSyllabusUnits(normalizedSyllabus.units);
     } catch {
       setError('Failed to load subject data');
     } finally {
@@ -185,11 +184,18 @@ export default function EditSubjectPage() {
     setIsSaving(true);
 
     try {
-      const existingModules = subject?.syllabus?.modules || [];
+      const normalizedCurrentSyllabus = normalizeSyllabus(subject?.syllabus);
+      const existingModules = normalizedCurrentSyllabus.modules;
       const syllabusData = {
-        ...(subject?.syllabus || {}),
         units: syllabusUnits,
-        modules: existingModules,
+        modules: existingModules.length > 0 ? existingModules : syllabusUnits.map((u, i) => ({
+          module_id: i + 1,
+          title: u.name,
+          description: u.content,
+          order: i + 1,
+          content: [],
+          estimated_time_minutes: 0,
+        })),
       };
 
       const submitData: UpdateSubjectData = {
@@ -198,7 +204,14 @@ export default function EditSubjectPage() {
         cover_image: coverImageFile || formData.cover_image // Use new file if uploaded, otherwise keep old URL/value
       };
 
-      await subjectService.update(Number(id), submitData);
+      const response = await subjectService.update(Number(id), submitData);
+      const updatedSubjectData = response?.data || { ...subject, ...submitData, syllabus: syllabusData };
+      const updatedNormalized = normalizeSyllabus(updatedSubjectData.syllabus || syllabusData);
+
+      setSubject({ ...updatedSubjectData, syllabus: updatedNormalized });
+      setFormData((prev) => ({ ...prev, syllabus: updatedNormalized }));
+      setSyllabusUnits(updatedNormalized.units);
+
       setSuccess('Subject updated successfully!');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update subject');

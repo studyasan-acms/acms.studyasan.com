@@ -68,7 +68,7 @@ function useFaceDetection(enabled: boolean) {
       setCameraError(null);
     } catch (err: any) {
       console.error('Camera error:', err);
-      setCameraError('Camera access denied. Please allow camera access for proctoring.');
+      setCameraError('Camera access denied or unavailable.');
       setCameraActive(false);
     }
   }, [enabled]);
@@ -90,6 +90,8 @@ function useFaceDetection(enabled: boolean) {
     if (!videoRef.current || !canvasRef.current || !cameraActive) return;
 
     const video = videoRef.current;
+    if (video.videoWidth === 0 || video.readyState < 2) return;
+
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (!ctx) return;
@@ -133,8 +135,8 @@ function useFaceDetection(enabled: boolean) {
       consecutiveNoFaceRef.current = 0;
     } else {
       consecutiveNoFaceRef.current++;
-      // Only flag after 5 consecutive misses (5 seconds)
-      if (consecutiveNoFaceRef.current >= 5) {
+      // Only flag after 8 consecutive misses (8 seconds)
+      if (consecutiveNoFaceRef.current >= 8) {
         setFaceStatus('no_face');
         if (onViolationRef.current) {
           onViolationRef.current({
@@ -149,18 +151,25 @@ function useFaceDetection(enabled: boolean) {
   }, [cameraActive]);
 
   useEffect(() => {
-    if (enabled) startCamera();
+    if (enabled) {
+      startCamera();
+    } else {
+      stopCamera();
+    }
     return () => stopCamera();
   }, [enabled, startCamera, stopCamera]);
 
   useEffect(() => {
-    if (cameraActive) {
-      intervalRef.current = setInterval(detectFace, 1000);
+    if (cameraActive && enabled) {
+      const timeout = setTimeout(() => {
+        intervalRef.current = setInterval(detectFace, 1000);
+      }, 3000);
+      return () => {
+        clearTimeout(timeout);
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
     }
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [cameraActive, detectFace]);
+  }, [cameraActive, enabled, detectFace]);
 
   return { videoRef, canvasRef, cameraActive, faceStatus, cameraError, onViolationRef, stopCamera };
 }
@@ -335,17 +344,33 @@ export default function TestAttemptPage() {
   const [savingAnswer, setSavingAnswer] = useState(false);
   const [autoSubmitting, setAutoSubmitting] = useState(false);
   const [maxViolations, setMaxViolations] = useState(DEFAULT_MAX_VIOLATIONS);
-  const [enforceWarningAttempts, setEnforceWarningAttempts] = useState(true);
+  const [enforceWarningAttempts, setEnforceWarningAttempts] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const violationCountRef = useRef(0);
   const hasAutoSubmittedRef = useRef(false);
 
-  // Face Detection
-  const faceDetection = useFaceDetection(true);
+  // Face Detection - only enabled for official proctored tests
+  const isPractice = Boolean(attempt?.is_practice);
+  const proctoringEnabled = Boolean(
+    !loading &&
+    !!attempt &&
+    !attempt.submitted_at &&
+    !attempt.is_practice &&
+    enforceWarningAttempts &&
+    (attempt.test as any)?.enforce_warning_attempts !== false
+  );
+  const faceDetection = useFaceDetection(proctoringEnabled);
 
   const addViolation = useCallback((violation: Violation) => {
-    if (!enforceWarningAttempts) {
-      return; // Don't track violations if enforcement is disabled
+    if (
+      loading ||
+      !attempt ||
+      attempt.submitted_at ||
+      attempt.is_practice ||
+      !enforceWarningAttempts ||
+      (attempt.test as any)?.enforce_warning_attempts === false
+    ) {
+      return; // Never track violations for practice sets or when enforcement is disabled or during load
     }
     setViolations(prev => {
       const updated = [...prev, violation];
@@ -359,11 +384,21 @@ export default function TestAttemptPage() {
     );
     setShowViolationBanner(true);
     setTimeout(() => setShowViolationBanner(false), 4000);
-  }, [maxViolations, enforceWarningAttempts]);
+  }, [loading, attempt, maxViolations, enforceWarningAttempts]);
 
-  // Auto-submit after configured max violations
+  // Auto-submit after configured max violations ONLY if enforceWarningAttempts is TRUE and NOT practice
   useEffect(() => {
-    if (violations.length >= maxViolations && !hasAutoSubmittedRef.current && !autoSubmitting) {
+    if (
+      !loading &&
+      attempt &&
+      !attempt.submitted_at &&
+      !attempt.is_practice &&
+      enforceWarningAttempts &&
+      (attempt.test as any)?.enforce_warning_attempts !== false &&
+      violations.length >= maxViolations &&
+      !hasAutoSubmittedRef.current &&
+      !autoSubmitting
+    ) {
       hasAutoSubmittedRef.current = true;
       setAutoSubmitting(true);
       // Small delay so the user sees the final warning
@@ -371,7 +406,7 @@ export default function TestAttemptPage() {
         handleSubmitTest(true);
       }, 1500);
     }
-  }, [violations, autoSubmitting, maxViolations]);
+  }, [violations, autoSubmitting, maxViolations, enforceWarningAttempts, loading, attempt]);
 
   // Wire up face detection violations
   useEffect(() => {
@@ -417,7 +452,7 @@ export default function TestAttemptPage() {
         (document as any).mozFullScreenElement
       );
       setIsFullscreen(isFs);
-      if (!isFs && !attempt?.submitted_at && attempt && !attempt.is_practice) {
+      if (!isFs && !loading && attempt && !attempt.submitted_at && !attempt.is_practice && enforceWarningAttempts) {
         addViolation({ type: 'fullscreen_exit', timestamp: new Date(), message: 'Fullscreen exited — return to fullscreen mode.' });
       }
     };
@@ -429,33 +464,26 @@ export default function TestAttemptPage() {
       document.removeEventListener('webkitfullscreenchange', checkFs);
       document.removeEventListener('mozfullscreenchange', checkFs);
     };
-  }, [attempt, addViolation]);
+  }, [loading, attempt, enforceWarningAttempts, addViolation]);
 
 
-  // ---- Screen Lock: Visibility / Tab Switch ----
+  // ---- Screen Lock: Visibility / Tab Switch (only true document.hidden) ----
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.hidden && !attempt?.submitted_at) {
+      if (document.hidden && !loading && attempt && !attempt.submitted_at && !attempt.is_practice && enforceWarningAttempts) {
         addViolation({ type: 'tab_switch', timestamp: new Date(), message: 'Tab switch detected — stay on this page!' });
       }
     };
-    const handleBlur = () => {
-      if (!attempt?.submitted_at) {
-        addViolation({ type: 'tab_switch', timestamp: new Date(), message: 'Window focus lost — stay on this page!' });
-      }
-    };
     document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('blur', handleBlur);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('blur', handleBlur);
     };
-  }, [attempt, addViolation]);
+  }, [loading, attempt, enforceWarningAttempts, addViolation]);
 
   // ---- Screen Lock: Keyboard Shortcuts ----
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (attempt?.submitted_at) return;
+      if (!attempt || attempt.submitted_at || attempt.is_practice || !enforceWarningAttempts) return;
       if (
         (e.ctrlKey && ['c', 'v', 'a', 'p', 'u', 's'].includes(e.key.toLowerCase())) ||
         e.key === 'F12' ||
@@ -469,16 +497,23 @@ export default function TestAttemptPage() {
     };
     document.addEventListener('keydown', handleKeyDown, true);
     return () => document.removeEventListener('keydown', handleKeyDown, true);
-  }, [attempt, addViolation]);
+  }, [attempt, enforceWarningAttempts, addViolation]);
 
   // ---- Screen Lock: Context Menu & Copy ----
   useEffect(() => {
-    const preventContext = (e: MouseEvent) => { e.preventDefault(); };
+    const preventContext = (e: MouseEvent) => {
+      if (!attempt || attempt.is_practice || !enforceWarningAttempts) return;
+      e.preventDefault();
+    };
     const preventCopy = (e: ClipboardEvent) => {
+      if (!attempt || attempt.is_practice || !enforceWarningAttempts) return;
       e.preventDefault();
       addViolation({ type: 'copy_attempt', timestamp: new Date(), message: 'Copy attempt blocked' });
     };
-    const preventPaste = (e: ClipboardEvent) => { e.preventDefault(); };
+    const preventPaste = (e: ClipboardEvent) => {
+      if (!attempt || attempt.is_practice || !enforceWarningAttempts) return;
+      e.preventDefault();
+    };
     document.addEventListener('contextmenu', preventContext);
     document.addEventListener('copy', preventCopy);
     document.addEventListener('paste', preventPaste);
@@ -487,7 +522,7 @@ export default function TestAttemptPage() {
       document.removeEventListener('copy', preventCopy);
       document.removeEventListener('paste', preventPaste);
     };
-  }, [addViolation]);
+  }, [attempt, enforceWarningAttempts, addViolation]);
 
   // ---- Prevent beforeunload ----
   useEffect(() => {
@@ -520,7 +555,8 @@ export default function TestAttemptPage() {
       if (typeof configuredMax === 'number' && Number.isInteger(configuredMax) && configuredMax > 0) {
         setMaxViolations(configuredMax);
       }
-      const enforceWarnings = (response.data.test as any)?.enforce_warning_attempts ?? true;
+      const isPracticeAttempt = Boolean(response.data.is_practice);
+      const enforceWarnings = !isPracticeAttempt && (response.data.test as any)?.enforce_warning_attempts !== false;
       setEnforceWarningAttempts(enforceWarnings);
 
       const durationMins = response.data.test?.duration_minutes;
@@ -844,13 +880,21 @@ export default function TestAttemptPage() {
             )}
 
             {/* Camera Status */}
-            <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border
-              ${faceDetection.faceStatus === 'ok' ? 'bg-green-50 text-green-700 border-green-200' : faceDetection.faceStatus === 'no_face' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
-              {faceDetection.cameraActive ? <Camera className="w-3.5 h-3.5" /> : <CameraOff className="w-3.5 h-3.5" />}
-              <span className="hidden md:inline">
-                {faceDetection.faceStatus === 'ok' ? 'Proctored' : faceDetection.faceStatus === 'no_face' ? 'No face!' : 'Checking...'}
-              </span>
-            </div>
+            {!isPractice && enforceWarningAttempts && (
+              <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border
+                ${faceDetection.faceStatus === 'ok' ? 'bg-green-50 text-green-700 border-green-200' : faceDetection.faceStatus === 'no_face' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'}`}>
+                {faceDetection.cameraActive ? <Camera className="w-3.5 h-3.5" /> : <CameraOff className="w-3.5 h-3.5" />}
+                <span className="hidden md:inline">
+                  {faceDetection.faceStatus === 'ok' ? 'Proctored' : faceDetection.faceStatus === 'no_face' ? 'No face!' : 'Checking...'}
+                </span>
+              </div>
+            )}
+
+            {isPractice && (
+              <Badge className="bg-amber-100 text-amber-800 border-none font-semibold text-xs px-2.5 py-1">
+                Practice Mode
+              </Badge>
+            )}
 
             <Button
               onClick={() => setConfirmSubmit(true)}
@@ -918,25 +962,27 @@ export default function TestAttemptPage() {
           )}
 
           {/* Camera Preview */}
-          <div className="p-3 border-b border-gray-100">
-            <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-inner">
-              <video ref={faceDetection.videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
-              <canvas ref={faceDetection.canvasRef} className="hidden" />
-              {!faceDetection.cameraActive && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-100">
-                  <CameraOff className="w-8 h-8 text-gray-400" />
-                  <p className="text-xs text-gray-500 text-center px-2">{faceDetection.cameraError || 'Camera off'}</p>
+          {!isPractice && enforceWarningAttempts && (
+            <div className="p-3 border-b border-gray-100">
+              <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-inner">
+                <video ref={faceDetection.videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                <canvas ref={faceDetection.canvasRef} className="hidden" />
+                {!faceDetection.cameraActive && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gray-100">
+                    <CameraOff className="w-8 h-8 text-gray-400" />
+                    <p className="text-xs text-gray-500 text-center px-2">{faceDetection.cameraError || 'Camera off'}</p>
+                  </div>
+                )}
+                {/* Face status indicator */}
+                <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ring-2 ring-white ${faceDetection.faceStatus === 'ok' ? 'bg-green-400' : faceDetection.faceStatus === 'no_face' ? 'bg-red-400 animate-pulse' : 'bg-yellow-400 animate-pulse'}`} />
+                <div className="absolute bottom-2 left-2">
+                  <span className="text-[10px] bg-black/50 px-2 py-0.5 rounded-full text-white/90">
+                    {faceDetection.cameraActive ? (faceDetection.faceStatus === 'ok' ? '✓ Face detected' : '⚠ Look at screen') : 'Camera off'}
+                  </span>
                 </div>
-              )}
-              {/* Face status indicator */}
-              <div className={`absolute top-2 right-2 w-3 h-3 rounded-full ring-2 ring-white ${faceDetection.faceStatus === 'ok' ? 'bg-green-400' : faceDetection.faceStatus === 'no_face' ? 'bg-red-400 animate-pulse' : 'bg-yellow-400 animate-pulse'}`} />
-              <div className="absolute bottom-2 left-2">
-                <span className="text-[10px] bg-black/50 px-2 py-0.5 rounded-full text-white/90">
-                  {faceDetection.cameraActive ? (faceDetection.faceStatus === 'ok' ? '✓ Face detected' : '⚠ Look at screen') : 'Camera off'}
-                </span>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Violation Warning Bar in Sidebar */}
           {violations.length > 0 && (

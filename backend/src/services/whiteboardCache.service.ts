@@ -25,6 +25,8 @@ export interface CachedStroke {
 class WhiteboardCacheService {
   // Map of janusRoomId/roomId -> Map<strokeId, CachedStroke>
   private rooms: Map<string, Map<string, CachedStroke>> = new Map();
+  // Map of janusRoomId/roomId -> active board (1-5)
+  private roomBoards: Map<string, number> = new Map();
   // Track last active timestamp for automatic cleanup
   private roomLastActive: Map<string, number> = new Map();
 
@@ -36,6 +38,7 @@ class WhiteboardCacheService {
       for (const [roomId, lastActive] of this.roomLastActive.entries()) {
         if (now - lastActive > MAX_IDLE_TIME) {
           this.rooms.delete(roomId);
+          this.roomBoards.delete(roomId);
           this.roomLastActive.delete(roomId);
         }
       }
@@ -44,6 +47,17 @@ class WhiteboardCacheService {
 
   private normalizeKey(roomId: string | number | bigint): string {
     return String(roomId);
+  }
+
+  getBoard(roomId: string | number | bigint): number {
+    const key = this.normalizeKey(roomId);
+    return this.roomBoards.get(key) || 1;
+  }
+
+  setBoard(roomId: string | number | bigint, board: number): void {
+    const key = this.normalizeKey(roomId);
+    this.roomLastActive.set(key, Date.now());
+    this.roomBoards.set(key, board);
   }
 
   getStrokes(roomId: string | number | bigint): CachedStroke[] {
@@ -85,7 +99,7 @@ class WhiteboardCacheService {
     return cached;
   }
 
-  deleteStrokes(roomId: string | number | bigint, strokeIds: string[]): number {
+  deleteStrokes(roomId: string | number | bigint, strokeIds: (string | number)[]): number {
     const key = this.normalizeKey(roomId);
     this.roomLastActive.set(key, Date.now());
     const room = this.rooms.get(key);
@@ -98,6 +112,43 @@ class WhiteboardCacheService {
       }
     }
     return count;
+  }
+
+  syncStrokes(
+    roomId: string | number | bigint,
+    options: {
+      deleteStrokeIds?: (string | number)[];
+      addStrokes?: any[];
+      currentBoard?: number;
+    }
+  ): { deletedCount: number; addedCount: number; currentBoard: number } {
+    const key = this.normalizeKey(roomId);
+    this.roomLastActive.set(key, Date.now());
+
+    let deletedCount = 0;
+    if (options.deleteStrokeIds && options.deleteStrokeIds.length > 0) {
+      deletedCount = this.deleteStrokes(roomId, options.deleteStrokeIds);
+    }
+
+    let addedCount = 0;
+    if (options.addStrokes && Array.isArray(options.addStrokes)) {
+      for (const stroke of options.addStrokes) {
+        if (stroke && stroke.id) {
+          this.addStroke(roomId, stroke);
+          addedCount++;
+        }
+      }
+    }
+
+    if (options.currentBoard !== undefined && options.currentBoard !== null) {
+      this.setBoard(roomId, options.currentBoard);
+    }
+
+    return {
+      deletedCount,
+      addedCount,
+      currentBoard: this.getBoard(roomId),
+    };
   }
 
   clearWhiteboard(roomId: string | number | bigint): void {

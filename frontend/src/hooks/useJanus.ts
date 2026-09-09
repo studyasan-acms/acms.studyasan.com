@@ -400,8 +400,15 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                     }, 300);
                 },
                 onParticipantJoined: (participant) => {
-                    // Play join notification sound
-                    if (joinSoundRef.current) {
+                    const isBot = Boolean(
+                        participant.displayName && (
+                            participant.displayName.toLowerCase().includes('recording bot') ||
+                            participant.displayName.toLowerCase().startsWith('[bot]')
+                        )
+                    );
+
+                    // Play join notification sound for human participants only
+                    if (!isBot && joinSoundRef.current) {
                         joinSoundRef.current.currentTime = 0;
                         joinSoundRef.current.play().catch(() => {});
                     }

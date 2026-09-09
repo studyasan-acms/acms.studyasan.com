@@ -144,7 +144,8 @@ export type WhiteboardMessageType =
     | 'delete-strokes'
     | 'change-board'
     | 'sync-request'
-    | 'sync-response';
+    | 'sync-response'
+    | 'sync-strokes';
 
 /**
  * Whiteboard DataChannel message
@@ -155,6 +156,9 @@ export interface WhiteboardMessage {
     board?: number; // Board number for clear-board or change-board operations
     strokeId?: string;
     strokeIds?: string[];
+    removedIds?: string[];
+    addedStrokes?: Stroke[];
+    currentBoard?: number;
     senderId?: string;
     timestamp: number;
 }
