@@ -48,7 +48,7 @@ const FREQ_OPTIONS: { value: BillingFrequency; label: string }[] = [
 const TYPE_OPTIONS: { value: ItemType; label: string; icon: React.ReactNode }[] = [
   { value: 'SUBJECT', label: 'Subject', icon: <BookOpen size={14} /> },
   { value: 'TEST_SERIES', label: 'Test Series', icon: <ClipboardList size={14} /> },
-  { value: 'ACTIVITY_GROUP', label: 'Activity', icon: <Activity size={14} /> },
+  { value: 'ACTIVITY_GROUP', label: 'Activity Group', icon: <Activity size={14} /> },
 ];
 
 function genId() {

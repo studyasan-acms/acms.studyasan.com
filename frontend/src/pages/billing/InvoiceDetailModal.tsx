@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Printer, CheckCircle2, Landmark, QrCode, FileText, Receipt, Download } from 'lucide-react';
+import { Mail, Printer, CheckCircle2, Landmark, QrCode, FileText, Receipt, Download, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { invoiceService } from '@/services/api';
@@ -10,7 +10,7 @@ interface InvoiceDetailModalProps {
   onClose: () => void;
   invoice: Invoice | null;
   onStatusChange?: () => void;
-  initialMode?: 'INVOICE' | 'QUOTATION';
+  initialMode?: 'INVOICE' | 'QUOTATION' | 'RECEIPT';
   autoPrint?: boolean;
 }
 
@@ -21,14 +21,22 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   initialMode = 'INVOICE',
   autoPrint = false,
 }) => {
-  const [mode, setMode] = useState<'INVOICE' | 'QUOTATION'>(initialMode);
+  const [mode, setMode] = useState<'INVOICE' | 'QUOTATION' | 'RECEIPT'>(initialMode);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
   const [settings, setSettings] = useState<InvoiceSetting | null>(null);
 
   useEffect(() => {
     if (open) {
-      setMode(initialMode);
+      // If invoice is paid or partially paid and no specific initialMode passed, default to RECEIPT or initialMode
+      if (initialMode) {
+        setMode(initialMode);
+      } else if (invoice?.status === 'PAID' || invoice?.status === 'PARTIALLY_PAID') {
+        setMode('RECEIPT');
+      } else {
+        setMode('INVOICE');
+      }
+
       invoiceService
         .getSettings()
         .then((res) => {
@@ -36,9 +44,10 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
         })
         .catch(() => {});
     }
-  }, [open, initialMode]);
+  }, [open, initialMode, invoice?.status]);
 
   const isQuotation = mode === 'QUOTATION';
+  const isReceipt = mode === 'RECEIPT';
 
   const formatDate = (d: string | null | undefined) => {
     if (!d) return 'N/A';
@@ -54,7 +63,9 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   };
 
   const docNumber = invoice
-    ? isQuotation
+    ? isReceipt
+      ? (invoice.receipt_number || invoice.invoice_number.replace(/^INV-/, 'RCP-'))
+      : isQuotation
       ? invoice.invoice_number.replace(/^INV-/, 'QT-')
       : invoice.invoice_number
     : '';
@@ -73,7 +84,9 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
       return;
     }
 
-    const docTitle = isQuotation
+    const docTitle = isReceipt
+      ? `Payment Receipt - ${docNumber} - ${invoice.student?.user?.name || 'Student'}`
+      : isQuotation
       ? `Quotation - ${docNumber} - ${invoice.student?.user?.name || 'Student'}`
       : `Invoice - ${invoice.invoice_number} - ${invoice.student?.user?.name || 'Student'}`;
 
@@ -129,7 +142,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     printWindow.document.close();
   };
 
-  // Auto-print if requested (e.g. from immediate Download Quotation)
+  // Auto-print if requested (e.g. from immediate Download Quotation / Receipt)
   useEffect(() => {
     if (open && autoPrint && settings && invoice) {
       const timer = setTimeout(() => {
@@ -144,12 +157,17 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
     setSendingEmail(true);
     setEmailStatusMessage(null);
     try {
-      await invoiceService.sendEmail(invoice.id, { is_quotation: isQuotation });
-      setEmailStatusMessage(
-        isQuotation
-          ? 'Quotation email dispatched to student successfully!'
-          : 'Invoice email dispatched to student successfully!'
-      );
+      if (isReceipt) {
+        await invoiceService.sendReceiptEmail(invoice.id);
+        setEmailStatusMessage('Payment receipt email dispatched to student successfully!');
+      } else {
+        await invoiceService.sendEmail(invoice.id, { is_quotation: isQuotation });
+        setEmailStatusMessage(
+          isQuotation
+            ? 'Quotation email dispatched to student successfully!'
+            : 'Invoice email dispatched to student successfully!'
+        );
+      }
       setTimeout(() => setEmailStatusMessage(null), 4500);
     } catch (err: any) {
       console.error('Failed to send email:', err);
@@ -162,6 +180,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   if (!invoice) return null;
 
   const isPaid = invoice.status === 'PAID';
+  const isPartiallyPaid = invoice.status === 'PARTIALLY_PAID';
 
   // Financial calculations with optional GST
   const subtotal = invoice.subtotal || 0;
@@ -171,6 +190,14 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
   const gstRate = settings?.gst_percentage ?? 18;
   const gstAmount = includeGst ? (taxableAmount * gstRate) / 100 : 0;
   const finalTotal = includeGst ? taxableAmount + gstAmount : (invoice.total_amount || taxableAmount);
+
+  const amountPaid = isPaid
+    ? finalTotal
+    : isPartiallyPaid
+    ? (invoice.amount_paid ?? 0)
+    : 0;
+
+  const balanceDue = Math.max(0, finalTotal - amountPaid);
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -229,8 +256,8 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             <button
               type="button"
               onClick={() => setMode('INVOICE')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                !isQuotation
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                !isQuotation && !isReceipt
                   ? 'bg-white text-saBlue shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
@@ -240,21 +267,41 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => setMode('RECEIPT')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                isReceipt
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              Payment Receipt
+            </button>
+            <button
+              type="button"
               onClick={() => setMode('QUOTATION')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 isQuotation
                   ? 'bg-amber-600 text-white shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              Fee Quotation (Estimate)
+              Fee Quotation
             </button>
           </div>
           <div className="text-[11px] text-slate-500 font-medium">
             Displaying as:{' '}
-            <span className={isQuotation ? 'text-amber-800 font-bold' : 'text-saBlue font-bold'}>
-              {isQuotation ? 'Official Fee Quotation' : 'Standard Tax Invoice'}
+            <span
+              className={
+                isReceipt
+                  ? 'text-emerald-700 font-bold'
+                  : isQuotation
+                  ? 'text-amber-800 font-bold'
+                  : 'text-saBlue font-bold'
+              }
+            >
+              {isReceipt ? 'Official Fee Payment Receipt' : isQuotation ? 'Official Fee Quotation' : 'Standard Tax Invoice'}
             </span>
           </div>
         </div>
@@ -262,7 +309,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
         {/* Printable Sheet Container */}
         <div id="invoice-printable-area" className="p-8 sm:p-10 space-y-7 bg-white text-slate-900 w-full font-sans">
           
-          {/* 1. Header: Logo & Academy Info (Left) | INVOICE / QUOTATION Title & Meta (Right) */}
+          {/* 1. Header: Logo & Academy Info (Left) | INVOICE / RECEIPT / QUOTATION Title & Meta (Right) */}
           <div className="flex flex-col sm:flex-row justify-between items-start gap-6 border-b border-gray-200 pb-6">
             
             {/* Left: Organization Header */}
@@ -328,10 +375,22 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             {/* Right: Title & Document Meta */}
             <div className="text-left sm:text-right space-y-1.5 flex-shrink-0">
               <div className="flex items-center sm:justify-end">
-                <h1 className={`text-3xl font-extrabold tracking-tight ${isQuotation ? 'text-amber-800' : 'text-slate-900'}`}>
-                  {isQuotation ? 'QUOTATION' : 'INVOICE'}
+                <h1
+                  className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                    isReceipt ? 'text-emerald-700' : isQuotation ? 'text-amber-800' : 'text-slate-900'
+                  }`}
+                >
+                  {isReceipt ? 'PAYMENT RECEIPT' : isQuotation ? 'QUOTATION' : 'TAX INVOICE'}
                 </h1>
               </div>
+
+              {isReceipt && (
+                <div className="sm:text-right">
+                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-wider bg-emerald-100 text-emerald-900 px-2.5 py-0.5 rounded-md border border-emerald-200">
+                    {isPartiallyPaid ? 'Advance Fee Receipt' : 'Full Payment Received'}
+                  </span>
+                </div>
+              )}
 
               {isQuotation && (
                 <div className="sm:text-right">
@@ -343,25 +402,31 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
               <p className="font-mono text-sm font-bold text-gray-800 pt-1">
                 <span className="text-gray-400 font-sans font-normal text-xs uppercase tracking-wider">
-                  {isQuotation ? 'Quotation No:\u00A0' : 'Invoice No:\u00A0'}
+                  {isReceipt ? 'Receipt No:\u00A0' : isQuotation ? 'Quotation No:\u00A0' : 'Invoice No:\u00A0'}
                 </span>
-                <span className={isQuotation ? 'text-amber-900' : 'text-gray-800'}>
+                <span className={isReceipt ? 'text-emerald-800' : isQuotation ? 'text-amber-900' : 'text-gray-800'}>
                   {docNumber}
                 </span>
               </p>
 
               <div className="text-xs text-gray-600 space-y-0.5 pt-1">
                 <p>
-                  <span className="text-gray-500">{isQuotation ? 'Quotation Date:' : 'Invoice Date:'}</span>{' '}
-                  <span className="font-semibold text-gray-800">{formatDate(invoice.issue_date)}</span>
+                  <span className="text-gray-500">
+                    {isReceipt ? 'Receipt Date:' : isQuotation ? 'Quotation Date:' : 'Invoice Date:'}
+                  </span>{' '}
+                  <span className="font-semibold text-gray-800">
+                    {formatDate(isReceipt && invoice.paid_date ? invoice.paid_date : invoice.issue_date)}
+                  </span>
                 </p>
                 <p>
-                  <span className="text-gray-500">{isQuotation ? 'Valid Until:' : 'Due Date:'}</span>{' '}
+                  <span className="text-gray-500">
+                    {isPartiallyPaid ? 'Next Due Date:' : isQuotation ? 'Valid Until:' : 'Due Date:'}
+                  </span>{' '}
                   <span className="font-semibold text-gray-800">{formatDate(invoice.due_date)}</span>
                 </p>
-                {!isQuotation && invoice.paid_date && (
+                {invoice.paid_date && (
                   <p>
-                    <span className="text-gray-500">Payment Date:</span>{' '}
+                    <span className="text-gray-500">Payment Received On:</span>{' '}
                     <span className="font-semibold text-emerald-700">{formatDate(invoice.paid_date)}</span>
                   </p>
                 )}
@@ -376,12 +441,12 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </div>
           )}
 
-          {/* 2. Billing Meta: Billed To (Student) & Payment / Validity Details */}
+          {/* 2. Billing Meta: Student & Payment Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-1">
             {/* Student Details */}
             <div className="space-y-1">
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                {isQuotation ? 'Quotation Prepared For' : 'Billed To (Student)'}
+                {isReceipt ? 'Received From (Student)' : isQuotation ? 'Quotation Prepared For' : 'Billed To (Student)'}
               </p>
               <h3 className="text-base font-bold text-gray-900">
                 {invoice.student?.user?.name || 'Student Name'}
@@ -414,41 +479,37 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             {/* Payment / Validity Meta */}
             <div className="sm:text-right space-y-1">
               <p className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
-                {isQuotation ? 'Quotation Status' : 'Payment Status'}
+                {isReceipt ? 'Payment & Settlement Summary' : isQuotation ? 'Quotation Status' : 'Payment Status'}
               </p>
               <div className="text-xs text-gray-600 space-y-1 pt-1">
                 <p>
                   <span className="text-gray-500">Status:</span>{' '}
                   <span className="font-semibold text-gray-900">
-                    {isQuotation
+                    {isPaid
+                      ? 'Fully Paid (Settled)'
+                      : isPartiallyPaid
+                      ? 'Partially Paid (Advance Received)'
+                      : isQuotation
                       ? 'Fee Estimate (Valid for Admission)'
-                      : isPaid
-                      ? 'Paid in Full'
                       : 'Payment Awaited'}
                   </span>
                 </p>
-                {isQuotation ? (
+                {invoice.payment_method && (
                   <p>
-                    <span className="text-gray-500">Validity:</span>{' '}
-                    <span className="font-semibold text-amber-800">
-                      Until {formatDate(invoice.due_date)}
-                    </span>
+                    <span className="text-gray-500">Payment Mode:</span>{' '}
+                    <span className="font-semibold text-gray-900">{invoice.payment_method}</span>
                   </p>
-                ) : (
-                  <>
-                    {invoice.payment_method && (
-                      <p>
-                        <span className="text-gray-500">Method:</span>{' '}
-                        <span className="font-semibold text-gray-900">{invoice.payment_method}</span>
-                      </p>
-                    )}
-                    {invoice.transaction_id && (
-                      <p>
-                        <span className="text-gray-500">Ref / Txn ID:</span>{' '}
-                        <span className="font-mono text-gray-800">{invoice.transaction_id}</span>
-                      </p>
-                    )}
-                  </>
+                )}
+                {invoice.transaction_id && (
+                  <p>
+                    <span className="text-gray-500">Txn / Ref ID:</span>{' '}
+                    <span className="font-mono text-gray-800">{invoice.transaction_id}</span>
+                  </p>
+                )}
+                {isPartiallyPaid && (
+                  <p className="text-amber-800 font-bold">
+                    Next Due Date: {formatDate(invoice.due_date)}
+                  </p>
                 )}
               </div>
             </div>
@@ -482,7 +543,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                         <td className="py-3 px-3">
                           <div className="font-bold text-gray-900 text-xs sm:text-sm">{item.item_name}</div>
                           <div className="text-[10px] text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-                            <span>{item.type ? item.type.replace('_', ' ') : (isQuotation ? 'COURSE / MODULE' : 'ENROLLMENT')}</span>
+                            <span>{item.type ? item.type.replace('_', ' ') : 'ENROLLMENT'}</span>
                             {settings?.hsn_sac_code && (
                               <span className="text-gray-400 font-mono font-normal">| HSN/SAC: {settings.hsn_sac_code}</span>
                             )}
@@ -503,7 +564,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                             <span className="text-gray-400">—</span>
                           )}
                         </td>
-                        <td className="py-3 px-3 text-right font-bold text-gray-900 text-xs sm:text-sm">
+                        <td className="py-3 px-3 text-right font-bold text-gray-900 text-xs sm:text-sm font-mono">
                           ₹{lineTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                       </tr>
@@ -520,7 +581,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
             </table>
           </div>
 
-          {/* 4. Bottom Section: Notes & Bank/UPI Remittance (Left) | Totals with GST (Right) */}
+          {/* 4. Bottom Section: Notes & Bank/UPI Remittance (Left) | Totals with Advance Paid & Balance Due (Right) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 pt-2 items-start border-t border-gray-200">
             {/* Left: Notes, Bank/UPI Remittance, and Terms */}
             <div className="space-y-3 text-xs text-gray-600">
@@ -529,7 +590,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5">
                   <p className="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1 flex items-center gap-1.5">
                     <Landmark className="w-3.5 h-3.5 text-saBlue" />{' '}
-                    {isQuotation ? 'Fee Acceptance & Remittance Details:' : 'Payment Remittance Details:'}
+                    {isReceipt ? 'Institute Bank & UPI Details:' : 'Payment Remittance Details:'}
                   </p>
                   {settings.bank_name && (
                     <div className="space-y-0.5 text-slate-700">
@@ -559,11 +620,20 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
 
               <div className="text-[11px] text-gray-500 space-y-1">
                 <p className="font-bold text-gray-700 uppercase tracking-wider text-[10px]">Terms & Conditions:</p>
-                {isQuotation ? (
+                {isReceipt ? (
+                  <>
+                    <p>1. This payment receipt serves as official proof of fee acknowledgment.</p>
+                    {isPartiallyPaid && (
+                      <p>2. Please clear remaining balance dues of ₹{balanceDue.toFixed(2)} on or before {formatDate(invoice.due_date)}.</p>
+                    )}
+                    <p className="italic pt-2 text-gray-400">
+                      This is a computer-generated fee payment receipt and requires no physical signature.
+                    </p>
+                  </>
+                ) : isQuotation ? (
                   <>
                     <p>1. This fee quotation is valid until the specified date ({formatDate(invoice.due_date)}).</p>
                     <p>2. Batch seat reservation and admission will be confirmed upon fee remittance.</p>
-                    <p>3. Fee can be paid via the Bank Account or UPI ID specified above.</p>
                     <p className="italic pt-2 text-gray-400">
                       This is a computer-generated fee quotation and requires no physical signature.
                     </p>
@@ -580,11 +650,11 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Right: Subtotal, Discount, GST & Total Amount */}
+            {/* Right: Subtotal, Discount, Total, Amount Received, and Remaining Balance Due */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 text-gray-600 border-b border-gray-100">
                 <span>Subtotal (MRP):</span>
-                <span className="font-semibold text-gray-900">
+                <span className="font-semibold text-gray-900 font-mono">
                   ₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
@@ -592,7 +662,7 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               {discount > 0 && (
                 <div className="flex justify-between py-1 text-emerald-700 border-b border-gray-100">
                   <span>Total Discount:</span>
-                  <span className="font-semibold">
+                  <span className="font-semibold font-mono">
                     - ₹{discount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
@@ -602,29 +672,52 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
                 <>
                   <div className="flex justify-between py-1 text-gray-600 border-b border-gray-100">
                     <span>Taxable Amount:</span>
-                    <span className="font-semibold text-gray-900">
+                    <span className="font-semibold text-gray-900 font-mono">
                       ₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="flex justify-between py-1 text-slate-700 border-b border-gray-100">
                     <span>GST ({gstRate}%):</span>
-                    <span className="font-semibold text-slate-900">
+                    <span className="font-semibold text-slate-900 font-mono">
                       ₹{gstAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                 </>
               )}
 
-              <div className="flex justify-between py-2 border-t-2 border-b-2 border-gray-900 text-sm font-bold text-gray-900">
+              <div className="flex justify-between py-2 border-t-2 border-b border-gray-900 text-sm font-bold text-gray-900">
                 <span className="uppercase tracking-wider text-xs">
                   {isQuotation
-                    ? (includeGst ? 'Total Quoted Fee (incl. GST):' : 'Total Quoted Fee:')
-                    : (includeGst ? 'Total Amount Due (incl. GST):' : 'Total Amount Due:')}
+                    ? 'Total Quoted Fee:'
+                    : isReceipt
+                    ? 'Total Invoiced Fee:'
+                    : 'Total Amount Due:'}
                 </span>
-                <span className={`text-base sm:text-lg font-black ${isQuotation ? 'text-amber-800' : 'text-[#0276D3]'}`}>
+                <span className="text-base sm:text-lg font-black text-slate-900 font-mono">
                   ₹{finalTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
+
+              {/* Advance Paid & Remaining Balance Breakdown for Invoices/Receipts */}
+              {(isReceipt || isPaid || isPartiallyPaid) && (
+                <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-200 space-y-1 mt-2">
+                  <div className="flex justify-between text-emerald-900 font-bold text-xs">
+                    <span>Amount Received / Paid:</span>
+                    <span className="font-mono text-sm text-emerald-700">
+                      ₹{amountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+
+                  {balanceDue > 0 && (
+                    <div className="flex justify-between text-amber-900 font-bold text-xs pt-1 border-t border-emerald-200/60">
+                      <span>Remaining Balance Due:</span>
+                      <span className="font-mono text-sm text-amber-700">
+                        ₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -640,14 +733,22 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               onClick={handleSendEmail}
               disabled={sendingEmail}
               className={`h-9 px-4 text-xs rounded-lg font-medium flex items-center gap-2 ${
-                isQuotation
+                isReceipt
+                  ? 'border-emerald-300 text-emerald-900 hover:bg-emerald-50'
+                  : isQuotation
                   ? 'border-amber-300 text-amber-900 hover:bg-amber-50'
                   : 'border-gray-300 text-gray-700 hover:bg-gray-100'
               }`}
             >
-              <Mail className={`w-3.5 h-3.5 ${isQuotation ? 'text-amber-600' : 'text-[#0276D3]'}`} />
+              <Mail
+                className={`w-3.5 h-3.5 ${
+                  isReceipt ? 'text-emerald-600' : isQuotation ? 'text-amber-600' : 'text-[#0276D3]'
+                }`}
+              />
               {sendingEmail
                 ? 'Sending...'
+                : isReceipt
+                ? 'Email Receipt to Student'
                 : isQuotation
                 ? 'Mail Quotation to Student'
                 : 'Mail Invoice to Student'}
@@ -657,13 +758,15 @@ export const InvoiceDetailModal: React.FC<InvoiceDetailModalProps> = ({
               size="sm"
               onClick={handlePrint}
               className={`h-9 px-4 text-xs rounded-lg font-bold flex items-center gap-2 ${
-                isQuotation
+                isReceipt
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                  : isQuotation
                   ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs'
                   : 'bg-saBlue hover:bg-saBlueDarkHover text-white shadow-xs'
               }`}
             >
-              {isQuotation ? <Download className="w-3.5 h-3.5" /> : <Printer className="w-3.5 h-3.5" />}
-              {isQuotation ? 'Download Quotation (PDF)' : 'Print / Save PDF'}
+              {isReceipt ? <Download className="w-3.5 h-3.5" /> : isQuotation ? <Download className="w-3.5 h-3.5" /> : <Printer className="w-3.5 h-3.5" />}
+              {isReceipt ? 'Print / Download Receipt' : isQuotation ? 'Download Quotation (PDF)' : 'Print / Save PDF'}
             </Button>
           </div>
 

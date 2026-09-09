@@ -241,3 +241,51 @@ export async function generateInvoiceNumber(prismaClient?: PrismaClient): Promis
     return invoiceNumber;
 }
 
+/**
+ * Helper to generate unique sequential receipt number (e.g. RCP-2026-00001).
+ */
+export async function generateReceiptNumber(prismaClient?: PrismaClient): Promise<string> {
+    const db = prismaClient || prisma;
+    const currentYear = new Date().getFullYear();
+    const prefix = `RCP-${currentYear}-`;
+
+    const recentInvoices = await db.invoice.findMany({
+        where: {
+            receipt_number: {
+                startsWith: prefix,
+            },
+        },
+        orderBy: {
+            id: 'desc',
+        },
+        take: 50,
+        select: {
+            receipt_number: true,
+        },
+    });
+
+    let maxSeq = 0;
+    for (const inv of recentInvoices) {
+        if (inv.receipt_number) {
+            const parts = inv.receipt_number.split('-');
+            const lastPart = parts[parts.length - 1] ?? '';
+            const num = parseInt(lastPart, 10);
+            if (!isNaN(num) && num > maxSeq) {
+                maxSeq = num;
+            }
+        }
+    }
+
+    const totalCount = await db.invoice.count({
+        where: {
+            receipt_number: {
+                startsWith: prefix,
+            },
+        },
+    });
+
+    let candidateSeq = Math.max(maxSeq, totalCount) + 1;
+    let receiptNumber = `${prefix}${String(candidateSeq).padStart(5, '0')}`;
+    return receiptNumber;
+}
+

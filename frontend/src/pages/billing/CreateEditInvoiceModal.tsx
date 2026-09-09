@@ -66,7 +66,8 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
-  const [status, setStatus] = useState<'PENDING' | 'PAID'>('PENDING');
+  const [status, setStatus] = useState<'PENDING' | 'PARTIALLY_PAID' | 'PAID'>('PENDING');
+  const [amountPaid, setAmountPaid] = useState<number>(0);
   const [paidDate, setPaidDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [overallDiscount, setOverallDiscount] = useState<number>(0);
@@ -115,7 +116,8 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
       setStudentId(editingInvoice.student_id);
       setIssueDate(editingInvoice.issue_date.split('T')[0]);
       setDueDate(editingInvoice.due_date.split('T')[0]);
-      setStatus(editingInvoice.status === 'PAID' ? 'PAID' : 'PENDING');
+      setStatus(editingInvoice.status as any || 'PENDING');
+      setAmountPaid(editingInvoice.amount_paid || 0);
       setPaidDate(
         editingInvoice.paid_date ? editingInvoice.paid_date.split('T')[0] : new Date().toISOString().split('T')[0]
       );
@@ -144,6 +146,7 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
       setIssueDate(new Date().toISOString().split('T')[0]);
       setDueDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
       setStatus('PENDING');
+      setAmountPaid(0);
       setPaidDate(new Date().toISOString().split('T')[0]);
       setPaymentMethod('UPI');
       setOverallDiscount(0);
@@ -270,6 +273,13 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
         discount: i.discount,
       }));
 
+      const effectiveAmountPaid =
+        status === 'PAID'
+          ? totalAmount
+          : status === 'PARTIALLY_PAID'
+          ? Math.min(totalAmount, Number(amountPaid || 0))
+          : 0;
+
       let resultInvoice: Invoice | undefined;
 
       if (editingInvoice) {
@@ -278,9 +288,10 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
           issue_date: issueDate,
           due_date: dueDate,
           status,
-          paid_date: status === 'PAID' ? paidDate : undefined,
+          paid_date: status !== 'PENDING' ? paidDate : undefined,
           discount_amount: Number(overallDiscount || 0),
-          payment_method: status === 'PAID' ? paymentMethod : undefined,
+          amount_paid: effectiveAmountPaid,
+          payment_method: status !== 'PENDING' ? paymentMethod : undefined,
           notes,
           items: preparedItems,
         });
@@ -291,9 +302,10 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
           issue_date: issueDate,
           due_date: dueDate,
           status,
-          paid_date: status === 'PAID' ? paidDate : undefined,
+          paid_date: status !== 'PENDING' ? paidDate : undefined,
           discount_amount: Number(overallDiscount || 0),
-          payment_method: status === 'PAID' ? paymentMethod : undefined,
+          amount_paid: effectiveAmountPaid,
+          payment_method: status !== 'PENDING' ? paymentMethod : undefined,
           notes,
           send_email: sendEmail,
           items: preparedItems,
@@ -315,6 +327,11 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
     e.preventDefault();
     await saveInvoice(openDownloadAfterSave, 'INVOICE');
   };
+
+  const currentBalanceDue = Math.max(
+    0,
+    totalAmount - (status === 'PAID' ? totalAmount : status === 'PARTIALLY_PAID' ? Number(amountPaid || 0) : 0)
+  );
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
@@ -580,7 +597,7 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
             )}
           </div>
 
-          {/* Section 3: Dates, Status & Discounts */}
+          {/* Section 3: Dates, Status, Advance Payments & Discounts */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-gray-50/70 p-4 rounded-2xl border border-gray-100">
             <div>
               <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1 block">
@@ -596,7 +613,7 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
 
             <div>
               <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1 block">
-                Due Date <span className="text-red-500">*</span>
+                {status === 'PARTIALLY_PAID' ? 'Next Due Date (Remaining Balance)' : 'Due Date'} <span className="text-red-500">*</span>
               </Label>
               <Input
                 type="date"
@@ -627,19 +644,45 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
               </Label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value as any)}
+                onChange={(e) => {
+                  const newStatus = e.target.value as any;
+                  setStatus(newStatus);
+                  if (newStatus === 'PARTIALLY_PAID' && (!amountPaid || amountPaid === 0)) {
+                    // Pre-fill sensible advance default, e.g., 50% or 0
+                    setAmountPaid(Math.round(totalAmount / 2));
+                  }
+                }}
                 className="w-full h-9 px-3 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-saBlue/10 font-bold text-gray-700"
               >
-                <option value="PENDING">PENDING (Unpaid)</option>
-                <option value="PAID">PAID (Mark Received)</option>
+                <option value="PENDING">PENDING (Unpaid / ₹0 Received)</option>
+                <option value="PARTIALLY_PAID">PARTIALLY PAID (Advance Received)</option>
+                <option value="PAID">PAID (Full Payment Received)</option>
               </select>
             </div>
 
-            {status === 'PAID' && (
+            {status === 'PARTIALLY_PAID' && (
+              <div>
+                <Label className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider mb-1 block">
+                  Advance / Paid Amount (₹) <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={totalAmount}
+                  value={amountPaid}
+                  onChange={(e) => setAmountPaid(Number(e.target.value))}
+                  placeholder="e.g. 5000"
+                  className="h-9 text-xs rounded-xl bg-white border-emerald-300 text-emerald-700 font-bold"
+                  required
+                />
+              </div>
+            )}
+
+            {status !== 'PENDING' && (
               <>
                 <div>
                   <Label className="text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-1 block">
-                    Paid Date
+                    {status === 'PARTIALLY_PAID' ? 'Advance Paid Date' : 'Paid Date'}
                   </Label>
                   <Input
                     type="date"
@@ -668,6 +711,22 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
               </>
             )}
           </div>
+
+          {/* Partial Payment Dues Alert */}
+          {status === 'PARTIALLY_PAID' && (
+            <div className="bg-amber-50/80 border border-amber-200 p-3.5 rounded-2xl flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-amber-900 block">Advance Received: ₹{Number(amountPaid || 0).toFixed(2)}</span>
+                <span className="text-amber-700 text-[11px]">
+                  Remaining balance due on <strong>{dueDate}</strong>
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[11px] text-amber-700 block uppercase font-bold">Balance Due</span>
+                <span className="text-base font-black text-amber-800 font-mono">₹{currentBalanceDue.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
 
           {/* Section 4: Notes & Email Toggle */}
           <div className="space-y-3">
@@ -709,7 +768,7 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
                     className="rounded border-gray-300 text-saBlue focus:ring-saBlue h-4 w-4"
                   />
                   <label htmlFor="sendEmailCheck" className="text-xs font-semibold text-gray-700 cursor-pointer">
-                    Send itemized invoice email to student upon creation
+                    Send itemized invoice / receipt email to student upon creation
                   </label>
                 </div>
               </div>
@@ -718,18 +777,25 @@ export const CreateEditInvoiceModal: React.FC<CreateEditInvoiceModalProps> = ({
 
           {/* Totals Summary Footer */}
           <div className="bg-gradient-to-r from-blue-50/50 to-orange-50/30 p-4 rounded-2xl border border-blue-100 flex flex-col sm:flex-row justify-between items-center gap-3">
-            <div className="text-xs text-gray-500">
-              <span>Subtotal: </span>
-              <strong className="text-gray-700">₹{subtotal.toFixed(2)}</strong>
-              {overallDiscount > 0 && (
-                <span className="ml-3 text-saOrange">
-                  Discount: <strong>-₹{Number(overallDiscount).toFixed(2)}</strong>
-                </span>
+            <div className="text-xs text-gray-500 space-y-1">
+              <div>
+                <span>Subtotal: </span>
+                <strong className="text-gray-700 font-mono">₹{subtotal.toFixed(2)}</strong>
+                {overallDiscount > 0 && (
+                  <span className="ml-3 text-saOrange font-mono">
+                    Discount: <strong>-₹{Number(overallDiscount).toFixed(2)}</strong>
+                  </span>
+                )}
+              </div>
+              {status === 'PARTIALLY_PAID' && (
+                <div className="text-emerald-700 font-medium">
+                  Advance Paid: <strong className="font-mono">₹{Number(amountPaid || 0).toFixed(2)}</strong> | Remaining: <strong className="font-mono text-amber-700">₹{currentBalanceDue.toFixed(2)}</strong>
+                </div>
               )}
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-xs uppercase font-bold text-gray-500">Total Invoiced:</span>
-              <span className="text-2xl font-black text-saBlue">₹{totalAmount.toFixed(2)}</span>
+              <span className="text-2xl font-black text-saBlue font-mono">₹{totalAmount.toFixed(2)}</span>
             </div>
           </div>
 

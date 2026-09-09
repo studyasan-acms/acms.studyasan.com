@@ -672,9 +672,17 @@ export const invoiceService = {
     return response.data;
   },
 
+  recordPayment: async (
+    id: number,
+    data: { amount: number; payment_method?: string; transaction_id?: string; notes?: string; next_due_date?: string }
+  ): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.post(`/invoices/${id}/record-payment`, data);
+    return response.data;
+  },
+
   markStatus: async (
     id: number,
-    data: { status: 'PAID' | 'PENDING'; paid_date?: string; payment_method?: string }
+    data: { status: 'PAID' | 'PARTIALLY_PAID' | 'PENDING'; paid_date?: string; payment_method?: string }
   ): Promise<{ success: boolean; data: Invoice; message?: string }> => {
     const response = await api.patch(`/invoices/${id}/status`, data);
     return response.data;
@@ -682,9 +690,14 @@ export const invoiceService = {
 
   sendEmail: async (
     id: number,
-    data?: { is_quotation?: boolean }
+    data?: { is_quotation?: boolean; is_receipt?: boolean }
   ): Promise<{ success: boolean; message?: string }> => {
     const response = await api.post(`/invoices/${id}/send-email`, data);
+    return response.data;
+  },
+
+  sendReceiptEmail: async (id: number): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post(`/invoices/${id}/send-email`, { is_receipt: true });
     return response.data;
   },
 
@@ -1442,7 +1455,7 @@ export const homeService = {
     const response = await api.get('/home/items');
     return response.data;
   },
-  
+
   getPerformance: async (): Promise<{
     daily: { label: string; score: number; total: number }[];
     weekly: { label: string; score: number; total: number }[];
@@ -1492,7 +1505,17 @@ export const enquiryService = {
 };
 
 export const couponService = {
-  getAll: async (params?: { is_active?: boolean }): Promise<{ data: any[] }> => {
+  getAll: async (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    is_active?: boolean;
+    discount_type?: string;
+    applicable_to?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<any> => {
     const response = await api.get('/coupons', { params });
     return response.data;
   },
@@ -1502,37 +1525,79 @@ export const couponService = {
     return response.data;
   },
 
-  create: async (data: {
-    code: string;
-    discount_type: 'PERCENTAGE' | 'FLAT';
-    discount_value: number;
-    is_active?: boolean;
-    valid_from?: string | null;
-    valid_until?: string | null;
-    max_uses?: number | null;
-  }): Promise<{ message: string; data: any }> => {
+  create: async (data: any): Promise<{ message: string; data: any }> => {
     const response = await api.post('/coupons', data);
     return response.data;
   },
 
-  update: async (
-    id: number,
-    data: {
-      code?: string;
-      discount_type?: 'PERCENTAGE' | 'FLAT';
-      discount_value?: number;
-      is_active?: boolean;
-      valid_from?: string | null;
-      valid_until?: string | null;
-      max_uses?: number | null;
-    }
-  ): Promise<{ message: string; data: any }> => {
+  update: async (id: number, data: any): Promise<{ message: string; data: any }> => {
     const response = await api.put(`/coupons/${id}`, data);
     return response.data;
   },
 
   delete: async (id: number): Promise<{ message: string }> => {
     const response = await api.delete(`/coupons/${id}`);
+    return response.data;
+  },
+
+  validate: async (data: {
+    code: string;
+    item_type?: string;
+    item_id?: number;
+    order_amount?: number;
+  }): Promise<{
+    isValid: boolean;
+    message?: string;
+    error?: string;
+    discount_type?: 'PERCENTAGE' | 'FLAT';
+    discount_value?: number;
+    discount_amount?: number;
+    order_amount?: number;
+    final_amount?: number;
+    coupon?: any;
+  }> => {
+    const response = await api.post('/coupons/validate', data);
+    return response.data;
+  },
+};
+
+export const paymentGatewayService = {
+  getPublicConfig: async (): Promise<{ success: boolean; data: any }> => {
+    const response = await api.get('/payment-gateway/config');
+    return response.data;
+  },
+
+  getAdminSettings: async (): Promise<{ success: boolean; data: any }> => {
+    const response = await api.get('/settings/payment-gateway');
+    return response.data;
+  },
+
+  updateSettings: async (data: any): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.put('/settings/payment-gateway', data);
+    return response.data;
+  },
+
+  createOrder: async (data: {
+    item_type: 'COURSE' | 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+    item_id: number;
+    coupon_code?: string;
+  }): Promise<{ success: boolean; data: any }> => {
+    const response = await api.post('/payments/razorpay/create-order', data);
+    return response.data;
+  },
+
+  verifyPayment: async (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+    item_type: 'COURSE' | 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+    item_id: number;
+    coupon_code?: string;
+    student_name?: string;
+    student_email?: string;
+    student_phone?: string;
+  }): Promise<{ success: boolean; data: any; message?: string }> => {
+    const response = await api.post('/payments/razorpay/verify-payment', data);
     return response.data;
   },
 };

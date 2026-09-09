@@ -83,8 +83,8 @@ export function normalizeSyllabus(rawSyllabus: any): SyllabusData {
       modules = parsed.modules;
     }
 
-    // Fallback: If units is empty but modules has items, populate units from modules
-    if (units.length === 0 && modules.length > 0) {
+    const hasExplicitUnits = 'units' in parsed && Array.isArray(parsed.units);
+    if (!hasExplicitUnits && units.length === 0 && modules.length > 0) {
       units = modules.map((m: any, idx: number) => ({
         name: m?.title || m?.name || `Unit ${idx + 1}`,
         content: m?.description || (typeof m?.content === 'string' ? m.content : '') || '',

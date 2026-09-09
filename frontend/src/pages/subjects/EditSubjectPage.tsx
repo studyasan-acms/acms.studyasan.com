@@ -16,7 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { subjectService, boardService, classService, currencyService } from '@/services/api';
 import type { Board, Class, Subject, UpdateSubjectData, Currency } from '@/types';
 import { useAuthStore } from '@/store/authStore';
-import { ArrowLeft, Loader2, Save, Plus, Trash2, Camera, UploadCloud, BookOpen, Globe, Users, Coins } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Plus, Trash2, Camera, UploadCloud, BookOpen, Globe, Users, Coins, Edit2, Check, X, ArrowUp, ArrowDown } from 'lucide-react';
 import ErrorModal from '@/components/ui/errorModal';
 import SuccessModal from '@/components/ui/successModal';
 import SearchablePaginatedSelect from '@/components/ui/searchablePaginatedSelect';
@@ -48,6 +48,7 @@ export default function EditSubjectPage() {
   const [syllabusUnits, setSyllabusUnits] = useState<{ name: string; content: string }[]>([]);
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitContent, setNewUnitContent] = useState('');
+  const [editingUnitIndex, setEditingUnitIndex] = useState<number | null>(null);
 
   // Image upload state
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
@@ -137,19 +138,69 @@ export default function EditSubjectPage() {
     }
   };
 
-  const addUnit = () => {
-    if (newUnitName.trim() && newUnitContent.trim()) {
+  const addOrUpdateUnit = () => {
+    if (!newUnitName.trim() || !newUnitContent.trim()) return;
+
+    if (editingUnitIndex !== null) {
+      setSyllabusUnits((prev) =>
+        prev.map((unit, i) =>
+          i === editingUnitIndex
+            ? { name: newUnitName.trim(), content: newUnitContent.trim() }
+            : unit
+        )
+      );
+      setEditingUnitIndex(null);
+    } else {
       setSyllabusUnits((prev) => [
         ...prev,
         { name: newUnitName.trim(), content: newUnitContent.trim() },
       ]);
-      setNewUnitName('');
-      setNewUnitContent('');
+    }
+    setNewUnitName('');
+    setNewUnitContent('');
+  };
+
+  const startEditUnit = (index: number) => {
+    const unit = syllabusUnits[index];
+    if (unit) {
+      setEditingUnitIndex(index);
+      setNewUnitName(unit.name);
+      setNewUnitContent(unit.content);
     }
   };
 
+  const cancelEditUnit = () => {
+    setEditingUnitIndex(null);
+    setNewUnitName('');
+    setNewUnitContent('');
+  };
+
   const removeUnit = (index: number) => {
+    if (editingUnitIndex === index) {
+      cancelEditUnit();
+    } else if (editingUnitIndex !== null && editingUnitIndex > index) {
+      setEditingUnitIndex(editingUnitIndex - 1);
+    }
     setSyllabusUnits((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const moveUnit = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= syllabusUnits.length) return;
+
+    setSyllabusUnits((prev) => {
+      const copy = [...prev];
+      const temp = copy[index];
+      copy[index] = copy[targetIndex];
+      copy[targetIndex] = temp;
+      return copy;
+    });
+
+    if (editingUnitIndex === index) {
+      setEditingUnitIndex(targetIndex);
+    } else if (editingUnitIndex === targetIndex) {
+      setEditingUnitIndex(index);
+    }
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -185,17 +236,20 @@ export default function EditSubjectPage() {
 
     try {
       const normalizedCurrentSyllabus = normalizeSyllabus(subject?.syllabus);
-      const existingModules = normalizedCurrentSyllabus.modules;
+      const existingModules = normalizedCurrentSyllabus.modules || [];
       const syllabusData = {
         units: syllabusUnits,
-        modules: existingModules.length > 0 ? existingModules : syllabusUnits.map((u, i) => ({
-          module_id: i + 1,
-          title: u.name,
-          description: u.content,
-          order: i + 1,
-          content: [],
-          estimated_time_minutes: 0,
-        })),
+        modules: syllabusUnits.map((u, i) => {
+          const existing = existingModules[i] || existingModules.find((m: any) => m.title === u.name);
+          return {
+            module_id: existing?.module_id || i + 1,
+            title: u.name,
+            description: u.content,
+            order: i + 1,
+            content: existing?.content || [],
+            estimated_time_minutes: existing?.estimated_time_minutes || 0,
+          };
+        }),
       };
 
       const submitData: UpdateSubjectData = {
@@ -211,6 +265,7 @@ export default function EditSubjectPage() {
       setSubject({ ...updatedSubjectData, syllabus: updatedNormalized });
       setFormData((prev) => ({ ...prev, syllabus: updatedNormalized }));
       setSyllabusUnits(updatedNormalized.units);
+      cancelEditUnit();
 
       setSuccess('Subject updated successfully!');
     } catch (err: any) {
@@ -529,12 +584,38 @@ export default function EditSubjectPage() {
               className="h-8 text-xs font-bold text-saBlue border-saBlue/30 bg-saBlue/5 hover:bg-saBlue/10 rounded-xl w-fit"
             >
               <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-              Manage Curriculum Modules ({subject?.syllabus?.modules?.length || 0})
+              Manage Curriculum Modules ({syllabusUnits.length || subject?.syllabus?.modules?.length || 0})
             </Button>
           </CardHeader>
 
           <CardContent className="space-y-4 p-4 pt-2">
-            <div className="bg-gray-50/50 p-3 rounded-xl border border-gray-100 space-y-3">
+            {/* Add / Edit Unit Form Box */}
+            <div className={`p-3.5 rounded-xl border transition-all ${editingUnitIndex !== null ? 'bg-blue-50/60 border-saBlue/40 shadow-sm' : 'bg-gray-50/50 border-gray-100'} space-y-3`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  {editingUnitIndex !== null ? (
+                    <span className="text-saBlue flex items-center gap-1.5 font-extrabold">
+                      <Edit2 className="w-3 h-3" />
+                      Editing Unit #{editingUnitIndex + 1}
+                    </span>
+                  ) : (
+                    'Add New Unit'
+                  )}
+                </span>
+                {editingUnitIndex !== null && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={cancelEditUnit}
+                    className="h-6 px-2 text-[10px] font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 rounded-md"
+                  >
+                    <X className="w-3 h-3 mr-1" />
+                    Cancel Edit
+                  </Button>
+                )}
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="space-y-1">
                   <FormLabel>Unit Name</FormLabel>
@@ -552,31 +633,57 @@ export default function EditSubjectPage() {
                     placeholder="Brief overview"
                     value={newUnitContent}
                     onChange={(e) => setNewUnitContent(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && addUnit()}
+                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addOrUpdateUnit())}
                     disabled={isSaving}
                     className="bg-white h-9 text-xs"
                   />
                 </div>
               </div>
 
-              <Button
-                type="button"
-                onClick={addUnit}
-                disabled={!newUnitName.trim() || !newUnitContent.trim() || isSaving}
-                variant="outline"
-                className="w-full h-9 rounded-lg border-saBlue/20 text-saBlue hover:bg-saBlue/5 font-semibold text-[10px] uppercase tracking-wider"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Add Syllabus Unit
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  onClick={addOrUpdateUnit}
+                  disabled={!newUnitName.trim() || !newUnitContent.trim() || isSaving}
+                  variant={editingUnitIndex !== null ? 'default' : 'outline'}
+                  className={`w-full h-9 rounded-lg font-semibold text-[10px] uppercase tracking-wider ${
+                    editingUnitIndex !== null
+                      ? 'bg-saBlue hover:bg-saBlue/90 text-white'
+                      : 'border-saBlue/20 text-saBlue hover:bg-saBlue/5'
+                  }`}
+                >
+                  {editingUnitIndex !== null ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
+                      Update Syllabus Unit #{editingUnitIndex + 1}
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Add Syllabus Unit
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
+            {/* Current Curriculum Units List */}
             {syllabusUnits.length > 0 ? (
               <div className="space-y-2">
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest px-1">Current Curriculum</p>
-                <div className="space-y-2 max-h-60 overflow-y-auto px-1 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Current Curriculum ({syllabusUnits.length} Units)</p>
+                  <span className="text-[9px] text-gray-400">Click edit to modify, or trash to remove</span>
+                </div>
+                <div className="space-y-2 max-h-72 overflow-y-auto px-1 pr-2 scrollbar-thin scrollbar-thumb-gray-200">
                   {syllabusUnits.map((unit, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 group hover:border-saBlue/30 hover:shadow-sm transition-all">
+                    <div
+                      key={index}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl border transition-all ${
+                        editingUnitIndex === index
+                          ? 'bg-blue-50/80 border-saBlue shadow-sm ring-1 ring-saBlue/20'
+                          : 'bg-white border-gray-100 hover:border-saBlue/30 hover:shadow-sm'
+                      }`}
+                    >
                       <div className="w-6 h-6 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue text-[10px] font-bold shrink-0">
                         {index + 1}
                       </div>
@@ -584,16 +691,58 @@ export default function EditSubjectPage() {
                         <div className="font-bold text-gray-700 text-xs truncate">{unit.name}</div>
                         <div className="text-[10px] text-gray-400 truncate mt-0.5">{unit.content}</div>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeUnit(index)}
-                        className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg h-7 w-7"
-                        disabled={isSaving}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+
+                      {/* Action buttons */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveUnit(index, 'up')}
+                          disabled={index === 0 || isSaving}
+                          title="Move up"
+                          className="text-gray-300 hover:text-saBlue hover:bg-blue-50 rounded-lg h-7 w-7 disabled:opacity-20"
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => moveUnit(index, 'down')}
+                          disabled={index === syllabusUnits.length - 1 || isSaving}
+                          title="Move down"
+                          className="text-gray-300 hover:text-saBlue hover:bg-blue-50 rounded-lg h-7 w-7 disabled:opacity-20"
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEditUnit(index)}
+                          title="Edit unit"
+                          className={`rounded-lg h-7 w-7 ${
+                            editingUnitIndex === index
+                              ? 'text-saBlue bg-blue-100'
+                              : 'text-gray-400 hover:text-saBlue hover:bg-blue-50'
+                          }`}
+                          disabled={isSaving}
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeUnit(index)}
+                          title="Delete unit"
+                          className="text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg h-7 w-7"
+                          disabled={isSaving}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

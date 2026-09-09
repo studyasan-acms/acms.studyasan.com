@@ -462,8 +462,13 @@ export interface EnrollmentPayment {
   period: string;
   due_date: string;
   amount: number;
+  amount_paid?: number;
   is_paid: boolean;
   paid_date: string | null;
+  payment_method?: string | null;
+  transaction_id?: string | null;
+  receipt_number?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
   enrollment?: Enrollment;
@@ -1341,7 +1346,7 @@ export interface CreateAnnouncementData {
 }
 
 // ================== INVOICE & BILLING TYPES ==================
-export type InvoiceStatus = 'PAID' | 'PENDING' | 'OVERDUE' | 'CANCELLED';
+export type InvoiceStatus = 'PAID' | 'PARTIALLY_PAID' | 'PENDING' | 'OVERDUE' | 'CANCELLED';
 
 export interface InvoiceItem {
   id: number;
@@ -1374,6 +1379,9 @@ export interface Invoice {
   subtotal: number;
   discount_amount: number;
   total_amount: number;
+  amount_paid?: number;
+  balance_due?: number;
+  receipt_number?: string | null;
   notes?: string | null;
   payment_method?: string | null;
   transaction_id?: string | null;
@@ -1393,6 +1401,7 @@ export interface Invoice {
     school?: string | null;
   };
   items: InvoiceItem[];
+  enrollments?: Enrollment[];
 }
 
 export interface InvoiceStats {
@@ -1400,6 +1409,7 @@ export interface InvoiceStats {
   totalPaid: number;
   totalPending: number;
   totalOverdue: number;
+  totalPartiallyPaid?: number;
   totalCount: number;
 }
 
@@ -1430,10 +1440,11 @@ export interface CreateInvoiceData {
     discount?: number;
   }[];
   discount_amount?: number;
+  amount_paid?: number;
   notes?: string;
   payment_method?: string;
   transaction_id?: string;
-  status?: 'PAID' | 'PENDING';
+  status?: 'PAID' | 'PARTIALLY_PAID' | 'PENDING';
   paid_date?: string;
   send_email?: boolean;
 }
@@ -1442,9 +1453,10 @@ export interface UpdateInvoiceData {
   student_id?: number;
   due_date?: string;
   issue_date?: string;
-  status?: 'PAID' | 'PENDING';
+  status?: 'PAID' | 'PARTIALLY_PAID' | 'PENDING';
   paid_date?: string;
   discount_amount?: number;
+  amount_paid?: number;
   notes?: string;
   payment_method?: string;
   transaction_id?: string;
@@ -1459,6 +1471,14 @@ export interface UpdateInvoiceData {
     quantity?: number;
     discount?: number;
   }[];
+}
+
+export interface RecordInvoicePaymentData {
+  amount: number;
+  payment_method?: string;
+  transaction_id?: string;
+  notes?: string;
+  next_due_date?: string;
 }
 
 export interface InvoiceSetting {
@@ -1481,6 +1501,126 @@ export interface InvoiceSetting {
   branch_name?: string;
   upi_id?: string;
   upi_name?: string;
+}
+
+// ================== PAYMENT GATEWAY TYPES ==================
+export interface PaymentGatewaySetting {
+  id?: number;
+  provider: string;
+  is_enabled: boolean;
+  enable_for_courses: boolean;
+  enable_for_test_series: boolean;
+  enable_for_activities: boolean;
+  key_id?: string;
+  key_secret?: string;
+  webhook_secret?: string;
+  currency: string;
+  theme_color: string;
+  institute_name: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PublicPaymentGatewayConfig {
+  is_enabled: boolean;
+  key_id?: string;
+  currency: string;
+  enable_for_courses: boolean;
+  enable_for_test_series: boolean;
+  enable_for_activities: boolean;
+  institute_name: string;
+  theme_color: string;
+}
+
+export interface CreateRazorpayOrderData {
+  item_type: 'COURSE' | 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  item_id: number;
+  coupon_code?: string;
+}
+
+export interface RazorpayOrderResponse {
+  is_free?: boolean;
+  order_id?: string;
+  amount: number;
+  amount_in_paise?: number;
+  currency?: string;
+  key_id?: string;
+  item_name: string;
+  unit_price?: number;
+  discount_amount?: number;
+  coupon_applied?: string | null;
+  institute_name?: string;
+  theme_color?: string;
+}
+
+export interface VerifyRazorpayPaymentData {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  item_type: 'COURSE' | 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+  item_id: number;
+  coupon_code?: string;
+  student_name?: string;
+  student_email?: string;
+  student_phone?: string;
+}
+
+// ================== COUPON TYPES ==================
+export interface Coupon {
+  id: number;
+  code: string;
+  discount_type: 'PERCENTAGE' | 'FLAT';
+  discount_value: number;
+  min_order_amount?: number | null;
+  applicable_to: 'ALL' | 'COURSE' | 'TEST_SERIES' | 'ACTIVITY_GROUP' | 'CUSTOM' | string;
+  applicable_course_ids?: number[];
+  applicable_test_series_ids?: number[];
+  applicable_activity_ids?: number[];
+  max_discount_amount?: number | null;
+  is_active: boolean;
+  valid_from: string | null;
+  valid_until: string | null;
+  max_uses: number | null;
+  used_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CouponStats {
+  totalCount: number;
+  totalActive: number;
+  totalExpired: number;
+  totalUses: number;
+}
+
+export interface CouponsResponse {
+  data: Coupon[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  stats?: CouponStats;
+}
+
+export interface ValidateCouponData {
+  code: string;
+  item_type?: string;
+  item_id?: number;
+  order_amount?: number;
+}
+
+export interface ValidateCouponResponse {
+  isValid: boolean;
+  message?: string;
+  error?: string;
+  discount_type?: 'PERCENTAGE' | 'FLAT';
+  discount_value?: number;
+  discount_amount?: number;
+  order_amount?: number;
+  final_amount?: number;
+  coupon?: Partial<Coupon>;
 }
 
 // ================== SECTION TYPES ==================

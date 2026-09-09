@@ -43,6 +43,7 @@ import * as whiteboardController from '../controllers/whiteboard.controller.js';
 import * as invoiceController from '../controllers/invoice.controller.js';
 import * as recordingController from '../controllers/recording.controller.js';
 import * as sectionController from '../controllers/section.controller.js';
+import * as paymentGatewayController from '../controllers/paymentGateway.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -658,7 +659,8 @@ router.patch('/enquiries/:id/status', authenticate, authorize('ADMIN', 'TEACHER'
 // Delete enquiry (Admin/Teacher with permission)
 router.delete('/enquiries/:id', authenticate, authorize('ADMIN', 'TEACHER'), enquiryController.deleteEnquiry);
 
-// ================== COUPON ROUTES (ADMIN) ==================
+// ================== COUPON ROUTES ==================
+router.post('/coupons/validate', couponController.validateCoupon);
 router.get('/coupons', authenticate, authorize('ADMIN'), couponController.getAllCoupons);
 router.get('/coupons/:id', authenticate, authorize('ADMIN'), couponController.getCouponById);
 router.post('/coupons', authenticate, authorize('ADMIN'), couponController.createCoupon);
@@ -748,9 +750,17 @@ router.get('/invoices', authenticate, invoiceController.getAllInvoices);
 router.get('/invoices/:id', authenticate, invoiceController.getInvoiceById);
 router.post('/invoices', authenticate, authorize('ADMIN'), invoiceController.createInvoice);
 router.put('/invoices/:id', authenticate, authorize('ADMIN'), invoiceController.updateInvoice);
+router.post('/invoices/:id/record-payment', authenticate, authorize('ADMIN'), invoiceController.recordInvoicePayment);
 router.patch('/invoices/:id/status', authenticate, authorize('ADMIN'), invoiceController.markInvoiceStatus);
 router.post('/invoices/:id/send-email', authenticate, authorize('ADMIN'), invoiceController.sendInvoiceEmail);
 router.delete('/invoices/:id', authenticate, authorize('ADMIN'), invoiceController.deleteInvoice);
+
+// ================== PAYMENT GATEWAY & RAZORPAY ROUTES ==================
+router.get('/payment-gateway/config', paymentGatewayController.getPublicGatewayConfig);
+router.get('/settings/payment-gateway', authenticate, authorize('ADMIN'), paymentGatewayController.getAdminGatewaySettings);
+router.put('/settings/payment-gateway', authenticate, authorize('ADMIN'), paymentGatewayController.updateGatewaySettings);
+router.post('/payments/razorpay/create-order', authenticate, paymentGatewayController.createRazorpayOrder);
+router.post('/payments/razorpay/verify-payment', authenticate, paymentGatewayController.verifyRazorpayPayment);
 
 // ================== ENROLLMENT ROUTES ==================
 router.get('/enrollments', authenticate, enrollmentController.getAllEnrollments);

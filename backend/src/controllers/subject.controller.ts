@@ -326,25 +326,34 @@ export const updateSubject = async (req: Request, res: Response) => {
     const existingSyllabus = parseSyllabusHelper(existingSubject?.syllabus) || { units: [], modules: [] };
     let finalSyllabus: any = undefined;
 
-    if (syllabus !== undefined && syllabus !== '') {
-      const parsedSyllabus = parseSyllabusHelper(syllabus);
-      if (parsedSyllabus) {
-        const units = parsedSyllabus.units.length > 0
-          ? parsedSyllabus.units
-          : existingSyllabus.units;
+    if (syllabus !== undefined) {
+      if (syllabus === '' || syllabus === null) {
+        finalSyllabus = { units: [], modules: [] };
+      } else {
+        const parsedSyllabus = parseSyllabusHelper(syllabus);
+        if (parsedSyllabus) {
+          const units = Array.isArray(parsedSyllabus.units) ? parsedSyllabus.units : [];
+          
+          let modules: any[] = [];
+          if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
+            modules = parsedSyllabus.modules;
+          } else {
+            // Map units to modules, preserving any custom content if existing module matches
+            modules = units.map((u: any, i: number) => {
+              const existingMod = existingSyllabus.modules?.[i];
+              return {
+                module_id: existingMod?.module_id || i + 1,
+                title: u.name || `Unit ${i + 1}`,
+                description: u.content || '',
+                order: i + 1,
+                content: existingMod?.content || [],
+                estimated_time_minutes: existingMod?.estimated_time_minutes || 0,
+              };
+            });
+          }
 
-        const modules = parsedSyllabus.modules.length > 0
-          ? parsedSyllabus.modules
-          : (existingSyllabus.modules.length > 0 ? existingSyllabus.modules : units.map((u: any, i: number) => ({
-              module_id: i + 1,
-              title: u.name || `Unit ${i + 1}`,
-              description: u.content || u.name || '',
-              order: i + 1,
-              content: [],
-              estimated_time_minutes: 0,
-            })));
-
-        finalSyllabus = { units, modules };
+          finalSyllabus = { units, modules };
+        }
       }
     }
 

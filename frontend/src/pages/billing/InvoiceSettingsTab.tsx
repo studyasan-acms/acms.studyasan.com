@@ -12,13 +12,21 @@ import {
   Upload,
   Image as ImageIcon,
   Trash2,
+  CreditCard,
+  Key,
+  ShieldCheck,
+  Eye,
+  EyeOff,
+  Layers,
+  Trophy,
+  Gamepad2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { invoiceService, uploadService } from '@/services/api';
-import type { InvoiceSetting } from '@/types';
+import { invoiceService, paymentGatewayService, uploadService } from '@/services/api';
+import type { InvoiceSetting, PaymentGatewaySetting } from '@/types';
 
 interface Props {
   onSaved?: () => void;
@@ -29,6 +37,7 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showKeySecret, setShowKeySecret] = useState(false);
   const logoInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<InvoiceSetting>({
@@ -51,6 +60,20 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
     branch_name: '',
     upi_id: '',
     upi_name: '',
+  });
+
+  const [gatewayData, setGatewayData] = useState<PaymentGatewaySetting>({
+    provider: 'RAZORPAY',
+    is_enabled: false,
+    enable_for_courses: true,
+    enable_for_test_series: true,
+    enable_for_activities: true,
+    key_id: '',
+    key_secret: '',
+    webhook_secret: '',
+    currency: 'INR',
+    theme_color: '#0276D3',
+    institute_name: 'StudyAsan Academy',
   });
 
   const showToast = (msg: string) => {
@@ -86,29 +109,49 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      const res = await invoiceService.getSettings();
-      if (res.data) {
+      const [invRes, gwRes] = await Promise.all([
+        invoiceService.getSettings(),
+        paymentGatewayService.getAdminSettings().catch(() => ({ data: null })),
+      ]);
+
+      if (invRes.data) {
         setFormData({
-          business_name: res.data.business_name || 'StudyAsan Academy',
-          org_subtitle: res.data.org_subtitle || '',
-          logo_url: res.data.logo_url || '',
-          hsn_sac_code: res.data.hsn_sac_code || '',
+          business_name: invRes.data.business_name || 'StudyAsan Academy',
+          org_subtitle: invRes.data.org_subtitle || '',
+          logo_url: invRes.data.logo_url || '',
+          hsn_sac_code: invRes.data.hsn_sac_code || '',
           address:
-            res.data.address ||
+            invRes.data.address ||
             'Jawahar jyoti , damuadhunga, behind hydil Devkhadi, Kathgodam, Haldwani, Bamori Malli, Uttarakhand 263126',
-          email: res.data.email || 'contact@studyasan.com',
-          phone: res.data.phone || '',
-          website: res.data.website || 'www.studyasan.com',
-          include_gst: Boolean(res.data.include_gst),
-          gst_percentage: res.data.gst_percentage || 18,
-          gst_number: res.data.gst_number || '',
-          bank_name: res.data.bank_name || '',
-          account_number: res.data.account_number || '',
-          account_holder_name: res.data.account_holder_name || '',
-          ifsc_code: res.data.ifsc_code || '',
-          branch_name: res.data.branch_name || '',
-          upi_id: res.data.upi_id || '',
-          upi_name: res.data.upi_name || '',
+          email: invRes.data.email || 'contact@studyasan.com',
+          phone: invRes.data.phone || '',
+          website: invRes.data.website || 'www.studyasan.com',
+          include_gst: Boolean(invRes.data.include_gst),
+          gst_percentage: invRes.data.gst_percentage || 18,
+          gst_number: invRes.data.gst_number || '',
+          bank_name: invRes.data.bank_name || '',
+          account_number: invRes.data.account_number || '',
+          account_holder_name: invRes.data.account_holder_name || '',
+          ifsc_code: invRes.data.ifsc_code || '',
+          branch_name: invRes.data.branch_name || '',
+          upi_id: invRes.data.upi_id || '',
+          upi_name: invRes.data.upi_name || '',
+        });
+      }
+
+      if (gwRes?.data) {
+        setGatewayData({
+          provider: gwRes.data.provider || 'RAZORPAY',
+          is_enabled: Boolean(gwRes.data.is_enabled),
+          enable_for_courses: gwRes.data.enable_for_courses !== undefined ? Boolean(gwRes.data.enable_for_courses) : true,
+          enable_for_test_series: gwRes.data.enable_for_test_series !== undefined ? Boolean(gwRes.data.enable_for_test_series) : true,
+          enable_for_activities: gwRes.data.enable_for_activities !== undefined ? Boolean(gwRes.data.enable_for_activities) : true,
+          key_id: gwRes.data.key_id || '',
+          key_secret: gwRes.data.key_secret || '',
+          webhook_secret: gwRes.data.webhook_secret || '',
+          currency: gwRes.data.currency || 'INR',
+          theme_color: gwRes.data.theme_color || '#0276D3',
+          institute_name: gwRes.data.institute_name || invRes?.data?.business_name || 'StudyAsan Academy',
         });
       }
     } catch {
@@ -126,8 +169,11 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await invoiceService.updateSettings(formData);
-      showToast('Invoice & GST settings updated successfully');
+      await Promise.all([
+        invoiceService.updateSettings(formData),
+        paymentGatewayService.updateSettings(gatewayData),
+      ]);
+      showToast('Invoice & Payment Gateway configuration saved successfully');
       onSaved?.();
     } catch (err: any) {
       showToast(err?.response?.data?.message || 'Failed to save settings');
@@ -146,9 +192,175 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
 
   return (
     <form onSubmit={handleSave} className="space-y-6 max-w-4xl">
-      {/* 1. GST & Tax Configuration Card */}
-      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+      {/* ─── 1. RAZORPAY PAYMENT GATEWAY SETTINGS CARD ───────────────────── */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl sm:rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-saBlue/10 flex items-center justify-center text-saBlue">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <CardTitle className="text-base font-black text-slate-900">
+                  Razorpay Payment Gateway Integration
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  Enable online student checkouts, configure API keys, and toggle gateway per offering category.
+                </CardDescription>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-700">
+                {gatewayData.is_enabled ? 'Gateway Active' : 'Gateway Disabled'}
+              </span>
+              <Switch
+                checked={gatewayData.is_enabled}
+                onCheckedChange={(checked) =>
+                  setGatewayData((prev) => ({ ...prev, is_enabled: checked }))
+                }
+                className="data-[state=checked]:bg-emerald-600"
+              />
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-5 sm:p-6 space-y-5">
+          {/* API Keys Grid */}
+          <div className="space-y-4">
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-saBlue" /> API Credentials
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Razorpay Key ID <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={gatewayData.key_id || ''}
+                  onChange={(e) =>
+                    setGatewayData((prev) => ({ ...prev, key_id: e.target.value.trim() }))
+                  }
+                  placeholder="e.g. rzp_live_xxxxxxxx or rzp_test_xxxxxxxx"
+                  className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Razorpay Key Secret <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <Input
+                    type={showKeySecret ? 'text' : 'password'}
+                    value={gatewayData.key_secret || ''}
+                    onChange={(e) =>
+                      setGatewayData((prev) => ({ ...prev, key_secret: e.target.value.trim() }))
+                    }
+                    placeholder="Enter Razorpay Key Secret"
+                    className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-mono pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeySecret(!showKeySecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                  >
+                    {showKeySecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Webhook Secret (Optional)
+              </label>
+              <Input
+                value={gatewayData.webhook_secret || ''}
+                onChange={(e) =>
+                  setGatewayData((prev) => ({ ...prev, webhook_secret: e.target.value.trim() }))
+                }
+                placeholder="Razorpay Webhook Secret for background payment sync"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-mono"
+              />
+            </div>
+          </div>
+
+          {/* Granular Category Enable/Disable Toggles */}
+          <div className="pt-4 border-t border-slate-100 space-y-3">
+            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-saBlue" /> Category-Specific Gateway Toggles
+            </p>
+            <p className="text-xs text-slate-500">
+              Select which sections will display the online "Buy Now / Checkout" button. If disabled, users can still submit Enquiries.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Courses & Subjects Toggle */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-saBlue flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Courses</p>
+                    <p className="text-[10px] text-slate-500">Curriculum & Subjects</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={gatewayData.enable_for_courses}
+                  onCheckedChange={(checked) =>
+                    setGatewayData((prev) => ({ ...prev, enable_for_courses: checked }))
+                  }
+                />
+              </div>
+
+              {/* Test Series Toggle */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Trophy className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Test Series</p>
+                    <p className="text-[10px] text-slate-500">Mock Exams & Tests</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={gatewayData.enable_for_test_series}
+                  onCheckedChange={(checked) =>
+                    setGatewayData((prev) => ({ ...prev, enable_for_test_series: checked }))
+                  }
+                />
+              </div>
+
+              {/* Activity Groups Toggle */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                    <Gamepad2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Activity Groups</p>
+                    <p className="text-[10px] text-slate-500">Gamified learning clubs</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={gatewayData.enable_for_activities}
+                  onCheckedChange={(checked) =>
+                    setGatewayData((prev) => ({ ...prev, enable_for_activities: checked }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ─── 2. GST & TAX CONFIGURATION CARD ─────────────────────────────── */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl sm:rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="h-8 w-8 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue">
@@ -161,7 +373,8 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+
+            <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-700">
                 {formData.include_gst ? 'GST Enabled' : 'GST Disabled'}
               </span>
@@ -174,428 +387,264 @@ const InvoiceSettingsTab: React.FC<Props> = ({ onSaved }) => {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                GSTIN / Tax Identification Number
-              </label>
-              <Input
-                value={formData.gst_number || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, gst_number: e.target.value.toUpperCase() }))
-                }
-                placeholder="e.g. 05AAAAA0000A1Z5"
-                disabled={!formData.include_gst}
-                className="h-9 text-xs rounded-lg border-slate-200 uppercase tracking-wider font-mono disabled:opacity-50"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Shown prominently on the invoice header when GST is included.
-              </p>
-            </div>
 
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                GST Percentage (%)
-              </label>
-              <Input
-                type="number"
-                step="0.1"
-                min="0"
-                max="100"
-                value={formData.gst_percentage}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    gst_percentage: parseFloat(e.target.value) || 0,
-                  }))
-                }
-                placeholder="18"
-                disabled={!formData.include_gst}
-                className="h-9 text-xs rounded-lg border-slate-200 font-bold disabled:opacity-50"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Standard education / coaching GST is usually 18%.
-              </p>
-            </div>
+        {formData.include_gst && (
+          <CardContent className="p-5 sm:p-6 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  GST Number (GSTIN) <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  value={formData.gst_number || ''}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, gst_number: e.target.value.toUpperCase() }))
+                  }
+                  placeholder="e.g. 05AAAAA0000A1Z5"
+                  className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 uppercase font-mono"
+                />
+              </div>
 
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                HSN / SAC Code (Services Accounting Code)
-              </label>
-              <Input
-                value={formData.hsn_sac_code || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, hsn_sac_code: e.target.value }))
-                }
-                placeholder="e.g. 999293 (Coaching & Educational Services)"
-                className="h-9 text-xs rounded-lg border-slate-200 font-mono"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Services Accounting Code printed on invoices for tax compliance (e.g., 999293 for commercial training & coaching services).
-              </p>
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  GST Rate (%) <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={formData.gst_percentage || 18}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, gst_percentage: parseFloat(e.target.value) || 0 }))
+                  }
+                  className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  HSN / SAC Code
+                </label>
+                <Input
+                  value={formData.hsn_sac_code || ''}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, hsn_sac_code: e.target.value }))
+                  }
+                  placeholder="e.g. 999293 (Coaching)"
+                  className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+                />
+              </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
-      {/* 2. Academy Branding & Business Details Card */}
-      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+      {/* ─── 3. INSTITUTE BUSINESS & CONTACT PROFILE ──────────────────────── */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl sm:rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-saVividOrange/10 flex items-center justify-center text-saVividOrange">
+            <div className="h-8 w-8 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue">
               <Building2 className="w-4 h-4" />
             </div>
             <div>
-              <CardTitle className="text-sm font-black text-slate-900">
-                Organization Branding & Invoice Details
-              </CardTitle>
+              <CardTitle className="text-sm font-black text-slate-900">Institute Branding & Contact</CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                Organization title, subtitle tagline, custom logo, and contact info printed on generated invoices.
+                Details printed on invoices, receipts, and email communications.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5 space-y-5">
-          {/* Invoice Logo Section */}
-          <div className="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                <ImageIcon className="w-3.5 h-3.5 text-saBlue" />
-                Invoice Header Logo
-              </label>
-              {formData.logo_url && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setFormData((prev) => ({ ...prev, logo_url: '' }))}
-                  className="h-7 px-2 text-[11px] text-red-600 hover:text-red-700 hover:bg-red-50 flex items-center gap-1"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  Remove Custom Logo
-                </Button>
-              )}
-            </div>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              {/* Preview Box */}
-              <div className="h-16 w-44 rounded-xl border border-dashed border-slate-300 bg-white flex items-center justify-center p-2 shadow-2xs overflow-hidden flex-shrink-0">
-                {formData.logo_url ? (
-                  <img
-                    src={formData.logo_url}
-                    alt="Invoice Logo Preview"
-                    className="h-full w-full object-contain"
-                  />
-                ) : (
-                  <div className="bg-[#0276D3] px-3 py-1.5 rounded-lg flex items-center justify-center">
-                    <img
-                      src="/studyasan-logo.png"
-                      alt="Default Logo"
-                      className="h-6 w-auto object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Upload actions & URL */}
-              <div className="flex-1 space-y-2 w-full">
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    ref={logoInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoFileChange}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={uploadingLogo}
-                    onClick={() => logoInputRef.current?.click()}
-                    className="h-8 text-xs font-bold rounded-lg border-slate-300 hover:bg-slate-100 flex items-center gap-1.5"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-saBlue" />
-                    {uploadingLogo ? 'Uploading Logo...' : formData.logo_url ? 'Change Logo Image' : 'Upload Custom Logo'}
-                  </Button>
-                  <span className="text-[11px] text-slate-400">
-                    PNG, JPG, or SVG recommended
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={formData.logo_url || ''}
-                    onChange={(e) =>
-                      setFormData((prev) => ({ ...prev, logo_url: e.target.value }))
-                    }
-                    placeholder="Or paste direct image URL (https://...)"
-                    className="h-8 text-xs rounded-lg border-slate-200"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <CardContent className="p-5 sm:p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                Organization Title / Business Name *
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Institute / Business Name <span className="text-red-500">*</span>
               </label>
               <Input
-                value={formData.business_name}
+                value={formData.business_name || ''}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, business_name: e.target.value }))
                 }
                 placeholder="StudyAsan Academy"
-                required
-                className="h-9 text-xs rounded-lg border-slate-200 font-bold text-slate-900"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-bold"
               />
-              <p className="text-[10px] text-slate-400 mt-1">
-                The primary organization header displayed on all student invoices.
-              </p>
             </div>
 
             <div>
-              <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                Organization Subtitle / Tagline
+              <label className="text-xs font-bold text-slate-700 block mb-1">
+                Tagline / Subtitle
               </label>
               <Input
                 value={formData.org_subtitle || ''}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, org_subtitle: e.target.value }))
                 }
-                placeholder="e.g. Center for Academic Excellence & Preparation"
-                className="h-9 text-xs rounded-lg border-slate-200 text-slate-900"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Printed directly below the organization title on the invoice header.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                Billing / Support Email
-              </label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, email: e.target.value }))
-                }
-                placeholder="contact@studyasan.com"
-                required
-                className="h-9 text-xs rounded-lg border-slate-200 text-slate-900"
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                Phone Number (Optional)
-              </label>
-              <Input
-                value={formData.phone || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, phone: e.target.value }))
-                }
-                placeholder="+91 9876543210"
-                className="h-9 text-xs rounded-lg border-slate-200 text-slate-900"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                Website
-              </label>
-              <Input
-                value={formData.website || ''}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, website: e.target.value }))
-                }
-                placeholder="www.studyasan.com"
-                className="h-9 text-xs rounded-lg border-slate-200 text-slate-900"
+                placeholder="The Path to Success"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] font-bold text-slate-600 block mb-1">
-              Registered Address
+            <label className="text-xs font-bold text-slate-700 block mb-1">
+              Registered Address <span className="text-red-500">*</span>
             </label>
-            <textarea
-              rows={3}
-              value={formData.address}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, address: e.target.value }))
-              }
-              placeholder="Enter full address..."
-              required
-              className="w-full p-2.5 text-xs rounded-lg border border-slate-200 text-slate-900 focus:outline-none focus:border-saBlue resize-none"
+            <Input
+              value={formData.address || ''}
+              onChange={(e) => setFormData((prev) => ({ ...prev, address: e.target.value }))}
+              placeholder="Institute address line..."
+              className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
             />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Billing Email</label>
+              <Input
+                value={formData.email || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+                placeholder="billing@studyasan.com"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Contact Phone</label>
+              <Input
+                value={formData.phone || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+                placeholder="+91 7983758633"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Official Website</label>
+              <Input
+                value={formData.website || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, website: e.target.value }))}
+                placeholder="www.studyasan.com"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 3. Bank Account & UPI Details Card */}
-      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-xl overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100 pb-4">
+      {/* ─── 4. BANK REMITTANCE & UPI DETAILS ─────────────────────────────── */}
+      <Card className="bg-white border border-slate-200/80 shadow-xs rounded-2xl sm:rounded-3xl overflow-hidden">
+        <CardHeader className="bg-slate-50/70 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <div className="h-8 w-8 rounded-lg bg-saBlue/10 flex items-center justify-center text-saBlue">
               <Landmark className="w-4 h-4" />
             </div>
             <div>
-              <CardTitle className="text-sm font-black text-slate-900">
-                Bank & UPI Payment Details
-              </CardTitle>
+              <CardTitle className="text-sm font-black text-slate-900">Direct Bank & UPI Remittance Details</CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                Displayed in the invoice payment instructions for direct bank transfer and UPI remittances.
+                Printed on fee receipts and invoices for offline/NEFT/UPI payments.
               </CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5 space-y-5">
-          {/* Bank Details */}
-          <div>
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Landmark className="w-3.5 h-3.5 text-saBlue" /> Bank Transfer Information
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  Bank Name
-                </label>
-                <Input
-                  value={formData.bank_name || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, bank_name: e.target.value }))
-                  }
-                  placeholder="e.g. State Bank of India"
-                  className="h-9 text-xs rounded-lg border-slate-200"
-                />
-              </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  Account Number
-                </label>
-                <Input
-                  value={formData.account_number || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, account_number: e.target.value }))
-                  }
-                  placeholder="e.g. 123456789012"
-                  className="h-9 text-xs rounded-lg border-slate-200 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  Account Holder Name
-                </label>
-                <Input
-                  value={formData.account_holder_name || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, account_holder_name: e.target.value }))
-                  }
-                  placeholder="e.g. StudyAsan Academy"
-                  className="h-9 text-xs rounded-lg border-slate-200"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  IFSC Code
-                </label>
-                <Input
-                  value={formData.ifsc_code || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, ifsc_code: e.target.value.toUpperCase() }))
-                  }
-                  placeholder="e.g. SBIN0001234"
-                  className="h-9 text-xs rounded-lg border-slate-200 uppercase font-mono"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  Branch Name
-                </label>
-                <Input
-                  value={formData.branch_name || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, branch_name: e.target.value }))
-                  }
-                  placeholder="e.g. Haldwani Main Branch"
-                  className="h-9 text-xs rounded-lg border-slate-200"
-                />
-              </div>
+        <CardContent className="p-5 sm:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Bank Name</label>
+              <Input
+                value={formData.bank_name || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, bank_name: e.target.value }))}
+                placeholder="e.g. State Bank of India"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
             </div>
-          </div>
 
-          {/* UPI Details */}
-          <div className="pt-4 border-t border-slate-100">
-            <p className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <QrCode className="w-3.5 h-3.5 text-saVividOrange" /> UPI Remittance Details
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  UPI ID (VPA)
-                </label>
-                <Input
-                  value={formData.upi_id || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, upi_id: e.target.value }))
-                  }
-                  placeholder="e.g. studyasan@okhdfcbank"
-                  className="h-9 text-xs rounded-lg border-slate-200 font-mono"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Account Number</label>
+              <Input
+                value={formData.account_number || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, account_number: e.target.value }))
+                }
+                placeholder="e.g. 123456789012"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-mono"
+              />
+            </div>
 
-              <div>
-                <label className="text-[11px] font-bold text-slate-600 block mb-1">
-                  Payee / Account Name
-                </label>
-                <Input
-                  value={formData.upi_name || ''}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, upi_name: e.target.value }))
-                  }
-                  placeholder="e.g. StudyAsan Academy"
-                  className="h-9 text-xs rounded-lg border-slate-200"
-                />
-              </div>
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">Account Holder Name</label>
+              <Input
+                value={formData.account_holder_name || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, account_holder_name: e.target.value }))
+                }
+                placeholder="e.g. StudyAsan Academy"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">IFSC Code</label>
+              <Input
+                value={formData.ifsc_code || ''}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, ifsc_code: e.target.value.toUpperCase() }))
+                }
+                placeholder="e.g. SBIN0001234"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 uppercase font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">UPI ID (VPA)</label>
+              <Input
+                value={formData.upi_id || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, upi_id: e.target.value }))}
+                placeholder="e.g. studyasan@okhdfcbank"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-slate-700 block mb-1">UPI Payee Name</label>
+              <Input
+                value={formData.upi_name || ''}
+                onChange={(e) => setFormData((prev) => ({ ...prev, upi_name: e.target.value }))}
+                placeholder="e.g. StudyAsan Academy"
+                className="h-10 text-xs sm:text-sm rounded-xl border-slate-200"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Save Button */}
+      {/* ─── SAVE BUTTON BAR ────────────────────────────────────────────── */}
       <div className="flex items-center justify-end gap-3 pt-2">
         <Button
           type="button"
           variant="outline"
           onClick={fetchSettings}
           disabled={saving}
-          className="h-10 px-5 rounded-xl border-slate-200 text-slate-700 font-bold text-xs"
+          className="h-11 px-5 rounded-xl border-slate-200 text-slate-700 font-bold text-xs"
         >
-          Reset
+          Reset Changes
         </Button>
         <Button
           type="submit"
           disabled={saving}
-          className="h-10 px-6 rounded-xl bg-saBlue hover:bg-saBlueDarkHover text-white font-bold text-xs uppercase tracking-wider shadow-xs flex items-center gap-2"
+          className="h-11 px-6 rounded-xl bg-saBlue hover:bg-saBlueDarkHover text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-saBlue/15 flex items-center gap-2"
         >
           <Save className="w-4 h-4" />
-          {saving ? 'Saving...' : 'Save Configuration'}
+          {saving ? 'Saving Configuration...' : 'Save All Settings'}
         </Button>
       </div>
 
-      {/* Toast */}
+      {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3 rounded-xl shadow-xl text-xs font-bold animate-fade-in flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           {toastMessage}
         </div>
       )}

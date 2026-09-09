@@ -120,6 +120,10 @@ export default function SubjectDetailPage() {
     }
   };
 
+  // ⚠️ Hooks must be called before any early returns (Rules of Hooks)
+  const normalizedSyllabus = useMemo(() => normalizeSyllabus(subject?.syllabus), [subject?.syllabus]);
+  const isCourseEnded = subject?.is_course && subject?.end_date && new Date(subject.end_date) < new Date();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-vh-screen">
@@ -182,9 +186,6 @@ export default function SubjectDetailPage() {
       <ChevronRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-saBlue transition-colors" />
     </Button>
   );
-
-  const normalizedSyllabus = useMemo(() => normalizeSyllabus(subject?.syllabus), [subject?.syllabus]);
-  const isCourseEnded = subject.is_course && subject.end_date && new Date(subject.end_date) < new Date();
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-10">

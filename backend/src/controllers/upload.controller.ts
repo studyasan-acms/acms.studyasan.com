@@ -46,7 +46,7 @@ export const proxyFile = async (req: Request, res: Response): Promise<void> => {
             timeout: 20000,
         });
 
-        const contentType = response.headers['content-type'] || 'application/pdf';
+        const contentType = String(response.headers['content-type'] || 'application/pdf');
         res.setHeader('Content-Type', contentType);
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Cache-Control', 'public, max-age=86400');

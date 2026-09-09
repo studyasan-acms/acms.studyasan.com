@@ -315,6 +315,10 @@ export const sendInvoiceEmailNotification = async (
     subtotal: number;
     discount_amount: number;
     total_amount: number;
+    amount_paid?: number;
+    balance_due?: number;
+    receipt_number?: string | null;
+    payment_method?: string | null;
     items: Array<{
       item_name: string;
       type: string;
@@ -325,11 +329,17 @@ export const sendInvoiceEmailNotification = async (
     }>;
     notes?: string | null;
     is_quotation?: boolean;
+    is_receipt?: boolean;
   }
 ): Promise<boolean> => {
   const isQuotation = Boolean(invoice.is_quotation);
-  const docNumber = isQuotation ? invoice.invoice_number.replace(/^INV-/, 'QT-') : invoice.invoice_number;
-  const docTitle = isQuotation ? 'Fee Quotation' : 'Invoice';
+  const isReceipt = Boolean(invoice.is_receipt) || Boolean(invoice.receipt_number && invoice.status === 'PAID');
+  const docNumber = isReceipt && invoice.receipt_number
+    ? invoice.receipt_number
+    : isQuotation
+    ? invoice.invoice_number.replace(/^INV-/, 'QT-')
+    : invoice.invoice_number;
+  const docTitle = isReceipt ? 'Payment Receipt' : isQuotation ? 'Fee Quotation' : 'Invoice';
 
   const issueDateFormatted = new Date(invoice.issue_date).toLocaleDateString('en-IN', {
     day: 'numeric',
@@ -343,9 +353,10 @@ export const sendInvoiceEmailNotification = async (
   });
 
   const isPaid = !isQuotation && invoice.status === 'PAID';
-  const statusColor = isQuotation ? '#d97706' : (isPaid ? '#0276D3' : '#eca209');
-  const statusBg = isQuotation ? '#fffbeb' : (isPaid ? '#f0f7ff' : '#fffbeb');
-  const statusBadgeText = isQuotation ? 'ESTIMATE' : invoice.status;
+  const isPartial = !isQuotation && invoice.status === 'PARTIALLY_PAID';
+  const statusColor = isPaid ? '#10b981' : isPartial ? '#3b82f6' : isQuotation ? '#d97706' : '#eca209';
+  const statusBg = isPaid ? '#ecfdf5' : isPartial ? '#eff6ff' : isQuotation ? '#fffbeb' : '#fffbeb';
+  const statusBadgeText = isReceipt ? 'PAID RECEIPT' : isQuotation ? 'ESTIMATE' : invoice.status.replace('_', ' ');
 
   const itemsRows = invoice.items
     .map(
@@ -474,9 +485,33 @@ export const sendInvoiceEmailNotification = async (
                               : ''
                           }
                           <tr style="border-top: 2px solid #e2e8f0;">
-                            <td style="padding: 12px 0 6px; color: #0f172a; font-size: 16px; font-weight: 800;">Total Amount:</td>
+                            <td style="padding: 12px 0 6px; color: #0f172a; font-size: 16px; font-weight: 800;">Total Fee:</td>
                             <td style="padding: 12px 0 6px; color: #0276D3; font-size: 20px; font-weight: 900; text-align: right;">₹${invoice.total_amount.toFixed(2)}</td>
                           </tr>
+                          ${
+                            invoice.amount_paid && invoice.amount_paid > 0
+                              ? `
+                          <tr>
+                            <td style="padding: 6px 0; color: #10b981; font-size: 14px; font-weight: 700;">Amount Paid / Advance:</td>
+                            <td style="padding: 6px 0; color: #10b981; font-size: 15px; font-weight: 800; text-align: right;">₹${invoice.amount_paid.toFixed(2)}</td>
+                          </tr>
+                          `
+                              : ''
+                          }
+                          ${
+                            invoice.balance_due && invoice.balance_due > 0
+                              ? `
+                          <tr style="border-top: 1px dashed #cbd5e1;">
+                            <td style="padding: 6px 0; color: #ef4444; font-size: 14px; font-weight: 700;">Balance Remaining:</td>
+                            <td style="padding: 6px 0; color: #ef4444; font-size: 15px; font-weight: 800; text-align: right;">₹${invoice.balance_due.toFixed(2)}</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 4px 0; color: #64748b; font-size: 12px;">Next Due Date:</td>
+                            <td style="padding: 4px 0; color: #64748b; font-size: 12px; font-weight: 600; text-align: right;">${dueDateFormatted}</td>
+                          </tr>
+                          `
+                              : ''
+                          }
                         </table>
                       </td>
                     </tr>

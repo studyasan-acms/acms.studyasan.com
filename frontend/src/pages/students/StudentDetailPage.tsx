@@ -14,10 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { studentService, subjectService, testSeriesService, knowYourChildService, teacherService } from "@/services/api";
+import { studentService, subjectService, testSeriesService, knowYourChildService, teacherService, invoiceService } from "@/services/api";
 import { activityEnrollmentAPI, activityGroupAPI } from "@/services/activity.service";
 import { useAuthStore } from "@/store/authStore";
-import type { Student } from "@/types";
+import type { Student, Invoice } from "@/types";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -60,14 +60,17 @@ import {
   ChevronRight,
   Sparkles,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  DollarSign,
+  CheckCircle2,
+  Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
-import InvoiceModal from "@/components/InvoiceModal";
 import IDCardModal from "@/components/students/IDCardModal";
+import InvoiceDetailModal from "@/pages/billing/InvoiceDetailModal";
 import { formatStudentId } from "@/utils/idUtils";
 import { usePageTitle } from "@/hooks/usePageTitle";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +83,25 @@ export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [student, setStudent] = useState<Student | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  // Student Invoices & Payment States
+  const [studentInvoices, setStudentInvoices] = useState<Invoice[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailModalMode, setDetailModalMode] = useState<'INVOICE' | 'QUOTATION' | 'RECEIPT'>('INVOICE');
+  const [viewingInvoice, setViewingInvoice] = useState<Invoice | null>(null);
+
+  // Record Installment / Payment State
+  const [recordPaymentModalOpen, setRecordPaymentModalOpen] = useState(false);
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [installmentAmount, setInstallmentAmount] = useState<number>(0);
+  const [installmentMethod, setInstallmentMethod] = useState('UPI');
+  const [installmentTxnId, setInstallmentTxnId] = useState('');
+  const [installmentNotes, setInstallmentNotes] = useState('');
+  const [installmentNextDueDate, setInstallmentNextDueDate] = useState(
+    new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [recordingPayment, setRecordingPayment] = useState(false);
 
   // ID Card Modal State
   const [showIDCardModal, setShowIDCardModal] = useState(false);
@@ -384,12 +405,27 @@ export default function StudentDetailPage() {
     }
   };
 
+  const fetchStudentInvoices = async (studentId: number) => {
+    setLoadingInvoices(true);
+    try {
+      const res = await invoiceService.getAll({ student_id: studentId, limit: 50 });
+      setStudentInvoices(res.data.data || []);
+    } catch (err) {
+      console.error("Failed to fetch student invoices:", err);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  };
+
   const fetchStudent = async (studentId: number) => {
     setIsLoading(true);
     try {
       const response = await studentService.getById(studentId);
       setStudent(response.data);
-      await fetchReports(studentId, 1);
+      await Promise.all([
+        fetchReports(studentId, 1),
+        fetchStudentInvoices(studentId),
+      ]);
     } catch (error) {
       console.error("Failed to fetch student:", error);
     } finally {
@@ -650,8 +686,8 @@ export default function StudentDetailPage() {
                 <Button onClick={() => setShowIDCardModal(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
                   <CreditCard className="mr-2 h-4 w-4" /> ID Card
                 </Button>
-                <Button onClick={() => setIsInvoiceModalOpen(true)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
-                  <Receipt className="mr-2 h-4 w-4" /> Invoice
+                <Button onClick={() => navigate(`/dashboard/billing?search=${encodeURIComponent(student.user.email)}`)} variant="outline" className="rounded-xl border-gray-200 h-10 shadow-sm bg-white">
+                  <Receipt className="mr-2 h-4 w-4 text-saBlue" /> Billing & Invoices
                 </Button>
                 <Button onClick={() => navigate(`/dashboard/students/${student.id}/edit`)} className="rounded-xl bg-saBlue h-10 shadow-md shadow-saBlue/20 hover:bg-saBlue/90">
                   <Edit className="mr-2 h-4 w-4" /> Edit
@@ -832,6 +868,184 @@ export default function StudentDetailPage() {
           </Card>
         )}
       </div>
+
+      {/* FEE & PAYMENT RECORDS */}
+      {isAdmin && (
+        <div className="px-2">
+          <Card className="rounded-3xl border-gray-100 shadow-sm overflow-hidden bg-white hover:shadow-md transition-shadow">
+            <CardContent className="p-6 md:p-8 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl text-emerald-600">
+                    <DollarSign className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-xl tracking-tight">Fee & Payment Records</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Track invoices, advance payments, dues, and payment receipts</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/dashboard/billing?search=${encodeURIComponent(student.user.email)}`)}
+                    className="rounded-xl border-gray-200 text-xs font-semibold h-9"
+                  >
+                    Open Full Billing
+                  </Button>
+                </div>
+              </div>
+
+              {/* Financial KPI stats */}
+              {(() => {
+                const totalInvoiced = studentInvoices.reduce((acc, i) => acc + (i.total_amount || 0), 0);
+                const totalPaid = studentInvoices.reduce(
+                  (acc, i) => acc + (i.status === 'PAID' ? (i.total_amount || 0) : (i.amount_paid || 0)),
+                  0
+                );
+                const totalDue = Math.max(0, totalInvoiced - totalPaid);
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-100">
+                      <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Total Invoiced</span>
+                      <span className="text-xl font-black text-saBlue font-mono">₹{totalInvoiced.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                      <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider block">Total Paid (Advance)</span>
+                      <span className="text-xl font-black text-emerald-600 font-mono">₹{totalPaid.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-100">
+                      <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider block">Remaining Balance Due</span>
+                      <span className="text-xl font-black text-amber-700 font-mono">₹{totalDue.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Invoices List */}
+              {loadingInvoices ? (
+                <div className="py-8 text-center text-xs text-gray-400">Loading invoice & fee records...</div>
+              ) : studentInvoices.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50/50 text-gray-400 text-xs">
+                  No invoices generated for this student yet. Enroll student to create invoices.
+                </div>
+              ) : (
+                <div className="border border-gray-100 rounded-2xl overflow-hidden shadow-xs">
+                  <Table>
+                    <TableHeader className="bg-gray-50/80">
+                      <TableRow className="text-[11px] font-bold uppercase text-gray-500 tracking-wider">
+                        <TableHead className="py-3 px-4">Invoice #</TableHead>
+                        <TableHead className="py-3 px-4">Date</TableHead>
+                        <TableHead className="py-3 px-4">Total Amount</TableHead>
+                        <TableHead className="py-3 px-4">Amount Paid</TableHead>
+                        <TableHead className="py-3 px-4">Balance Due</TableHead>
+                        <TableHead className="py-3 px-4">Status</TableHead>
+                        <TableHead className="py-3 px-4 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="text-xs">
+                      {studentInvoices.map((inv) => {
+                        const isPaid = inv.status === 'PAID';
+                        const isPartiallyPaid = inv.status === 'PARTIALLY_PAID';
+                        const isOverdue = !isPaid && !isPartiallyPaid && (inv.is_overdue || new Date(inv.due_date) < new Date());
+                        const balanceDue = inv.balance_due ?? (inv.total_amount - (inv.amount_paid || 0));
+
+                        return (
+                          <TableRow key={inv.id} className="hover:bg-blue-50/20">
+                            <TableCell className="py-3 px-4 font-mono font-bold text-saBlue">
+                              {inv.invoice_number}
+                              {inv.receipt_number && (
+                                <div className="text-[10px] text-emerald-700 font-semibold">RCP: {inv.receipt_number}</div>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-gray-600">
+                              {new Date(inv.issue_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 font-bold font-mono">
+                              ₹{inv.total_amount.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 font-bold font-mono text-emerald-700">
+                              ₹{(isPaid ? inv.total_amount : (inv.amount_paid || 0)).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 font-bold font-mono text-amber-800">
+                              ₹{(isPaid ? 0 : balanceDue).toFixed(2)}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              {isPaid ? (
+                                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-2 py-0.5 font-bold">
+                                  PAID
+                                </Badge>
+                              ) : isPartiallyPaid ? (
+                                <Badge className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] px-2 py-0.5 font-bold">
+                                  PARTIAL
+                                </Badge>
+                              ) : isOverdue ? (
+                                <Badge className="bg-red-50 text-red-600 border-red-200 text-[10px] px-2 py-0.5 font-bold">
+                                  OVERDUE
+                                </Badge>
+                              ) : (
+                                <Badge className="bg-amber-50 text-saOrange border-saOrange/30 text-[10px] px-2 py-0.5 font-bold">
+                                  PENDING
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {!isPaid && (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => {
+                                      setPaymentInvoice(inv);
+                                      setInstallmentAmount(balanceDue);
+                                      setInstallmentMethod('UPI');
+                                      setInstallmentTxnId('');
+                                      setInstallmentNotes('');
+                                      setRecordPaymentModalOpen(true);
+                                    }}
+                                    className="h-7 px-2.5 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold flex items-center gap-1"
+                                  >
+                                    <DollarSign className="w-3 h-3" /> Record Payment
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDetailModalMode('RECEIPT');
+                                    setViewingInvoice(inv);
+                                    setDetailModalOpen(true);
+                                  }}
+                                  className="h-7 px-2 text-[11px] border-slate-200 text-emerald-700 hover:bg-emerald-50 rounded-lg font-semibold flex items-center gap-1"
+                                >
+                                  <Receipt className="w-3 h-3" /> Receipt
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setDetailModalMode('INVOICE');
+                                    setViewingInvoice(inv);
+                                    setDetailModalOpen(true);
+                                  }}
+                                  className="h-7 px-2 text-[11px] text-gray-500 hover:text-saBlue rounded-lg"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* KNOW YOUR CHILD (WEEKLY REPORTS) - REPORT HISTORY LOG */}
       <div className="px-2">
@@ -1174,11 +1388,156 @@ export default function StudentDetailPage() {
           type="STUDENT"
         />
       )}
-      <InvoiceModal
-        isOpen={isInvoiceModalOpen}
-        onClose={() => setIsInvoiceModalOpen(false)}
-        student={student}
+
+      {/* Invoice Detail / Receipt Modal */}
+      <InvoiceDetailModal
+        open={detailModalOpen}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setViewingInvoice(null);
+        }}
+        invoice={viewingInvoice}
+        initialMode={detailModalMode}
       />
+
+      {/* Record Payment / Installment Dialog */}
+      {recordPaymentModalOpen && paymentInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+            <div className="border-b border-gray-100 pb-3 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <DollarSign className="w-5 h-5 text-emerald-600" /> Record Fee Payment / Advance
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Invoice {paymentInvoice.invoice_number} • {student.user.name}
+                </p>
+              </div>
+            </div>
+
+            {/* Balances Card */}
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1 text-xs">
+              <div className="flex justify-between text-slate-600">
+                <span>Total Invoiced Fee:</span>
+                <span className="font-mono font-bold text-slate-900">₹{paymentInvoice.total_amount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-emerald-700">
+                <span>Already Paid:</span>
+                <span className="font-mono font-bold">₹{(paymentInvoice.amount_paid || 0).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-amber-800 font-bold pt-1 border-t border-slate-200">
+                <span>Current Balance Due:</span>
+                <span className="font-mono text-sm">
+                  ₹{(paymentInvoice.balance_due ?? (paymentInvoice.total_amount - (paymentInvoice.amount_paid || 0))).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Amount Received / Advance (₹) <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={paymentInvoice.balance_due ?? paymentInvoice.total_amount}
+                  value={installmentAmount}
+                  onChange={(e) => setInstallmentAmount(Number(e.target.value))}
+                  className="h-9 text-xs rounded-xl font-bold text-emerald-700"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Payment Method</label>
+                <select
+                  value={installmentMethod}
+                  onChange={(e) => setInstallmentMethod(e.target.value)}
+                  className="w-full h-9 px-3 text-xs rounded-xl bg-white border border-gray-200 focus:outline-none focus:ring-2 focus:ring-saBlue/10 font-medium text-gray-700"
+                >
+                  <option value="UPI">UPI / GPay / PhonePe</option>
+                  <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Card">Credit / Debit Card</option>
+                  <option value="Online">Online Gateway</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Transaction / Reference ID (Optional)</label>
+                <Input
+                  value={installmentTxnId}
+                  onChange={(e) => setInstallmentTxnId(e.target.value)}
+                  placeholder="e.g. UPI Ref / Bank Txn ID"
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+
+              {installmentAmount < (paymentInvoice.balance_due ?? (paymentInvoice.total_amount - (paymentInvoice.amount_paid || 0))) && (
+                <div>
+                  <label className="text-xs font-bold text-amber-800 block mb-1">Next Balance Due Date</label>
+                  <Input
+                    type="date"
+                    value={installmentNextDueDate}
+                    onChange={(e) => setInstallmentNextDueDate(e.target.value)}
+                    className="h-9 text-xs rounded-xl font-semibold border-amber-300"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Remarks / Note (Optional)</label>
+                <Input
+                  value={installmentNotes}
+                  onChange={(e) => setInstallmentNotes(e.target.value)}
+                  placeholder="e.g. Advance paid by parent, remaining in 1 week"
+                  className="h-9 text-xs rounded-xl"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setRecordPaymentModalOpen(false)}
+                disabled={recordingPayment}
+                className="h-9 rounded-xl text-xs"
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                disabled={recordingPayment || installmentAmount <= 0}
+                onClick={async () => {
+                  setRecordingPayment(true);
+                  try {
+                    await invoiceService.recordPayment(paymentInvoice.id, {
+                      amount: Number(installmentAmount),
+                      payment_method: installmentMethod,
+                      transaction_id: installmentTxnId || undefined,
+                      notes: installmentNotes || undefined,
+                      next_due_date: installmentNextDueDate || undefined,
+                    });
+                    toast.success(`Payment of ₹${installmentAmount} recorded! Receipt generated.`);
+                    setRecordPaymentModalOpen(false);
+                    if (student) fetchStudentInvoices(student.id);
+                  } catch (err: any) {
+                    console.error('Failed to record payment:', err);
+                    toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Failed to record payment');
+                  } finally {
+                    setRecordingPayment(false);
+                  }
+                }}
+                className="h-9 rounded-xl text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4"
+              >
+                {recordingPayment ? 'Recording...' : `Confirm & Save ₹${installmentAmount}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Subject Enrollment Modal */}
       {showSubjectModal && (

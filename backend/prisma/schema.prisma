@@ -192,6 +192,7 @@ enum EnrollmentType {
 
 enum InvoiceStatus {
   PAID
+  PARTIALLY_PAID
   PENDING
   OVERDUE
   CANCELLED
@@ -201,15 +202,18 @@ model Invoice {
   id              Int           @id @default(autoincrement())
   invoice_number  String        @unique // e.g. "INV-2026-00001"
   student_id      Int
-  status          InvoiceStatus @default(PENDING) // PAID, PENDING, OVERDUE, CANCELLED
+  status          InvoiceStatus @default(PENDING) // PAID, PARTIALLY_PAID, PENDING, OVERDUE, CANCELLED
   issue_date      DateTime      @default(now())
   due_date        DateTime
   paid_date       DateTime?
   subtotal        Float         @default(0)
   discount_amount Float         @default(0)
   total_amount    Float         @default(0)
+  amount_paid     Float         @default(0) // Advance / paid amount so far
+  balance_due     Float         @default(0) // Remaining balance amount
+  receipt_number  String?       // e.g. "RCP-2026-00001"
   notes           String?
-  payment_method  String?       // "UPI", "Bank Transfer", "Cash", "Card", "Online", etc.
+  payment_method  String?       // "UPI", "Bank Transfer", "Cash", "Card", "Razorpay", "Cheque", etc.
   transaction_id  String?
   created_at      DateTime      @default(now())
   updated_at      DateTime      @updatedAt
@@ -279,14 +283,19 @@ model Enrollment {
 }
 
 model Payment {
-  id            Int            @id @default(autoincrement())
-  enrollment_id Int
-  type          EnrollmentType @default(SUBJECT)
-  period        String // Format: "YYYY-MM" for monthly, "YYYY" for yearly
-  due_date      DateTime
-  amount        Float
-  is_paid       Boolean        @default(false)
-  paid_date     DateTime?
+  id                Int               @id @default(autoincrement())
+  enrollment_id     Int
+  type              EnrollmentType    @default(SUBJECT)
+  period            String            // Format: "YYYY-MM" for monthly, "YYYY" for yearly, "ADVANCE", "INSTALLMENT-1", etc.
+  due_date          DateTime
+  amount            Float
+  amount_paid       Float             @default(0)
+  is_paid           Boolean           @default(false)
+  paid_date         DateTime?
+  payment_method    String?           // "CASH", "UPI", "RAZORPAY", "BANK_TRANSFER", "CARD", "CHEQUE"
+  transaction_id    String?
+  receipt_number    String?
+  notes             String?
   created_at        DateTime          @default(now())
   updated_at        DateTime          @updatedAt
   enrollment        Enrollment        @relation(fields: [enrollment_id], references: [id], onDelete: Cascade)
@@ -1031,17 +1040,23 @@ model Enquiry {
 }
 
 model Coupon {
-  id             Int                @id @default(autoincrement())
-  code           String             @unique
-  discount_type  CouponDiscountType
-  discount_value Float
-  is_active      Boolean            @default(true)
-  valid_from     DateTime?
-  valid_until    DateTime?
-  max_uses       Int?
-  used_count     Int                @default(0)
-  created_at     DateTime           @default(now())
-  updated_at     DateTime           @updatedAt
+  id                         Int                @id @default(autoincrement())
+  code                       String             @unique
+  discount_type              CouponDiscountType
+  discount_value             Float
+  min_order_amount           Float?             // Minimum order amount threshold to apply coupon
+  applicable_to              String             @default("ALL") // "ALL", "COURSE", "TEST_SERIES", "ACTIVITY_GROUP", "CUSTOM"
+  applicable_course_ids      Json               @default("[]") // Array of Course/Subject IDs
+  applicable_test_series_ids Json               @default("[]") // Array of Test Series IDs
+  applicable_activity_ids    Json               @default("[]") // Array of Activity Group IDs
+  max_discount_amount        Float?             // Optional cap on percentage discount
+  is_active                  Boolean            @default(true)
+  valid_from                 DateTime?
+  valid_until                DateTime?
+  max_uses                   Int?
+  used_count                 Int                @default(0)
+  created_at                 DateTime           @default(now())
+  updated_at                 DateTime           @updatedAt
 
   @@index([is_active])
   @@map("coupons")
@@ -1441,6 +1456,25 @@ model InvoiceSetting {
   updated_at          DateTime @updatedAt
 
   @@map("invoice_settings")
+}
+
+model PaymentGatewaySetting {
+  id                     Int      @id @default(autoincrement())
+  provider               String   @default("RAZORPAY")
+  is_enabled             Boolean  @default(false)
+  enable_for_courses     Boolean  @default(true)
+  enable_for_test_series Boolean  @default(true)
+  enable_for_activities  Boolean  @default(true)
+  key_id                 String?  @default("")
+  key_secret             String?  @default("")
+  webhook_secret         String?  @default("")
+  currency               String   @default("INR")
+  theme_color            String   @default("#0276D3")
+  institute_name         String   @default("StudyAsan Academy")
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  @@map("payment_gateway_settings")
 }
 
 // Class Session Recordings (Retained for 30 days)
