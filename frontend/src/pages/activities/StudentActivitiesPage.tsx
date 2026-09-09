@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Play, Trophy, Clock, Star, Gamepad2, Search, Layers, Folder, Filter, Sparkles, CheckCircle2, ChevronRight, X } from 'lucide-react';
+import { Play, Trophy, Clock, Star, Gamepad2, Search, Layers, Folder, Filter, CheckCircle2, X } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Card } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -170,11 +170,6 @@ export default function StudentActivitiesPage() {
     return Array.from(types);
   }, [activities]);
 
-  const activeGroup = useMemo(() => {
-    if (selectedGroupId === 'ALL') return null;
-    return activityGroups.find((g) => g.id === selectedGroupId) || null;
-  }, [activityGroups, selectedGroupId]);
-
   const renderGame = () => {
     if (activeLiveSession) {
       if (activeLiveSession.activity?.activity_type === 'MATCH_PAIRS') {
@@ -273,132 +268,88 @@ export default function StudentActivitiesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
-      {/* 1. HERO HEADER */}
-      <div className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-slate-900 via-saBlueDark to-slate-900 text-white p-8 md:p-10 shadow-xl">
-        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-saVividOrange/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-80 h-80 bg-saBlueLight/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-          <div className="space-y-3 text-center lg:text-left max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-extrabold uppercase tracking-widest text-saVividOrange">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Interactive Learning Hub</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight">
-              Learning Games & <span className="text-transparent bg-clip-text bg-gradient-to-r from-saVividOrange to-orange-400">Activity Groups</span>
-            </h1>
-            <p className="text-slate-300 text-sm md:text-base leading-relaxed font-medium">
-              Explore your enrolled activity groups, play interactive challenges, track your scores, and compete with classmates.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto shrink-0">
-            <Button
-              onClick={() => setShowJoinModal(true)}
-              className="h-12 sm:h-14 bg-gradient-to-r from-saVividOrange to-orange-500 hover:from-saVividOrange/90 hover:to-orange-600 text-white text-sm sm:text-base px-6 sm:px-8 rounded-2xl shadow-lg shadow-saVividOrange/30 font-bold tracking-wide transition-all hover:scale-105 active:scale-95"
-            >
-              <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 mr-2" />
-              Join Live Game
-            </Button>
-          </div>
+    <div className="container mx-auto px-4 py-6 max-w-7xl space-y-6">
+      {/* 1. SIMPLE CLEAN HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-gray-100">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            Learning Games
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Play educational games and activities from your enrolled activity groups.
+          </p>
         </div>
+
+        <Button
+          onClick={() => setShowJoinModal(true)}
+          className="bg-saBlue hover:bg-saBlue/90 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl shadow-xs flex items-center gap-2 self-start sm:self-auto"
+        >
+          <Gamepad2 className="w-4 h-4" />
+          Join Live Game
+        </Button>
       </div>
 
-      {/* 2. ENROLLED ACTIVITY GROUPS SELECTOR */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 bg-saBlue/10 text-saBlue rounded-lg">
-              <Folder className="w-4 h-4" />
+      {/* 2. ENROLLED ACTIVITY GROUPS */}
+      {activityGroups.length > 0 && (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between px-0.5">
+            <div className="flex items-center gap-2">
+              <Folder className="w-4 h-4 text-saBlue" />
+              <h2 className="text-sm font-bold text-gray-700">Activity Groups</h2>
             </div>
-            <h2 className="text-base font-extrabold text-gray-800 tracking-tight">Your Enrolled Activity Groups</h2>
-          </div>
-          <span className="text-xs font-bold text-gray-400">
-            {activityGroups.length} {activityGroups.length === 1 ? 'Group' : 'Groups'} Enrolled
-          </span>
-        </div>
-
-        {/* Group Filter Chips */}
-        <div className="flex items-center gap-2.5 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200">
-          {/* All Activities Option */}
-          <button
-            type="button"
-            onClick={() => setSelectedGroupId('ALL')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 shadow-xs ${
-              selectedGroupId === 'ALL'
-                ? 'bg-saBlue text-white shadow-md shadow-saBlue/20 scale-[1.02]'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>All Activities</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-              selectedGroupId === 'ALL' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
-            }`}>
-              {activities.length}
+            <span className="text-xs text-gray-400">
+              {activityGroups.length} {activityGroups.length === 1 ? 'group' : 'groups'} enrolled
             </span>
-          </button>
-
-          {/* Enrolled Activity Group Chips */}
-          {activityGroups.map((group) => {
-            const groupActivitiesCount = activities.filter((a) => a.group_id === group.id).length;
-            const isSelected = selectedGroupId === group.id;
-
-            return (
-              <button
-                key={group.id}
-                type="button"
-                onClick={() => setSelectedGroupId(group.id)}
-                className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition-all shrink-0 shadow-xs ${
-                  isSelected
-                    ? 'bg-gradient-to-r from-saVividOrange to-orange-500 text-white shadow-md shadow-saVividOrange/20 scale-[1.02]'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                }`}
-              >
-                <Folder className={`w-3.5 h-3.5 ${isSelected ? 'text-white' : 'text-saVividOrange'}`} />
-                <span className="truncate max-w-[200px]" title={group.name}>{group.name}</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                  isSelected ? 'bg-white/25 text-white' : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {groupActivitiesCount}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* 3. ACTIVE GROUP BANNER (When a group is selected) */}
-      {activeGroup && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-saVividOrange/10 via-orange-50 to-white border border-saVividOrange/20 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-saVividOrange to-orange-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-saVividOrange/20">
-              <Folder className="w-6 h-6" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <Badge className="bg-saVividOrange text-white text-[10px] font-extrabold uppercase tracking-widest px-2 py-0.2 border-none">
-                  Active Activity Group
-                </Badge>
-                <span className="text-xs text-gray-400 font-bold">• ID #{activeGroup.id}</span>
-              </div>
-              <h3 className="text-lg font-black text-gray-900 mt-0.5">{activeGroup.name}</h3>
-              {activeGroup.description && (
-                <p className="text-xs text-gray-600 mt-1 line-clamp-2 max-w-2xl">{activeGroup.description}</p>
-              )}
-            </div>
           </div>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedGroupId('ALL')}
-            className="text-xs font-bold text-gray-500 hover:text-saBlue hover:bg-white/80 rounded-xl shrink-0"
-          >
-            <X className="w-3.5 h-3.5 mr-1" />
-            Show All Groups
-          </Button>
+          {/* Group Filter Chips */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-gray-200">
+            {/* All Activities Option */}
+            <button
+              type="button"
+              onClick={() => setSelectedGroupId('ALL')}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                selectedGroupId === 'ALL'
+                  ? 'bg-saBlue text-white shadow-xs'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>All Activities</span>
+              <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                selectedGroupId === 'ALL' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {activities.length}
+              </span>
+            </button>
+
+            {/* Enrolled Activity Group Chips */}
+            {activityGroups.map((group) => {
+              const groupActivitiesCount = activities.filter((a) => a.group_id === group.id).length;
+              const isSelected = selectedGroupId === group.id;
+
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setSelectedGroupId(group.id)}
+                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all shrink-0 ${
+                    isSelected
+                      ? 'bg-saBlue text-white shadow-xs'
+                      : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
+                  <Folder className="w-3.5 h-3.5" />
+                  <span className="truncate max-w-[200px]" title={group.name}>{group.name}</span>
+                  <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${
+                    isSelected ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+                  }`}>
+                    {groupActivitiesCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
