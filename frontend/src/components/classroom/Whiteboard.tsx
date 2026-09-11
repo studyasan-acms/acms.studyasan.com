@@ -176,10 +176,37 @@ export function Whiteboard({
     const imageSelectorRef = useRef<HTMLDivElement>(null);
     const tableSelectorRef = useRef<HTMLDivElement>(null);
 
+    const eraserPopoverRef = useRef<HTMLDivElement>(null);
+    const shapePopoverRef = useRef<HTMLDivElement>(null);
+    const colorPopoverRef = useRef<HTMLDivElement>(null);
+    const imagePopoverRef = useRef<HTMLDivElement>(null);
+    const tablePopoverRef = useRef<HTMLDivElement>(null);
+    const toolbarScrollRef = useRef<HTMLDivElement>(null);
+    const [, setToolbarScrollTick] = useState(0);
+
+    const getAnchorPos = useCallback((triggerEl: HTMLElement | null, popoverWidth: number) => {
+        if (!triggerEl || !containerRef.current) {
+            return { top: 48, left: 16 };
+        }
+        const triggerRect = triggerEl.getBoundingClientRect();
+        const containerRect = containerRef.current.getBoundingClientRect();
+
+        const top = Math.max(0, triggerRect.bottom - containerRect.top + 6);
+        const idealLeft = triggerRect.left - containerRect.left;
+        const maxLeft = Math.max(8, containerRect.width - popoverWidth - 12);
+        const left = Math.max(8, Math.min(idealLeft, maxLeft));
+
+        return { top, left };
+    }, []);
+
     // Close eraser selector when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (eraserSelectorRef.current && !eraserSelectorRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                eraserSelectorRef.current && !eraserSelectorRef.current.contains(target) &&
+                eraserPopoverRef.current && !eraserPopoverRef.current.contains(target)
+            ) {
                 setShowEraserMenu(false);
             }
         };
@@ -235,7 +262,11 @@ export function Whiteboard({
     // Close shape selector when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (shapeSelectorRef.current && !shapeSelectorRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                shapeSelectorRef.current && !shapeSelectorRef.current.contains(target) &&
+                shapePopoverRef.current && !shapePopoverRef.current.contains(target)
+            ) {
                 setShowShapeSelector(false);
             }
         };
@@ -248,7 +279,11 @@ export function Whiteboard({
     // Close color selector when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (colorSelectorRef.current && !colorSelectorRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                colorSelectorRef.current && !colorSelectorRef.current.contains(target) &&
+                colorPopoverRef.current && !colorPopoverRef.current.contains(target)
+            ) {
                 setShowColorSelector(false);
             }
         };
@@ -261,7 +296,11 @@ export function Whiteboard({
     // Close image selector popover when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (imageSelectorRef.current && !imageSelectorRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                imageSelectorRef.current && !imageSelectorRef.current.contains(target) &&
+                imagePopoverRef.current && !imagePopoverRef.current.contains(target)
+            ) {
                 setShowImageDialog(false);
             }
         };
@@ -274,7 +313,11 @@ export function Whiteboard({
     // Close table selector popover when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
-            if (tableSelectorRef.current && !tableSelectorRef.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+            if (
+                tableSelectorRef.current && !tableSelectorRef.current.contains(target) &&
+                tablePopoverRef.current && !tablePopoverRef.current.contains(target)
+            ) {
                 setShowTableDialog(false);
             }
         };
@@ -458,6 +501,7 @@ export function Whiteboard({
 
             // Redraw strokes after resize — setting canvas.width/height clears the bitmap
             setTimeout(redrawCanvas, 0);
+            setToolbarScrollTick((t) => t + 1);
         };
 
         resizeCanvas();
@@ -475,12 +519,15 @@ export function Whiteboard({
         >
             {/* Toolbar - Single compact row.
                  On mobile: horizontally scrollable so all tools are reachable.
-                 Outer div has NO overflow clip so dropdown popups (color, shapes, etc.) show correctly.
-                 Only the inner scroll strip clips on X. */}
+                 Dropdown popups are rendered outside the scrolling container so they never get clipped. */}
             <div className="flex items-center gap-1.5 bg-slate-50 border-b border-slate-200 shrink-0 z-20 relative rounded-t-2xl">
                 {/* Scrollable tools strip */}
-                <div className="flex-1 overflow-x-auto overflow-y-visible scrollbar-hide">
-                    <div className="flex items-center gap-1 md:gap-1.5 p-1 md:p-1.5 min-w-max overflow-visible">
+                <div
+                    ref={toolbarScrollRef}
+                    onScroll={() => setToolbarScrollTick((t) => t + 1)}
+                    className="flex-1 overflow-x-auto scrollbar-hide touch-pan-x"
+                >
+                    <div className="flex items-center gap-1 md:gap-1.5 p-1 md:p-1.5 min-w-max">
                     {!canEdit && (
                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white rounded-lg border border-slate-200 shadow-xs text-slate-600 text-xs font-medium">
                             <span className="font-semibold text-saBlue">Whiteboard</span>
@@ -549,7 +596,7 @@ export function Whiteboard({
                                     <Pencil className="w-3.5 h-3.5" />
                                 </Button>
 
-                                {/* Eraser with Object vs Pixel Mode Selector */}
+                                {/* Eraser with Object vs Pixel Mode Selector Trigger */}
                                 <div className="relative" ref={eraserSelectorRef}>
                                     <div className="flex items-center">
                                         <button
@@ -585,67 +632,6 @@ export function Whiteboard({
                                             </span>
                                         </button>
                                     </div>
-
-                                    {showEraserMenu && (
-                                        <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl border border-slate-200 shadow-xl p-2 z-[100] min-w-[210px] animate-in fade-in zoom-in-95 duration-150">
-                                            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
-                                                Eraser Mode
-                                            </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setEraserType('pixel');
-                                                    setTool('eraser');
-                                                    setShowEraserMenu(false);
-                                                }}
-                                                className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors ${
-                                                    eraserType === 'pixel'
-                                                        ? 'bg-sky-50 text-sky-950 border border-sky-200'
-                                                        : 'hover:bg-slate-50 text-slate-700'
-                                                }`}
-                                            >
-                                                <div className={`mt-0.5 p-1 rounded ${eraserType === 'pixel' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                    <Eraser className="w-3.5 h-3.5" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="text-xs font-semibold flex items-center justify-between">
-                                                        <span>Pixel Eraser</span>
-                                                        {eraserType === 'pixel' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                                                        Precision trims strokes & lines where touched
-                                                    </div>
-                                                </div>
-                                            </button>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    setEraserType('object');
-                                                    setTool('eraser');
-                                                    setShowEraserMenu(false);
-                                                }}
-                                                className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors mt-1 ${
-                                                    eraserType === 'object'
-                                                        ? 'bg-sky-50 text-sky-950 border border-sky-200'
-                                                        : 'hover:bg-slate-50 text-slate-700'
-                                                }`}
-                                            >
-                                                <div className={`mt-0.5 p-1 rounded ${eraserType === 'object' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="text-xs font-semibold flex items-center justify-between">
-                                                        <span>Object Eraser</span>
-                                                        {eraserType === 'object' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
-                                                        Erases entire stroke, shape, or text on touch
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
 
                                 <Button
@@ -666,7 +652,7 @@ export function Whiteboard({
                                 </Button>
                             </div>
 
-                            {/* Shapes Selector */}
+                            {/* Shapes Selector Trigger */}
                             <div className="relative" ref={shapeSelectorRef}>
                                 <button
                                     onClick={() => {
@@ -674,6 +660,7 @@ export function Whiteboard({
                                         setShowImageDialog(false);
                                         setShowTableDialog(false);
                                         setShowColorSelector(false);
+                                        setShowEraserMenu(false);
                                     }}
                                     className={`flex items-center gap-0.5 h-7 px-1.5 bg-white rounded-lg border border-slate-200 shadow-sm hover:bg-slate-50 transition-colors ${['rect', 'circle', 'line', 'arrow', 'triangle', 'star'].includes(currentTool)
                                         ? 'bg-sky-50 border-sky-300'
@@ -692,80 +679,9 @@ export function Whiteboard({
                                     )}
                                     <ChevronDown className="w-3 h-3 text-slate-400" />
                                 </button>
-
-                                {showShapeSelector && (
-                                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] min-w-[120px]">
-                                        <button
-                                            onClick={() => {
-                                                setTool('rect');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Rectangle"
-                                        >
-                                            <Square className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setTool('circle');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Circle"
-                                        >
-                                            <Circle className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setTool('line');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Line"
-                                        >
-                                            <Minus className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setTool('arrow');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Arrow"
-                                        >
-                                            <ArrowRight className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setTool('triangle');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Triangle"
-                                        >
-                                            <Triangle className="w-4 h-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setTool('star');
-                                                setShowShapeSelector(false);
-                                            }}
-                                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'
-                                                }`}
-                                            title="Star"
-                                        >
-                                            <Star className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                )}
                             </div>
 
-                            {/* Text & Image */}
+                            {/* Text & Image & Table */}
                             <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                                 <Button
                                     variant={currentTool === 'text' ? 'default' : 'ghost'}
@@ -776,6 +692,7 @@ export function Whiteboard({
                                         setShowTableDialog(false);
                                         setShowShapeSelector(false);
                                         setShowColorSelector(false);
+                                        setShowEraserMenu(false);
                                     }}
                                     title="Text"
                                     className={`h-7 w-7 p-0 ${currentTool === 'text' ? 'bg-sky-500 hover:bg-sky-600' : ''}`}
@@ -783,7 +700,7 @@ export function Whiteboard({
                                     <Type className="w-3.5 h-3.5" />
                                 </Button>
 
-                                {/* Image Tool with Tooltip Popover */}
+                                {/* Image Tool Trigger */}
                                 <div className="relative" ref={imageSelectorRef}>
                                     <Button
                                         variant={showImageDialog || currentTool === 'image' ? 'default' : 'ghost'}
@@ -794,6 +711,7 @@ export function Whiteboard({
                                             setShowTableDialog(false);
                                             setShowShapeSelector(false);
                                             setShowColorSelector(false);
+                                            setShowEraserMenu(false);
                                             if (nextState) {
                                                 setTool('image');
                                             }
@@ -803,125 +721,9 @@ export function Whiteboard({
                                     >
                                         <ImageIcon className="w-3.5 h-3.5" />
                                     </Button>
-
-                                    {showImageDialog && (
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl p-3 z-[100] w-[270px] animate-in fade-in zoom-in-95 duration-150">
-                                            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
-                                                <div className="flex items-center gap-1.5">
-                                                    <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
-                                                    <span className="text-xs font-bold text-slate-800">Add Image</span>
-                                                </div>
-                                                <button
-                                                    onClick={() => {
-                                                        setShowImageDialog(false);
-                                                        setImageUrlInput('');
-                                                        setImageFile(null);
-                                                        setTool('pen');
-                                                    }}
-                                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
-                                                >
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-
-                                            <div className="space-y-2.5">
-                                                {/* File upload input & button */}
-                                                <input
-                                                    ref={fileInputRef}
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) {
-                                                            try {
-                                                                const compressedUrl = await compressWhiteboardImage(file);
-                                                                if (compressedUrl) {
-                                                                    addImageStroke(compressedUrl, { x: 0.25, y: 0.2 });
-                                                                    setShowImageDialog(false);
-                                                                    setImageFile(null);
-                                                                    setImageUrlInput('');
-                                                                    setTool('select');
-                                                                }
-                                                            } catch (err) {
-                                                                console.error('[Whiteboard] Image upload error:', err);
-                                                            }
-                                                        }
-                                                    }}
-                                                    className="hidden"
-                                                    id="whiteboard-image-upload-input"
-                                                />
-
-                                                <label
-                                                    htmlFor="whiteboard-image-upload-input"
-                                                    className="flex items-center justify-center gap-2 w-full py-2 px-3 border border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/70 hover:bg-sky-50 text-sky-700 text-xs font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
-                                                >
-                                                    <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
-                                                    <span>Upload from device</span>
-                                                </label>
-
-                                                <div className="relative flex items-center justify-center my-1">
-                                                    <div className="w-full border-t border-slate-200" />
-                                                    <span className="absolute bg-white px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        or URL
-                                                    </span>
-                                                </div>
-
-                                                {/* Image URL input */}
-                                                <div className="flex gap-1.5">
-                                                    <input
-                                                        type="url"
-                                                        value={imageUrlInput}
-                                                        onChange={(e) => {
-                                                            setImageUrlInput(e.target.value);
-                                                            setImageFile(null);
-                                                        }}
-                                                        onKeyDown={async (e) => {
-                                                            if (e.key === 'Enter' && imageUrlInput.trim()) {
-                                                                e.preventDefault();
-                                                                const url = imageUrlInput.trim();
-                                                                setShowImageDialog(false);
-                                                                setImageUrlInput('');
-                                                                setTool('select');
-                                                                if (url.startsWith('data:image')) {
-                                                                    const compressed = await compressWhiteboardImage(url);
-                                                                    addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
-                                                                } else {
-                                                                    addImageStroke(url, { x: 0.25, y: 0.2 });
-                                                                }
-                                                            }
-                                                        }}
-                                                        placeholder="Paste image URL..."
-                                                        className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1.5 focus:ring-sky-500 focus:border-sky-500"
-                                                        autoFocus
-                                                    />
-                                                    <Button
-                                                        size="sm"
-                                                        onClick={async () => {
-                                                            if (imageUrlInput.trim()) {
-                                                                const url = imageUrlInput.trim();
-                                                                setShowImageDialog(false);
-                                                                setImageUrlInput('');
-                                                                setTool('select');
-                                                                if (url.startsWith('data:image')) {
-                                                                    const compressed = await compressWhiteboardImage(url);
-                                                                    addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
-                                                                } else {
-                                                                    addImageStroke(url, { x: 0.25, y: 0.2 });
-                                                                }
-                                                            }
-                                                        }}
-                                                        disabled={!imageUrlInput.trim()}
-                                                        className="h-auto py-1 px-2.5 text-xs bg-sky-500 hover:bg-sky-600 text-white rounded-lg shrink-0 font-semibold"
-                                                    >
-                                                        Add
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
-                                {/* Table Tool with Dimensions Popover */}
+                                {/* Table Tool Trigger */}
                                 <div className="relative" ref={tableSelectorRef}>
                                     <Button
                                         variant={showTableDialog || currentTool === 'table' ? 'default' : 'ghost'}
@@ -931,185 +733,17 @@ export function Whiteboard({
                                             setShowImageDialog(false);
                                             setShowShapeSelector(false);
                                             setShowColorSelector(false);
+                                            setShowEraserMenu(false);
                                         }}
                                         title="Insert Table"
                                         className={`h-7 w-7 p-0 ${showTableDialog || currentTool === 'table' ? 'bg-sky-500 hover:bg-sky-600 text-white' : ''}`}
                                     >
                                         <TableIcon className="w-3.5 h-3.5" />
                                     </Button>
-
-                                    {showTableDialog && (
-                                        <div className="absolute top-full left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 mt-2 bg-white rounded-xl border border-slate-200 shadow-xl p-3.5 z-[100] w-[290px] animate-in fade-in zoom-in-95 duration-150">
-                                            <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
-                                                <div className="flex items-center gap-1.5">
-                                                    <TableIcon className="w-3.5 h-3.5 text-sky-500" />
-                                                    <span className="text-xs font-bold text-slate-800">Insert Table</span>
-                                                </div>
-                                                <button
-                                                    onClick={() => setShowTableDialog(false)}
-                                                    className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
-                                                >
-                                                    <X className="w-3.5 h-3.5" />
-                                                </button>
-                                            </div>
-
-                                            {/* Dynamic Hover Matrix (up to 8 cols x 6 rows) */}
-                                            <div className="mb-3">
-                                                <div className="flex items-center justify-between mb-1.5 text-[11px] text-slate-500 font-medium">
-                                                    <span>Select Dimensions:</span>
-                                                    <span className="font-semibold text-sky-600 px-1.5 py-0.5 bg-sky-50 rounded">
-                                                        {hoverGridRows} × {hoverGridCols}
-                                                    </span>
-                                                </div>
-                                                <div
-                                                    className="grid grid-cols-8 gap-1 p-2 bg-slate-50 rounded-lg border border-slate-100 cursor-pointer"
-                                                    onMouseLeave={() => {
-                                                        setHoverGridRows(tableRows);
-                                                        setHoverGridCols(tableCols);
-                                                    }}
-                                                >
-                                                    {Array.from({ length: 6 }).map((_, rIdx) =>
-                                                        Array.from({ length: 8 }).map((_, cIdx) => {
-                                                            const isHighlighted = rIdx < hoverGridRows && cIdx < hoverGridCols;
-                                                            return (
-                                                                <div
-                                                                    key={`${rIdx}-${cIdx}`}
-                                                                    onMouseEnter={() => {
-                                                                        setHoverGridRows(rIdx + 1);
-                                                                        setHoverGridCols(cIdx + 1);
-                                                                    }}
-                                                                    onClick={() => {
-                                                                        const r = rIdx + 1;
-                                                                        const c = cIdx + 1;
-                                                                        setTableRows(r);
-                                                                        setTableCols(c);
-                                                                        addTableStroke(r, c);
-                                                                        setShowTableDialog(false);
-                                                                    }}
-                                                                    className={`w-5 h-5 rounded-[3px] border transition-all ${
-                                                                        isHighlighted
-                                                                            ? 'bg-sky-500 border-sky-600 shadow-xs scale-105'
-                                                                            : 'bg-white border-slate-200 hover:border-slate-300'
-                                                                    }`}
-                                                                />
-                                                            );
-                                                        })
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* Stepper Inputs for Rows & Columns */}
-                                            <div className="grid grid-cols-2 gap-2 mb-3">
-                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                                                        Rows (1-15)
-                                                    </label>
-                                                    <div className="flex items-center justify-between">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newR = Math.max(1, tableRows - 1);
-                                                                setTableRows(newR);
-                                                                setHoverGridRows(newR);
-                                                            }}
-                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
-                                                        >
-                                                            <Minus className="w-3 h-3" />
-                                                        </button>
-                                                        <span className="text-xs font-bold text-slate-800">{tableRows}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newR = Math.min(15, tableRows + 1);
-                                                                setTableRows(newR);
-                                                                setHoverGridRows(newR);
-                                                            }}
-                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
-                                                        >
-                                                            <Plus className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                                    <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                                                        Columns (1-15)
-                                                    </label>
-                                                    <div className="flex items-center justify-between">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newC = Math.max(1, tableCols - 1);
-                                                                setTableCols(newC);
-                                                                setHoverGridCols(newC);
-                                                            }}
-                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
-                                                        >
-                                                            <Minus className="w-3 h-3" />
-                                                        </button>
-                                                        <span className="text-xs font-bold text-slate-800">{tableCols}</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                const newC = Math.min(15, tableCols + 1);
-                                                                setTableCols(newC);
-                                                                setHoverGridCols(newC);
-                                                            }}
-                                                            className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
-                                                        >
-                                                            <Plus className="w-3 h-3" />
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Quick Presets */}
-                                            <div className="flex items-center gap-1.5 mb-3">
-                                                <span className="text-[10px] text-slate-400 font-medium mr-0.5">Presets:</span>
-                                                {[
-                                                    { r: 2, c: 2 },
-                                                    { r: 3, c: 3 },
-                                                    { r: 4, c: 3 },
-                                                    { r: 5, c: 4 },
-                                                ].map(p => (
-                                                    <button
-                                                        key={`${p.r}x${p.c}`}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setTableRows(p.r);
-                                                            setTableCols(p.c);
-                                                            setHoverGridRows(p.r);
-                                                            setHoverGridCols(p.c);
-                                                        }}
-                                                        className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
-                                                            tableRows === p.r && tableCols === p.c
-                                                                ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
-                                                                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                        }`}
-                                                    >
-                                                        {p.r}×{p.c}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            {/* Insert Action Button */}
-                                            <Button
-                                                size="sm"
-                                                onClick={() => {
-                                                    addTableStroke(tableRows, tableCols);
-                                                    setShowTableDialog(false);
-                                                }}
-                                                className="w-full h-8 text-xs bg-sky-500 hover:bg-sky-600 text-white font-medium flex items-center justify-center gap-1.5 shadow-sm"
-                                            >
-                                                <Plus className="w-3.5 h-3.5" />
-                                                Insert {tableRows} × {tableCols} Table
-                                            </Button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 
-                            {/* Color Selector */}
+                            {/* Color Selector Trigger */}
                             <div className="relative" ref={colorSelectorRef}>
                                 <div className="flex items-center gap-0.5 bg-white px-0.5 py-0.5 rounded-lg border border-slate-200 shadow-sm">
                                     {PRIMARY_COLORS.map((color) => (
@@ -1132,6 +766,7 @@ export function Whiteboard({
                                                 setShowImageDialog(false);
                                                 setShowTableDialog(false);
                                                 setShowShapeSelector(false);
+                                                setShowEraserMenu(false);
                                             }}
                                             className="w-5 h-5 rounded-full border border-slate-200 ring-2 ring-offset-1 ring-sky-400 scale-110 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500"
                                             title="Rainbow"
@@ -1143,6 +778,7 @@ export function Whiteboard({
                                                 setShowImageDialog(false);
                                                 setShowTableDialog(false);
                                                 setShowShapeSelector(false);
+                                                setShowEraserMenu(false);
                                             }}
                                             className="flex items-center justify-center w-5 h-5 rounded-full border border-slate-200 hover:bg-slate-100 transition-colors"
                                             title="More colors"
@@ -1151,35 +787,6 @@ export function Whiteboard({
                                         </button>
                                     )}
                                 </div>
-
-                                {showColorSelector && (
-                                    <div className="absolute top-full left-0 mt-1 bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] min-w-[140px]">
-                                        {COLORS.map((color) => (
-                                            <button
-                                                key={color}
-                                                onClick={() => {
-                                                    setColor(color);
-                                                    if (currentTool === 'rainbow') setTool('pen');
-                                                    setShowColorSelector(false);
-                                                }}
-                                                className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                                    }`}
-                                                style={{ backgroundColor: color }}
-                                            />
-                                        ))}
-                                        <button
-                                            onClick={() => {
-                                                setTool('rainbow');
-                                                setShowColorSelector(false);
-                                            }}
-                                            className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'
-                                                }`}
-                                            title="Rainbow"
-                                        >
-                                            <Sparkles className="w-3 h-3 text-white drop-shadow" />
-                                        </button>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Size */}
@@ -1597,6 +1204,490 @@ export function Whiteboard({
                     </div>
                 )}
             </div>
+
+            {/* Popover Menus rendered at root container level to prevent clipping from scrollable toolbar */}
+            {showEraserMenu && (() => {
+                const pos = getAnchorPos(eraserSelectorRef.current, 210);
+                return (
+                    <div
+                        ref={eraserPopoverRef}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute bg-white rounded-xl border border-slate-200 shadow-xl p-2 z-[100] w-[210px] max-w-[calc(100%-24px)] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+                    >
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2 py-1">
+                            Eraser Mode
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEraserType('pixel');
+                                setTool('eraser');
+                                setShowEraserMenu(false);
+                            }}
+                            className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors ${
+                                eraserType === 'pixel'
+                                    ? 'bg-sky-50 text-sky-950 border border-sky-200'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                        >
+                            <div className={`mt-0.5 p-1 rounded ${eraserType === 'pixel' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                <Eraser className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-xs font-semibold flex items-center justify-between">
+                                    <span>Pixel Eraser</span>
+                                    {eraserType === 'pixel' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
+                                </div>
+                                <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                    Precision trims strokes & lines where touched
+                                </div>
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setEraserType('object');
+                                setTool('eraser');
+                                setShowEraserMenu(false);
+                            }}
+                            className={`w-full flex items-start gap-2.5 p-2 rounded-lg text-left transition-colors mt-1 ${
+                                eraserType === 'object'
+                                    ? 'bg-sky-50 text-sky-950 border border-sky-200'
+                                    : 'hover:bg-slate-50 text-slate-700'
+                            }`}
+                        >
+                            <div className={`mt-0.5 p-1 rounded ${eraserType === 'object' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex-1">
+                                <div className="text-xs font-semibold flex items-center justify-between">
+                                    <span>Object Eraser</span>
+                                    {eraserType === 'object' && <Check className="w-3.5 h-3.5 text-sky-600 font-bold" />}
+                                </div>
+                                <div className="text-[10px] text-slate-500 leading-tight mt-0.5">
+                                    Erases entire stroke, shape, or text on touch
+                                </div>
+                            </div>
+                        </button>
+                    </div>
+                );
+            })()}
+
+            {showShapeSelector && (() => {
+                const pos = getAnchorPos(shapeSelectorRef.current, 130);
+                return (
+                    <div
+                        ref={shapePopoverRef}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute bg-white rounded-lg border border-slate-200 shadow-lg p-1.5 grid grid-cols-3 gap-1 z-[100] w-[130px] max-w-[calc(100%-24px)] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+                    >
+                        <button
+                            onClick={() => {
+                                setTool('rect');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'rect' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Rectangle"
+                        >
+                            <Square className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTool('circle');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'circle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Circle"
+                        >
+                            <Circle className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTool('line');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'line' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Line"
+                        >
+                            <Minus className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTool('arrow');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'arrow' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Arrow"
+                        >
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTool('triangle');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'triangle' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Triangle"
+                        >
+                            <Triangle className="w-4 h-4" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                setTool('star');
+                                setShowShapeSelector(false);
+                            }}
+                            className={`flex items-center justify-center w-9 h-9 rounded hover:bg-slate-100 ${currentTool === 'star' ? 'bg-sky-100 text-sky-600' : 'text-slate-600'}`}
+                            title="Star"
+                        >
+                            <Star className="w-4 h-4" />
+                        </button>
+                    </div>
+                );
+            })()}
+
+            {showImageDialog && (() => {
+                const pos = getAnchorPos(imageSelectorRef.current, 280);
+                return (
+                    <div
+                        ref={imagePopoverRef}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute bg-white rounded-xl border border-slate-200 shadow-xl p-3 z-[100] w-[280px] max-w-[calc(100%-24px)] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+                    >
+                        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
+                            <div className="flex items-center gap-1.5">
+                                <ImageIcon className="w-3.5 h-3.5 text-sky-500" />
+                                <span className="text-xs font-bold text-slate-800">Add Image</span>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowImageDialog(false);
+                                    setImageUrlInput('');
+                                    setImageFile(null);
+                                    setTool('pen');
+                                }}
+                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-2.5">
+                            {/* File upload input & button */}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        try {
+                                            const compressedUrl = await compressWhiteboardImage(file);
+                                            if (compressedUrl) {
+                                                addImageStroke(compressedUrl, { x: 0.25, y: 0.2 });
+                                                setShowImageDialog(false);
+                                                setImageFile(null);
+                                                setImageUrlInput('');
+                                                setTool('select');
+                                            }
+                                        } catch (err) {
+                                            console.error('[Whiteboard] Image upload error:', err);
+                                        }
+                                    }
+                                }}
+                                className="hidden"
+                                id="whiteboard-image-upload-input"
+                            />
+
+                            <label
+                                htmlFor="whiteboard-image-upload-input"
+                                className="flex items-center justify-center gap-2 w-full py-2 px-3 border border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/70 hover:bg-sky-50 text-sky-700 text-xs font-semibold rounded-lg cursor-pointer transition-colors shadow-xs"
+                            >
+                                <ImageIcon className="w-3.5 h-3.5 text-sky-600" />
+                                <span>Upload from device</span>
+                            </label>
+
+                            <div className="relative flex items-center justify-center my-1">
+                                <div className="w-full border-t border-slate-200" />
+                                <span className="absolute bg-white px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    or URL
+                                </span>
+                            </div>
+
+                            {/* Image URL input */}
+                            <div className="flex gap-1.5">
+                                <input
+                                    type="url"
+                                    value={imageUrlInput}
+                                    onChange={(e) => {
+                                        setImageUrlInput(e.target.value);
+                                        setImageFile(null);
+                                    }}
+                                    onKeyDown={async (e) => {
+                                        if (e.key === 'Enter' && imageUrlInput.trim()) {
+                                            e.preventDefault();
+                                            const url = imageUrlInput.trim();
+                                            setShowImageDialog(false);
+                                            setImageUrlInput('');
+                                            setTool('select');
+                                            if (url.startsWith('data:image')) {
+                                                const compressed = await compressWhiteboardImage(url);
+                                                addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
+                                            } else {
+                                                addImageStroke(url, { x: 0.25, y: 0.2 });
+                                            }
+                                        }
+                                    }}
+                                    placeholder="Paste image URL..."
+                                    className="flex-1 px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-1.5 focus:ring-sky-500 focus:border-sky-500"
+                                    autoFocus
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={async () => {
+                                        if (imageUrlInput.trim()) {
+                                            const url = imageUrlInput.trim();
+                                            setShowImageDialog(false);
+                                            setImageUrlInput('');
+                                            setTool('select');
+                                            if (url.startsWith('data:image')) {
+                                                const compressed = await compressWhiteboardImage(url);
+                                                addImageStroke(compressed || url, { x: 0.25, y: 0.2 });
+                                            } else {
+                                                addImageStroke(url, { x: 0.25, y: 0.2 });
+                                            }
+                                        }
+                                    }}
+                                    disabled={!imageUrlInput.trim()}
+                                    className="h-auto py-1 px-2.5 text-xs bg-sky-500 hover:bg-sky-600 text-white rounded-lg shrink-0 font-semibold"
+                                >
+                                    Add
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {showTableDialog && (() => {
+                const pos = getAnchorPos(tableSelectorRef.current, 300);
+                return (
+                    <div
+                        ref={tablePopoverRef}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute bg-white rounded-xl border border-slate-200 shadow-xl p-3.5 z-[100] w-[300px] max-w-[calc(100%-24px)] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+                    >
+                        <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-slate-100">
+                            <div className="flex items-center gap-1.5">
+                                <TableIcon className="w-3.5 h-3.5 text-sky-500" />
+                                <span className="text-xs font-bold text-slate-800">Insert Table</span>
+                            </div>
+                            <button
+                                onClick={() => setShowTableDialog(false)}
+                                className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+                            >
+                                <X className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+
+                        {/* Dynamic Hover Matrix (up to 8 cols x 6 rows) */}
+                        <div className="mb-3">
+                            <div className="flex items-center justify-between mb-1.5 text-[11px] text-slate-500 font-medium">
+                                <span>Select Dimensions:</span>
+                                <span className="font-semibold text-sky-600 px-1.5 py-0.5 bg-sky-50 rounded">
+                                    {hoverGridRows} × {hoverGridCols}
+                                </span>
+                            </div>
+                            <div
+                                className="grid grid-cols-8 gap-1 p-2 bg-slate-50 rounded-lg border border-slate-100 cursor-pointer"
+                                onMouseLeave={() => {
+                                    setHoverGridRows(tableRows);
+                                    setHoverGridCols(tableCols);
+                                }}
+                            >
+                                {Array.from({ length: 6 }).map((_, rIdx) =>
+                                    Array.from({ length: 8 }).map((_, cIdx) => {
+                                        const isHighlighted = rIdx < hoverGridRows && cIdx < hoverGridCols;
+                                        return (
+                                            <div
+                                                key={`${rIdx}-${cIdx}`}
+                                                onMouseEnter={() => {
+                                                    setHoverGridRows(rIdx + 1);
+                                                    setHoverGridCols(cIdx + 1);
+                                                }}
+                                                onClick={() => {
+                                                    const r = rIdx + 1;
+                                                    const c = cIdx + 1;
+                                                    setTableRows(r);
+                                                    setTableCols(c);
+                                                    addTableStroke(r, c);
+                                                    setShowTableDialog(false);
+                                                }}
+                                                className={`w-5 h-5 rounded-[3px] border transition-all ${
+                                                    isHighlighted
+                                                        ? 'bg-sky-500 border-sky-600 shadow-xs scale-105'
+                                                        : 'bg-white border-slate-200 hover:border-slate-300'
+                                                }`}
+                                            />
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Stepper Inputs for Rows & Columns */}
+                        <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Rows (1-15)
+                                </label>
+                                <div className="flex items-center justify-between">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newR = Math.max(1, tableRows - 1);
+                                            setTableRows(newR);
+                                            setHoverGridRows(newR);
+                                        }}
+                                        className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                    >
+                                        <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-800">{tableRows}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newR = Math.min(15, tableRows + 1);
+                                            setTableRows(newR);
+                                            setHoverGridRows(newR);
+                                        }}
+                                        className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                    Columns (1-15)
+                                </label>
+                                <div className="flex items-center justify-between">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newC = Math.max(1, tableCols - 1);
+                                            setTableCols(newC);
+                                            setHoverGridCols(newC);
+                                        }}
+                                        className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                    >
+                                        <Minus className="w-3 h-3" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-800">{tableCols}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const newC = Math.min(15, tableCols + 1);
+                                            setTableCols(newC);
+                                            setHoverGridCols(newC);
+                                        }}
+                                        className="w-6 h-6 rounded bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-100 active:scale-95"
+                                    >
+                                        <Plus className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Quick Presets */}
+                        <div className="flex items-center gap-1.5 mb-3">
+                            <span className="text-[10px] text-slate-400 font-medium mr-0.5">Presets:</span>
+                            {[
+                                { r: 2, c: 2 },
+                                { r: 3, c: 3 },
+                                { r: 4, c: 3 },
+                                { r: 5, c: 4 },
+                            ].map(p => (
+                                <button
+                                    key={`${p.r}x${p.c}`}
+                                    type="button"
+                                    onClick={() => {
+                                        setTableRows(p.r);
+                                        setTableCols(p.c);
+                                        setHoverGridRows(p.r);
+                                        setHoverGridCols(p.c);
+                                    }}
+                                    className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
+                                        tableRows === p.r && tableCols === p.c
+                                            ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
+                                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {p.r}×{p.c}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Insert Action Button */}
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                addTableStroke(tableRows, tableCols);
+                                setShowTableDialog(false);
+                            }}
+                            className="w-full h-8 text-xs bg-sky-500 hover:bg-sky-600 text-white font-medium flex items-center justify-center gap-1.5 shadow-sm"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            Insert {tableRows} × {tableCols} Table
+                        </Button>
+                    </div>
+                );
+            })()}
+
+            {showColorSelector && (() => {
+                const pos = getAnchorPos(colorSelectorRef.current, 150);
+                return (
+                    <div
+                        ref={colorPopoverRef}
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        className="absolute bg-white rounded-lg border border-slate-200 shadow-lg p-2 grid grid-cols-4 gap-1.5 z-[100] w-[150px] max-w-[calc(100%-24px)] animate-in fade-in zoom-in-95 duration-150"
+                        style={{ top: `${pos.top}px`, left: `${pos.left}px` }}
+                    >
+                        {COLORS.map((color) => (
+                            <button
+                                key={color}
+                                onClick={() => {
+                                    setColor(color);
+                                    if (currentTool === 'rainbow') setTool('pen');
+                                    setShowColorSelector(false);
+                                }}
+                                className={`w-7 h-7 rounded-full transition-transform border border-slate-200 ${currentColor === color && currentTool !== 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'}`}
+                                style={{ backgroundColor: color }}
+                            />
+                        ))}
+                        <button
+                            onClick={() => {
+                                setTool('rainbow');
+                                setShowColorSelector(false);
+                            }}
+                            className={`w-7 h-7 rounded-full transition-transform border border-slate-200 bg-gradient-to-r from-red-500 via-yellow-500 via-green-500 via-blue-500 to-purple-500 ${currentTool === 'rainbow' ? 'ring-2 ring-offset-1 ring-sky-400 scale-110' : 'hover:scale-110'}`}
+                            title="Rainbow"
+                        >
+                            <Sparkles className="w-3 h-3 text-white drop-shadow" />
+                        </button>
+                    </div>
+                );
+            })()}
         </div>
     );
 }
