@@ -13,7 +13,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "npm run seed"
+    "prisma:seed": "npm run seed",
+    "migrate:modules": "npx tsx src/scripts/migrate-legacy-modules.ts"
   },
   "keywords": [],
   "author": "",

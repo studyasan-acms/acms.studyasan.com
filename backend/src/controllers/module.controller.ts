@@ -5,7 +5,6 @@ import {
   uploadToS3, 
   uploadMultipleToS3, 
   deleteFromS3, 
-  extractS3KeyFromUrl,
   getFileType 
 } from '../utils/s3.js';
 
@@ -29,34 +28,37 @@ interface Module {
   estimated_time_minutes: number;
 }
 
-interface Syllabus {
-  units?: any[];
-  modules: Module[];
-}
-
-const parseSyllabusHelper = (raw: any): { units: any[]; modules: Module[]; [key: string]: any } => {
-  if (!raw) return { units: [], modules: [] };
-  let parsed = raw;
-  while (typeof parsed === 'string') {
+// Helper to parse modules from subject.modules (with backwards-compatibility fallback to subject.syllabus.modules)
+const parseModulesHelper = (rawModules: any, rawSyllabus?: any): Module[] => {
+  let modules: any = rawModules;
+  while (typeof modules === 'string') {
     try {
-      parsed = JSON.parse(parsed);
+      modules = JSON.parse(modules);
     } catch {
       break;
     }
   }
-  if (!parsed || typeof parsed !== 'object') return { units: [], modules: [] };
-  if (Array.isArray(parsed)) {
-    const units = parsed.map((item: any, idx: number) => ({
-      name: item?.name || item?.title || `Unit ${idx + 1}`,
-      content: item?.content || item?.description || '',
-    }));
-    return { units, modules: [] };
+
+  if (Array.isArray(modules) && modules.length > 0) {
+    return modules;
   }
-  return {
-    ...parsed,
-    units: Array.isArray(parsed.units) ? parsed.units : [],
-    modules: Array.isArray(parsed.modules) ? parsed.modules : [],
-  };
+
+  // Fallback for legacy data stored in syllabus.modules
+  if (rawSyllabus) {
+    let syllabus = rawSyllabus;
+    while (typeof syllabus === 'string') {
+      try {
+        syllabus = JSON.parse(syllabus);
+      } catch {
+        break;
+      }
+    }
+    if (syllabus && typeof syllabus === 'object' && Array.isArray(syllabus.modules)) {
+      return syllabus.modules;
+    }
+  }
+
+  return [];
 };
 
 // Get all modules for a subject
@@ -66,38 +68,14 @@ export const getModulesBySubject = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { id: true, name: true, syllabus: true },
+      select: { id: true, name: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    let modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
-
-    // If modules is empty but syllabus has units (from subject creation/editing), convert them to modules
-    if (modules.length === 0 && Array.isArray(syllabus?.units) && syllabus.units.length > 0) {
-      modules = syllabus.units.map((unit: any, index: number) => ({
-        module_id: index + 1,
-        title: unit.name || `Unit ${index + 1}`,
-        description: unit.content || unit.name || '',
-        order: index + 1,
-        content: [],
-        estimated_time_minutes: 0,
-      }));
-
-      // Persist modules alongside existing units
-      await prisma.subject.update({
-        where: { id: subject.id },
-        data: {
-          syllabus: {
-            ...syllabus,
-            modules,
-          } as any,
-        },
-      });
-    }
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
 
     sendSuccess(res, {
       subject_id: subject.id,
@@ -116,38 +94,14 @@ export const getModuleById = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { id: true, syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    let modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
-
-    // If modules is empty but syllabus has units, auto-convert
-    if (modules.length === 0 && Array.isArray(syllabus?.units) && syllabus.units.length > 0) {
-      modules = syllabus.units.map((unit: any, index: number) => ({
-        module_id: index + 1,
-        title: unit.name || `Unit ${index + 1}`,
-        description: unit.content || unit.name || '',
-        order: index + 1,
-        content: [],
-        estimated_time_minutes: 0,
-      }));
-
-      await prisma.subject.update({
-        where: { id: subject.id },
-        data: {
-          syllabus: {
-            ...syllabus,
-            modules,
-          } as any,
-        },
-      });
-    }
-
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const module = modules.find((m) => m.module_id === parseInt(moduleId!));
 
     if (!module) {
@@ -172,15 +126,14 @@ export const createModule = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
 
     const newModuleId = modules.length > 0 
       ? Math.max(...modules.map((m) => m.module_id)) + 1 
@@ -204,10 +157,7 @@ export const createModule = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -225,15 +175,14 @@ export const updateModule = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
     if (moduleIndex === -1) {
@@ -253,10 +202,7 @@ export const updateModule = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -273,15 +219,14 @@ export const deleteModule = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleToDelete = modules.find((m) => m.module_id === parseInt(moduleId!));
 
     if (!moduleToDelete) {
@@ -306,10 +251,7 @@ export const deleteModule = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules: filteredModules,
-        } as any,
+        modules: filteredModules as any,
       },
     });
 
@@ -339,15 +281,14 @@ export const reorderModules = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
 
     module_orders.forEach(({ module_id, order }) => {
       const moduleIndex = modules.findIndex((m) => m.module_id === module_id);
@@ -362,10 +303,7 @@ export const reorderModules = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -387,15 +325,14 @@ export const uploadContentToModule = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
     if (moduleIndex === -1) {
@@ -430,10 +367,7 @@ export const uploadContentToModule = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -455,15 +389,14 @@ export const addTextContent = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
     if (moduleIndex === -1) {
@@ -490,10 +423,7 @@ export const addTextContent = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -510,15 +440,14 @@ export const removeContentFromModule = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
     if (moduleIndex === -1) {
@@ -550,10 +479,7 @@ export const removeContentFromModule = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 
@@ -571,15 +497,14 @@ export const updateContent = async (req: Request, res: Response) => {
 
     const subject = await prisma.subject.findUnique({
       where: { id: parseInt(subjectId!) },
-      select: { syllabus: true },
+      select: { id: true, modules: true, syllabus: true },
     });
 
     if (!subject) {
       return sendError(res, 'Subject not found', 404);
     }
 
-    const syllabus = parseSyllabusHelper(subject.syllabus);
-    const modules: Module[] = Array.isArray(syllabus?.modules) ? [...syllabus.modules] : [];
+    const modules: Module[] = parseModulesHelper(subject.modules, subject.syllabus);
     const moduleIndex = modules.findIndex((m) => m.module_id === parseInt(moduleId!));
 
     if (moduleIndex === -1) {
@@ -608,10 +533,7 @@ export const updateContent = async (req: Request, res: Response) => {
     await prisma.subject.update({
       where: { id: parseInt(subjectId!) },
       data: {
-        syllabus: {
-          ...syllabus,
-          modules,
-        } as any,
+        modules: modules as any,
       },
     });
 

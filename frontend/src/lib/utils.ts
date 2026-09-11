@@ -38,7 +38,7 @@ export interface SyllabusUnit {
 
 export interface SyllabusData {
   units: SyllabusUnit[];
-  modules: any[];
+  modules?: any[];
 }
 
 export function normalizeSyllabus(rawSyllabus: any): SyllabusData {
@@ -70,7 +70,6 @@ export function normalizeSyllabus(rawSyllabus: any): SyllabusData {
 
   if (typeof parsed === 'object') {
     let units: SyllabusUnit[] = [];
-    let modules: any[] = [];
 
     if (Array.isArray(parsed.units)) {
       units = parsed.units.map((u: any, idx: number) => ({
@@ -79,19 +78,7 @@ export function normalizeSyllabus(rawSyllabus: any): SyllabusData {
       }));
     }
 
-    if (Array.isArray(parsed.modules)) {
-      modules = parsed.modules;
-    }
-
-    const hasExplicitUnits = 'units' in parsed && Array.isArray(parsed.units);
-    if (!hasExplicitUnits && units.length === 0 && modules.length > 0) {
-      units = modules.map((m: any, idx: number) => ({
-        name: m?.title || m?.name || `Unit ${idx + 1}`,
-        content: m?.description || (typeof m?.content === 'string' ? m.content : '') || '',
-      }));
-    }
-
-    return { units, modules };
+    return { units, modules: [] };
   }
 
   return { units: [], modules: [] };

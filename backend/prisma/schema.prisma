@@ -160,6 +160,7 @@ model Subject {
   class_id                  Int?
   board_id                  Int?
   syllabus                  Json?
+  modules                   Json?                    @default("[]")
   is_course                 Boolean                  @default(false)
   end_date                  DateTime?
   price                     Float? // Optional pricing for paid subjects/courses (Discounted Selling Price)

@@ -217,7 +217,7 @@ export const getSubjectById = async (req: Request, res: Response) => {
   }
 };
 
-const parseSyllabusHelper = (raw: any): { units: any[]; modules: any[] } | null => {
+const parseSyllabusHelper = (raw: any): { units: any[] } | null => {
   if (!raw) return null;
   let parsed = raw;
   while (typeof parsed === 'string') {
@@ -234,34 +234,11 @@ const parseSyllabusHelper = (raw: any): { units: any[]; modules: any[] } | null 
       name: item?.name || item?.title || `Unit ${idx + 1}`,
       content: item?.content || item?.description || '',
     }));
-    return {
-      units,
-      modules: units.map((u: any, idx: number) => ({
-        module_id: idx + 1,
-        title: u.name,
-        description: u.content,
-        order: idx + 1,
-        content: [],
-        estimated_time_minutes: 0,
-      })),
-    };
+    return { units };
   }
 
   const units = Array.isArray(parsed.units) ? parsed.units : [];
-  let modules = Array.isArray(parsed.modules) ? parsed.modules : [];
-
-  if (modules.length === 0 && units.length > 0) {
-    modules = units.map((unit: any, index: number) => ({
-      module_id: index + 1,
-      title: unit.name || `Unit ${index + 1}`,
-      description: unit.content || unit.name || '',
-      order: index + 1,
-      content: [],
-      estimated_time_minutes: 0,
-    }));
-  }
-
-  return { units, modules };
+  return { units };
 };
 
 export const createSubject = async (req: Request, res: Response) => {
@@ -287,6 +264,7 @@ export const createSubject = async (req: Request, res: Response) => {
         ...(class_id && { class_id: parseInt(class_id) }),
         ...(board_id && { board_id: parseInt(board_id) }),
         ...(parsedSyllabus && { syllabus: parsedSyllabus }),
+        modules: [],
         ...(end_date && { end_date: new Date(end_date) }),
         ...(price !== undefined && price !== '' && { price: parseFloat(price) }),
         ...(actual_price !== undefined && actual_price !== '' && { actual_price: parseFloat(actual_price) }),
@@ -318,72 +296,13 @@ export const updateSubject = async (req: Request, res: Response) => {
       cover_image = uploadResult.key;
     }
 
-    const existingSubject = await prisma.subject.findUnique({
-      where: { id: parseInt(id!) },
-      select: { syllabus: true },
-    });
-
-    const existingSyllabus = parseSyllabusHelper(existingSubject?.syllabus) || { units: [], modules: [] };
-    const existingModules: any[] = Array.isArray(existingSyllabus.modules) ? existingSyllabus.modules : [];
     let finalSyllabus: any = undefined;
-
     if (syllabus !== undefined) {
       if (syllabus === '' || syllabus === null) {
-        finalSyllabus = { units: [], modules: existingModules };
+        finalSyllabus = { units: [] };
       } else {
         const parsedSyllabus = parseSyllabusHelper(syllabus);
-        if (parsedSyllabus) {
-          const units = Array.isArray(parsedSyllabus.units) ? parsedSyllabus.units : [];
-          
-          let modules: any[] = [];
-          if (existingModules.length > 0) {
-            // If there are existing modules in the DB, preserve all their content, PDFs, and metadata
-            if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
-              const incomingModules = parsedSyllabus.modules;
-              const mergedMap = new Map<number, any>();
-
-              // Seed with existing modules from database
-              existingModules.forEach((em: any) => {
-                if (em.module_id) mergedMap.set(em.module_id, { ...em });
-              });
-
-              // Merge incoming updates without losing uploaded content/PDFs
-              incomingModules.forEach((im: any) => {
-                if (im.module_id && mergedMap.has(im.module_id)) {
-                  const existing = mergedMap.get(im.module_id);
-                  mergedMap.set(im.module_id, {
-                    ...existing,
-                    ...im,
-                    content: (Array.isArray(im.content) && im.content.length > 0) ? im.content : (existing.content || []),
-                  });
-                } else if (im.module_id) {
-                  mergedMap.set(im.module_id, im);
-                }
-              });
-
-              modules = Array.from(mergedMap.values()).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-            } else {
-              // Retain all existing modules intact
-              modules = existingModules;
-            }
-          } else {
-            // No existing modules in DB yet
-            if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
-              modules = parsedSyllabus.modules;
-            } else {
-              modules = units.map((u: any, i: number) => ({
-                module_id: i + 1,
-                title: u.name || `Unit ${i + 1}`,
-                description: u.content || '',
-                order: i + 1,
-                content: [],
-                estimated_time_minutes: 0,
-              }));
-            }
-          }
-
-          finalSyllabus = { units, modules };
-        }
+        finalSyllabus = parsedSyllabus ? parsedSyllabus : { units: [] };
       }
     }
 

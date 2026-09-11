@@ -235,20 +235,8 @@ export default function EditSubjectPage() {
     setIsSaving(true);
 
     try {
-      const normalizedCurrentSyllabus = normalizeSyllabus(subject?.syllabus);
-      const existingModules = normalizedCurrentSyllabus.modules || [];
       const syllabusData = {
         units: syllabusUnits,
-        modules: existingModules.length > 0
-          ? existingModules
-          : syllabusUnits.map((u, i) => ({
-              module_id: i + 1,
-              title: u.name,
-              description: u.content,
-              order: i + 1,
-              content: [],
-              estimated_time_minutes: 0,
-            })),
       };
 
       const submitData: UpdateSubjectData = {
@@ -583,7 +571,7 @@ export default function EditSubjectPage() {
               className="h-8 text-xs font-bold text-saBlue border-saBlue/30 bg-saBlue/5 hover:bg-saBlue/10 rounded-xl w-fit"
             >
               <BookOpen className="w-3.5 h-3.5 mr-1.5" />
-              Manage Curriculum Modules ({syllabusUnits.length || subject?.syllabus?.modules?.length || 0})
+              Manage Study Modules
             </Button>
           </CardHeader>
 
