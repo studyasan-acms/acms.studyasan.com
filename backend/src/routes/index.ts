@@ -44,6 +44,7 @@ import * as invoiceController from '../controllers/invoice.controller.js';
 import * as recordingController from '../controllers/recording.controller.js';
 import * as sectionController from '../controllers/section.controller.js';
 import * as paymentGatewayController from '../controllers/paymentGateway.controller.js';
+import * as holidayController from '../controllers/holiday.controller.js';
 import announcementRoutes from './announcement.routes.js';
 import { authenticate, authorize, authorizeStrict } from '../middleware/auth.middleware.js';
 
@@ -859,5 +860,13 @@ router.put('/admin/agencies/:id', authenticate, authorize('ADMIN'), agencyContro
 router.delete('/admin/agencies/:id', authenticate, authorize('ADMIN'), agencyController.deleteAgency);
 router.get('/admin/agency-payouts', authenticate, authorize('ADMIN'), agencyController.getAgencyPayouts);
 router.patch('/admin/agency-payouts/:payoutId', authenticate, authorize('ADMIN'), agencyController.handlePayoutRequest);
+
+// ================== HOLIDAY MANAGEMENT ROUTES ==================
+router.get('/holidays', authenticate, holidayController.getAllHolidays);
+router.get('/holidays/upcoming', authenticate, holidayController.getUpcomingHolidays);
+router.get('/holidays/:id', authenticate, holidayController.getHolidayById);
+router.post('/holidays', authenticate, authorizeStrict('ADMIN'), holidayController.createHoliday);
+router.put('/holidays/:id', authenticate, authorizeStrict('ADMIN'), holidayController.updateHoliday);
+router.delete('/holidays/:id', authenticate, authorizeStrict('ADMIN'), holidayController.deleteHoliday);
 
 export default router;

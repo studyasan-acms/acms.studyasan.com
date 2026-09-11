@@ -37,6 +37,7 @@ import {
   Compass,
   ChevronDown,
   Layers,
+  CalendarDays,
 } from "lucide-react";
 import { createPortal } from "react-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -224,6 +225,13 @@ const navItems: NavItem[] = [
     title: "Announcements",
     href: "/dashboard/announcements",
     icon: Bell,
+    roles: ["ADMIN"],
+    group: "System",
+  },
+  {
+    title: "Holiday Management",
+    href: "/dashboard/admin/holidays",
+    icon: CalendarDays,
     roles: ["ADMIN"],
     group: "System",
   },

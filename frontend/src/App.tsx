@@ -137,6 +137,7 @@ import { AgencyLoginPage } from '@/pages/agency/AgencyLoginPage';
 import { AgencyDashboardPage } from '@/pages/agency/AgencyDashboardPage';
 import AnnouncementsPage from '@/pages/announcements/AnnouncementsPage';
 import KnowYourChildPage from '@/pages/KnowYourChildPage';
+import HolidayManagementPage from '@/pages/admin/HolidayManagementPage';
 
 // Protected Route Component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -399,6 +400,10 @@ function App() {
 
           {/* Admin Agencies & Referrers Route */}
           <Route path="admin/agencies" element={<AdminAgenciesPage />} />
+
+          {/* Holiday Management Routes */}
+          <Route path="admin/holidays" element={<HolidayManagementPage />} />
+          <Route path="holidays" element={<HolidayManagementPage />} />
 
           {/* Analytics Routes */}
           <Route path="analytics" element={<StudentAnalyticsPage />} />

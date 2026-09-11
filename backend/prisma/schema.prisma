@@ -68,6 +68,7 @@ model User {
   announcements           Announcement[]           @relation("AnnouncementCreator")
   saved_whiteboards       SavedWhiteboard[]
   section_creations       Section[]                @relation("SectionCreator")
+  holidays                Holiday[]                @relation("HolidayCreator")
 
   @@map("user")
 }
@@ -1536,3 +1537,30 @@ model SectionStudent {
   @@unique([section_id, student_id])
   @@map("section_students")
 }
+
+// ================== HOLIDAY MANAGEMENT ==================
+model Holiday {
+  id          Int         @id @default(autoincrement())
+  title       String
+  description String?
+  start_date  DateTime
+  end_date    DateTime
+  type        HolidayType @default(GENERAL)
+  is_active   Boolean     @default(true)
+  created_by  Int
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  creator     User        @relation("HolidayCreator", fields: [created_by], references: [id], onDelete: Cascade)
+
+  @@map("holidays")
+}
+
+enum HolidayType {
+  NATIONAL
+  FESTIVAL
+  ACADEMIC
+  VACATION
+  GENERAL
+}
+

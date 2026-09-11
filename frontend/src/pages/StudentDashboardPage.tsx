@@ -5,6 +5,7 @@ import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
+import UpcomingHolidaysWidget from '@/components/dashboard/UpcomingHolidaysWidget';
 import PageHeader from '@/components/ui/PageHeader';
 import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { Button } from '@/components/ui/button';
@@ -465,6 +466,9 @@ export default function StudentDashboardPage() {
 
             {/* Attendance & Session Widget */}
             <LiveClassAttendanceWidget />
+
+            {/* Upcoming Holidays Widget */}
+            <UpcomingHolidaysWidget />
 
             {/* Top Analytics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

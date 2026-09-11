@@ -1670,3 +1670,54 @@ export interface UpdateSectionData {
   teacher_id?: number;
   subject_id?: number;
 }
+
+// ================== HOLIDAY TYPES ==================
+export type HolidayType = 'NATIONAL' | 'FESTIVAL' | 'ACADEMIC' | 'VACATION' | 'GENERAL';
+
+export interface Holiday {
+  id: number;
+  title: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  type: HolidayType;
+  is_active: boolean;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+  creator?: {
+    id: number;
+    name: string;
+    email?: string;
+  };
+}
+
+export interface CreateHolidayData {
+  title: string;
+  description?: string | null;
+  start_date: string;
+  end_date: string;
+  type?: HolidayType;
+}
+
+export interface UpdateHolidayData {
+  title?: string;
+  description?: string | null;
+  start_date?: string;
+  end_date?: string;
+  type?: HolidayType;
+  is_active?: boolean;
+}
+
+export interface HolidayQueryParams {
+  year?: number;
+  month?: number;
+  start_date?: string;
+  end_date?: string;
+  type?: HolidayType;
+  search?: string;
+  upcoming?: boolean | string;
+  page?: number;
+  limit?: number;
+}
+

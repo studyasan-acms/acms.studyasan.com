@@ -83,6 +83,10 @@ import type {
   SectionStudent,
   CreateSectionData,
   UpdateSectionData,
+  Holiday,
+  CreateHolidayData,
+  UpdateHolidayData,
+  HolidayQueryParams,
 } from '@/types';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -2042,6 +2046,40 @@ export const sectionService = {
   },
 };
 
+// ================== HOLIDAY SERVICE ==================
+export const holidayService = {
+  getAll: async (params?: HolidayQueryParams): Promise<{ success: boolean; data: Holiday[] | { holidays: Holiday[]; pagination: any }; message: string }> => {
+    const response = await api.get('/holidays', { params });
+    return response.data;
+  },
+
+  getUpcoming: async (): Promise<{ success: boolean; data: Holiday[]; message: string }> => {
+    const response = await api.get('/holidays/upcoming');
+    return response.data;
+  },
+
+  getById: async (id: number): Promise<{ success: boolean; data: Holiday; message: string }> => {
+    const response = await api.get(`/holidays/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateHolidayData): Promise<{ success: boolean; data: Holiday; message: string }> => {
+    const response = await api.post('/holidays', data);
+    return response.data;
+  },
+
+  update: async (id: number, data: UpdateHolidayData): Promise<{ success: boolean; data: Holiday; message: string }> => {
+    const response = await api.put(`/holidays/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: number): Promise<{ success: boolean; message: string }> => {
+    const response = await api.delete(`/holidays/${id}`);
+    return response.data;
+  },
+};
+
 export default api;
 export { api as apiService };
+
 
