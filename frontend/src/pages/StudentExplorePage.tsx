@@ -3,7 +3,6 @@ import { homeService } from '@/services/api';
 import api from '@/services/api';
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
-import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
 import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -311,9 +310,6 @@ export default function StudentExplorePage() {
                     </div>
                 </div>
             )}
-
-            {/* Attendance & Session Widget */}
-            <LiveClassAttendanceWidget />
 
             {/* ================= 4 MAIN TABS (Subjects, Courses, Activities, Test Series) ================= */}
             <div className="bg-white p-2 sm:p-2.5 rounded-3xl border border-slate-200/80 shadow-xs">
