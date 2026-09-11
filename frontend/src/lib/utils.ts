@@ -17,7 +17,7 @@ export function resolveImageUrl(url: string | null | undefined) {
   const isS3Key = !url.startsWith('/');
 
   if (isS3Key) {
-    const s3BaseUrl = import.meta.env.VITE_S3_BUCKET_URL || 'https://dinesuite.s3.eu-north-1.amazonaws.com';
+    const s3BaseUrl = import.meta.env.VITE_S3_BUCKET_URL || 'https://studyasan-acms.s3.us-east-1.amazonaws.com';
     return `${s3BaseUrl}/${url}`;
   }
 
