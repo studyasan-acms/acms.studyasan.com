@@ -61,7 +61,8 @@ export default function ClassSessionDetailPage() {
   const isAdmin = user?.role === 'ADMIN';
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
-  const canManage = isAdmin || isTeacher;
+  const canEdit = isAdmin;
+  const canDelete = isAdmin || isTeacher;
 
   const fetchSession = useCallback(async () => {
     if (!id) return;
@@ -300,27 +301,28 @@ export default function ClassSessionDetailPage() {
             {isStudent ? 'My Attendance' : 'Attendance Log'}
           </Button>
 
-          {canManage && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate(`/dashboard/class-sessions/${session.id}/edit`)}
-                className="rounded-xl border-saBlue/30 bg-saBlueSubtle/50 text-saBlue hover:bg-saBlue hover:text-white text-xs font-bold gap-1.5 transition-all"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteModalOpen(true)}
-                className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-xs font-bold gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Delete
-              </Button>
-            </>
+          {canEdit && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/dashboard/class-sessions/${session.id}/edit`)}
+              className="rounded-xl border-saBlue/30 bg-saBlueSubtle/50 text-saBlue hover:bg-saBlue hover:text-white text-xs font-bold gap-1.5 transition-all"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              Edit
+            </Button>
+          )}
+
+          {canDelete && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteModalOpen(true)}
+              className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-xs font-bold gap-1.5"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete
+            </Button>
           )}
         </div>
       </div>
@@ -922,7 +924,7 @@ export default function ClassSessionDetailPage() {
             Detailed Attendance
           </Button>
 
-          {canManage && (
+          {canEdit && (
             <Button
               onClick={() => navigate(`/dashboard/class-sessions/${session.id}/edit`)}
               className="bg-saBlue hover:bg-saBlueDarkHover text-white font-bold text-xs rounded-xl h-10 px-4 gap-1.5 w-full sm:w-auto"

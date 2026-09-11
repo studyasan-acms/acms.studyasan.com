@@ -62,9 +62,9 @@ export default function ClassSessionsPage() {
   const isTeacher = user?.role === 'TEACHER';
   const isStudent = user?.role === 'STUDENT';
 
-  const { canCreate, canUpdate, canDelete } = usePermissions();
+  const { canCreate, canDelete } = usePermissions();
   const canAddSession = isAdmin || canCreate('classSessions');
-  const canEditSession = isAdmin || canUpdate('classSessions');
+  const canEditSession = isAdmin;
   const canDeleteSession = isAdmin || canDelete('classSessions');
 
   // State

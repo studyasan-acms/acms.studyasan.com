@@ -769,18 +769,8 @@ export const updateClassSession = async (req: Request, res: Response) => {
     }
 
     const userRole = (req as AuthRequest).user?.role;
-    let teacherScope: any = null;
     if (userRole === 'TEACHER') {
-      teacherScope = await getTeacherClassSessionScope(req);
-      if (teacherScope.error) {
-        return sendError(res, teacherScope.error, 404);
-      }
-      if (!teacherScope.hasElevatedUpdate && existingSession.teacher_id !== teacherScope.teacherId) {
-        return sendError(res, 'You are not authorized to update this class session', 403);
-      }
-      if (!teacherScope.hasElevatedUpdate && teacher_id !== undefined && teacher_id !== teacherScope.teacherId) {
-        return sendError(res, 'You cannot reassign this class session to another teacher', 403);
-      }
+      return sendError(res, 'Teachers are not permitted to edit scheduled sessions', 403);
     }
 
     // Validate time if provided
@@ -822,10 +812,6 @@ export const updateClassSession = async (req: Request, res: Response) => {
             subject_id: existingSession.subject_id,
             is_recurring: true,
           };
-
-      if (userRole === 'TEACHER' && teacherScope && !teacherScope.hasElevatedUpdate && teacherScope.teacherId) {
-        whereFilter.teacher_id = teacherScope.teacherId;
-      }
 
       const commonUpdateData: any = { ...updateData };
       delete commonUpdateData.start_time;

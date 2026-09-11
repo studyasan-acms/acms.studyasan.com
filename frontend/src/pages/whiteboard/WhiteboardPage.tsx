@@ -37,6 +37,10 @@ export default function WhiteboardPage() {
   const user = useAuthStore((state) => state.user);
 
   const isAllowed = user?.role === 'ADMIN' || user?.role === 'TEACHER';
+  const isOwnerOrAdmin = (board: SavedWhiteboard | null) => {
+    if (!board || !user) return false;
+    return user.role === 'ADMIN' || board.user_id === user.id || board.user?.id === user.id;
+  };
 
   // State
   const [whiteboards, setWhiteboards] = useState<SavedWhiteboard[]>([]);
@@ -152,7 +156,7 @@ export default function WhiteboardPage() {
 
   // Save whiteboard callback from drawing view
   const handleSaveWhiteboard = async (strokes: any[], thumbnail?: string) => {
-    if (!activeBoard) return;
+    if (!activeBoard || !isOwnerOrAdmin(activeBoard)) return;
     setIsSaving(true);
     try {
       await whiteboardService.update(activeBoard.id, {
@@ -214,6 +218,7 @@ export default function WhiteboardPage() {
   // Open Edit Modal
   const openEditModal = (board: SavedWhiteboard, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    if (!isOwnerOrAdmin(board)) return;
     setBoardToEdit(board);
     setModalTitle(board.title);
     setModalError('');
@@ -319,13 +324,15 @@ export default function WhiteboardPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-slate-800">{activeBoard?.title}</h1>
-                <button
-                  onClick={(e) => activeBoard && openEditModal(activeBoard, e)}
-                  className="text-slate-400 hover:text-saBlue transition-colors p-1"
-                  title="Rename Whiteboard"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
+                {isOwnerOrAdmin(activeBoard) && (
+                  <button
+                    onClick={(e) => activeBoard && openEditModal(activeBoard, e)}
+                    className="text-slate-400 hover:text-saBlue transition-colors p-1"
+                    title="Rename Whiteboard"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
                 <span>Created by {activeBoard?.user?.name || 'You'}</span>
@@ -554,28 +561,32 @@ export default function WhiteboardPage() {
                             Open
                           </Button>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => openEditModal(board, e)}
-                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                            title="Rename Whiteboard"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </Button>
+                          {isOwnerOrAdmin(board) && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => openEditModal(board, e)}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                title="Rename Whiteboard"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setBoardToDelete(board);
-                            }}
-                            className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
-                            title="Delete Whiteboard"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setBoardToDelete(board);
+                                }}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                title="Delete Whiteboard"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>

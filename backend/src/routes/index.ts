@@ -111,16 +111,16 @@ router.post('/notifications/send-to-role', authenticate, authorize('ADMIN'), pus
 // Board routes
 router.get('/boards', boardController.getAllBoards);
 router.get('/boards/:id', boardController.getBoardById);
-router.post('/boards', authenticate, authorize('ADMIN', 'TEACHER'), boardController.createBoard);
-router.put('/boards/:id', authenticate, authorize('ADMIN', 'TEACHER'), boardController.updateBoard);
-router.delete('/boards/:id', authenticate, authorize('ADMIN', 'TEACHER'), boardController.deleteBoard);
+router.post('/boards', authenticate, authorize('ADMIN'), boardController.createBoard);
+router.put('/boards/:id', authenticate, authorize('ADMIN'), boardController.updateBoard);
+router.delete('/boards/:id', authenticate, authorize('ADMIN'), boardController.deleteBoard);
 
 // Class routes
 router.get('/classes', classController.getAllClasses);
 router.get('/classes/:id', classController.getClassById);
-router.post('/classes', authenticate, authorize('ADMIN', 'TEACHER'), classController.createClass);
-router.put('/classes/:id', authenticate, authorize('ADMIN', 'TEACHER'), classController.updateClass);
-router.delete('/classes/:id', authenticate, authorize('ADMIN', 'TEACHER'), classController.deleteClass);
+router.post('/classes', authenticate, authorize('ADMIN'), classController.createClass);
+router.put('/classes/:id', authenticate, authorize('ADMIN'), classController.updateClass);
+router.delete('/classes/:id', authenticate, authorize('ADMIN'), classController.deleteClass);
 
 // Student routes
 router.get('/students', authenticate, studentController.getAllStudents);
@@ -184,7 +184,7 @@ router.get('/class-sessions/:id', authenticate, classSessionController.getClassS
 router.get('/class-sessions/:id/can-join', authenticate, classSessionController.canJoinSession);
 router.post('/class-sessions', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.createClassSession);
 router.post('/class-sessions/bulk-delete', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.bulkDeleteClassSessions);
-router.put('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.updateClassSession);
+router.put('/class-sessions/:id', authenticate, authorizeStrict('ADMIN'), classSessionController.updateClassSession);
 router.delete('/class-sessions/:id', authenticate, authorize('ADMIN', 'TEACHER'), classSessionController.deleteClassSession);
 
 // Session Recording routes (30-day retention)

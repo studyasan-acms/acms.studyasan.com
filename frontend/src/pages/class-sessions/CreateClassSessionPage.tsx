@@ -37,6 +37,12 @@ export default function CreateClassSessionPage() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isEditing && user?.role === 'TEACHER') {
+      navigate('/dashboard/class-sessions', { replace: true });
+    }
+  }, [isEditing, user, navigate]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectSearch, setSubjectSearch] = useState('');
   const [subjectPage, setSubjectPage] = useState(1);
@@ -421,6 +427,14 @@ export default function CreateClassSessionPage() {
       };
 
       if (isEditing && id) {
+        if (user?.role === 'TEACHER') {
+          setErrorModal({
+            open: true,
+            title: 'Action Not Allowed',
+            description: 'Teachers are not permitted to edit scheduled class sessions.',
+          });
+          return;
+        }
         dataToSubmit.apply_to_all_recurring = applyToAllRecurring;
         await classSessionService.update(parseInt(id), dataToSubmit);
 

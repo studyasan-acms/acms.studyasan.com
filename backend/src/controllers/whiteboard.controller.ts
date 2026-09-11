@@ -24,13 +24,11 @@ export const getSavedWhiteboards = async (req: AuthRequest, res: Response) => {
       if (search) {
         whereClause.title = { contains: (search as string).trim(), mode: 'insensitive' };
       }
-    } else if (userRole === 'TEACHER') {
+    } else {
       whereClause.user_id = userId;
       if (search) {
         whereClause.title = { contains: (search as string).trim(), mode: 'insensitive' };
       }
-    } else {
-      return sendError(res, 'Access denied: Admin or Teacher role required', 403);
     }
 
     const [whiteboards, total] = await Promise.all([
