@@ -116,6 +116,94 @@ function getStreamForParticipant(
     return undefined;
 }
 
+/**
+ * When a participant has joined from multiple devices (same displayName),
+ * their entries are stored in `_siblingIds`. This helper checks the winning
+ * participant's own stream first, then falls back to any sibling stream that
+ * has a live video track — ensuring the tile always shows the active camera.
+ */
+function getBestStreamForParticipant(
+    participant: Participant,
+    remoteStreams: Map<string | number, MediaStream>,
+    localStream: MediaStream | null
+): MediaStream | undefined {
+    // Local participant always uses localStream
+    if (participant.isLocal) return localStream || undefined;
+
+    // Try the primary id first
+    const primary = getStreamForParticipant(remoteStreams, participant.id);
+
+    // If primary has live video, use it
+    if (primary && primary.getVideoTracks().some(t => t.enabled && t.readyState !== 'ended')) {
+        return primary;
+    }
+
+    // Check sibling device entries for a better (camera-on) stream
+    const siblings: (string | number)[] = (participant as any)._siblingIds ?? [];
+    for (const sibId of siblings) {
+        const sib = getStreamForParticipant(remoteStreams, sibId);
+        if (sib && sib.getVideoTracks().some(t => t.enabled && t.readyState !== 'ended')) {
+            return sib;
+        }
+    }
+
+    // Fall back to primary stream (audio-only is fine)
+    return primary;
+}
+
+/**
+ * Deduplicate a participant list by displayName.
+ * When multiple entries share the same displayName (same person, multiple devices),
+ * pick the single best representative:
+ *   1. Prefer the entry whose camera is ON (!isVideoOff)
+ *   2. Among those, prefer the entry whose mic is ON (!isMuted)
+ *   3. Otherwise first seen
+ * Store sibling IDs on the winner as `_siblingIds` so stream resolution can
+ * later fall back to another device's stream if the winner's stream is muted/off.
+ */
+function deduplicateParticipants(list: Participant[]): Participant[] {
+    // Group by canonical displayName (trim + lower for comparison)
+    const groups = new Map<string, Participant[]>();
+    for (const p of list) {
+        const key = (p.displayName ?? '').trim().toLowerCase();
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(p);
+    }
+
+    const result: Participant[] = [];
+    for (const group of groups.values()) {
+        if (group.length === 1) {
+            result.push(group[0]);
+            continue;
+        }
+        // Multiple devices — pick the best representative
+        // Scoring: camera on = 2 pts, mic on = 1 pt
+        let best = group[0];
+        let bestScore = (best.isVideoOff ? 0 : 2) + (best.isMuted ? 0 : 1);
+        for (let i = 1; i < group.length; i++) {
+            const p = group[i];
+            const score = (p.isVideoOff ? 0 : 2) + (p.isMuted ? 0 : 1);
+            if (score > bestScore) {
+                bestScore = score;
+                best = p;
+            }
+        }
+        // Attach sibling IDs to the winner for stream resolution
+        const siblingIds = group.filter(p => String(p.id) !== String(best.id)).map(p => p.id);
+        // Derive merged state: camera/mic are ON if ANY device has them on
+        const anyVideoOn = group.some(p => !p.isVideoOff);
+        const anyMicOn   = group.some(p => !p.isMuted);
+        const winner: Participant = {
+            ...best,
+            isVideoOff: !anyVideoOn,
+            isMuted:    !anyMicOn,
+            _siblingIds: siblingIds,
+        } as Participant & { _siblingIds: (string | number)[] };
+        result.push(winner);
+    }
+    return result;
+}
+
 export function ClassroomLayout({
     isConnected,
     isRecording = false,
@@ -195,7 +283,10 @@ export function ClassroomLayout({
             seenIds.add(strId);
             list.push(p);
         }
-        return list;
+        // Deduplicate participants who joined from multiple devices (same displayName).
+        // This prevents avatar<->video blinking caused by competing state-sync messages
+        // from each device updating the same rendered tile back and forth.
+        return deduplicateParticipants(list);
     }, [localParticipant, participants, isLocalBot]);
 
     // Identify Teacher Participant:
@@ -530,7 +621,7 @@ export function ClassroomLayout({
                         {teacherParticipant ? (
                             <VideoTile
                                 participant={teacherParticipant}
-                                stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
+                                stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                 isLocal={teacherParticipant.isLocal}
                                 isMain={false}
                                 isTeacher={isTeacher}
@@ -577,7 +668,7 @@ export function ClassroomLayout({
                             <div className="relative w-full aspect-video rounded-xl overflow-hidden bg-slate-950 border border-slate-800 shadow-xs isolate">
                                 <VideoTile
                                     participant={studentParticipants[0]}
-                                    stream={studentParticipants[0].isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, studentParticipants[0].id)}
+                                    stream={getBestStreamForParticipant(studentParticipants[0], remoteStreams, localStream)}
                                     isLocal={studentParticipants[0].isLocal}
                                     isTeacher={isTeacher}
                                     onMuteParticipant={onMuteParticipant}
@@ -589,7 +680,7 @@ export function ClassroomLayout({
                         ) : (
                             <div className="grid grid-cols-2 gap-2 auto-rows-min">
                                 {studentParticipants.map((participant) => {
-                                    const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
+                                    const stream = getBestStreamForParticipant(participant, remoteStreams, localStream);
                                     return (
                                         <div
                                             key={String(participant.id)}
@@ -717,7 +808,7 @@ export function ClassroomLayout({
                                 <div className="h-[140px] xs:h-[160px] sm:h-[180px] w-full rounded-xl overflow-hidden bg-slate-950 border-2 border-sky-400 shadow-xs relative isolate">
                                     <VideoTile
                                         participant={teacherParticipant}
-                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
+                                        stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                         isLocal={teacherParticipant.isLocal}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
@@ -733,7 +824,7 @@ export function ClassroomLayout({
                             )}
 
                             {studentParticipants.map((participant) => {
-                                const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
+                                const stream = getBestStreamForParticipant(participant, remoteStreams, localStream);
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}
@@ -761,7 +852,7 @@ export function ClassroomLayout({
                                 <div className="h-[125px] xs:h-[140px] sm:h-[160px] w-full rounded-xl overflow-hidden bg-slate-950 border-2 border-sky-400 shadow-xs relative snap-start isolate">
                                     <VideoTile
                                         participant={teacherParticipant}
-                                        stream={teacherParticipant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, teacherParticipant.id)}
+                                        stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                         isLocal={teacherParticipant.isLocal}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
@@ -783,7 +874,7 @@ export function ClassroomLayout({
 
                             {/* Student Participants */}
                             {studentParticipants.map((participant) => {
-                                const stream = participant.isLocal ? (localStream || undefined) : getStreamForParticipant(remoteStreams, participant.id);
+                                const stream = getBestStreamForParticipant(participant, remoteStreams, localStream);
                                 return (
                                     <div
                                         key={`mobile-${participant.id}`}

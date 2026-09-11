@@ -471,11 +471,16 @@ export function Whiteboard({
     return (
         <div
             ref={containerRef}
-            className="absolute inset-0 flex flex-col bg-white rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+            className="absolute inset-0 flex flex-col bg-white rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         >
-            {/* Toolbar - Single compact row */}
-            <div className="flex items-center justify-between p-1 md:p-1.5 bg-slate-50 border-b border-slate-200 text-slate-900 overflow-visible relative shrink-0 z-20 gap-1.5">
-                <div className="flex items-center gap-1 md:gap-1.5 shrink-0 overflow-visible">
+            {/* Toolbar - Single compact row.
+                 On mobile: horizontally scrollable so all tools are reachable.
+                 Outer div has NO overflow clip so dropdown popups (color, shapes, etc.) show correctly.
+                 Only the inner scroll strip clips on X. */}
+            <div className="flex items-center gap-1.5 bg-slate-50 border-b border-slate-200 shrink-0 z-20 relative rounded-t-2xl">
+                {/* Scrollable tools strip */}
+                <div className="flex-1 overflow-x-auto overflow-y-visible scrollbar-hide">
+                    <div className="flex items-center gap-1 md:gap-1.5 p-1 md:p-1.5 min-w-max overflow-visible">
                     {!canEdit && (
                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-white rounded-lg border border-slate-200 shadow-xs text-slate-600 text-xs font-medium">
                             <span className="font-semibold text-saBlue">Whiteboard</span>
@@ -1300,17 +1305,19 @@ export function Whiteboard({
                         </Button>
                     )}
                 </div>
+                {/* End scrollable strip */}
+                </div>
 
                 {/* Close button (Hidden on phone or when showCloseButton is false) */}
                 {showCloseButton && (
-                    <Button variant="ghost" size="icon" onClick={onClose} className="hidden md:flex h-7 w-7 p-0 shrink-0 text-slate-500 hover:text-slate-800 ml-1" title="Close Whiteboard">
+                    <Button variant="ghost" size="icon" onClick={onClose} className="hidden md:flex h-7 w-7 p-0 shrink-0 text-slate-500 hover:text-slate-800 mr-1" title="Close Whiteboard">
                         <X className="w-4 h-4" />
                     </Button>
                 )}
             </div>
 
-            {/* Canvas */}
-            <div className={`flex-1 relative bg-white ${currentTool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}>
+            {/* Canvas - overflow-hidden here to clip drawings to the rounded card */}
+            <div className={`flex-1 relative bg-white overflow-hidden rounded-b-2xl ${currentTool === 'select' ? 'cursor-default' : 'cursor-crosshair'}`}>
                 <canvas
                     ref={canvasRef}
                     onPointerDown={(e) => {

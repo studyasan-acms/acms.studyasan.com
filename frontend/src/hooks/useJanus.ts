@@ -635,12 +635,16 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                             setLocalUser(prev => ({ ...prev, isMuted: true }));
                         }
 
-                        // Update remote participant's isMuted status (match by ID or displayName)
+                        // Update remote participant's isMuted status.
+                        // IMPORTANT: Match by ID only when ID is available.
+                        // Matching by displayName when ID is present causes cross-device
+                        // contamination when the same person joins from 2 devices.
                         setParticipants(prev => {
                             const next = new Map(prev);
                             for (const [id, p] of next.entries()) {
-                                if ((message.participantId !== undefined && String(id) === String(message.participantId)) ||
-                                    (message.displayName && p.displayName === message.displayName)) {
+                                const idMatch = message.participantId !== undefined && String(id) === String(message.participantId);
+                                const nameOnlyMatch = message.participantId === undefined && message.displayName && p.displayName === message.displayName;
+                                if (idMatch || nameOnlyMatch) {
                                     next.set(id, { ...p, isMuted: !!message.muted });
                                 }
                             }
@@ -655,8 +659,11 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         setParticipants(prev => {
                             const next = new Map(prev);
                             for (const [id, p] of next.entries()) {
-                                if ((targetId !== undefined && String(id) === String(targetId)) ||
-                                    (targetName && p.displayName === targetName)) {
+                                // When targetId is available, match ONLY by ID.
+                                // Name-only fallback is for older clients that don't send an ID.
+                                const idMatch = targetId !== undefined && String(id) === String(targetId);
+                                const nameOnlyMatch = targetId === undefined && targetName && p.displayName === targetName;
+                                if (idMatch || nameOnlyMatch) {
                                     next.set(id, { ...p, isVideoOff: !!(message as any).videoOff });
                                 }
                             }
@@ -672,8 +679,12 @@ export function useJanus(options: UseJanusOptions): UseJanusReturn {
                         setParticipants(prev => {
                             const next = new Map(prev);
                             for (const [id, p] of next.entries()) {
-                                if ((targetId !== undefined && String(id) === String(targetId)) ||
-                                    (targetName && p.displayName === targetName)) {
+                                // When targetId is available, match ONLY by ID to avoid
+                                // cross-device state contamination when the same person joins
+                                // from 2 devices with identical displayNames.
+                                const idMatch = targetId !== undefined && String(id) === String(targetId);
+                                const nameOnlyMatch = targetId === undefined && targetName && p.displayName === targetName;
+                                if (idMatch || nameOnlyMatch) {
                                     next.set(id, {
                                         ...p,
                                         isMuted: message.stateMuted !== undefined ? message.stateMuted : p.isMuted,
