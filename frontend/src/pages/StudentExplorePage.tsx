@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { homeService, announcementService } from '@/services/api';
+import { homeService } from '@/services/api';
 import api from '@/services/api';
-import { getAnnouncementTypeConfig } from '@/utils/announcementUtils';
 import HomeItemCard from '@/components/home/HomeItemCard';
 import ItemDetailModal from '@/components/home/ItemDetailModal';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
@@ -24,7 +23,6 @@ import {
     Search,
     Trophy,
     Loader2,
-    Megaphone,
     BookMarked,
     PartyPopper,
     Compass,
@@ -187,13 +185,11 @@ export default function StudentExplorePage() {
 
     const [selectedItem, setSelectedItem] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [announcements, setAnnouncements] = useState<any[]>([]);
     const [isBirthday, setIsBirthday] = useState(false);
     const [studentName, setStudentName] = useState<string>('');
 
     useEffect(() => {
         fetchHomeItems();
-        fetchAnnouncements();
         checkBirthday();
     }, []);
 
@@ -211,15 +207,6 @@ export default function StudentExplorePage() {
             }
         } catch {
             // silently fail
-        }
-    };
-
-    const fetchAnnouncements = async () => {
-        try {
-            const res = await announcementService.getAnnouncements();
-            setAnnouncements(res.data?.announcements || []);
-        } catch (error) {
-            console.error('Error fetching announcements:', error);
         }
     };
 
@@ -321,59 +308,6 @@ export default function StudentExplorePage() {
                         <PartyPopper className="w-6 h-6 mb-1 text-amber-200 animate-bounce" />
                         <span className="text-xs font-bold tracking-wider uppercase">Best Wishes</span>
                         <span className="text-[11px] text-white/80">from StudyAsan</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Announcements Broadcast Card */}
-            {announcements.length > 0 && (
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs p-4 sm:p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-xl bg-saBlue/10 text-saBlue flex items-center justify-center">
-                                <Megaphone className="w-4 h-4" />
-                            </div>
-                            <div>
-                                <h3 className="text-sm font-black text-slate-900">Recent Announcements</h3>
-                                <p className="text-[11px] text-slate-400 font-medium">Important updates from administration & teachers</p>
-                            </div>
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/dashboard/announcements')}
-                            className="text-xs font-bold text-saBlue hover:text-saVividOrange h-8 px-2.5 rounded-lg"
-                        >
-                            View All ({announcements.length})
-                        </Button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                        {announcements.slice(0, 2).map((a) => {
-                            const config = getAnnouncementTypeConfig(a.type);
-                            const TypeIcon = config.icon;
-                            return (
-                                <div
-                                    key={a.id}
-                                    onClick={() => navigate('/dashboard/announcements')}
-                                    className={`p-3.5 rounded-2xl border ${config.bgLightClass} ${config.borderLeftClass} border-l-4 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between`}
-                                >
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1.5">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold border ${config.badgeClass}`}>
-                                                <TypeIcon className="w-3 h-3" />
-                                                <span>{config.label}</span>
-                                            </span>
-                                            <span className="text-[11px] text-slate-400">
-                                                {new Date(a.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                            </span>
-                                        </div>
-                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1">{a.title}</h4>
-                                        <p className="text-[11px] text-slate-600 line-clamp-2 mt-1 font-normal leading-relaxed">{a.content}</p>
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
                 </div>
             )}

@@ -368,9 +368,9 @@ export default function StudentDashboardPage() {
                 actions={
                     <Button
                         onClick={() => navigate('/dashboard/explore')}
-                        className="bg-saBlue hover:bg-saBlue/90 text-white font-bold text-xs sm:text-sm h-9 px-4 rounded-xl flex items-center gap-2 shadow-xs transition-all hover:scale-[1.02] active:scale-[0.98]"
+                        className="group relative bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:via-orange-600 hover:to-orange-700 text-white font-extrabold text-xs sm:text-sm h-9 px-4 rounded-xl flex items-center gap-2 shadow-md shadow-orange-500/30 hover:shadow-lg hover:shadow-orange-500/50 border border-amber-300/30 transition-all duration-200 hover:scale-[1.04] active:scale-[0.98]"
                     >
-                        <Compass className="w-4 h-4" />
+                        <Compass className="w-4 h-4 transition-transform duration-300 group-hover:rotate-45 group-hover:scale-110" />
                         <span>Explore</span>
                     </Button>
                 }

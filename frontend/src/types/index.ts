@@ -495,6 +495,12 @@ export interface CreateEnrollmentData {
   notes?: string;
   generate_invoice?: boolean;
   send_email?: boolean;
+  discount_amount?: number;
+  amount_paid?: number;
+  payment_method?: string;
+  transaction_id?: string;
+  paid_date?: string;
+  payment_status?: 'PENDING' | 'PARTIALLY_PAID' | 'PAID';
 }
 
 export interface UpdateEnrollmentData {

@@ -1,13 +1,14 @@
 import nodemailer from 'nodemailer';
 
-// Zoho SMTP Configuration
+// SMTP Configuration (Brevo / Custom SMTP)
+const smtpPort = Number(process.env.SMTP_PORT) || 587;
 const transporter = nodemailer.createTransport({
-  host: 'smtp.zoho.in',
-  port: 465,
-  secure: true,
+  host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+  port: smtpPort,
+  secure: smtpPort === 465,
   auth: {
-    user: process.env.ZOHO_EMAIL,
-    pass: process.env.ZOHO_PASSWORD,
+    user: process.env.SMTP_USER || process.env.ZOHO_EMAIL,
+    pass: process.env.SMTP_PASSWORD || process.env.ZOHO_PASSWORD,
   },
 });
 
@@ -25,8 +26,9 @@ interface EmailOptions {
 
 export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
   try {
+    const fromAddress = process.env.SMTP_FROM_EMAIL || process.env.ZOHO_EMAIL || 'no-reply@studyasan.com';
     await transporter.sendMail({
-      from: `"StudyAsan" <${process.env.ZOHO_EMAIL}>`,
+      from: `"StudyAsan" <${fromAddress}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,

@@ -4,7 +4,8 @@ import { sendSuccess, sendError } from '../utils/response.js';
 import { getPaginationParams, createPaginatedResponse } from '../utils/pagination.js';
 import { sendInvoiceEmailNotification } from '../services/email.service.js';
 import { sendEnrollmentNotification, sendBulkEnrollmentNotifications } from '../services/notification.service.js';
-import { generateInvoiceNumber } from '../utils/payment.utils.js';
+import { generateInvoiceNumber, generateReceiptNumber } from '../utils/payment.utils.js';
+import { processReferralCommissionForPayment } from './agency.controller.js';
 
 const prisma = new PrismaClient();
 
@@ -146,6 +147,12 @@ export const createEnrollment = async (req: Request, res: Response) => {
       notes,
       generate_invoice = false,
       send_email = false,
+      discount_amount = 0,
+      amount_paid = 0,
+      payment_method = 'Cash',
+      transaction_id,
+      paid_date,
+      payment_status,
     } = req.body;
 
     if (!student_id) {
@@ -274,14 +281,22 @@ export const createEnrollment = async (req: Request, res: Response) => {
 
     // Optionally generate a combined invoice for all created enrollments
     let invoice: any = null;
-    if (generate_invoice && createdEnrollments.length > 0) {
+    const shouldGenerateInvoice = generate_invoice || Number(amount_paid || 0) > 0;
+    if (shouldGenerateInvoice && createdEnrollments.length > 0) {
       invoice = await _generateInvoiceForEnrollments(
         createdEnrollments.map((e) => e.id),
         student,
         invoice_date ? new Date(invoice_date) : new Date(),
         due_date ? new Date(due_date) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         notes,
-        send_email
+        send_email,
+        undefined,
+        Number(discount_amount || 0),
+        Number(amount_paid || 0),
+        payment_method,
+        transaction_id,
+        paid_date ? new Date(paid_date) : new Date(),
+        payment_status
       );
     }
 
@@ -473,7 +488,13 @@ async function _generateInvoiceForEnrollments(
   dueDate: Date,
   notes: string | undefined,
   sendEmail: boolean,
-  preloadedEnrollments?: any[]
+  preloadedEnrollments?: any[],
+  customDiscount: number = 0,
+  amountPaid: number = 0,
+  paymentMethod: string = 'Cash',
+  transactionId?: string,
+  paidDate?: Date,
+  explicitStatus?: string
 ): Promise<any> {
   // Load enrollments if not pre-loaded
   const enrollments = preloadedEnrollments ?? await prisma.enrollment.findMany({
@@ -486,7 +507,7 @@ async function _generateInvoiceForEnrollments(
   });
 
   let subtotal = 0;
-  let totalDiscount = 0;
+  let totalItemDiscount = 0;
   const invoiceItems: any[] = [];
 
   for (const enrollment of enrollments) {
@@ -522,7 +543,7 @@ async function _generateInvoiceForEnrollments(
 
     const lineTotal = finalPrice;
     subtotal += (itemDiscount > 0 ? actualPrice : finalPrice);
-    totalDiscount += itemDiscount;
+    totalItemDiscount += itemDiscount;
 
     invoiceItems.push({
       type: enrollment.type,
@@ -538,7 +559,19 @@ async function _generateInvoiceForEnrollments(
     });
   }
 
-  const totalAmount = Math.max(0, subtotal - totalDiscount);
+  const overallDiscount = totalItemDiscount + Number(customDiscount || 0);
+  const totalAmount = Math.max(0, subtotal - overallDiscount);
+  const parsedAmountPaid = Math.max(0, Number(amountPaid || 0));
+  const balanceDue = Math.max(0, totalAmount - parsedAmountPaid);
+
+  let invStatus: InvoiceStatus = InvoiceStatus.PENDING;
+  if (explicitStatus === 'PAID' || (parsedAmountPaid >= totalAmount && totalAmount > 0)) {
+    invStatus = InvoiceStatus.PAID;
+  } else if (parsedAmountPaid > 0) {
+    invStatus = InvoiceStatus.PARTIALLY_PAID;
+  }
+
+  const receipt_number = parsedAmountPaid > 0 ? await generateReceiptNumber() : null;
 
   let invoice: any;
   let attempts = 0;
@@ -549,12 +582,18 @@ async function _generateInvoiceForEnrollments(
         data: {
           invoice_number,
           student_id: student.id,
-          status: InvoiceStatus.PENDING,
+          status: invStatus,
           issue_date: issueDate,
           due_date: dueDate,
+          paid_date: parsedAmountPaid > 0 ? (paidDate || new Date()) : null,
           subtotal,
-          discount_amount: totalDiscount,
+          discount_amount: overallDiscount,
           total_amount: totalAmount,
+          amount_paid: parsedAmountPaid,
+          balance_due: balanceDue,
+          receipt_number,
+          payment_method: parsedAmountPaid > 0 ? paymentMethod : null,
+          transaction_id: transactionId || null,
           notes: notes || null,
           items: { create: invoiceItems },
         },
@@ -580,6 +619,34 @@ async function _generateInvoiceForEnrollments(
     data: { invoice_id: invoice.id },
   });
 
+  // Create Payment record if advance/full payment was made
+  const firstEnrollmentId = enrollmentIds[0];
+  if (parsedAmountPaid > 0 && typeof firstEnrollmentId === 'number') {
+    try {
+      const payment = await prisma.payment.create({
+        data: {
+          enrollment_id: firstEnrollmentId,
+          type: (invoiceItems[0]?.type as EnrollmentType) || EnrollmentType.SUBJECT,
+          period: parsedAmountPaid >= totalAmount ? 'FULL_PAYMENT' : 'ADVANCE',
+          due_date: issueDate,
+          amount: totalAmount,
+          amount_paid: parsedAmountPaid,
+          is_paid: true,
+          paid_date: invoice.paid_date || new Date(),
+          payment_method: paymentMethod,
+          transaction_id: transactionId || null,
+          receipt_number: receipt_number,
+          notes: parsedAmountPaid >= totalAmount ? 'Full Payment' : `Advance of ₹${parsedAmountPaid} received (Balance: ₹${balanceDue})`,
+        },
+      });
+
+      // Process referral commission for payment
+      processReferralCommissionForPayment(payment.id).catch(console.error);
+    } catch (payErr) {
+      console.warn('Payment record creation notice:', payErr);
+    }
+  }
+
   // Send email if requested
   if (sendEmail && student.user?.email) {
     sendInvoiceEmailNotification(student.user.email, student.user.name, {
@@ -590,6 +657,10 @@ async function _generateInvoiceForEnrollments(
       subtotal: invoice.subtotal,
       discount_amount: invoice.discount_amount,
       total_amount: invoice.total_amount,
+      amount_paid: invoice.amount_paid,
+      balance_due: invoice.balance_due,
+      receipt_number: invoice.receipt_number,
+      payment_method: invoice.payment_method,
       items: invoice.items.map((i: any) => ({
         item_name: i.item_name,
         type: i.type,

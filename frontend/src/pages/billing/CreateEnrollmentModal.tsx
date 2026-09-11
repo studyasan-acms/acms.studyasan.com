@@ -1,7 +1,24 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Plus, Trash2, ChevronDown, Search, User, BookOpen, Activity, ClipboardList, Check, FileText } from 'lucide-react';
+import {
+  X,
+  Plus,
+  Trash2,
+  ChevronDown,
+  Search,
+  BookOpen,
+  Activity,
+  ClipboardList,
+  Check,
+  Tag,
+  Percent,
+  CreditCard,
+  Receipt,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  Wallet,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   studentService,
   subjectService,
@@ -9,11 +26,13 @@ import {
   activityGroupService,
   enrollmentService,
 } from '@/services/api';
-import type { Student, Subject, BillingFrequency, CreateEnrollmentItemData, Enrollment } from '@/types';
+import type { Student, BillingFrequency, CreateEnrollmentItemData, Enrollment } from '@/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type ItemType = 'SUBJECT' | 'TEST_SERIES' | 'ACTIVITY_GROUP';
+type PaymentOption = 'UNPAID' | 'PARTIAL' | 'FULL';
+type DiscountType = 'FIXED' | 'PERCENTAGE';
 
 interface ItemRow {
   id: string; // local uuid
@@ -35,7 +54,7 @@ interface Props {
   editingEnrollment?: Enrollment | null; // for edit mode (single enrollment)
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers & Constants ─────────────────────────────────────────────────────
 
 const FREQ_OPTIONS: { value: BillingFrequency; label: string }[] = [
   { value: 'one_time', label: 'One Time' },
@@ -49,6 +68,15 @@ const TYPE_OPTIONS: { value: ItemType; label: string; icon: React.ReactNode }[] 
   { value: 'SUBJECT', label: 'Subject', icon: <BookOpen size={14} /> },
   { value: 'TEST_SERIES', label: 'Test Series', icon: <ClipboardList size={14} /> },
   { value: 'ACTIVITY_GROUP', label: 'Activity Group', icon: <Activity size={14} /> },
+];
+
+const PAYMENT_METHODS = [
+  { value: 'UPI', label: 'UPI (GPay / PhonePe / Paytm / BHIM)' },
+  { value: 'Cash', label: 'Cash' },
+  { value: 'Bank Transfer', label: 'Bank Transfer (NEFT / IMPS / RTGS)' },
+  { value: 'Card', label: 'Debit / Credit Card' },
+  { value: 'Cheque', label: 'Cheque' },
+  { value: 'Net Banking', label: 'Net Banking' },
 ];
 
 function genId() {
@@ -79,6 +107,17 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
   const [items, setItems] = useState<ItemRow[]>([
     { id: genId(), type: 'SUBJECT', itemName: '', price: '', frequency: 'monthly' },
   ]);
+
+  // Discount options
+  const [discountType, setDiscountType] = useState<DiscountType>('FIXED');
+  const [discountValue, setDiscountValue] = useState<string>('');
+
+  // Payment / Partial Payment options
+  const [paymentOption, setPaymentOption] = useState<PaymentOption>('UNPAID');
+  const [amountPaid, setAmountPaid] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<string>('UPI');
+  const [transactionId, setTransactionId] = useState<string>('');
+  const [paidDate, setPaidDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
   // Invoice options
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -186,14 +225,60 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
     }
   }, [isEditMode, editingEnrollment]);
 
+  // ── Calculations ───────────────────────────────────────────────────────────
+  const subtotal = items.reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0);
+
+  const numericDiscountVal = parseFloat(discountValue) || 0;
+  const calculatedDiscount =
+    discountType === 'PERCENTAGE'
+      ? Math.round((subtotal * Math.min(100, Math.max(0, numericDiscountVal))) / 100)
+      : Math.min(subtotal, Math.max(0, numericDiscountVal));
+
+  const netPayable = Math.max(0, subtotal - calculatedDiscount);
+
+  // Sync amount paid with payment option
+  const numericAmountPaid =
+    paymentOption === 'FULL'
+      ? netPayable
+      : paymentOption === 'PARTIAL'
+      ? Math.min(netPayable, Math.max(0, parseFloat(amountPaid) || 0))
+      : 0;
+
+  const balanceDue = Math.max(0, netPayable - numericAmountPaid);
+
+  // Handle changing payment option
+  const handlePaymentOptionChange = (option: PaymentOption) => {
+    setPaymentOption(option);
+    if (option === 'FULL') {
+      setAmountPaid(String(netPayable));
+      setGenerateInvoice(true);
+    } else if (option === 'PARTIAL') {
+      const current = parseFloat(amountPaid);
+      if (!current || current >= netPayable || current <= 0) {
+        setAmountPaid(String(Math.round(netPayable / 2)));
+      }
+      setGenerateInvoice(true);
+    } else {
+      setAmountPaid('0');
+    }
+  };
+
   // ── Reset on close ─────────────────────────────────────────────────────────
   const handleClose = () => {
     setSelectedStudent(null);
     setStudentSearch('');
     setStudentDropdownOpen(false);
     setItems([{ id: genId(), type: 'SUBJECT', itemName: '', price: '', frequency: 'monthly' }]);
+    setDiscountType('FIXED');
+    setDiscountValue('');
+    setPaymentOption('UNPAID');
+    setAmountPaid('');
+    setPaymentMethod('UPI');
+    setTransactionId('');
+    setPaidDate(new Date().toISOString().split('T')[0]);
     setInvoiceDate(new Date().toISOString().split('T')[0]);
-    const d = new Date(); d.setDate(d.getDate() + 7);
+    const d = new Date();
+    d.setDate(d.getDate() + 7);
     setDueDate(d.toISOString().split('T')[0]);
     setNotes('');
     setGenerateInvoice(false);
@@ -263,6 +348,18 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
       return;
     }
 
+    if (!isEditMode && paymentOption === 'PARTIAL') {
+      const parsed = parseFloat(amountPaid);
+      if (isNaN(parsed) || parsed <= 0) {
+        setError('Please enter a valid partial payment amount greater than ₹0');
+        return;
+      }
+      if (parsed > netPayable) {
+        setError(`Partial payment amount cannot exceed net payable of ₹${netPayable.toLocaleString('en-IN')}`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -286,14 +383,28 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
           is_recurring: row.frequency !== 'one_time',
         }));
 
+        const isPaymentMade = paymentOption !== 'UNPAID';
+        const finalAmountPaid =
+          paymentOption === 'FULL'
+            ? netPayable
+            : paymentOption === 'PARTIAL'
+            ? parseFloat(amountPaid) || 0
+            : 0;
+
         await enrollmentService.create({
           student_id: selectedStudent.id,
           items: enrollmentItems,
           invoice_date: invoiceDate,
           due_date: dueDate,
           notes: notes || undefined,
-          generate_invoice: generateInvoice,
+          generate_invoice: generateInvoice || isPaymentMade,
           send_email: sendEmail,
+          discount_amount: calculatedDiscount,
+          amount_paid: finalAmountPaid,
+          payment_method: isPaymentMade ? paymentMethod : undefined,
+          transaction_id: isPaymentMade && transactionId.trim() ? transactionId.trim() : undefined,
+          paid_date: isPaymentMade ? paidDate : undefined,
+          payment_status: paymentOption === 'FULL' ? 'PAID' : paymentOption === 'PARTIAL' ? 'PARTIALLY_PAID' : 'PENDING',
         });
       }
 
@@ -433,11 +544,9 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
 
   if (!isVisible) return null;
 
-  const totalAmount = items.reduce((sum, r) => sum + (parseFloat(r.price) || 0), 0);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col border border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-3 sm:p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
         <div className="flex items-center justify-between px-6 sm:px-8 py-5 border-b border-gray-100">
           <div>
@@ -634,10 +743,238 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
                     </div>
                   )}
                 </div>
-
               ))}
             </div>
           </div>
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* DISCOUNTS & SPECIAL OFFERS (NEW)                                   */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {!isEditMode && subtotal > 0 && (
+            <div className="border border-emerald-200/80 rounded-2xl p-4 sm:p-5 bg-emerald-50/40 space-y-3.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs sm:text-sm">
+                  <Tag size={16} className="text-emerald-600" />
+                  <span>Discounts & Special Offers</span>
+                </div>
+                {calculatedDiscount > 0 && (
+                  <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    -₹{calculatedDiscount.toLocaleString('en-IN')} Applied
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
+                {/* Discount Type Toggle */}
+                <div className="sm:col-span-5 flex items-center p-1 bg-white border border-emerald-200 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType('FIXED')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'FIXED'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-gray-600 hover:text-emerald-700'
+                    }`}
+                  >
+                    <span>₹ Fixed Amount</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDiscountType('PERCENTAGE')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                      discountType === 'PERCENTAGE'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-gray-600 hover:text-emerald-700'
+                    }`}
+                  >
+                    <Percent size={12} />
+                    <span>Percentage (%)</span>
+                  </button>
+                </div>
+
+                {/* Discount Value Input */}
+                <div className="sm:col-span-7">
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-700 font-bold text-xs">
+                      {discountType === 'FIXED' ? '₹' : '%'}
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={discountType === 'PERCENTAGE' ? '100' : String(subtotal)}
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(e.target.value)}
+                      placeholder={discountType === 'FIXED' ? 'Enter discount in ₹ (e.g. 500)' : 'Enter discount in % (e.g. 10)'}
+                      className="w-full pl-8 pr-3.5 py-2.5 border border-emerald-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* PAYMENT & PARTIAL PAYMENTS SECTION (NEW)                          */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {!isEditMode && (
+            <div className="border border-blue-200 rounded-2xl p-4 sm:p-5 bg-gradient-to-b from-blue-50/60 to-white space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-slate-900 font-bold text-xs sm:text-sm">
+                  <Wallet size={16} className="text-[#0276D3]" />
+                  <span>Payment Status & Advance Recording</span>
+                </div>
+                {paymentOption === 'PARTIAL' && balanceDue > 0 && (
+                  <span className="text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    Remaining: ₹{balanceDue.toLocaleString('en-IN')}
+                  </span>
+                )}
+                {paymentOption === 'FULL' && (
+                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                    Paid in Full
+                  </span>
+                )}
+              </div>
+
+              {/* 3 Payment Options */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {/* 1. Pay Later */}
+                <button
+                  type="button"
+                  onClick={() => handlePaymentOptionChange('UNPAID')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    paymentOption === 'UNPAID'
+                      ? 'bg-white border-[#0276D3] ring-2 ring-blue-100 shadow-xs'
+                      : 'bg-white/80 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock size={14} className={paymentOption === 'UNPAID' ? 'text-[#0276D3]' : 'text-gray-400'} />
+                    <span className="text-xs font-bold text-gray-900">Pay Later (Pending)</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">Invoice due on scheduled date</p>
+                </button>
+
+                {/* 2. Partial Payment */}
+                <button
+                  type="button"
+                  onClick={() => handlePaymentOptionChange('PARTIAL')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    paymentOption === 'PARTIAL'
+                      ? 'bg-amber-50/60 border-amber-500 ring-2 ring-amber-100 shadow-xs'
+                      : 'bg-white/80 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Wallet size={14} className={paymentOption === 'PARTIAL' ? 'text-amber-600' : 'text-gray-400'} />
+                    <span className="text-xs font-bold text-amber-900">Partial Payment</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">Record token / advance amount</p>
+                </button>
+
+                {/* 3. Full Payment */}
+                <button
+                  type="button"
+                  onClick={() => handlePaymentOptionChange('FULL')}
+                  className={`p-3 rounded-2xl border text-left transition-all ${
+                    paymentOption === 'FULL'
+                      ? 'bg-emerald-50/60 border-emerald-500 ring-2 ring-emerald-100 shadow-xs'
+                      : 'bg-white/80 border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <CheckCircle2 size={14} className={paymentOption === 'FULL' ? 'text-emerald-600' : 'text-gray-400'} />
+                    <span className="text-xs font-bold text-emerald-900">Full Payment (100%)</span>
+                  </div>
+                  <p className="text-[11px] text-gray-500">Mark fully paid & issue receipt</p>
+                </button>
+              </div>
+
+              {/* Payment Details Drawer (When Partial or Full Payment is chosen) */}
+              {paymentOption !== 'UNPAID' && (
+                <div className="p-4 bg-white rounded-2xl border border-blue-200/80 space-y-3.5 shadow-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    {/* Amount Paid */}
+                    <div className="sm:col-span-4">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1 block">
+                        Amount Paid (₹) <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold">₹</span>
+                        <input
+                          type="number"
+                          min="1"
+                          max={String(netPayable)}
+                          value={paymentOption === 'FULL' ? String(netPayable) : amountPaid}
+                          disabled={paymentOption === 'FULL'}
+                          onChange={(e) => setAmountPaid(e.target.value)}
+                          placeholder="0.00"
+                          className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm font-bold focus:outline-none focus:border-[#0276D3] focus:ring-2 focus:ring-blue-100 bg-white disabled:bg-gray-50 disabled:text-gray-700"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="sm:col-span-4">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1 block">
+                        Payment Method <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0276D3] bg-white cursor-pointer"
+                      >
+                        {PAYMENT_METHODS.map((m) => (
+                          <option key={m.value} value={m.value}>{m.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Payment Date */}
+                    <div className="sm:col-span-4">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1 block">
+                        Payment Date
+                      </label>
+                      <input
+                        type="date"
+                        value={paidDate}
+                        onChange={(e) => setPaidDate(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-[#0276D3] bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Transaction ID */}
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-600 mb-1 block">
+                      Transaction / Reference ID (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={transactionId}
+                      onChange={(e) => setTransactionId(e.target.value)}
+                      placeholder="e.g. UPI UTR No., Bank Ref, or Cheque number"
+                      className="w-full px-3.5 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-[#0276D3] bg-white"
+                    />
+                  </div>
+
+                  {/* Partial Payment Summary Alert */}
+                  {paymentOption === 'PARTIAL' && (
+                    <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
+                        <span>
+                          Advance of <strong>₹{numericAmountPaid.toLocaleString('en-IN')}</strong> recorded. Remaining balance is <strong>₹{balanceDue.toLocaleString('en-IN')}</strong>.
+                        </span>
+                      </div>
+                      <span className="font-bold text-[11px] bg-amber-200/80 px-2 py-0.5 rounded text-amber-900 flex-shrink-0">
+                        Due: {dueDate}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Dates & Notes */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -680,25 +1017,35 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
             />
           </div>
 
-          {/* Invoice Generation Options */}
+          {/* Invoice Generation & Email Options */}
           {!isEditMode && (
             <div className="border border-blue-200/80 rounded-2xl p-4 bg-blue-50/50 space-y-3">
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => setGenerateInvoice((v) => !v)}
+                  onClick={() => paymentOption === 'UNPAID' && setGenerateInvoice((v) => !v)}
+                  disabled={paymentOption !== 'UNPAID'}
                   className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                    generateInvoice ? 'bg-[#0276D3] border-[#0276D3]' : 'bg-white border-gray-300'
-                  }`}
+                    generateInvoice || paymentOption !== 'UNPAID'
+                      ? 'bg-[#0276D3] border-[#0276D3]'
+                      : 'bg-white border-gray-300'
+                  } ${paymentOption !== 'UNPAID' ? 'opacity-80 cursor-not-allowed' : ''}`}
                 >
-                  {generateInvoice && <Check size={12} color="white" strokeWidth={3} />}
+                  {(generateInvoice || paymentOption !== 'UNPAID') && <Check size={12} color="white" strokeWidth={3} />}
                 </button>
                 <div>
-                  <div className="text-sm font-semibold text-gray-900">Generate invoice immediately</div>
-                  <div className="text-xs text-gray-500">Creates a sequential SA-YYYY-XXXXX invoice for these enrolled items</div>
+                  <div className="text-sm font-semibold text-gray-900">
+                    Generate official invoice & receipt immediately
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    {paymentOption !== 'UNPAID'
+                      ? 'Automatically enabled because payment was recorded (issues invoice & receipt)'
+                      : 'Creates a sequential SA-YYYY-XXXXX invoice for these enrolled items'}
+                  </div>
                 </div>
               </div>
-              {generateInvoice && (
+
+              {(generateInvoice || paymentOption !== 'UNPAID') && (
                 <div className="flex items-center gap-3 pl-8">
                   <button
                     type="button"
@@ -709,25 +1056,61 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
                   >
                     {sendEmail && <Check size={12} color="white" strokeWidth={3} />}
                   </button>
-                  <div className="text-sm font-medium text-gray-700">Dispatch invoice email to student automatically</div>
+                  <div className="text-sm font-medium text-gray-700">Dispatch invoice & receipt email to student automatically</div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Total Amount Card */}
-          {items.some((i) => i.price) && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-600">Calculated Total</span>
-              <span className="text-2xl font-black text-[#0276D3]">
-                ₹{totalAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {/* COMPREHENSIVE FINANCIAL SUMMARY CARD                              */}
+          {/* ═══════════════════════════════════════════════════════════════════ */}
+          {subtotal > 0 && (
+            <div className="bg-slate-900 text-white rounded-2xl p-4 sm:p-5 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between pb-2.5 border-b border-slate-800 text-xs font-bold tracking-wider uppercase text-slate-400">
+                <span>Billing Summary</span>
+                <span>Amount (₹)</span>
+              </div>
+
+              <div className="space-y-1.5 text-xs sm:text-sm">
+                <div className="flex items-center justify-between text-slate-300">
+                  <span>Subtotal ({items.length} item{items.length > 1 ? 's' : ''})</span>
+                  <span>₹{subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+
+                {calculatedDiscount > 0 && (
+                  <div className="flex items-center justify-between text-emerald-400 font-semibold">
+                    <span>Discount Applied ({discountType === 'PERCENTAGE' ? `${discountValue}%` : 'Fixed'})</span>
+                    <span>-₹{calculatedDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm sm:text-base font-black text-white">
+                  <span>Net Total Payable</span>
+                  <span className="text-[#eca209]">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                </div>
+
+                {paymentOption !== 'UNPAID' && (
+                  <>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-xs text-emerald-400 font-semibold">
+                      <span>Amount Paid Now ({paymentMethod})</span>
+                      <span>₹{numericAmountPaid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-amber-300">
+                      <span>Remaining Balance Due</span>
+                      <span>₹{balanceDue.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-3.5 text-xs sm:text-sm text-red-700 font-medium">
-              {error}
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-3.5 text-xs sm:text-sm text-red-700 font-medium flex items-center gap-2">
+              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
         </div>
@@ -740,11 +1123,19 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
           <Button
             onClick={handleSubmit}
             disabled={submitting}
-            className="bg-[#0276D3] hover:bg-blue-700 text-white font-semibold rounded-xl px-6"
+            className="bg-[#0276D3] hover:bg-blue-700 text-white font-semibold rounded-xl px-6 shadow-sm"
           >
             {submitting
               ? isEditMode ? 'Saving...' : 'Enrolling...'
-              : isEditMode ? 'Save Changes' : generateInvoice ? 'Enroll & Generate Invoice' : 'Enroll Student'}
+              : isEditMode
+              ? 'Save Changes'
+              : paymentOption === 'FULL'
+              ? 'Enroll & Record Full Payment'
+              : paymentOption === 'PARTIAL'
+              ? 'Enroll & Record Advance Payment'
+              : generateInvoice
+              ? 'Enroll & Generate Invoice'
+              : 'Enroll Student'}
           </Button>
         </div>
       </div>
