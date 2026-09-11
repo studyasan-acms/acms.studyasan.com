@@ -324,32 +324,62 @@ export const updateSubject = async (req: Request, res: Response) => {
     });
 
     const existingSyllabus = parseSyllabusHelper(existingSubject?.syllabus) || { units: [], modules: [] };
+    const existingModules: any[] = Array.isArray(existingSyllabus.modules) ? existingSyllabus.modules : [];
     let finalSyllabus: any = undefined;
 
     if (syllabus !== undefined) {
       if (syllabus === '' || syllabus === null) {
-        finalSyllabus = { units: [], modules: [] };
+        finalSyllabus = { units: [], modules: existingModules };
       } else {
         const parsedSyllabus = parseSyllabusHelper(syllabus);
         if (parsedSyllabus) {
           const units = Array.isArray(parsedSyllabus.units) ? parsedSyllabus.units : [];
           
           let modules: any[] = [];
-          if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
-            modules = parsedSyllabus.modules;
+          if (existingModules.length > 0) {
+            // If there are existing modules in the DB, preserve all their content, PDFs, and metadata
+            if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
+              const incomingModules = parsedSyllabus.modules;
+              const mergedMap = new Map<number, any>();
+
+              // Seed with existing modules from database
+              existingModules.forEach((em: any) => {
+                if (em.module_id) mergedMap.set(em.module_id, { ...em });
+              });
+
+              // Merge incoming updates without losing uploaded content/PDFs
+              incomingModules.forEach((im: any) => {
+                if (im.module_id && mergedMap.has(im.module_id)) {
+                  const existing = mergedMap.get(im.module_id);
+                  mergedMap.set(im.module_id, {
+                    ...existing,
+                    ...im,
+                    content: (Array.isArray(im.content) && im.content.length > 0) ? im.content : (existing.content || []),
+                  });
+                } else if (im.module_id) {
+                  mergedMap.set(im.module_id, im);
+                }
+              });
+
+              modules = Array.from(mergedMap.values()).sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+            } else {
+              // Retain all existing modules intact
+              modules = existingModules;
+            }
           } else {
-            // Map units to modules, preserving any custom content if existing module matches
-            modules = units.map((u: any, i: number) => {
-              const existingMod = existingSyllabus.modules?.[i];
-              return {
-                module_id: existingMod?.module_id || i + 1,
+            // No existing modules in DB yet
+            if (Array.isArray(parsedSyllabus.modules) && parsedSyllabus.modules.length > 0) {
+              modules = parsedSyllabus.modules;
+            } else {
+              modules = units.map((u: any, i: number) => ({
+                module_id: i + 1,
                 title: u.name || `Unit ${i + 1}`,
                 description: u.content || '',
                 order: i + 1,
-                content: existingMod?.content || [],
-                estimated_time_minutes: existingMod?.estimated_time_minutes || 0,
-              };
-            });
+                content: [],
+                estimated_time_minutes: 0,
+              }));
+            }
           }
 
           finalSyllabus = { units, modules };

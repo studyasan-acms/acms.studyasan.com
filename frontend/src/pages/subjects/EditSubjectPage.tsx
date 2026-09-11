@@ -239,17 +239,16 @@ export default function EditSubjectPage() {
       const existingModules = normalizedCurrentSyllabus.modules || [];
       const syllabusData = {
         units: syllabusUnits,
-        modules: syllabusUnits.map((u, i) => {
-          const existing = existingModules[i] || existingModules.find((m: any) => m.title === u.name);
-          return {
-            module_id: existing?.module_id || i + 1,
-            title: u.name,
-            description: u.content,
-            order: i + 1,
-            content: existing?.content || [],
-            estimated_time_minutes: existing?.estimated_time_minutes || 0,
-          };
-        }),
+        modules: existingModules.length > 0
+          ? existingModules
+          : syllabusUnits.map((u, i) => ({
+              module_id: i + 1,
+              title: u.name,
+              description: u.content,
+              order: i + 1,
+              content: [],
+              estimated_time_minutes: 0,
+            })),
       };
 
       const submitData: UpdateSubjectData = {
