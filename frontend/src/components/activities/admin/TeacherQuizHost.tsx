@@ -557,7 +557,7 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                                         <div className="flex-1 flex flex-col items-center justify-center text-center">
                                             <span className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Target Number</span>
                                             <div className="text-5xl font-black text-saBlue font-mono mb-4">
-                                                {content?.targetNumber ?? currentItem?.points ?? 10}
+                                                {content?.answer ?? content?.correctAnswer ?? content?.targetNumber ?? currentItem?.points ?? 10}
                                             </div>
                                             <p className="text-xs text-slate-500">Students adjust the abacus beads to represent this value.</p>
                                         </div>

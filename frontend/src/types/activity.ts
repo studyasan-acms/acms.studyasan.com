@@ -263,7 +263,9 @@ export interface TrueFalseContent {
 // Abacus
 export interface AbacusContent {
   prompt: string;
-  answer: number;
+  answer?: number;
+  correctAnswer?: number;
+  targetNumber?: number;
   hint?: string;
 }
 

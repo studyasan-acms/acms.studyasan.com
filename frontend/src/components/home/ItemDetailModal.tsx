@@ -100,13 +100,13 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
     return (
         <>
             <Dialog open={isOpen && !showCheckoutModal} onOpenChange={onClose}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl sm:rounded-3xl">
+                    <DialogHeader className="p-5 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100 shrink-0">
                         <div className="flex items-start justify-between">
                             <div className="flex-1">
-                                <DialogTitle className="text-2xl">{item.name}</DialogTitle>
+                                <DialogTitle className="text-xl sm:text-2xl font-bold text-slate-900">{item.name}</DialogTitle>
                                 <div className="mt-2">
-                                    <Badge className={`${config.color} text-white`}>
+                                    <Badge className={`${config.color} text-white font-semibold`}>
                                         <Icon className="h-3 w-3 mr-1" />
                                         {config.label}
                                     </Badge>
@@ -115,24 +115,24 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                         </div>
                     </DialogHeader>
 
-                    {/* Cover Image */}
-                    {item.cover_image && (
-                        <div className="w-full h-64 rounded-lg overflow-hidden">
-                            <img
-                                src={resolveImageUrl(item.cover_image) || item.cover_image}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                            />
-                        </div>
-                    )}
+                    {/* Scrollable Content Area */}
+                    <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+                        {/* Cover Image */}
+                        {item.cover_image && (
+                            <div className="w-full h-56 sm:h-64 rounded-xl overflow-hidden border border-slate-200">
+                                <img
+                                    src={resolveImageUrl(item.cover_image) || item.cover_image}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                        )}
 
-                    {/* Details */}
-                    <div className="space-y-4">
                         {/* Description */}
                         {item.description && (
                             <div>
-                                <h3 className="font-semibold text-gray-700 mb-2">Description</h3>
-                                <p className="text-gray-600 text-sm">{item.description}</p>
+                                <h3 className="font-semibold text-gray-700 mb-2 text-sm">Description</h3>
+                                <p className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{item.description}</p>
                             </div>
                         )}
 
@@ -167,19 +167,19 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                             const norm = normalizeSyllabus(item.syllabus);
                             return (
                                 <div>
-                                    <h3 className="font-semibold text-gray-700 mb-2">Syllabus</h3>
+                                    <h3 className="font-semibold text-gray-700 mb-2 text-sm">Syllabus</h3>
                                     {norm.units.length > 0 ? (
                                         <div className="space-y-3">
                                             {norm.units.map((unit: any, index: number) => (
                                                 <div
                                                     key={index}
-                                                    className="bg-gray-50 p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                                                    className="bg-gray-50 p-4 rounded-xl border border-gray-200 hover:border-gray-300 transition-colors"
                                                 >
-                                                    <h4 className="font-semibold text-gray-800 text-sm mb-2">
+                                                    <h4 className="font-semibold text-gray-800 text-sm mb-1.5">
                                                         {unit.name}
                                                     </h4>
                                                     {unit.content && (
-                                                        <p className="text-xs text-gray-600">
+                                                        <p className="text-xs text-gray-600 leading-relaxed">
                                                             {unit.content}
                                                         </p>
                                                     )}
@@ -187,55 +187,52 @@ export default function ItemDetailModal({ item, isOpen, onClose }: ItemDetailMod
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="bg-gray-50 p-4 rounded-lg text-sm text-gray-600 text-center">
+                                        <div className="bg-gray-50 p-4 rounded-xl text-sm text-gray-600 text-center">
                                             No syllabus defined yet
                                         </div>
                                     )}
                                 </div>
                             );
                         })() : null}
+                    </div>
 
-                        <Separator />
+                    {/* Fixed / Sticky Bottom Bar: Always Visible Without Scrolling */}
+                    <div className="p-4 sm:px-6 bg-white border-t border-slate-200 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+                        <div>
+                            {item.price !== null && item.currency ? (
+                                <div>
+                                    <p className="text-[11px] text-gray-500 font-medium">Official Fee</p>
+                                    <p className="text-2xl font-bold text-saBlue font-mono">
+                                        {item.currency.symbol}
+                                        {item.price}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <p className="text-[11px] text-gray-500 font-medium">Official Fee</p>
+                                    <p className="text-2xl font-bold text-saBlue font-mono">Free</p>
+                                </div>
+                            )}
+                        </div>
 
-                        {/* Price and Action Buttons */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                            <div>
-                                {item.price !== null && item.currency ? (
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">Official Fee</p>
-                                        <p className="text-2xl font-bold text-saBlue font-mono">
-                                            {item.currency.symbol}
-                                            {item.price}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div>
-                                        <p className="text-xs text-gray-500 font-medium">Official Fee</p>
-                                        <p className="text-2xl font-bold text-saBlue font-mono">Free</p>
-                                    </div>
-                                )}
-                            </div>
+                        <div className="flex items-center gap-2.5">
+                            <Button
+                                onClick={() => setShowEnquiryForm(true)}
+                                size="lg"
+                                className="bg-saVividOrange hover:bg-saOrangeDark active:scale-95 text-white font-bold rounded-xl text-xs sm:text-sm px-6 shadow-md shadow-orange-500/25 transition-all cursor-pointer"
+                            >
+                                Enquire Now
+                            </Button>
 
-                            <div className="flex items-center gap-2">
+                            {canBuyOnline && (
                                 <Button
-                                    variant="outline"
-                                    onClick={() => setShowEnquiryForm(true)}
+                                    onClick={() => setShowCheckoutModal(true)}
                                     size="lg"
-                                    className="font-semibold rounded-xl text-xs sm:text-sm border-slate-300"
+                                    className="bg-saBlue hover:bg-saBlueDarkHover active:scale-95 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-saBlue/20 flex items-center gap-1.5 transition-all cursor-pointer"
                                 >
-                                    Enquire Now
+                                    <CreditCard className="w-4 h-4" /> Pay & Enroll Online
                                 </Button>
-
-                                {canBuyOnline && (
-                                    <Button
-                                        onClick={() => setShowCheckoutModal(true)}
-                                        size="lg"
-                                        className="bg-saBlue hover:bg-saBlueDarkHover text-white font-bold rounded-xl text-xs sm:text-sm shadow-md shadow-saBlue/20 flex items-center gap-1.5"
-                                    >
-                                        <CreditCard className="w-4 h-4" /> Pay & Enroll Online
-                                    </Button>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
                 </DialogContent>

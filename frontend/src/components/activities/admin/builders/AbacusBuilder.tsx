@@ -71,7 +71,7 @@ export default function AbacusBuilder({ items, onItemsChange }: Props) {
               <label className="block text-sm font-medium mb-2">Correct Answer</label>
               <Input
                 type="number"
-                value={item.content?.answer ?? ''}
+                value={item.content?.answer ?? item.content?.correctAnswer ?? item.content?.targetNumber ?? ''}
                 onChange={(e) => updateItem(index, { content: { answer: Number(e.target.value) } })}
                 placeholder="e.g. 178"
                 min="0"
