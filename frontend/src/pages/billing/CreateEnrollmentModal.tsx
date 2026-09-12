@@ -1051,7 +1051,7 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
                     type="button"
                     onClick={() => setSendEmail((v) => !v)}
                     className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                      sendEmail ? 'bg-[#FF7A00] border-[#FF7A00]' : 'bg-white border-gray-300'
+                      sendEmail ? 'bg-[#eca209] border-[#eca209]' : 'bg-white border-gray-300'
                     }`}
                   >
                     {sendEmail && <Check size={12} color="white" strokeWidth={3} />}
@@ -1087,7 +1087,7 @@ const CreateEnrollmentModal: React.FC<Props> = ({ open, isOpen, onClose, onSucce
 
                 <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-sm sm:text-base font-black text-white">
                   <span>Net Total Payable</span>
-                  <span className="text-[#FF7A00]">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                  <span className="text-[#eca209]">₹{netPayable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                 </div>
 
                 {paymentOption !== 'UNPAID' && (

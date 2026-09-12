@@ -34,7 +34,7 @@ interface AnalyticsChartProps {
 const DEFAULT_COLORS = [
     '#0276D3',
     '#5BAEF0',
-    '#FF7A00',
+    '#eca209',
     '#025AA3',
     '#38bdf8',
     '#818cf8'

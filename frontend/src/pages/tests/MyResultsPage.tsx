@@ -304,7 +304,7 @@ export default function MyResultsPage() {
         {/* Average Score */}
         <Card className="rounded-2xl border border-slate-200 shadow-xs bg-white">
           <CardContent className="p-4 sm:p-5 flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-[#FF7A00] shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-[#eca209] shrink-0">
               <TrendingUp className="w-6 h-6" />
             </div>
             <div>
@@ -626,7 +626,7 @@ export default function MyResultsPage() {
                       {/* Status */}
                       <TableCell>
                         {!attempt.is_graded ? (
-                          <span className="text-[11px] font-bold text-[#FF7A00] bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
+                          <span className="text-[11px] font-bold text-[#eca209] bg-amber-50 border border-amber-200/80 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 whitespace-nowrap">
                             <Clock className="w-3 h-3" /> Under Review
                           </span>
                         ) : isPractice ? (

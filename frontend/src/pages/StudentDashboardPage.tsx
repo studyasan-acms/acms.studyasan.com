@@ -354,7 +354,7 @@ export default function StudentDashboardPage() {
 
     const performanceTrendData = analytics ? [
         { name: 'Tests', value: analytics.tests.averageScore, fill: '#0276D3' },
-        { name: 'Activities', value: analytics.activities.averageScore, fill: '#FF7A00' },
+        { name: 'Activities', value: analytics.activities.averageScore, fill: '#eca209' },
         { name: 'Modules', value: analytics.modules.averageProgress, fill: '#0284c7' }
     ] : [];
 
@@ -382,11 +382,11 @@ export default function StudentDashboardPage() {
                 <div
                     className="relative overflow-hidden rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
                     style={{
-                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #FF7A00 100%)',
+                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #eca209 100%)',
                         boxShadow: '0 8px 32px rgba(2, 118, 211, 0.35)'
                     }}
                 >
-                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#FF7A00' }} />
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#eca209' }} />
                     <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: '#ffffff' }} />
 
                     <div className="relative shrink-0 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
@@ -571,7 +571,7 @@ export default function StudentDashboardPage() {
                                 type="bar"
                                 dataKey="value"
                                 xAxisKey="name"
-                                colors={['#0276D3', '#FF7A00', '#0284c7']}
+                                colors={['#0276D3', '#eca209', '#0284c7']}
                                 seriesName="Proficiency"
                                 valueSuffix="%"
                             />
@@ -591,10 +591,10 @@ export default function StudentDashboardPage() {
                     {/* Mock Tests & Test Series */}
                     <div
                         onClick={() => navigate('/tests')}
-                        className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#FF7A00]/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                        className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#eca209]/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
                     >
                         <div>
-                            <div className="w-10 h-10 rounded-2xl bg-[#FF7A00]/10 text-[#FF7A00] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-2xl bg-[#eca209]/10 text-[#eca209] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                 <Trophy className="w-5 h-5" />
                             </div>
                             <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-saBlue transition-colors">
@@ -604,7 +604,7 @@ export default function StudentDashboardPage() {
                                 Practice mock exams, chapter quizzes & view rank analytics
                             </p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#FF7A00]">
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#eca209]">
                             <span>Take Tests</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                         </div>
@@ -635,10 +635,10 @@ export default function StudentDashboardPage() {
                     {/* Homework & Assignments */}
                     <div
                         onClick={() => navigate('/dashboard/homework')}
-                        className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#FF7A00]/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                        className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:border-[#eca209]/60 hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
                     >
                         <div>
-                            <div className="w-10 h-10 rounded-2xl bg-[#FF7A00]/10 text-[#FF7A00] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                            <div className="w-10 h-10 rounded-2xl bg-[#eca209]/10 text-[#eca209] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                 <CheckCircle2 className="w-5 h-5" />
                             </div>
                             <h4 className="text-sm font-extrabold text-slate-900 group-hover:text-saBlue transition-colors">
@@ -648,7 +648,7 @@ export default function StudentDashboardPage() {
                                 View assigned homework tasks, upload work & view teacher feedback
                             </p>
                         </div>
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#FF7A00]">
+                        <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#eca209]">
                             <span>Open Tasks</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                         </div>

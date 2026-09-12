@@ -151,9 +151,9 @@ const TEST_TYPES: {
     icon: Sparkles,
     defaultDuration: 0,
     description: "Self-paced chapter practice with unlimited attempts & instant explanations.",
-    color: "text-[#FF7A00]",
-    borderColor: "border-[#FF7A00]/30",
-    badgeBg: "bg-amber-50 text-[#FF7A00]",
+    color: "text-[#eca209]",
+    borderColor: "border-[#eca209]/30",
+    badgeBg: "bg-amber-50 text-[#eca209]",
   },
   {
     type: "ASSESSMENT",

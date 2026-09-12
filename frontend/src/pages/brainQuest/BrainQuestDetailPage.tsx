@@ -155,7 +155,7 @@ export default function BrainQuestDetailPage() {
   if (!quest) {
     return (
       <div className="text-center py-20 bg-white rounded-3xl border border-slate-200 space-y-4">
-        <AlertCircle className="w-12 h-12 text-[#FF7A00] mx-auto" />
+        <AlertCircle className="w-12 h-12 text-[#eca209] mx-auto" />
         <h3 className="text-lg font-bold text-slate-800">Brain Quest Test Not Found</h3>
         <Button onClick={() => navigate("/dashboard/brain-quest")} variant="outline" className="rounded-xl">
           Back to Tests
@@ -179,7 +179,7 @@ export default function BrainQuestDetailPage() {
 
       {/* HEADER CARD */}
       <Card className="border border-slate-200/80 rounded-3xl shadow-sm bg-white overflow-hidden">
-        <div className="bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#FF7A00] p-6 sm:p-8 text-white space-y-4">
+        <div className="bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#eca209] p-6 sm:p-8 text-white space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Badge variant="secondary" className="bg-saVividOrange text-white font-black px-3 py-1 rounded-xl text-xs">
@@ -233,7 +233,7 @@ export default function BrainQuestDetailPage() {
             {/* Status Header */}
             <div className="flex flex-wrap items-center justify-between gap-4 pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#FF7A00] flex items-center justify-center font-bold">
+                <div className="w-10 h-10 rounded-2xl bg-amber-50 text-[#eca209] flex items-center justify-center font-bold">
                   <Puzzle className="w-5 h-5" />
                 </div>
                 <div>

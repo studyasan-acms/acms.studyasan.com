@@ -163,11 +163,11 @@ export default function TeacherDashboard() {
                 <div
                     className="relative overflow-hidden rounded-2xl px-6 py-5 flex flex-col sm:flex-row items-center gap-4 sm:gap-6"
                     style={{
-                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #FF7A00 100%)',
+                        background: 'linear-gradient(135deg, #0276D3 0%, #0590ff 50%, #eca209 100%)',
                         boxShadow: '0 8px 32px rgba(2, 118, 211, 0.35)'
                     }}
                 >
-                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#FF7A00' }} />
+                    <div className="absolute -top-4 -right-4 w-28 h-28 rounded-full opacity-20" style={{ background: '#eca209' }} />
                     <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-10" style={{ background: '#ffffff' }} />
                     <div className="relative shrink-0 w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center shadow-lg">
                         <span className="text-4xl select-none">🎂</span>

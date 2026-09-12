@@ -23,8 +23,8 @@ interface HomeItemCardProps {
 const typeConfig = {
     COURSE: { icon: GraduationCap, color: 'bg-[#0276D3]', label: 'Course' },
     SUBJECT: { icon: BookOpen, color: 'bg-[#0276D3]', label: 'Subject' },
-    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#FF7A00]', label: 'Activity' },
-    TEST_SERIES: { icon: FileText, color: 'bg-[#FF7A00]', label: 'Test Series' },
+    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#eca209]', label: 'Activity' },
+    TEST_SERIES: { icon: FileText, color: 'bg-[#eca209]', label: 'Test Series' },
 };
 
 export default function HomeItemCard({ item, onClick }: HomeItemCardProps) {
