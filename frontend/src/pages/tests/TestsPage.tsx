@@ -372,7 +372,7 @@ export default function TestsPage() {
       />
 
       {/* CATEGORY SELECTOR & FILTER TOOLBAR - Strict StudyAsan Theme */}
-      <div className="bg-white p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs space-y-3.5">
+      <div className="bg-[#FFF8F2] p-4 rounded-2xl sm:rounded-3xl border border-orange-200/80 shadow-xs space-y-3.5">
         {/* Category Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar select-none">
           <button
@@ -480,7 +480,7 @@ export default function TestsPage() {
               placeholder="Search tests by title or topic..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-10 rounded-xl border-slate-200 bg-slate-50/60 focus:bg-white text-xs focus-visible:ring-[#0276D3]"
+              className="pl-10 h-10 rounded-xl border-orange-200/80 bg-white focus:bg-white text-xs focus-visible:ring-saVividOrange"
             />
           </div>
 
@@ -491,7 +491,7 @@ export default function TestsPage() {
               onValueChange={setSelectedSubject}
               placeholder="Filter by Subject"
               searchPlaceholder="Search subject..."
-              triggerClassName="h-10 rounded-xl border-slate-200 text-xs"
+              triggerClassName="h-10 rounded-xl border-orange-200/80 bg-white text-xs"
               options={[
                 { value: "ALL", label: "All Subjects" },
                 ...subjects.map((subject) => ({
@@ -506,7 +506,7 @@ export default function TestsPage() {
           {/* Status Filter */}
           <div>
             <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-              <SelectTrigger className="h-10 rounded-xl border-slate-200 text-xs">
+              <SelectTrigger className="h-10 rounded-xl border-orange-200/80 bg-white text-xs">
                 <SelectValue placeholder="Filter by Status" />
               </SelectTrigger>
               <SelectContent>
@@ -521,7 +521,7 @@ export default function TestsPage() {
         </div>
 
         {/* Secondary Bar with Counter & Pagination Size */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-orange-200/60 text-xs">
           <div className="flex items-center gap-2 text-slate-500 font-medium">
             <span>
               Showing <span className="font-bold text-slate-800">{totalCount > 0 ? (currentPage - 1) * pageSize + 1 : 0}</span> to{" "}
@@ -531,7 +531,7 @@ export default function TestsPage() {
             {hasActiveFilters && (
               <button
                 onClick={resetAllFilters}
-                className="text-[#0276D3] hover:underline font-bold flex items-center gap-1 ml-2"
+                className="text-saVividOrange hover:underline font-bold flex items-center gap-1 ml-2"
               >
                 <RotateCcw className="w-3 h-3" /> Reset Filters
               </button>
@@ -541,7 +541,7 @@ export default function TestsPage() {
           <div className="flex items-center gap-2">
             <span className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider">Per Page:</span>
             <Select value={pageSize.toString()} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-8 w-18 rounded-lg text-xs border-slate-200">
+              <SelectTrigger className="h-8 w-18 rounded-lg text-xs border-orange-200/80 bg-white">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -593,10 +593,10 @@ export default function TestsPage() {
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="bg-slate-50/80 border-b border-slate-200">
+                <TableRow className="bg-orange-50/70 border-b border-orange-200/80">
                   {/* Test Title Header */}
                   <TableHead
-                    className="w-[340px] font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="w-[340px] font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("title")}
                   >
                     <div className="flex items-center gap-1.5">
@@ -611,13 +611,13 @@ export default function TestsPage() {
 
                   {/* Subject Header */}
                   <TableHead
-                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("subject")}
                   >
                     <div className="flex items-center gap-1.5">
                       Subject / Series
                       {sortField === "subject" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -626,13 +626,13 @@ export default function TestsPage() {
 
                   {/* Status Header */}
                   <TableHead
-                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("status")}
                   >
                     <div className="flex items-center gap-1.5">
                       Status
                       {sortField === "status" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -641,13 +641,13 @@ export default function TestsPage() {
 
                   {/* Questions Header */}
                   <TableHead
-                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("questions")}
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       Questions
                       {sortField === "questions" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -656,13 +656,13 @@ export default function TestsPage() {
 
                   {/* Duration Header */}
                   <TableHead
-                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("duration")}
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       Duration
                       {sortField === "duration" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -671,13 +671,13 @@ export default function TestsPage() {
 
                   {/* Marks Header */}
                   <TableHead
-                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="text-center font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("marks")}
                   >
                     <div className="flex items-center justify-center gap-1.5">
                       Marks
                       {sortField === "marks" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}
@@ -686,13 +686,13 @@ export default function TestsPage() {
 
                   {/* Created On Header */}
                   <TableHead
-                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-[#0276D3]"
+                    className="font-bold text-xs uppercase tracking-wider text-slate-700 cursor-pointer select-none hover:text-saVividOrange"
                     onClick={() => handleSort("created_at")}
                   >
                     <div className="flex items-center gap-1.5">
                       Created On
                       {sortField === "created_at" ? (
-                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#0276D3]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#0276D3]" />
+                        sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-saVividOrange" /> : <ArrowDown className="w-3.5 h-3.5 text-saVividOrange" />
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-300" />
                       )}

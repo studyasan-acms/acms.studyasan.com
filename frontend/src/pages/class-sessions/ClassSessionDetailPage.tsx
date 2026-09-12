@@ -474,7 +474,7 @@ export default function ClassSessionDetailPage() {
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
                   <Button
                     onClick={handleJoin}
-                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl bg-saVividOrange hover:bg-saOrangeDark text-white font-black text-sm sm:text-base shadow-lg shadow-saVividOrange/40 hover:shadow-saVividOrange/60 transition-all transform hover:-translate-y-0.5 active:translate-y-0 gap-2.5 flex items-center justify-center"
+                    className="h-12 sm:h-14 px-6 sm:px-8 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm sm:text-base shadow-lg shadow-emerald-600/40 hover:shadow-emerald-600/60 transition-all transform hover:-translate-y-0.5 active:translate-y-0 gap-2.5 flex items-center justify-center border-0"
                   >
                     <Video className="w-5 h-5" />
                     Join Live Classroom
@@ -482,11 +482,10 @@ export default function ClassSessionDetailPage() {
 
                   {session.emergency_meeting_link && (
                     <Button
-                      variant="outline"
                       onClick={() => window.open(session.emergency_meeting_link!, '_blank', 'noopener,noreferrer')}
-                      className="h-12 sm:h-14 px-5 rounded-2xl border-white/30 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm backdrop-blur-md gap-2"
+                      className="h-12 sm:h-14 px-5 rounded-2xl bg-saVividOrange hover:bg-saOrangeDark text-white font-black text-xs sm:text-sm shadow-lg shadow-saVividOrange/40 hover:shadow-saVividOrange/60 transition-all transform hover:-translate-y-0.5 active:translate-y-0 gap-2 flex items-center justify-center border-0"
                     >
-                      <ExternalLink className="w-4 h-4 text-saOrangeLight" />
+                      <ExternalLink className="w-4 h-4 text-white" />
                       Google Meet Backup
                     </Button>
                   )}

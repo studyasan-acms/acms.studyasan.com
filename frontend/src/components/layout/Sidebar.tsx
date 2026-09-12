@@ -346,7 +346,7 @@ export default function Sidebar({
         <div
           className={cn(
             "flex items-center border-b border-white/10 flex-shrink-0",
-            collapsed ? "h-16 justify-center px-2" : "h-16 px-4 justify-between"
+            collapsed ? "h-16 justify-center px-2" : "h-16 px-3.5 justify-between"
           )}
         >
           {collapsed ? (
@@ -360,7 +360,7 @@ export default function Sidebar({
               <img
                 src="/studyasan-logo.png"
                 alt="StudyAsan"
-                className="h-9 w-auto max-w-[80%] object-contain"
+                className="h-10 sm:h-11 w-auto max-w-[90%] object-contain"
               />
               {/* Mobile close button */}
               <button
@@ -377,21 +377,20 @@ export default function Sidebar({
         {!collapsed && (
           <div className="px-3 py-2.5 border-b border-white/10 flex-shrink-0 bg-black/10">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/50 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search menu..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white/10 hover:bg-white/15 focus:bg-white/20 
-                           border border-white/10 focus:border-white/25
-                           text-white text-xs rounded-lg pl-8 pr-7 py-1.5
-                           outline-none transition-all placeholder:text-white/40"
+                className="w-full bg-white text-slate-800 placeholder:text-slate-400 
+                           border border-slate-200 text-xs rounded-lg pl-8 pr-7 py-1.5
+                           outline-none shadow-xs transition-all focus:ring-2 focus:ring-saVividOrange focus:border-saVividOrange"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-white/15 text-white/50 hover:text-white transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </button>

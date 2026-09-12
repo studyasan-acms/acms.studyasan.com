@@ -418,7 +418,7 @@ export default function WhiteboardPage() {
       </div>
 
       {/* Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="bg-[#FFF8F2] p-4 rounded-2xl border border-orange-200/80 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
@@ -429,7 +429,7 @@ export default function WhiteboardPage() {
               setSearchQuery(e.target.value);
               setPage(1);
             }}
-            className="pl-9 h-11 rounded-xl border-slate-200 focus-visible:ring-saBlue"
+            className="pl-9 h-11 rounded-xl bg-white border-orange-200 focus-visible:ring-saVividOrange focus-visible:border-saVividOrange text-slate-800"
           />
         </div>
 
@@ -442,7 +442,7 @@ export default function WhiteboardPage() {
                 setSearchQuery('');
                 setPage(1);
               }}
-              className="rounded-xl text-slate-500 hover:text-slate-800 h-10 px-3"
+              className="rounded-xl text-slate-500 hover:text-slate-800 h-10 px-3 hover:bg-orange-100/60"
             >
               Reset
             </Button>
@@ -453,7 +453,7 @@ export default function WhiteboardPage() {
             size="icon"
             onClick={fetchWhiteboards}
             disabled={loading}
-            className="h-10 w-10 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50"
+            className="h-10 w-10 rounded-xl bg-white border-orange-200 text-slate-600 hover:bg-orange-50"
             title="Refresh List"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -465,12 +465,12 @@ export default function WhiteboardPage() {
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         {loading ? (
           <div className="py-20 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-saBlue mx-auto mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-saVividOrange mx-auto mb-3" />
             <p className="text-slate-500 font-medium text-sm">Loading whiteboards...</p>
           </div>
         ) : whiteboards.length === 0 ? (
           <div className="py-20 px-4 text-center max-w-md mx-auto space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-blue-50 text-saBlue flex items-center justify-center mx-auto shadow-inner">
+            <div className="w-16 h-16 rounded-3xl bg-orange-50 text-saVividOrange flex items-center justify-center mx-auto shadow-inner border border-orange-100">
               <PenTool className="w-8 h-8" />
             </div>
             <div>
@@ -483,7 +483,7 @@ export default function WhiteboardPage() {
             </div>
             <Button
               onClick={openCreateModal}
-              className="bg-saBlue hover:bg-saBlue/90 text-white rounded-xl shadow-md shadow-saBlue/20 px-5"
+              className="bg-saVividOrange hover:bg-saOrangeDark text-white rounded-xl shadow-md shadow-saVividOrange/20 px-5 font-bold"
             >
               <Plus className="w-4 h-4 mr-1.5" />
               Create Whiteboard
@@ -493,7 +493,7 @@ export default function WhiteboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[12px] font-bold uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-orange-200/70 bg-orange-50/70 text-[12px] font-bold uppercase tracking-wider text-slate-700">
                   <th className="py-4 px-6">Whiteboard Title</th>
                   <th className="py-4 px-6">Created By</th>
                   <th className="py-4 px-6">Last Updated</th>
@@ -506,17 +506,17 @@ export default function WhiteboardPage() {
                   return (
                     <tr
                       key={board.id}
-                      className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-orange-50/30 transition-colors group cursor-pointer"
                       onClick={() => navigate(`/dashboard/whiteboard/${board.id}`)}
                     >
                       {/* Title & Preview */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-saBlue/10 to-sky-100 text-saBlue flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform border border-sky-100">
+                          <div className="w-10 h-10 rounded-xl bg-orange-100/70 text-saVividOrange flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform border border-orange-200/60">
                             <PenTool className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800 group-hover:text-saBlue transition-colors">
+                            <p className="font-bold text-slate-800 group-hover:text-saVividOrange transition-colors">
                               {board.title}
                             </p>
                             <p className="text-xs text-slate-400 mt-0.5">

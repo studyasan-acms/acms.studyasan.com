@@ -657,7 +657,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                           </Button>
 
                           <Button
-                            className="w-full h-9 bg-saBlue hover:bg-saBlueDarkHover text-white text-xs uppercase font-bold tracking-wider rounded-xl shadow-sm transition-all"
+                            className="w-full h-9 bg-saVividOrange hover:bg-saOrangeDark text-white text-xs uppercase font-bold tracking-wider rounded-xl shadow-sm shadow-saVividOrange/25 transition-all"
                             onClick={(e) => {
                               e.stopPropagation();
                               navigate(`/dashboard/subjects/${subject.id}/student-modules`);

@@ -823,10 +823,10 @@ export default function ClassSessionsPage() {
       </div>
 
       {/* COMPACT RESPONSIVE FILTER TOOLBAR */}
-      <div className="bg-white border border-slate-200/80 shadow-sm rounded-2xl p-2.5 sm:p-3 space-y-2.5">
+      <div className="bg-[#FFF8F2] border border-orange-200/80 shadow-xs rounded-2xl p-2.5 sm:p-3 space-y-2.5">
         {/* Top Row: View Mode Tabs */}
         <div className="flex items-center justify-between gap-2">
-          <div className="grid grid-cols-5 sm:flex w-full sm:w-auto p-1 bg-slate-100 rounded-xl gap-0.5 shrink-0 overflow-x-auto scrollbar-hide">
+          <div className="grid grid-cols-5 sm:flex w-full sm:w-auto p-1 bg-white/80 border border-orange-200/60 rounded-xl gap-0.5 shrink-0 overflow-x-auto scrollbar-hide shadow-xs">
             {[
               { id: 'week', label: 'Week' },
               { id: 'today', label: 'Today' },
@@ -842,10 +842,10 @@ export default function ClassSessionsPage() {
                   setPage(1);
                 }}
                 className={cn(
-                  "px-2 sm:px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center whitespace-nowrap",
+                  "px-2.5 sm:px-3.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all text-center whitespace-nowrap",
                   viewMode === mode.id
-                    ? "bg-white shadow-sm text-saBlue"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-saVividOrange shadow-sm text-white font-black"
+                    : "text-slate-600 hover:text-saOrangeDark hover:bg-orange-50"
                 )}
               >
                 {mode.label}
@@ -874,7 +874,7 @@ export default function ClassSessionsPage() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search subject or teacher..."
-              className="pl-8 pr-8 h-9 border-slate-200/80 rounded-xl bg-slate-50/50 text-xs focus:ring-saBlue focus:border-saBlue"
+              className="pl-8 pr-8 h-9 border-orange-200/80 rounded-xl bg-white text-xs text-slate-800 placeholder:text-slate-400 focus:ring-saVividOrange focus:border-saVividOrange"
             />
             {searchTerm && (
               <button
@@ -895,7 +895,7 @@ export default function ClassSessionsPage() {
                 onValueChange={setSelectedSubject}
                 placeholder="All Subjects"
                 searchPlaceholder="Search subject..."
-                triggerClassName="h-9 px-2.5 rounded-xl border-slate-200/80 bg-slate-50/50 text-xs font-medium w-full"
+                triggerClassName="h-9 px-2.5 rounded-xl border-orange-200/80 bg-white text-xs font-medium text-slate-800 w-full"
                 options={[
                   { value: 'all', label: 'All Subjects' },
                   ...subjects.map((subject) => ({

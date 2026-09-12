@@ -524,7 +524,7 @@ export default function TeachersPage() {
               onClick={() => navigate(`/dashboard/teachers/${teacher.id}`)}
             >
               {/* Header Gradient */}
-              <div className="h-20 bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400 relative p-4 flex items-start justify-between">
+              <div className="h-20 bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400 relative px-4 pt-3 pb-2 flex items-start justify-between">
                 <div className="flex items-center gap-1.5">
                   <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] font-bold">
                     {(teacher as any).role?.name || "Faculty"}
@@ -543,17 +543,17 @@ export default function TeachersPage() {
                 </div>
               </div>
 
-              <CardContent className="p-5 pt-0 relative space-y-4 flex-1 flex flex-col justify-between">
-                <div className="flex items-end gap-3 -mt-8 mb-2">
-                  <Avatar className="h-16 w-16 ring-4 ring-white shadow-md">
+              <CardContent className="p-4 pt-0 relative space-y-3 flex-1 flex flex-col justify-between">
+                <div className="flex items-start gap-3.5 -mt-9 mb-2">
+                  <Avatar className="h-16 w-16 ring-4 ring-white shadow-md shrink-0">
                     <AvatarImage src={teacher.user.profile_url} alt={teacher.user.name} />
                     <AvatarFallback className="bg-saVividOrange text-white font-bold text-lg">
                       {getInitials(teacher.user.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="mb-1">
-                    <h3 className="text-base font-bold text-slate-900 leading-snug">{teacher.user.name}</h3>
-                    <p className="text-xs text-slate-400">{teacher.user.email}</p>
+                  <div className="pt-9 min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-slate-900 leading-snug truncate">{teacher.user.name}</h3>
+                    <p className="text-xs text-slate-400 truncate mt-0.5">{teacher.user.email}</p>
                   </div>
                 </div>
 
