@@ -129,7 +129,7 @@ export default function CreateBrainQuestPage() {
       </Button>
 
       {/* Header Banner */}
-      <div className="bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#eca209] rounded-3xl p-6 text-white shadow-lg flex items-center justify-between">
+      <div className="bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#FF7A00] rounded-3xl p-6 text-white shadow-lg flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-amber-200 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4" /> New Kids Test Paper

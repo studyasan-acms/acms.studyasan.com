@@ -154,7 +154,7 @@ export default function UpcomingHolidaysWidget() {
         <Card className="rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden bg-white">
             <CardHeader className="py-4 px-6 bg-gradient-to-r from-amber-50/60 via-blue-50/40 to-transparent border-b border-slate-100 flex flex-row items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-[#eca209]/15 flex items-center justify-center text-[#eca209]">
+                    <div className="w-8 h-8 rounded-xl bg-[#FF7A00]/15 flex items-center justify-center text-[#FF7A00]">
                         <PartyPopper className="w-4 h-4" />
                     </div>
                     <div>

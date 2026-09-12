@@ -30,9 +30,10 @@
     --sa-blue-hover: #025AA3;
     --sa-blue-light: #5BAEF0;
     --sa-blue-subtle: #EBF4FD;
-    --sa-orange: #eca209;
-    --sa-orange-dark: #c98908;
-    --sa-orange-subtle: #FEF7E6;
+    --sa-orange: #FF7A00;
+    --sa-orange-dark: #E06500;
+    --sa-orange-light: #FFA048;
+    --sa-orange-subtle: #FFF5ED;
     --sa-surface: #F8FAFD;
     --sa-sidebar-width: 14rem;   /* 224px */
     --sa-sidebar-collapsed: 3.5rem; /* 56px */

@@ -113,7 +113,7 @@ export default function BrainQuestListPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
       {/* KID-FRIENDLY HERO HEADER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#eca209] p-6 sm:p-8 text-white shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0276D3] via-[#025AA3] to-[#FF7A00] p-6 sm:p-8 text-white shadow-xl">
         <div className="absolute -right-8 -bottom-8 opacity-20 pointer-events-none">
           <Puzzle className="w-64 h-64 text-white" />
         </div>
@@ -133,7 +133,7 @@ export default function BrainQuestListPage() {
             <div className="pt-2">
               <Button
                 onClick={() => navigate("/dashboard/brain-quest/create")}
-                className="bg-[#eca209] hover:bg-[#d49106] text-white font-extrabold rounded-2xl h-11 px-6 shadow-lg shadow-amber-500/25 flex items-center gap-2 transition-all transform hover:scale-[1.02]"
+                className="bg-saVividOrange hover:bg-saOrangeDark text-white font-extrabold rounded-2xl h-11 px-6 shadow-lg shadow-orange-500/25 flex items-center gap-2 transition-all transform hover:scale-[1.02]"
               >
                 <Plus className="w-5 h-5" />
                 Upload New Brain Quest
@@ -201,7 +201,7 @@ export default function BrainQuestListPage() {
         </div>
       ) : quests.length === 0 ? (
         <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300 space-y-3">
-          <div className="w-16 h-16 rounded-full bg-amber-50 text-[#eca209] flex items-center justify-center mx-auto shadow-inner">
+          <div className="w-16 h-16 rounded-full bg-amber-50 text-[#FF7A00] flex items-center justify-center mx-auto shadow-inner">
             <Puzzle className="w-8 h-8" />
           </div>
           <h3 className="text-lg font-bold text-slate-800">No Brain Quest Tests Found</h3>
@@ -223,7 +223,7 @@ export default function BrainQuestListPage() {
                 <div>
                   {/* Card Top Banner */}
                   <div className="bg-gradient-to-r from-[#0276D3] to-slate-900 p-4 text-white flex items-center justify-between">
-                    <Badge variant="secondary" className="bg-[#eca209] text-white font-black px-2.5 py-0.5 rounded-lg text-[10px]">
+                    <Badge variant="secondary" className="bg-saVividOrange text-white font-black px-2.5 py-0.5 rounded-lg text-[10px]">
                       {quest.subject?.name || "General"}
                     </Badge>
                     <div className="flex items-center gap-1.5 text-xs text-blue-100 font-bold">
@@ -279,7 +279,7 @@ export default function BrainQuestListPage() {
                       )
                     ) : (
                       <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-800 font-bold px-2.5 py-1 rounded-xl text-xs">
-                        <FileText className="w-3.5 h-3.5 mr-1 text-[#eca209]" />
+                        <FileText className="w-3.5 h-3.5 mr-1 text-[#FF7A00]" />
                         Not Submitted
                       </Badge>
                     )

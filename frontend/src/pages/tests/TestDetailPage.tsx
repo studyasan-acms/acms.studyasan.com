@@ -570,7 +570,7 @@ export default function TestDetailPage() {
                 {status.label}
               </span>
               {effectiveType === "PRACTICE" && (
-                <span className="text-[11px] font-bold text-[#eca209] bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <span className="text-[11px] font-bold text-[#FF7A00] bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
                   <Sparkles className="w-3 h-3" /> Practice Set
                 </span>
               )}
@@ -663,7 +663,7 @@ export default function TestDetailPage() {
               variant="outline"
               onClick={() => openInstructions("practice")}
               size="sm"
-              className="border-[#eca209] text-[#eca209] hover:bg-amber-50 rounded-xl h-9 px-4 text-xs font-bold"
+              className="border-[#FF7A00] text-[#FF7A00] hover:bg-amber-50 rounded-xl h-9 px-4 text-xs font-bold"
             >
               <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Practice Set
             </Button>
@@ -684,7 +684,7 @@ export default function TestDetailPage() {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center gap-3">
-          <div className="p-2.5 bg-amber-50 text-[#eca209] rounded-xl">
+          <div className="p-2.5 bg-amber-50 text-[#FF7A00] rounded-xl">
             <Clock className="h-5 w-5" />
           </div>
           <div>

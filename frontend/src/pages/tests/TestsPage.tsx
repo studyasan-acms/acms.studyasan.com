@@ -782,7 +782,7 @@ export default function TestsPage() {
                               size="sm"
                               className={
                                 effectiveType === "PRACTICE"
-                                  ? "h-8 px-3 rounded-xl text-xs font-bold bg-[#eca209] hover:bg-[#d49108] text-white"
+                                  ? "h-8 px-3 rounded-xl text-xs font-bold bg-saVividOrange hover:bg-saOrangeDark text-white"
                                   : "h-8 px-3 rounded-xl text-xs font-bold bg-[#0276D3] hover:bg-[#015bb5] text-white"
                               }
                               onClick={() => navigate(`/tests/${test.id}`)}

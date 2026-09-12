@@ -23,8 +23,8 @@ interface HomeItemCardProps {
 const typeConfig = {
     COURSE: { icon: GraduationCap, color: 'bg-[#0276D3]', label: 'Course' },
     SUBJECT: { icon: BookOpen, color: 'bg-[#0276D3]', label: 'Subject' },
-    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#eca209]', label: 'Activity' },
-    TEST_SERIES: { icon: FileText, color: 'bg-[#eca209]', label: 'Test Series' },
+    ACTIVITY_GROUP: { icon: Gamepad2, color: 'bg-[#FF7A00]', label: 'Activity' },
+    TEST_SERIES: { icon: FileText, color: 'bg-[#FF7A00]', label: 'Test Series' },
 };
 
 export default function HomeItemCard({ item, onClick }: HomeItemCardProps) {
@@ -89,7 +89,7 @@ export default function HomeItemCard({ item, onClick }: HomeItemCardProps) {
                                 <span className="font-black text-[#0276D3] text-sm sm:text-base">
                                     {item.currency.symbol}{item.price}
                                 </span>
-                                <Badge className="bg-[#eca209] text-white font-black text-[9px] px-1 py-0 border-none">
+                                <Badge className="bg-saVividOrange text-white font-black text-[9px] px-1 py-0 border-none">
                                     {Math.round(((item.actual_price - item.price) / item.actual_price) * 100)}% OFF
                                 </Badge>
                             </>

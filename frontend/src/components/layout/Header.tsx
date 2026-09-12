@@ -282,7 +282,7 @@ export default function Header({
               >
                 <Megaphone className="h-5 w-5" />
                 <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2"
-                  style={{ background: "#eca209", borderColor: "#025AA3" }} />
+                  style={{ background: "#FF7A00", borderColor: "#025AA3" }} />
               </button>
             </div>
 
@@ -299,7 +299,7 @@ export default function Header({
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
                   <span className="absolute top-1 right-1 h-4 w-4 flex items-center justify-center text-[10px] font-bold rounded-full text-white"
-                    style={{ background: "#eca209" }}>
+                    style={{ background: "#FF7A00" }}>
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
@@ -320,7 +320,7 @@ export default function Header({
                     />
                     <AvatarFallback
                       className="text-white text-xs font-bold"
-                      style={{ background: "#eca209" }}
+                      style={{ background: "#FF7A00" }}
                     >
                       {user && getInitials(user.name)}
                     </AvatarFallback>

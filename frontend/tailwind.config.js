@@ -21,10 +21,10 @@ export default {
         saBlueLight: "#5BAEF0",
         saBlueMid: "#1a8de8",
         saBlueSubtle: "#EBF4FD",      // Very light blue for tinted backgrounds
-        saVividOrange: "#eca209",
-        saOrangeDark: "#c98908",       // Darker orange for pressed/shadow states
-        saOrangeLight: "#f5c842",      // Lighter orange for hover glows
-        saOrangeSubtle: "#FEF7E6",    // Very light orange for tinted backgrounds
+        saVividOrange: "#FF7A00",
+        saOrangeDark: "#E06500",       // Darker orange for pressed/shadow states
+        saOrangeLight: "#FFA048",      // Lighter orange for hover glows
+        saOrangeSubtle: "#FFF5ED",    // Very light orange for tinted backgrounds
         saSurface: "#F8FAFD",         // Page background tint
         // end of custom colors
         border: "hsl(var(--border))",
