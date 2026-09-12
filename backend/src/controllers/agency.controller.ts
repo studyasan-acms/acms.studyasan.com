@@ -106,6 +106,13 @@ export const agencyLogin = async (req: Request, res: Response): Promise<void> =>
                 points_balance: agency.points_balance,
                 total_earnings: agency.total_earnings,
                 paid_earnings: agency.paid_earnings,
+                account_holder_name: agency.account_holder_name,
+                bank_name: agency.bank_name,
+                account_number: agency.account_number,
+                ifsc_code: agency.ifsc_code,
+                branch_name: agency.branch_name,
+                account_type: agency.account_type,
+                upi_id: agency.upi_id,
             }
         });
     } catch (error) {
@@ -140,6 +147,13 @@ export const getAgencyProfile = async (req: Request, res: Response): Promise<voi
                 paid_earnings: true,
                 points_balance: true,
                 is_active: true,
+                account_holder_name: true,
+                bank_name: true,
+                account_number: true,
+                ifsc_code: true,
+                branch_name: true,
+                account_type: true,
+                upi_id: true,
                 created_at: true,
             }
         });
@@ -156,6 +170,73 @@ export const getAgencyProfile = async (req: Request, res: Response): Promise<voi
     }
 };
 
+/**
+ * Agency Portal: Update Bank / Payout Account Details
+ */
+export const updateAgencyPayoutDetails = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const agencyId = (req as any).user?.agencyId || (req as any).user?.id;
+        if (!agencyId) {
+            res.status(401).json({ message: 'Unauthorized agency session' });
+            return;
+        }
+
+        const {
+            account_holder_name,
+            bank_name,
+            account_number,
+            ifsc_code,
+            branch_name,
+            account_type,
+            upi_id,
+        } = req.body;
+
+        const updateData: any = {};
+        if (account_holder_name !== undefined) updateData.account_holder_name = account_holder_name ? String(account_holder_name).trim() : null;
+        if (bank_name !== undefined) updateData.bank_name = bank_name ? String(bank_name).trim() : null;
+        if (account_number !== undefined) updateData.account_number = account_number ? String(account_number).trim() : null;
+        if (ifsc_code !== undefined) updateData.ifsc_code = ifsc_code ? String(ifsc_code).trim().toUpperCase() : null;
+        if (branch_name !== undefined) updateData.branch_name = branch_name ? String(branch_name).trim() : null;
+        if (account_type !== undefined) updateData.account_type = account_type ? String(account_type).trim().toUpperCase() : 'SAVINGS';
+        if (upi_id !== undefined) updateData.upi_id = upi_id ? String(upi_id).trim() : null;
+
+        const updatedAgency = await prisma.agency.update({
+            where: { id: Number(agencyId) },
+            data: updateData,
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                referral_code: true,
+                commission_type: true,
+                commission_rate: true,
+                min_payout_limit: true,
+                total_earnings: true,
+                paid_earnings: true,
+                points_balance: true,
+                is_active: true,
+                account_holder_name: true,
+                bank_name: true,
+                account_number: true,
+                ifsc_code: true,
+                branch_name: true,
+                account_type: true,
+                upi_id: true,
+                updated_at: true,
+            }
+        });
+
+        res.json({
+            message: 'Payout details saved successfully',
+            agency: updatedAgency,
+        });
+    } catch (error) {
+        console.error('Error updating agency payout details:', error);
+        res.status(500).json({ message: 'Server error saving payout details' });
+    }
+};
+
 // ==================== ADMIN AGENCY MANAGEMENT ====================
 
 /**
@@ -163,7 +244,23 @@ export const getAgencyProfile = async (req: Request, res: Response): Promise<voi
  */
 export const createAgency = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, email, phone, password, referral_code, commission_type, commission_rate, min_payout_limit } = req.body;
+        const {
+            name,
+            email,
+            phone,
+            password,
+            referral_code,
+            commission_type,
+            commission_rate,
+            min_payout_limit,
+            account_holder_name,
+            bank_name,
+            account_number,
+            ifsc_code,
+            branch_name,
+            account_type,
+            upi_id,
+        } = req.body;
 
         if (!name || !email || !phone || !password) {
             res.status(400).json({ message: 'Name, email, phone, and password are required' });
@@ -199,6 +296,13 @@ export const createAgency = async (req: Request, res: Response): Promise<void> =
                 commission_type: commission_type === 'FIXED' ? 'FIXED' : 'PERCENTAGE',
                 commission_rate: Number(commission_rate) || 10,
                 min_payout_limit: Number(min_payout_limit) || 1000,
+                account_holder_name: account_holder_name ? String(account_holder_name).trim() : null,
+                bank_name: bank_name ? String(bank_name).trim() : null,
+                account_number: account_number ? String(account_number).trim() : null,
+                ifsc_code: ifsc_code ? String(ifsc_code).trim().toUpperCase() : null,
+                branch_name: branch_name ? String(branch_name).trim() : null,
+                account_type: account_type ? String(account_type).trim().toUpperCase() : 'SAVINGS',
+                upi_id: upi_id ? String(upi_id).trim() : null,
             }
         });
 
@@ -213,6 +317,13 @@ export const createAgency = async (req: Request, res: Response): Promise<void> =
                 commission_type: agency.commission_type,
                 commission_rate: agency.commission_rate,
                 min_payout_limit: agency.min_payout_limit,
+                account_holder_name: agency.account_holder_name,
+                bank_name: agency.bank_name,
+                account_number: agency.account_number,
+                ifsc_code: agency.ifsc_code,
+                branch_name: agency.branch_name,
+                account_type: agency.account_type,
+                upi_id: agency.upi_id,
             }
         });
     } catch (error) {
@@ -313,7 +424,24 @@ export const getAgencyById = async (req: Request, res: Response): Promise<void> 
 export const updateAgency = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
-        const { name, email, phone, password, referral_code, commission_type, commission_rate, min_payout_limit, is_active } = req.body;
+        const {
+            name,
+            email,
+            phone,
+            password,
+            referral_code,
+            commission_type,
+            commission_rate,
+            min_payout_limit,
+            is_active,
+            account_holder_name,
+            bank_name,
+            account_number,
+            ifsc_code,
+            branch_name,
+            account_type,
+            upi_id,
+        } = req.body;
 
         const updateData: any = {};
         if (name !== undefined) updateData.name = String(name).trim();
@@ -324,6 +452,14 @@ export const updateAgency = async (req: Request, res: Response): Promise<void> =
         if (commission_rate !== undefined) updateData.commission_rate = Number(commission_rate);
         if (min_payout_limit !== undefined) updateData.min_payout_limit = Number(min_payout_limit);
         if (is_active !== undefined) updateData.is_active = Boolean(is_active);
+
+        if (account_holder_name !== undefined) updateData.account_holder_name = account_holder_name ? String(account_holder_name).trim() : null;
+        if (bank_name !== undefined) updateData.bank_name = bank_name ? String(bank_name).trim() : null;
+        if (account_number !== undefined) updateData.account_number = account_number ? String(account_number).trim() : null;
+        if (ifsc_code !== undefined) updateData.ifsc_code = ifsc_code ? String(ifsc_code).trim().toUpperCase() : null;
+        if (branch_name !== undefined) updateData.branch_name = branch_name ? String(branch_name).trim() : null;
+        if (account_type !== undefined) updateData.account_type = account_type ? String(account_type).trim().toUpperCase() : 'SAVINGS';
+        if (upi_id !== undefined) updateData.upi_id = upi_id ? String(upi_id).trim() : null;
 
         if (password) {
             updateData.password = await bcrypt.hash(password, 10);
@@ -440,6 +576,14 @@ export const getAgencyDashboard = async (req: Request, res: Response): Promise<v
                 total_revenue: revenueAgg._sum.amount_paid || 0,
                 progress_percent: progressPercent,
                 can_request_payout: agency.points_balance >= agency.min_payout_limit,
+                account_holder_name: agency.account_holder_name,
+                bank_name: agency.bank_name,
+                account_number: agency.account_number,
+                ifsc_code: agency.ifsc_code,
+                branch_name: agency.branch_name,
+                account_type: agency.account_type,
+                upi_id: agency.upi_id,
+                has_payout_details: Boolean(agency.account_number || agency.upi_id),
             },
             recentEarnings,
             recentPayouts,
@@ -658,13 +802,31 @@ export const requestPayout = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
+        // Format snapshot of payout account details if not explicitly passed
+        let finalAccountDetails = account_details ? String(account_details).trim() : '';
+        if (!finalAccountDetails) {
+            const parts: string[] = [];
+            if (agency.bank_name || agency.account_number) {
+                parts.push(`Bank: ${agency.bank_name || 'N/A'}`);
+                parts.push(`A/C: ${agency.account_number || 'N/A'}`);
+                if (agency.account_holder_name) parts.push(`Holder: ${agency.account_holder_name}`);
+                if (agency.ifsc_code) parts.push(`IFSC: ${agency.ifsc_code}`);
+                if (agency.branch_name) parts.push(`Branch: ${agency.branch_name}`);
+                if (agency.account_type) parts.push(`Type: ${agency.account_type}`);
+            }
+            if (agency.upi_id) {
+                parts.push(`UPI: ${agency.upi_id}`);
+            }
+            finalAccountDetails = parts.join(' | ') || (payout_method || 'Bank Transfer');
+        }
+
         const payout = await prisma.referralPayout.create({
             data: {
                 agency_id: agency.id,
                 amount: reqAmount,
                 status: 'PENDING',
-                payout_method: payout_method || 'Bank Transfer',
-                account_details: account_details || null,
+                payout_method: payout_method || (agency.upi_id && !agency.account_number ? 'UPI' : 'Bank Transfer'),
+                account_details: finalAccountDetails || null,
                 notes: notes || null,
             }
         });
@@ -693,7 +855,20 @@ export const getAgencyPayouts = async (req: Request, res: Response): Promise<voi
             where: whereClause,
             include: {
                 agency: {
-                    select: { id: true, name: true, email: true, phone: true, points_balance: true }
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        points_balance: true,
+                        account_holder_name: true,
+                        bank_name: true,
+                        account_number: true,
+                        ifsc_code: true,
+                        branch_name: true,
+                        account_type: true,
+                        upi_id: true,
+                    }
                 }
             },
             orderBy: { requested_at: 'desc' }

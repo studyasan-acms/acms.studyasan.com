@@ -851,6 +851,7 @@ router.post('/agency/students', authenticate, agencyController.createStudentByAg
 router.get('/agency/earnings', authenticate, agencyController.getAgencyEarnings);
 router.post('/agency/payout-request', authenticate, agencyController.requestPayout);
 router.get('/agency/payouts', authenticate, agencyController.getAgencyPayouts);
+router.put('/agency/payout-details', authenticate, agencyController.updateAgencyPayoutDetails);
 
 // Admin Agency Management
 router.post('/admin/agencies', authenticate, authorize('ADMIN'), agencyController.createAgency);

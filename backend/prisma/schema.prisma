@@ -1359,6 +1359,15 @@ model Agency {
   created_at       DateTime          @default(now())
   updated_at       DateTime          @updatedAt
 
+  // Payout / Bank Account Details
+  account_holder_name String?
+  bank_name           String?
+  account_number      String?
+  ifsc_code           String?
+  branch_name         String?
+  account_type        String?           @default("SAVINGS") // SAVINGS, CURRENT
+  upi_id              String?
+
   students         Student[]         @relation("AgencyStudents")
   earnings         ReferralEarning[]
   payouts          ReferralPayout[]
