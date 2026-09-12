@@ -10,6 +10,7 @@
     "start": "node dist/server.js",
     "seed": "npx tsx prisma/seed/seed.ts",
     "seed:admin": "npx tsx prisma/seed/seed-admin.ts",
+    "seed:executives": "npx tsx prisma/seed/seed-executives.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
