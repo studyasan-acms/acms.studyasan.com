@@ -276,7 +276,7 @@ export default function ActivitiesPage() {
 
           <Button 
             onClick={handleCreate} 
-            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xs"
+            className="bg-saVividOrange hover:bg-saOrangeDark active:scale-95 text-white rounded-xl h-10 px-5 font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xs shadow-orange-500/20 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Create Activity
@@ -718,7 +718,7 @@ export default function ActivitiesPage() {
           </p>
           <Button 
             onClick={handleCreate} 
-            className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-5 font-bold shadow-md shadow-blue-500/10"
+            className="bg-saVividOrange hover:bg-saOrangeDark active:scale-95 text-white rounded-xl h-10 px-5 font-bold shadow-md shadow-orange-500/20 cursor-pointer"
           >
             Create First Activity
           </Button>
