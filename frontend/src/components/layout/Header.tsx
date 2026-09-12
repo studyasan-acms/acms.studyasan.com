@@ -270,6 +270,22 @@ export default function Header({
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Announcements */}
+            <div className="relative">
+              <button
+                className="relative p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
+                onClick={() => {
+                  setShowAnnouncements(!showAnnouncements);
+                  setShowNotifications(false);
+                }}
+                aria-label="Announcements"
+              >
+                <Megaphone className="h-5 w-5" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2"
+                  style={{ background: "#eca209", borderColor: "#025AA3" }} />
+              </button>
+            </div>
+
             {/* Notifications */}
             <div className="relative">
               <button
@@ -287,22 +303,6 @@ export default function Header({
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
-              </button>
-            </div>
-
-            {/* Announcements */}
-            <div className="relative">
-              <button
-                className="relative p-2 rounded-lg hover:bg-white/15 transition-colors text-white"
-                onClick={() => {
-                  setShowAnnouncements(!showAnnouncements);
-                  setShowNotifications(false);
-                }}
-                aria-label="Announcements"
-              >
-                <Megaphone className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full border-2"
-                  style={{ background: "#eca209", borderColor: "#025AA3" }} />
               </button>
             </div>
 

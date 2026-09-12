@@ -543,7 +543,7 @@ export default function SubjectsPage({ embedded = false }: { embedded?: boolean 
                           ? "bg-gradient-to-br from-saBlueDarkHover via-saBlue to-saBlueLight"
                           : "bg-gradient-to-br from-saBlue via-saBlueLight to-blue-400"
                       )}>
-                        <div className="absolute inset-0 bg-black/10"></div>
+                        <div className="absolute inset-0 bg-white/5"></div>
 
                         {/* Top Badges */}
                         <div className="relative z-10 flex items-center justify-between">

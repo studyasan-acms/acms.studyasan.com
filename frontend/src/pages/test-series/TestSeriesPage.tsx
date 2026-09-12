@@ -605,77 +605,89 @@ export default function TestSeriesPage() {
             ) : viewMode === "grid" ? (
                 /* GRID VIEW */
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-full">
-                    {filteredList.map((series) => (
-                        <Card
-                            key={series.id}
-                            className="group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200/80 hover:border-saBlue/50 cursor-pointer rounded-2xl flex flex-col justify-between"
-                            onClick={() => navigate(`/dashboard/test-series/${series.id}`)}
-                        >
-                            {/* Card Header with Brand Colors */}
-                            <div className={cn(
-                                "h-24 relative overflow-hidden p-4 flex flex-col justify-between transition-all",
-                                series.is_published
-                                    ? "bg-gradient-to-br from-saBlue via-saBlueLight to-blue-500"
-                                    : "bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800"
-                            )}>
-                                <div className="absolute inset-0 bg-black/10"></div>
+                    {filteredList.map((series, index) => {
+                        const isOrange = index % 2 === 0;
+                        return (
+                            <Card
+                                key={series.id}
+                                className={cn(
+                                    "group hover:shadow-xl transition-all duration-300 overflow-hidden bg-white border border-slate-200/80 cursor-pointer rounded-2xl flex flex-col justify-between",
+                                    isOrange ? "hover:border-saVividOrange/50" : "hover:border-saBlue/50"
+                                )}
+                                onClick={() => navigate(`/dashboard/test-series/${series.id}`)}
+                            >
+                                {/* Card Header with Brand Colors (Alternating Orange & Blue) */}
+                                <div className={cn(
+                                    "h-24 relative overflow-hidden p-4 flex flex-col justify-between transition-all",
+                                    isOrange
+                                        ? "bg-gradient-to-br from-amber-500 via-saVividOrange to-orange-500"
+                                        : "bg-gradient-to-br from-saBlue via-saBlueLight to-blue-500"
+                                )}>
+                                    <div className="absolute inset-0 bg-white/5"></div>
 
-                                {/* Top Status */}
-                                <div className="relative z-10 flex items-center justify-between">
-                                    <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] px-2 py-0.5 font-bold tracking-wider">
-                                        Test Series
-                                    </Badge>
-                                    <Badge className={cn(
-                                        "text-[10px] px-2 py-0.5 font-bold border-0 shadow-sm",
-                                        series.is_published ? "bg-saVividOrange text-white" : "bg-slate-200 text-slate-800"
-                                    )}>
-                                        {series.is_published ? "Published" : "Draft"}
-                                    </Badge>
-                                </div>
-
-                                {/* Title */}
-                                <div className="relative z-10">
-                                    <h3 className="text-lg font-bold text-white drop-shadow-md line-clamp-1">
-                                        {series.title}
-                                    </h3>
-                                </div>
-
-                                {/* Decorative circles */}
-                                <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full pointer-events-none"></div>
-                            </div>
-
-                            <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
-                                <p className="text-xs text-slate-500 line-clamp-2 min-h-[32px]">
-                                    {series.description || "No detailed description provided."}
-                                </p>
-
-                                {/* Tags & Price */}
-                                <div className="flex items-center justify-between pt-1">
-                                    {(series.price !== undefined && series.price !== null) || (series.actual_price !== undefined && series.actual_price !== null) ? (
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            {series.actual_price && series.price && series.actual_price > series.price ? (
-                                                <>
-                                                    <span className="text-[11px] text-slate-400 line-through font-semibold">
-                                                        {series.currency?.symbol || '₹'}{series.actual_price.toLocaleString()}
-                                                    </span>
-                                                    <span className="text-xs font-black text-slate-900">
-                                                        {series.currency?.symbol || '₹'}{series.price.toLocaleString()}
-                                                    </span>
-                                                    <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
-                                                        {Math.round(((series.actual_price - series.price) / series.actual_price) * 100)}% OFF
-                                                    </Badge>
-                                                </>
-                                            ) : (
-                                                <Badge variant="outline" className="bg-saBlue/10 text-saBlue border-saBlue/20 text-xs font-bold px-2.5 py-0.5 rounded-lg">
-                                                    {series.currency?.symbol || '₹'}{(series.price ?? series.actual_price)?.toLocaleString()}
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg">
-                                            Free
+                                    {/* Top Status */}
+                                    <div className="relative z-10 flex items-center justify-between">
+                                        <Badge className="bg-white/20 backdrop-blur-md text-white border-0 text-[10px] px-2 py-0.5 font-bold tracking-wider">
+                                            Test Series
                                         </Badge>
-                                    )}
+                                        <Badge className={cn(
+                                            "text-[10px] px-2 py-0.5 font-bold border-0 shadow-sm",
+                                            series.is_published
+                                                ? "bg-white/90 text-slate-800 backdrop-blur-md"
+                                                : "bg-white/20 text-white backdrop-blur-md border border-white/20"
+                                        )}>
+                                            {series.is_published ? "Published" : "Draft"}
+                                        </Badge>
+                                    </div>
+
+                                    {/* Title */}
+                                    <div className="relative z-10">
+                                        <h3 className="text-lg font-bold text-white drop-shadow-md line-clamp-1">
+                                            {series.title}
+                                        </h3>
+                                    </div>
+
+                                    {/* Decorative circles */}
+                                    <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full pointer-events-none"></div>
+                                </div>
+
+                                <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
+                                    <p className="text-xs text-slate-500 line-clamp-2 min-h-[32px]">
+                                        {series.description || "No detailed description provided."}
+                                    </p>
+
+                                    {/* Tags & Price */}
+                                    <div className="flex items-center justify-between pt-1">
+                                        {(series.price !== undefined && series.price !== null) || (series.actual_price !== undefined && series.actual_price !== null) ? (
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                {series.actual_price && series.price && series.actual_price > series.price ? (
+                                                    <>
+                                                        <span className="text-[11px] text-slate-400 line-through font-semibold">
+                                                            {series.currency?.symbol || '₹'}{series.actual_price.toLocaleString()}
+                                                        </span>
+                                                        <span className="text-xs font-black text-slate-900">
+                                                            {series.currency?.symbol || '₹'}{series.price.toLocaleString()}
+                                                        </span>
+                                                        <Badge className="bg-emerald-600 text-white font-black text-[9px] px-1 py-0 border-none">
+                                                            {Math.round(((series.actual_price - series.price) / series.actual_price) * 100)}% OFF
+                                                        </Badge>
+                                                    </>
+                                                ) : (
+                                                    <Badge variant="outline" className={cn(
+                                                        "text-xs font-bold px-2.5 py-0.5 rounded-lg",
+                                                        isOrange
+                                                            ? "bg-saOrangeSubtle text-saOrangeDark border-saVividOrange/20"
+                                                            : "bg-saBlueSubtle text-saBlue border-saBlue/20"
+                                                    )}>
+                                                        {series.currency?.symbol || '₹'}{(series.price ?? series.actual_price)?.toLocaleString()}
+                                                    </Badge>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-200 text-xs font-semibold px-2.5 py-0.5 rounded-lg">
+                                                Free
+                                            </Badge>
+                                        )}
 
                                     {(isAdmin || isTeacher) && (
                                         <div onClick={(e) => e.stopPropagation()}>
@@ -720,7 +732,8 @@ export default function TestSeriesPage() {
                                 </div>
                             </CardContent>
                         </Card>
-                    ))}
+                    );
+                    })}
                 </div>
             ) : (
                 /* LIST VIEW */
@@ -754,7 +767,7 @@ export default function TestSeriesPage() {
                                     <TableCell>
                                         <Badge className={cn(
                                             "text-[10px] font-bold border-0",
-                                            series.is_published ? "bg-saVividOrange/15 text-saVividOrange" : "bg-slate-100 text-slate-600"
+                                            series.is_published ? "bg-saBlue/15 text-saBlue" : "bg-saVividOrange/15 text-saVividOrange"
                                         )}>
                                             {series.is_published ? "Published" : "Draft"}
                                         </Badge>

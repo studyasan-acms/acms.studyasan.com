@@ -682,7 +682,7 @@ export default function ActivityGroupsPage() {
                     <FolderOpen className="h-10 w-10 text-white/70" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-black/10"></div>
+                <div className="absolute inset-0 bg-white/5"></div>
                 <div className="absolute top-3 right-3 z-10 flex gap-1">
                   <Badge className={cn(
                     "text-[10px] font-bold border-0 shadow-sm",
