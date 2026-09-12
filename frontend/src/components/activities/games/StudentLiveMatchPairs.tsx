@@ -52,7 +52,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     useEffect(() => {
         if (!isMuted && status === 'IN_PROGRESS') {
-            playSound('bg-music-playful', { loop: true, volume: 0.15 });
+            playSound('bg-music-playful', { loop: true });
         } else {
             stopSound('bg-music-playful');
         }

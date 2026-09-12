@@ -35,7 +35,7 @@ export default function MatchPairsGame({ activity, attemptId, onComplete, onCanc
 
   useEffect(() => {
     if (!isMuted) {
-      playSound('bg-music-playful', { loop: true, volume: 0.15 });
+      playSound('bg-music-playful', { loop: true });
     } else {
       stopSound('bg-music-playful');
     }

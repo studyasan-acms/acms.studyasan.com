@@ -119,7 +119,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
 
     useEffect(() => {
         if (!isMuted) {
-            playSound('bg-music-zen', { loop: true, volume: 0.15 });
+            playSound('bg-music-zen', { loop: true });
         } else {
             stopSound('bg-music-zen');
         }

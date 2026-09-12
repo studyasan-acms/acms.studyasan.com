@@ -49,16 +49,16 @@ const SOUND_POOLS: Record<string, string[]> = {
   ],
 };
 
-// Gentle default master multipliers to ensure audio is soothing and never harsh
+// Gentle default master multipliers to ensure audio is soothing and clear
 const DEFAULT_VOLUME_MULTIPLIERS: Record<string, number> = {
-  correct: 0.32,
-  incorrect: 0.25,
-  click: 0.22,
-  'timer-tick': 0.20,
-  'game-over': 0.35,
-  'bg-music': 0.16,
-  'bg-music-zen': 0.15,
-  'bg-music-playful': 0.15,
+  correct: 0.35,
+  incorrect: 0.28,
+  click: 0.24,
+  'timer-tick': 0.22,
+  'game-over': 0.38,
+  'bg-music': 0.42,
+  'bg-music-zen': 0.40,
+  'bg-music-playful': 0.40,
 };
 
 // Track last-played index per sound key to avoid repeating the exact same file consecutively

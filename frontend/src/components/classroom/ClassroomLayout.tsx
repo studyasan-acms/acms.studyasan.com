@@ -26,6 +26,7 @@ import { ControlBar } from './ControlBar';
 import { Whiteboard } from './Whiteboard';
 import { ReactionOverlay } from './ReactionOverlay';
 import { RecordingControls } from './RecordingControls';
+import { useAudioOutput } from '@/hooks/useAudioOutput';
 import type { FloatingReaction } from './ReactionOverlay';
 import type { Participant, WhiteboardMessage, LocalUserState } from '@/types/videoRoom';
 
@@ -89,16 +90,53 @@ function isBotUser(p: Participant | { displayName?: string } | null | undefined)
     return name === 'recording bot' || name.includes('recording bot') || name.startsWith('[bot]');
 }
 
-function RemoteAudioPlayer({ stream }: { stream: MediaStream }) {
+function RemoteAudioPlayer({
+    stream,
+    isAudioClosed = false,
+    audioSinkId,
+}: {
+    stream: MediaStream;
+    isAudioClosed?: boolean;
+    audioSinkId?: string;
+}) {
     const audioRef = useRef<HTMLAudioElement>(null);
+
     useEffect(() => {
         const el = audioRef.current;
         if (!el) return;
         if (el.srcObject !== stream) {
             el.srcObject = stream;
         }
+        el.muted = isAudioClosed;
+        el.volume = isAudioClosed ? 0 : 1;
         el.play().catch(() => {});
-    }, [stream]);
+    }, [stream, isAudioClosed]);
+
+    useEffect(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        el.muted = isAudioClosed;
+        el.volume = isAudioClosed ? 0 : 1;
+    }, [isAudioClosed]);
+
+    useEffect(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        if (audioSinkId && audioSinkId !== 'default' && audioSinkId !== 'earpiece' && (el as any).setSinkId) {
+            (el as any).setSinkId(audioSinkId).catch(() => {});
+        } else if (audioSinkId === 'default' && (el as any).setSinkId) {
+            (el as any).setSinkId('').catch(() => {});
+        }
+    }, [audioSinkId]);
+
+    // Also disable audio tracks on the stream directly for 100% reliable muting
+    useEffect(() => {
+        if (stream) {
+            stream.getAudioTracks().forEach((track) => {
+                track.enabled = !isAudioClosed;
+            });
+        }
+    }, [stream, isAudioClosed]);
 
     return <audio ref={audioRef} autoPlay playsInline />;
 }
@@ -239,6 +277,20 @@ export function ClassroomLayout({
     // Whiteboard is open by default per wireframe design
     const [isWhiteboardActive, setIsWhiteboardActive] = useState(true);
     const [stageView, setStageView] = useState<'whiteboard' | 'screen'>('whiteboard');
+
+    // Audio output manager (speaker, earpiece, close sound)
+    const audioOutput = useAudioOutput();
+
+    // Sync all remote streams' audio tracks when sound is closed/opened
+    useEffect(() => {
+        remoteStreams.forEach((stream) => {
+            if (stream) {
+                stream.getAudioTracks().forEach((track) => {
+                    track.enabled = !audioOutput.isAudioClosed;
+                });
+            }
+        });
+    }, [remoteStreams, audioOutput.isAudioClosed]);
 
     // Real-time digital clock for header
     const [currentTime, setCurrentTime] = useState<string>('');
@@ -512,6 +564,8 @@ export function ClassroomLayout({
                                                 isLocal={localUserIsSharing}
                                                 isMain
                                                 isScreenShare
+                                                isAudioClosed={audioOutput.isAudioClosed}
+                                                audioSinkId={audioOutput.selectedDeviceId}
                                                 isTeacher={isTeacher}
                                                 className="w-full h-full"
                                             />
@@ -624,6 +678,8 @@ export function ClassroomLayout({
                                 stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                 isLocal={teacherParticipant.isLocal}
                                 isMain={false}
+                                isAudioClosed={audioOutput.isAudioClosed}
+                                audioSinkId={audioOutput.selectedDeviceId}
                                 isTeacher={isTeacher}
                                 onMuteParticipant={onMuteParticipant}
                                 onKickParticipant={onKickParticipant}
@@ -670,6 +726,8 @@ export function ClassroomLayout({
                                     participant={studentParticipants[0]}
                                     stream={getBestStreamForParticipant(studentParticipants[0], remoteStreams, localStream)}
                                     isLocal={studentParticipants[0].isLocal}
+                                    isAudioClosed={audioOutput.isAudioClosed}
+                                    audioSinkId={audioOutput.selectedDeviceId}
                                     isTeacher={isTeacher}
                                     onMuteParticipant={onMuteParticipant}
                                     onKickParticipant={onKickParticipant}
@@ -690,6 +748,8 @@ export function ClassroomLayout({
                                                 participant={participant}
                                                 stream={stream}
                                                 isLocal={participant.isLocal}
+                                                isAudioClosed={audioOutput.isAudioClosed}
+                                                audioSinkId={audioOutput.selectedDeviceId}
                                                 isTeacher={isTeacher}
                                                 onMuteParticipant={onMuteParticipant}
                                                 onKickParticipant={onKickParticipant}
@@ -729,6 +789,8 @@ export function ClassroomLayout({
                                         isLocal={localUserIsSharing}
                                         isMain
                                         isScreenShare
+                                        isAudioClosed={audioOutput.isAudioClosed}
+                                        audioSinkId={audioOutput.selectedDeviceId}
                                         isTeacher={isTeacher}
                                         className="w-full h-full"
                                     />
@@ -810,6 +872,8 @@ export function ClassroomLayout({
                                         participant={teacherParticipant}
                                         stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                         isLocal={teacherParticipant.isLocal}
+                                        isAudioClosed={audioOutput.isAudioClosed}
+                                        audioSinkId={audioOutput.selectedDeviceId}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
                                         onKickParticipant={onKickParticipant}
@@ -834,6 +898,8 @@ export function ClassroomLayout({
                                             participant={participant}
                                             stream={stream}
                                             isLocal={participant.isLocal}
+                                            isAudioClosed={audioOutput.isAudioClosed}
+                                            audioSinkId={audioOutput.selectedDeviceId}
                                             isTeacher={isTeacher}
                                             onMuteParticipant={onMuteParticipant}
                                             onKickParticipant={onKickParticipant}
@@ -854,6 +920,8 @@ export function ClassroomLayout({
                                         participant={teacherParticipant}
                                         stream={getBestStreamForParticipant(teacherParticipant, remoteStreams, localStream)}
                                         isLocal={teacherParticipant.isLocal}
+                                        isAudioClosed={audioOutput.isAudioClosed}
+                                        audioSinkId={audioOutput.selectedDeviceId}
                                         isTeacher={isTeacher}
                                         onMuteParticipant={onMuteParticipant}
                                         onKickParticipant={onKickParticipant}
@@ -884,6 +952,8 @@ export function ClassroomLayout({
                                             participant={participant}
                                             stream={stream}
                                             isLocal={participant.isLocal}
+                                            isAudioClosed={audioOutput.isAudioClosed}
+                                            audioSinkId={audioOutput.selectedDeviceId}
                                             isTeacher={isTeacher}
                                             onMuteParticipant={onMuteParticipant}
                                             onKickParticipant={onKickParticipant}
@@ -902,6 +972,15 @@ export function ClassroomLayout({
                     <ControlBar
                         isMuted={localUser.isMuted}
                         isVideoOff={localUser.isVideoOff}
+                        isAudioClosed={audioOutput.isAudioClosed}
+                        selectedAudioDeviceId={audioOutput.selectedDeviceId}
+                        audioDevices={audioOutput.audioDevices}
+                        audioOutputMode={audioOutput.currentMode}
+                        onToggleAudioClosed={audioOutput.toggleAudioClosed}
+                        onSelectAudioDevice={audioOutput.setAudioOutputDevice}
+                        onSwitchToSpeaker={audioOutput.switchToSpeaker}
+                        onSwitchToEarpiece={audioOutput.switchToEarpiece}
+                        onOpenSystemAudioPicker={audioOutput.openSystemAudioPicker}
                         isScreenSharing={isScreenSharing}
                         isWhiteboardActive={isWhiteboardActive}
                         isHandRaised={localUser.isHandRaised ?? false}
@@ -921,7 +1000,12 @@ export function ClassroomLayout({
                 {/* Hidden background audio elements to guarantee continuous audio from all remote participants */}
                 <div className="hidden pointer-events-none" aria-hidden="true">
                     {Array.from(remoteStreams.entries()).map(([id, stream]) => (
-                        <RemoteAudioPlayer key={String(id)} stream={stream} />
+                        <RemoteAudioPlayer
+                            key={String(id)}
+                            stream={stream}
+                            isAudioClosed={audioOutput.isAudioClosed}
+                            audioSinkId={audioOutput.selectedDeviceId}
+                        />
                     ))}
                 </div>
             </div>

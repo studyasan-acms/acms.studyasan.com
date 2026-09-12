@@ -18,6 +18,9 @@ interface VideoTileProps {
     showOverflow?: number;
     onClick?: () => void;
     className?: string;
+    // Audio output
+    isAudioClosed?: boolean;
+    audioSinkId?: string;
     // Teacher controls
     isTeacher?: boolean;
     onMuteParticipant?: (participantId: string | number) => void;
@@ -62,6 +65,8 @@ export function VideoTile({
     showOverflow,
     onClick,
     className = '',
+    isAudioClosed = false,
+    audioSinkId,
     isTeacher = false,
     onMuteParticipant,
     onKickParticipant,
@@ -84,6 +89,26 @@ export function VideoTile({
             video.srcObject = null;
         }
     }, [stream]);
+
+    // Apply audio sink ID if supported
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video || isLocal) return;
+
+        if (audioSinkId && audioSinkId !== 'default' && audioSinkId !== 'earpiece' && (video as any).setSinkId) {
+            (video as any).setSinkId(audioSinkId).catch(() => {});
+        } else if (audioSinkId === 'default' && (video as any).setSinkId) {
+            (video as any).setSinkId('').catch(() => {});
+        }
+    }, [audioSinkId, isLocal]);
+
+    // Ensure muted and volume state are strictly applied on DOM element
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+        video.muted = isLocal || isAudioClosed;
+        video.volume = (isLocal || isAudioClosed) ? 0 : 1;
+    }, [isLocal, isAudioClosed]);
 
     const videoTracks = stream?.getVideoTracks() ?? [];
     const hasVideoTrack = videoTracks.length > 0;
@@ -153,7 +178,8 @@ export function VideoTile({
                 ref={videoRef}
                 autoPlay
                 playsInline
-                muted={isLocal}
+                muted={isLocal || isAudioClosed}
+                data-is-local={isLocal ? 'true' : 'false'}
                 className={`w-full h-full block bg-slate-950 ${isScreen ? 'object-contain' : 'object-cover'} ${shouldMirror ? 'scale-x-[-1]' : ''} ${shouldShowVideo ? 'relative z-10' : 'absolute inset-0 opacity-0 pointer-events-none'}`}
             />
 

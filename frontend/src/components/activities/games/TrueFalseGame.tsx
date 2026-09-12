@@ -50,7 +50,7 @@ export default function TrueFalseGame({
   // Background music
   useEffect(() => {
     if (!isMuted) {
-      playSound('bg-music-playful', { loop: true, volume: 0.15 });
+      playSound('bg-music-playful', { loop: true });
     } else {
       stopSound('bg-music-playful');
     }

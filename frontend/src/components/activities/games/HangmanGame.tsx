@@ -42,7 +42,7 @@ export default function HangmanGame({ activity, attemptId, onComplete, onCancel 
 
   useEffect(() => {
     if (!isMuted) {
-      playSound('bg-music-playful', { loop: true, volume: 0.15 });
+      playSound('bg-music-playful', { loop: true });
     } else {
       stopSound('bg-music-playful');
     }
@@ -335,11 +335,11 @@ export default function HangmanGame({ activity, attemptId, onComplete, onCancel 
       <div className="flex-1 flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6 relative z-10 w-full max-w-6xl mx-auto overflow-y-auto">
         {/* Left Column: Gallows & Instructions */}
         <div className="flex flex-col gap-4 shrink-0 md:w-80 lg:w-96">
-          <Card className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 flex items-center justify-center shadow-xs min-h-[220px]">
+          <Card className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 flex items-center justify-center shadow-xs min-h-[220px] order-2 md:order-1">
             {renderHangman()}
           </Card>
 
-          <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <Card className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs order-1 md:order-2">
             <h3 className="text-xs font-black text-saBlue uppercase tracking-wider mb-1 flex items-center gap-1.5">
               <HelpCircle className="w-3.5 h-3.5" />
               <span>How To Play</span>
