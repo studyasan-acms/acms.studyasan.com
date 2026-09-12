@@ -4,19 +4,6 @@ Welcome to the **StudyAsan Academy & Classroom Management System (ACMS)** reposi
 
 ---
 
-## 🧭 Documentation Sitemap
-
-| Document | Description |
-| :--- | :--- |
-| **[01. Architecture & System Overview](file:///root/acms/docs/01_ARCHITECTURE_AND_SYSTEM_OVERVIEW.md)** | Full tech stack, database schema overview, core modules, RBAC, and repository structure. |
-| **[02. Janus WebRTC & Live Classroom Guide](file:///root/acms/docs/02_JANUS_WEBRTC_AND_CLASSROOM_GUIDE.md)** | Deep dive into Janus Media Server, VideoRoom SFU plugin, signaling, data channels, and whiteboard sync. |
-| **[03. Production Deployment Guide](file:///root/acms/docs/03_PRODUCTION_DEPLOYMENT_GUIDE.md)** | Step-by-step installation on Ubuntu, NGINX configuration, SSL certificates, and PM2 setup. |
-| **[04. Backups & Disaster Recovery Guide](file:///root/acms/docs/04_BACKUPS_AND_DISASTER_RECOVERY.md)** | Automated S3 database backups, manual dump/restore commands, and disaster recovery runbook. |
-| **[05. Cron Jobs & Scheduled Tasks](file:///root/acms/docs/05_CRON_JOBS_AND_AUTOMATED_TASKS.md)** | Complete schedule of automated background jobs (backups, retention, session scheduler, Janus cleanup). |
-| **[06. Environment Variables Reference](file:///root/acms/docs/06_ENVIRONMENT_VARIABLES_REFERENCE.md)** | Complete reference guide for all backend and frontend `.env` configuration keys. |
-
----
-
 ## ⚡ Quick Start for Developers
 
 ### Prerequisites
