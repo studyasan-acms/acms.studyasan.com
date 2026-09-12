@@ -15,7 +15,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "npm run seed",
-    "migrate:modules": "npx tsx src/scripts/migrate-legacy-modules.ts"
+    "migrate:modules": "npx tsx src/scripts/migrate-legacy-modules.ts",
+    "backup:run": "node --import tsx src/scripts/run-db-backup.ts"
   },
   "keywords": [],
   "author": "",
