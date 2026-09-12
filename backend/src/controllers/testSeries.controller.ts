@@ -24,7 +24,7 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
             req.query.limit as string || '12'
         );
 
-        const { search, is_published, status, sort } = req.query;
+        const { search, is_published, status, sort, teacher_id } = req.query;
         const userRole = req.user?.role;
         const userId = req.user?.id;
 
@@ -55,24 +55,25 @@ export const getAllTestSeries = async (req: AuthRequest, res: Response) => {
             if (userId) {
                 const teacher = await prisma.teacher.findUnique({
                     where: { user_id: userId },
-                    include: { role: true },
                 });
                 if (teacher) {
-                    const permissions = teacher.role?.permissions as any;
-                    const hasViewAllPermission = teacher.role?.is_active && permissions?.testSeries?.view === true;
-                    if (!hasViewAllPermission) {
-                        where.teacher_junctions = {
-                            some: {
-                                teacher_id: teacher.id,
-                            },
-                        };
-                    }
+                    where.teacher_junctions = {
+                        some: {
+                            teacher_id: teacher.id,
+                        },
+                    };
                 } else {
                     where.id = -1;
                 }
             } else {
                 where.id = -1;
             }
+        } else if (teacher_id) {
+            where.teacher_junctions = {
+                some: {
+                    teacher_id: parseInt(teacher_id as string),
+                },
+            };
         }
 
         // Status & Published filter (for Admin / Teacher)
@@ -371,6 +372,20 @@ export const createTestSeries = async (req: AuthRequest, res: Response) => {
                 currency: true,
             },
         });
+
+        if (req.user?.role === 'TEACHER') {
+            const teacher = await prisma.teacher.findUnique({
+                where: { user_id: userId },
+            });
+            if (teacher) {
+                await prisma.testSeriesTeacherJunction.create({
+                    data: {
+                        test_series_id: testSeries.id,
+                        teacher_id: teacher.id,
+                    },
+                });
+            }
+        }
 
         sendSuccess(res, testSeries, 'Test series created successfully', 201);
     } catch (error: any) {

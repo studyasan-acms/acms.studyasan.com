@@ -340,10 +340,20 @@ export const createTest = async (req: AuthRequest, res: Response) => {
     if (subject_id) {
       const subject = await prisma.subject.findUnique({
         where: { id: subject_id },
+        include: { teacher_subject_junctions: true },
       });
 
       if (!subject) {
         return sendError(res, 'Subject not found', 404);
+      }
+
+      if ((req as any).user?.role === 'TEACHER') {
+        const teacher = await prisma.teacher.findUnique({
+          where: { user_id: userId },
+        });
+        if (!teacher || !subject.teacher_subject_junctions.some((j) => j.teacher_id === teacher.id)) {
+          return sendError(res, 'You are not assigned to this subject', 403);
+        }
       }
     }
 
@@ -351,10 +361,20 @@ export const createTest = async (req: AuthRequest, res: Response) => {
     if (test_series_id) {
       const testSeries = await prisma.testSeries.findUnique({
         where: { id: test_series_id },
+        include: { teacher_junctions: true },
       });
 
       if (!testSeries) {
         return sendError(res, 'Test series not found', 404);
+      }
+
+      if ((req as any).user?.role === 'TEACHER') {
+        const teacher = await prisma.teacher.findUnique({
+          where: { user_id: userId },
+        });
+        if (!teacher || !testSeries.teacher_junctions.some((j) => j.teacher_id === teacher.id)) {
+          return sendError(res, 'You are not assigned to this test series', 403);
+        }
       }
     }
 
@@ -841,7 +861,7 @@ export const deleteQuestion = async (req: AuthRequest, res: Response) => {
 // Get all tests (with filters)
 export const getTests = async (req: AuthRequest, res: Response) => {
   try {
-    const { subject_id, is_published, test_type } = req.query;
+    const { subject_id, test_series_id, is_published, test_type } = req.query;
     const userId = (req as any).user!.id;
     const userRole = (req as any).user!.role;
 
@@ -883,6 +903,13 @@ export const getTests = async (req: AuthRequest, res: Response) => {
           const requestedSubjectId = parseInt(subject_id as string);
           if (enrolledSubjectIds.includes(requestedSubjectId)) {
             where.subject_id = requestedSubjectId;
+          } else {
+            return sendSuccess(res, [], 'Tests fetched successfully');
+          }
+        } else if (test_series_id) {
+          const requestedTestSeriesId = parseInt(test_series_id as string);
+          if (enrolledTestSeriesIds.includes(requestedTestSeriesId)) {
+            where.test_series_id = requestedTestSeriesId;
           } else {
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
@@ -928,6 +955,13 @@ export const getTests = async (req: AuthRequest, res: Response) => {
           } else {
             return sendSuccess(res, [], 'Tests fetched successfully');
           }
+        } else if (test_series_id) {
+          const requestedTestSeriesId = parseInt(test_series_id as string);
+          if (assignedTestSeriesIds.includes(requestedTestSeriesId)) {
+            where.test_series_id = requestedTestSeriesId;
+          } else {
+            return sendSuccess(res, [], 'Tests fetched successfully');
+          }
         } else {
           const accessFilters: any[] = [];
           if (assignedSubjectIds.length > 0) {
@@ -949,6 +983,9 @@ export const getTests = async (req: AuthRequest, res: Response) => {
     } else {
       if (subject_id) {
         where.subject_id = parseInt(subject_id as string);
+      }
+      if (test_series_id) {
+        where.test_series_id = parseInt(test_series_id as string);
       }
     }
 

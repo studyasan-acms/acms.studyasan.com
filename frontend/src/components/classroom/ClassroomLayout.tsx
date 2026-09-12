@@ -651,6 +651,8 @@ export function ClassroomLayout({
                         <ControlBar
                             isMuted={localUser.isMuted}
                             isVideoOff={localUser.isVideoOff}
+                            isAudioClosed={audioOutput.isAudioClosed}
+                            onToggleAudioClosed={audioOutput.toggleAudioClosed}
                             isScreenSharing={isScreenSharing}
                             isWhiteboardActive={isWhiteboardActive}
                             isHandRaised={localUser.isHandRaised ?? false}
@@ -973,14 +975,7 @@ export function ClassroomLayout({
                         isMuted={localUser.isMuted}
                         isVideoOff={localUser.isVideoOff}
                         isAudioClosed={audioOutput.isAudioClosed}
-                        selectedAudioDeviceId={audioOutput.selectedDeviceId}
-                        audioDevices={audioOutput.audioDevices}
-                        audioOutputMode={audioOutput.currentMode}
                         onToggleAudioClosed={audioOutput.toggleAudioClosed}
-                        onSelectAudioDevice={audioOutput.setAudioOutputDevice}
-                        onSwitchToSpeaker={audioOutput.switchToSpeaker}
-                        onSwitchToEarpiece={audioOutput.switchToEarpiece}
-                        onOpenSystemAudioPicker={audioOutput.openSystemAudioPicker}
                         isScreenSharing={isScreenSharing}
                         isWhiteboardActive={isWhiteboardActive}
                         isHandRaised={localUser.isHandRaised ?? false}
