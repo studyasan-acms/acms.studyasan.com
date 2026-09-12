@@ -26,6 +26,7 @@ const routeToResource: Record<string, string> = {
     '/tests': 'tests',
     '/questions': 'tests', // Questions belong to tests
     '/teacher-roles': 'roles',
+    '/holidays': 'holidays',
 };
 
 // Permission action mapping - maps HTTP methods to permission actions

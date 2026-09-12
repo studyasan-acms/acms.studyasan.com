@@ -124,13 +124,14 @@ export const getAllHolidays = async (req: Request, res: Response) => {
  */
 export const getUpcomingHolidays = async (_req: Request, res: Response) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    // Start of current UTC day so that ongoing holidays remain active during the day and disappear the moment the day completes
+    const startOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
 
     const holidays = await prisma.holiday.findMany({
       where: {
         is_active: true,
-        end_date: { gte: today },
+        end_date: { gte: startOfToday },
       },
       include: {
         creator: {

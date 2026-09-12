@@ -36,12 +36,18 @@ export default (io: Server, socket: Socket) => {
 
             if (validStudentId > 0) {
                 try {
-                    const student = await prisma.student.findUnique({
-                        where: { id: validStudentId },
+                    const student = await prisma.student.findFirst({
+                        where: {
+                            OR: [
+                                { id: validStudentId },
+                                { user_id: validStudentId }
+                            ]
+                        },
                         include: { user: { select: { name: true } } }
                     });
 
                     if (student) {
+                        validStudentId = student.id;
                         displayName = student.user.name;
                     }
                 } catch (e) {
@@ -55,20 +61,44 @@ export default (io: Server, socket: Socket) => {
             }
 
             if (displayName) {
-                console.log(`Emitting student_joined for ${displayName}`);
+                console.log(`Emitting student_joined for ${displayName} (ID: ${validStudentId})`);
                 io.to(roomId).emit('student_joined', {
                     student_id: validStudentId,
                     name: displayName
                 });
             } else if (guest_name) {
-                // Even if it's just a guest name
                 io.to(roomId).emit('student_joined', {
                     student_id: 0,
                     name: guest_name
                 });
             }
 
+            // Send current session state and leaderboard to the joining socket
             socket.emit('joined_session', { session });
+
+            try {
+                const initialLeaderboard = await prisma.activityAttempt.findMany({
+                    where: { quiz_session_id: session.id },
+                    select: {
+                        student_id: true,
+                        score: true,
+                        student: { select: { id: true, user: { select: { name: true } } } },
+                    },
+                    orderBy: { score: 'desc' },
+                    take: 50,
+                });
+
+                if (initialLeaderboard.length > 0) {
+                    const formatted = initialLeaderboard.map((l) => ({
+                        student_id: l.student_id,
+                        name: l.student?.user?.name || `Student ${l.student_id}`,
+                        score: l.score,
+                    }));
+                    socket.emit('leaderboard_update', formatted);
+                }
+            } catch (err) {
+                console.error('Error fetching initial leaderboard for join_session:', err);
+            }
         } catch (error) {
             console.error('Join session error:', error);
             socket.emit('error', 'Failed to join session');
@@ -106,7 +136,7 @@ export default (io: Server, socket: Socket) => {
             });
 
             if (attempt && attempt.quiz_session_id) {
-                const sId = attempt.student?.id || Number(student_id) || 0;
+                const sId = attempt.student_id || attempt.student?.id || Number(student_id) || 0;
                 const sName = attempt.student?.user?.name || `Student ${sId}`;
 
                 // 1. Broadcast student attempt response to the room (teacher gets real-time status: Correct / Incorrect)
@@ -128,10 +158,10 @@ export default (io: Server, socket: Socket) => {
                     select: {
                         student_id: true,
                         score: true,
-                        student: { select: { user: { select: { name: true } } } },
+                        student: { select: { id: true, user: { select: { name: true } } } },
                     },
                     orderBy: { score: 'desc' },
-                    take: 20,
+                    take: 50,
                 });
 
                 const formattedLeaderboard = leaderboard.map((l) => ({

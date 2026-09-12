@@ -38,6 +38,7 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
     const [studentResponses, setStudentResponses] = useState<Record<number, StudentResponse>>({});
     const [copied, setCopied] = useState(false);
     const [mobileTab, setMobileTab] = useState<'question' | 'progress'>('question');
+    const [sidebarTab, setSidebarTab] = useState<'leaderboard' | 'responses'>('leaderboard');
 
     const sessionInitialized = useRef(false);
 
@@ -93,7 +94,11 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
 
             newSocket.on('student_joined', (student: Student) => {
                 setStudents((prev) => {
-                    if (prev.find(s => s.student_id === student.student_id)) return prev;
+                    const existing = prev.find(s => s.student_id === student.student_id && s.student_id !== 0);
+                    if (existing) {
+                        return prev.map(s => s.student_id === student.student_id ? { ...s, name: student.name } : s);
+                    }
+                    if (prev.find(s => s.name === student.name)) return prev;
                     return [...prev, student];
                 });
                 toast.success(`${student.name} joined!`);
@@ -112,16 +117,40 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
 
             newSocket.on('leaderboard_update', (data: any[]) => {
                 setLeaderboard(data);
+                // Ensure all leaderboard students exist in students state
+                setStudents((prev) => {
+                    let updated = [...prev];
+                    for (const entry of data) {
+                        if (entry.student_id) {
+                            const exists = updated.find(s => s.student_id === entry.student_id);
+                            if (!exists) {
+                                updated.push({ student_id: entry.student_id, name: entry.name });
+                            } else if (exists.name.startsWith('Guest ') && !entry.name.startsWith('Guest ')) {
+                                exists.name = entry.name;
+                            }
+                        }
+                    }
+                    return updated;
+                });
             });
 
             // Live updates for student responses (both correct and incorrect)
             newSocket.on('student_response_update', (data: StudentResponse) => {
+                setStudents((prev) => {
+                    const exists = prev.find(s => s.student_id === data.student_id);
+                    if (!exists) {
+                        return [...prev, { student_id: data.student_id, name: data.student_name }];
+                    } else if (exists.name.startsWith('Guest ') && !data.student_name.startsWith('Guest ')) {
+                        return prev.map(s => s.student_id === data.student_id ? { ...s, name: data.student_name } : s);
+                    }
+                    return prev;
+                });
                 setStudentResponses((prev) => ({
                     ...prev,
                     [data.student_id]: data
                 }));
                 if (data.is_correct) {
-                    toast.success(`${data.student_name} answered correctly! (+${data.score_added})`);
+                    toast.success(`${data.student_name} answered correctly! (+${data.score_added || 10})`);
                 } else {
                     toast.error(`${data.student_name} answered incorrectly.`);
                 }
@@ -543,24 +572,39 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                                             <h3 className="text-xl sm:text-2xl font-black text-slate-800 text-center mb-6 leading-relaxed">
                                                 {content?.question || "Question content loading..."}
                                             </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full max-w-2xl">
                                                 {(content?.options || []).map((opt: string, idx: number) => {
                                                     const isCorrect = idx === Number(content?.correctAnswer);
+                                                    const optionMedia = content?.optionsMedia?.[idx];
                                                     return (
                                                         <div 
                                                             key={idx} 
-                                                            className={`p-4 rounded-xl border-2 flex items-center justify-between text-sm font-bold ${
+                                                            className={`p-3.5 sm:p-4 rounded-2xl border-2 flex flex-col justify-between text-sm font-bold transition-all shadow-2xs ${
                                                                 isCorrect 
-                                                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-800' 
+                                                                    ? 'bg-emerald-50 border-emerald-400 text-emerald-900' 
                                                                     : 'bg-slate-50 border-slate-200 text-slate-700'
                                                             }`}
                                                         >
-                                                            <span>{String.fromCharCode(65 + idx)}. {opt}</span>
-                                                            {isCorrect && (
-                                                                <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded uppercase tracking-wider">
-                                                                    Correct
-                                                                </span>
+                                                            {optionMedia && (
+                                                                <div className="w-full aspect-video max-h-[140px] overflow-hidden mb-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-center">
+                                                                    <img src={optionMedia} alt={`Option ${String.fromCharCode(65 + idx)}`} className="w-full h-full object-contain" />
+                                                                </div>
                                                             )}
+                                                            <div className="flex items-center justify-between w-full gap-2">
+                                                                <div className="flex items-center gap-2 min-w-0">
+                                                                    <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-black text-xs shrink-0 ${
+                                                                        isCorrect ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                                                                    }`}>
+                                                                        {String.fromCharCode(65 + idx)}
+                                                                    </span>
+                                                                    {opt && <span className="truncate">{opt}</span>}
+                                                                </div>
+                                                                {isCorrect && (
+                                                                    <span className="text-[10px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 flex items-center gap-1">
+                                                                        ✓ Correct
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     );
                                                 })}
@@ -597,18 +641,45 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                             <div className={`w-full lg:w-96 shrink-0 ${mobileTab === 'progress' ? 'flex flex-col' : 'hidden lg:flex lg:flex-col'}`}>
                                 <Card className="w-full bg-white border border-slate-200 rounded-3xl p-5 flex flex-col shadow-sm">
                                     
+                                    {/* Sidebar Tab Selector */}
+                                    <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-4 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => setSidebarTab('leaderboard')}
+                                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                                sidebarTab === 'leaderboard'
+                                                    ? 'bg-white text-saBlue shadow-xs font-black'
+                                                    : 'text-slate-500 hover:text-slate-800'
+                                            }`}
+                                        >
+                                            <Trophy className="w-3.5 h-3.5 text-saVividOrange" />
+                                            <span>Leaderboard</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSidebarTab('responses')}
+                                            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                                                sidebarTab === 'responses'
+                                                    ? 'bg-white text-saBlue shadow-xs font-black'
+                                                    : 'text-slate-500 hover:text-slate-800'
+                                            }`}
+                                        >
+                                            <Users className="w-3.5 h-3.5 text-saBlue" />
+                                            <span>Q{currentQuestionIndex + 1} Answers</span>
+                                        </button>
+                                    </div>
+
                                     {/* Summary Attempt Stats */}
-                                    <div className="border-b border-slate-100 pb-4 mb-4 shrink-0">
+                                    <div className="border-b border-slate-100 pb-3.5 mb-3.5 shrink-0">
                                         <div className="flex items-center justify-between mb-2">
-                                            <h3 className="font-black text-sm text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                                <Users className="w-4 h-4 text-saBlue" />
-                                                Student Progress
-                                            </h3>
-                                            <span className="text-xs font-bold text-slate-500">
-                                                {responseList.length}/{students.length} Answered
+                                            <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                                                {responseList.length} of {students.length} Answered
+                                            </span>
+                                            <span className="text-[11px] font-bold text-slate-400 font-mono">
+                                                {students.length > 0 ? Math.round((responseList.length / students.length) * 100) : 0}%
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
                                                 <CheckCircle2 className="w-3 h-3" /> {correctCount} Correct
                                             </span>
@@ -622,54 +693,85 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                                     </div>
 
                                     {/* Student List with Real-time Status Badges */}
-                                    <div className="space-y-2 pr-1 max-h-[500px] overflow-y-auto">
+                                    <div className="space-y-2 pr-1 max-h-[480px] overflow-y-auto">
                                         {students.length === 0 ? (
-                                            <div className="text-slate-400 text-center py-8 text-xs italic">No students in room</div>
+                                            <div className="text-slate-400 text-center py-8 text-xs italic">No students connected</div>
                                         ) : (
-                                            students.map((student) => {
-                                                const response = studentResponses[student.student_id];
-                                                const boardEntry = leaderboard.find(l => l.student_id === student.student_id);
-                                                const totalScore = boardEntry?.score ?? 0;
+                                            (() => {
+                                                const sorted = [...students].sort((a, b) => {
+                                                    const aScore = leaderboard.find(l => l.student_id === a.student_id)?.score ?? 0;
+                                                    const bScore = leaderboard.find(l => l.student_id === b.student_id)?.score ?? 0;
+                                                    return bScore - aScore;
+                                                });
 
-                                                return (
-                                                    <div 
-                                                        key={student.student_id} 
-                                                        className="bg-slate-50 border border-slate-200/80 p-3 rounded-2xl flex items-center justify-between"
-                                                    >
-                                                        <div className="flex items-center gap-2.5 min-w-0">
-                                                            <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${getAvatarGradient(student.name)} flex items-center justify-center font-bold text-white text-xs shrink-0`}>
-                                                                {student.name[0]}
-                                                            </div>
-                                                            <div className="truncate">
-                                                                <div className="font-bold text-slate-800 text-xs truncate">{student.name}</div>
-                                                                <div className="text-[10px] text-slate-400 font-mono">{totalScore} pts</div>
-                                                            </div>
-                                                        </div>
+                                                return sorted.map((student, idx) => {
+                                                    const response = studentResponses[student.student_id];
+                                                    const boardEntry = leaderboard.find(l => l.student_id === student.student_id);
+                                                    const totalScore = boardEntry?.score ?? 0;
+                                                    const rank = idx + 1;
 
-                                                        {/* Real-time Status Indicator */}
-                                                        <div>
-                                                            {response ? (
-                                                                response.is_correct ? (
-                                                                    <span className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                                                        +{response.score_added}
-                                                                    </span>
+                                                    return (
+                                                        <div 
+                                                            key={student.student_id || idx} 
+                                                            className={`p-3 rounded-2xl flex items-center justify-between border transition-all ${
+                                                                response 
+                                                                    ? response.is_correct 
+                                                                        ? 'bg-emerald-50/50 border-emerald-200' 
+                                                                        : 'bg-rose-50/50 border-rose-200'
+                                                                    : 'bg-slate-50 border-slate-200/80'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5 min-w-0">
+                                                                <div className={`w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                                                    rank === 1 
+                                                                        ? 'bg-amber-400 text-amber-900 shadow-xs' 
+                                                                        : rank === 2 
+                                                                        ? 'bg-slate-300 text-slate-800' 
+                                                                        : rank === 3 
+                                                                        ? 'bg-amber-600/30 text-amber-900' 
+                                                                        : 'bg-slate-200 text-slate-600'
+                                                                }`}>
+                                                                    #{rank}
+                                                                </div>
+                                                                <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${getAvatarGradient(student.name)} flex items-center justify-center font-bold text-white text-xs shrink-0`}>
+                                                                    {student.name[0]}
+                                                                </div>
+                                                                <div className="truncate">
+                                                                    <div className="font-bold text-slate-800 text-xs truncate">{student.name}</div>
+                                                                    <div className="text-[10px] text-slate-500 font-mono font-bold flex items-center gap-1.5">
+                                                                        <span className="text-saBlue">{totalScore} EXP</span>
+                                                                        {response?.time_taken !== undefined && response.time_taken > 0 && (
+                                                                            <span className="text-slate-400">⏱ {response.time_taken}s</span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Real-time Status Indicator Badge */}
+                                                            <div className="shrink-0 pl-1">
+                                                                {response ? (
+                                                                    response.is_correct ? (
+                                                                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs animate-in zoom-in-90">
+                                                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                                            <span>+{response.score_added || 10}</span>
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1 text-[11px] font-black px-2.5 py-1 rounded-xl bg-rose-100 text-rose-800 border border-rose-300 shadow-xs animate-in zoom-in-90">
+                                                                            <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                                                                            <span>Wrong</span>
+                                                                        </span>
+                                                                    )
                                                                 ) : (
-                                                                    <span className="inline-flex items-center gap-1 text-[11px] font-black px-2 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
-                                                                        <XCircle className="w-3.5 h-3.5" />
-                                                                        Incorrect
+                                                                    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-xl bg-white border border-slate-200 text-slate-400 animate-pulse">
+                                                                        <Clock className="w-3 h-3 text-slate-400" />
+                                                                        <span>Thinking</span>
                                                                     </span>
-                                                                )
-                                                            ) : (
-                                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg bg-white border border-slate-200 text-slate-400 animate-pulse">
-                                                                    <Clock className="w-3 h-3" />
-                                                                    Thinking
-                                                                </span>
-                                                            )}
+                                                                )}
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                );
-                                            })
+                                                    );
+                                                });
+                                            })()
                                         )}
                                     </div>
                                 </Card>

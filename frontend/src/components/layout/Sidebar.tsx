@@ -233,6 +233,7 @@ const navItems: NavItem[] = [
     href: "/dashboard/admin/holidays",
     icon: CalendarDays,
     roles: ["ADMIN"],
+    permission: { resource: "holidays", action: "view" },
     group: "System",
   },
 ];

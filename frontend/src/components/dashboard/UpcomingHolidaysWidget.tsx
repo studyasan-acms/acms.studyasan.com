@@ -39,8 +39,15 @@ const TYPE_CONFIG: Record<HolidayType, { label: string; badgeClass: string; bgCl
 };
 
 const formatHolidayDate = (startDateStr: string, endDateStr: string) => {
-    const s = new Date(startDateStr);
-    const e = new Date(endDateStr);
+    const [sYear, sMonth, sDay] = startDateStr.includes('T') 
+        ? startDateStr.split('T')[0].split('-').map(Number)
+        : startDateStr.split('-').map(Number);
+    const s = new Date(sYear, sMonth - 1, sDay);
+
+    const [eYear, eMonth, eDay] = endDateStr.includes('T') 
+        ? endDateStr.split('T')[0].split('-').map(Number)
+        : endDateStr.split('-').map(Number);
+    const e = new Date(eYear, eMonth - 1, eDay);
     
     // Format options
     const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
@@ -61,11 +68,15 @@ const getRelativeDaysLabel = (startDateStr: string, endDateStr: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    const start = new Date(startDateStr);
-    start.setHours(0, 0, 0, 0);
-    
-    const end = new Date(endDateStr);
-    end.setHours(0, 0, 0, 0);
+    const [sYear, sMonth, sDay] = startDateStr.includes('T') 
+        ? startDateStr.split('T')[0].split('-').map(Number)
+        : startDateStr.split('-').map(Number);
+    const start = new Date(sYear, sMonth - 1, sDay, 0, 0, 0, 0);
+
+    const [eYear, eMonth, eDay] = endDateStr.includes('T') 
+        ? endDateStr.split('T')[0].split('-').map(Number)
+        : endDateStr.split('-').map(Number);
+    const end = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
     
     if (today >= start && today <= end) {
         return { label: 'Ongoing Today', urgent: true, isOngoing: true };
@@ -91,7 +102,22 @@ export default function UpcomingHolidaysWidget() {
     const loadUpcomingHolidays = async () => {
         try {
             const res = await holidayService.getUpcoming();
-            setHolidays(res.data || []);
+            const list: Holiday[] = res.data || [];
+            
+            // Automatically filter out any holidays whose end_date has passed (date completed)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const activeUpcoming = list.filter((h) => {
+                if (!h.end_date) return false;
+                const [eYear, eMonth, eDay] = h.end_date.includes('T')
+                    ? h.end_date.split('T')[0].split('-').map(Number)
+                    : h.end_date.split('-').map(Number);
+                const holidayEnd = new Date(eYear, eMonth - 1, eDay, 23, 59, 59, 999);
+                return holidayEnd.getTime() >= today.getTime();
+            });
+
+            setHolidays(activeUpcoming);
         } catch (error) {
             console.error('Failed to load upcoming holidays:', error);
         } finally {

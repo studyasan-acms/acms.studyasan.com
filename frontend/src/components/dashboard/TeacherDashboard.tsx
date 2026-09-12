@@ -7,6 +7,7 @@ import { StatCard } from '@/components/analytics/StatCard';
 import { AnalyticsChart } from '@/components/analytics/AnalyticsChart';
 import QuickActions from '@/components/dashboard/QuickActions';
 import LiveClassAttendanceWidget from '@/components/dashboard/LiveClassAttendanceWidget';
+import UpcomingHolidaysWidget from '@/components/dashboard/UpcomingHolidaysWidget';
 import {
     Users,
     BookOpen,
@@ -246,6 +247,9 @@ export default function TeacherDashboard() {
 
             {/* Live Class Attendance Banner */}
             <LiveClassAttendanceWidget isStudent={false} />
+
+            {/* Upcoming Holidays Widget */}
+            <UpcomingHolidaysWidget />
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
                     <h2 className="text-lg font-bold text-slate-800">Classroom Overview</h2>

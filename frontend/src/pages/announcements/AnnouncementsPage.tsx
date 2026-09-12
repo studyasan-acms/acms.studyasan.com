@@ -841,174 +841,202 @@ export default function AnnouncementsPage() {
           </div>
         </div>
       ) : (
-        /* CARD VIEW */
-        <div className="space-y-3 sm:space-y-4">
+        /* CARD GRID VIEW */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {paginatedAnnouncements.map((a) => {
             const config = getAnnouncementTypeConfig(a.type);
             const Icon = config.icon;
             const dates = formatDate(a.created_at);
             const isExpanded = expandedCards[a.id];
-            const isLongText = a.content.length > 220;
+            const isLongText = a.content.length > 180;
 
             return (
               <Card
                 key={a.id}
                 className={cn(
-                  'bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden border-l-4',
+                  'bg-white rounded-2xl sm:rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition-all overflow-hidden border-l-4 flex flex-col justify-between group',
                   config.borderLeftClass
                 )}
               >
-                <CardHeader className="py-3 sm:py-4 px-4 sm:px-6 bg-slate-50/40 border-b border-slate-100 flex flex-col gap-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {/* Type Badge */}
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border',
-                          config.badgeClass
-                        )}
-                      >
-                        <Icon className="w-3.5 h-3.5 shrink-0" />
-                        <span>{config.label}</span>
-                      </span>
-
-                      {/* Time */}
-                      <span className="text-[11px] text-slate-400 flex items-center gap-1 whitespace-nowrap">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        <span>{dates.relative || dates.full}</span>
-                      </span>
-                    </div>
-
-                    {/* Management actions */}
-                    {canManage && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenEdit(a)}
-                          className="h-8 w-8 p-0 rounded-xl text-slate-500 hover:text-saBlue hover:bg-saBlue/10"
-                          title="Edit announcement"
+                <div>
+                  <CardHeader className="py-3 sm:py-4 px-4 sm:px-5 bg-slate-50/50 border-b border-slate-100 flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {/* Type Badge */}
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border',
+                            config.badgeClass
+                          )}
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteClick(a)}
-                          className="h-8 w-8 p-0 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50"
-                          title="Delete announcement"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
+                          <Icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{config.label}</span>
+                        </span>
 
-                  {/* Title */}
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug break-words">
-                    {a.title}
-                  </h2>
-                </CardHeader>
-
-                <CardContent className="p-4 sm:p-6 space-y-4">
-                  {a.image_url && (
-                    <div
-                      onClick={() => setViewingAnnouncement(a)}
-                      className="rounded-2xl overflow-hidden border border-slate-200/80 bg-slate-50 cursor-pointer group/img max-h-72 flex items-center justify-center shadow-2xs hover:border-saBlue/40 transition-all"
-                    >
-                      <img
-                        src={a.image_url}
-                        alt={a.title}
-                        className="w-full h-full max-h-72 object-cover transition-transform duration-300 group-hover/img:scale-[1.01]"
-                      />
-                    </div>
-                  )}
-
-                  {/* Content with expand/collapse */}
-                  <div>
-                    <p
-                      className={cn(
-                        'text-slate-700 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words',
-                        !isExpanded && isLongText ? 'line-clamp-3' : ''
-                      )}
-                    >
-                      {a.content}
-                    </p>
-
-                    {isLongText && (
-                      <button
-                        onClick={() => toggleExpand(a.id)}
-                        className="text-xs font-bold text-saBlue hover:text-saBlueDark mt-2 inline-flex items-center gap-1 transition-colors"
-                      >
-                        {isExpanded ? (
-                          <>
-                            Show Less <ChevronUp className="w-3.5 h-3.5" />
-                          </>
-                        ) : (
-                          <>
-                            Read Full Announcement <ChevronDown className="w-3.5 h-3.5" />
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Author & Targeting Badges - only for managers */}
-                  {canManage && (
-                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                      {/* Author */}
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
-                          {(a.creator?.name || 'Admin').charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-semibold text-slate-700 text-xs">
-                          Posted by {a.creator?.name || 'Administrator'}
+                        {/* Time */}
+                        <span className="text-[11px] text-slate-400 flex items-center gap-1 whitespace-nowrap">
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          <span>{dates.relative || dates.full}</span>
                         </span>
                       </div>
 
+                      {/* Management actions */}
+                      {canManage && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenEdit(a)}
+                            className="h-7 w-7 p-0 rounded-lg text-slate-500 hover:text-saBlue hover:bg-saBlue/10"
+                            title="Edit announcement"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(a)}
+                            className="h-7 w-7 p-0 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            title="Delete announcement"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h2
+                      onClick={() => setViewingAnnouncement(a)}
+                      className="text-base font-bold text-slate-900 tracking-tight leading-snug break-words cursor-pointer hover:text-saBlue transition-colors line-clamp-2"
+                    >
+                      {a.title}
+                    </h2>
+                  </CardHeader>
+
+                  <CardContent className="p-4 sm:p-5 space-y-3">
+                    {a.image_url && (
+                      <div
+                        onClick={() => setViewingAnnouncement(a)}
+                        className="rounded-xl overflow-hidden border border-slate-200/80 bg-slate-50 cursor-pointer group/img aspect-video max-h-48 w-full flex items-center justify-center shadow-2xs hover:border-saBlue/40 transition-all"
+                      >
+                        <img
+                          src={a.image_url}
+                          alt={a.title}
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+                        />
+                      </div>
+                    )}
+
+                    {/* Content with expand/collapse */}
+                    <div>
+                      <p
+                        className={cn(
+                          'text-slate-600 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words',
+                          !isExpanded && isLongText ? 'line-clamp-3' : ''
+                        )}
+                      >
+                        {a.content}
+                      </p>
+
+                      {isLongText && (
+                        <button
+                          onClick={() => toggleExpand(a.id)}
+                          className="text-xs font-bold text-saBlue hover:text-saBlueDark mt-1.5 inline-flex items-center gap-1 transition-colors"
+                        >
+                          {isExpanded ? (
+                            <>
+                              Show Less <ChevronUp className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              Read More <ChevronDown className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </CardContent>
+                </div>
+
+                {/* Footer: Targeting & Author (if canManage) or View Button */}
+                <div className="px-4 sm:px-5 pb-4 pt-3 mt-auto border-t border-slate-100 flex flex-col gap-2 bg-slate-50/30">
+                  {canManage ? (
+                    <div className="flex flex-col gap-1.5 text-xs text-slate-500">
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Author */}
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[9px] shrink-0">
+                            {(a.creator?.name || 'A').charAt(0).toUpperCase()}
+                          </div>
+                          <span className="font-semibold text-slate-700 text-xs truncate">
+                            {a.creator?.name || 'Admin'}
+                          </span>
+                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setViewingAnnouncement(a)}
+                          className="h-6 text-[11px] font-bold text-saBlue hover:bg-saBlue/10 rounded-md gap-1 px-2 shrink-0"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>View</span>
+                        </Button>
+                      </div>
+
                       {/* Target Audience Badges */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                      <div className="flex flex-wrap items-center gap-1 text-[10px]">
                         {a.target_roles && a.target_roles.length > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium border border-slate-200">
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-medium border border-slate-200">
                             <Users className="w-3 h-3 text-slate-400" />
                             {a.target_roles.join(', ')}
                           </span>
                         )}
-
                         {a.target_boards && a.target_boards.length > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium border border-blue-100">
+                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded font-medium border border-blue-100">
                             <Layers className="w-3 h-3 text-blue-400" />
                             {a.target_boards.map((id) => boards.find((b) => b.id === id)?.name || id).join(', ')}
                           </span>
                         )}
-
                         {a.target_classes && a.target_classes.length > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-medium border border-emerald-100">
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded font-medium border border-emerald-100">
                             <GraduationCap className="w-3 h-3 text-emerald-400" />
                             {a.target_classes.map((id) => classes.find((c) => c.id === id)?.name || id).join(', ')}
                           </span>
                         )}
-
                         {a.target_subjects && a.target_subjects.length > 0 && (
-                          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md font-medium border border-purple-100">
+                          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded font-medium border border-purple-100">
                             <BookOpen className="w-3 h-3 text-purple-400" />
                             {a.target_subjects.map((id) => subjects.find((s) => s.id === id)?.name || id).join(', ')}
                           </span>
                         )}
-
                         {!a.target_roles?.length &&
                           !a.target_boards?.length &&
                           !a.target_classes?.length &&
                           !a.target_subjects?.length &&
                           !a.target_groups?.length && (
-                            <span className="text-slate-400 text-[11px] italic">
+                            <span className="text-slate-400 italic">
                               Visible to Everyone
                             </span>
                           )}
                       </div>
                     </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400">{dates.full}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setViewingAnnouncement(a)}
+                        className="h-7 text-xs font-bold text-saBlue hover:bg-saBlue/10 rounded-lg gap-1 px-2.5"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View</span>
+                      </Button>
+                    </div>
                   )}
-                </CardContent>
+                </div>
               </Card>
             );
           })}

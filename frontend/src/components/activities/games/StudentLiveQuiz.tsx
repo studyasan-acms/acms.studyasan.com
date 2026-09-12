@@ -51,16 +51,84 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
         }
     }, [isMuted]);
 
+    const getStudentInfo = () => {
+        let studentId = 0;
+        let studentName = '';
+
+        const rawSid = localStorage.getItem('student_id');
+        if (rawSid) studentId = parseInt(rawSid, 10);
+
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                if (!studentId) {
+                    studentId = user.student?.id || user.student_id || user.id || 0;
+                }
+                if (!studentName) {
+                    studentName = user.name || user.email || '';
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing user from local storage', e);
+        }
+
+        if (!studentName) {
+            studentName = `Student ${studentId || Math.floor(Math.random() * 1000)}`;
+        }
+        return { studentId, studentName };
+    };
+
     // Timer logic (local countdown, synchronized roughly with steps)
     useEffect(() => {
-        if (status === 'IN_PROGRESS' && !isSubmitted && timeLeft > 0) {
-            const timer = setTimeout(() => {
-                setTimeLeft(prev => prev - 1);
-                if (timeLeft <= 5 && timeLeft > 0) playSound('timer-tick', { volume: 0.4 });
-            }, 1000);
-            return () => clearTimeout(timer);
+        if (status === 'IN_PROGRESS' && !isSubmitted) {
+            if (timeLeft > 0) {
+                const timer = setTimeout(() => {
+                    setTimeLeft(prev => prev - 1);
+                    if (timeLeft <= 5 && timeLeft > 0) playSound('timer-tick', { volume: 0.4 });
+                }, 1000);
+                return () => clearTimeout(timer);
+            } else if (timeLeft === 0) {
+                handleTimeout();
+            }
         }
     }, [timeLeft, status, isSubmitted]);
+
+    const handleTimeout = async () => {
+        if (isSubmitted || !session) return;
+        setIsSubmitted(true);
+        setIsCorrect(false);
+        setShowResult(true);
+        playSound('incorrect');
+
+        const { studentId: sId } = getStudentInfo();
+        const question = session.activity?.items?.[currentQuestionIndex];
+
+        if (attemptId && question) {
+            try {
+                await activityAttemptAPI.submitResponse({
+                    attempt_id: attemptId,
+                    item_id: question.id,
+                    response: { answer: null, timed_out: true },
+                    time_taken: 30
+                });
+            } catch (e) {
+                console.error("Timeout response error:", e);
+            }
+        }
+
+        if (socket && attemptId) {
+            socket.emit('submit_answer', {
+                attempt_id: attemptId,
+                score: 0,
+                student_id: sId,
+                is_correct: false,
+                question_index: currentQuestionIndex,
+                answer: null,
+                time_taken: 30
+            });
+        }
+    };
 
     const joinSession = async () => {
         try {
@@ -78,32 +146,15 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
             const newSocket = io(baseUrl);
             setSocket(newSocket);
 
-            const studentId = localStorage.getItem('student_id') || 0;
-
-            // Try to get user name from local storage for better lobby experience
-            let guestName = '';
-            try {
-                const userStr = localStorage.getItem('user');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    guestName = user.name || user.email || '';
-                }
-            } catch (e) {
-                console.error('Error parsing user from local storage', e);
-            }
-
-            // Fallback if no user name found (e.g. strict incognito or weird state)
-            if (!guestName) {
-                guestName = `Guest ${Math.floor(Math.random() * 1000)}`;
-            }
+            const { studentId, studentName } = getStudentInfo();
 
             newSocket.on('connect', () => {
                 console.log('Student connected to socket:', newSocket.id);
-                // Send join event with student_id AND guest_name as fallback
+                // Send join event with real student_id AND guest_name as fallback
                 newSocket.emit('join_session', {
                     join_code: joinCode,
                     student_id: studentId,
-                    guest_name: guestName
+                    guest_name: studentName
                 });
             });
 
@@ -129,9 +180,8 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
                 setLeaderboard(data);
             });
 
-            // Start an attempt on backend to track score?
+            // Start an attempt on backend to track score
             try {
-                // Pass quiz_session_id to link attempt to this live session
                 const attemptRes = await activityAttemptAPI.start(sessionData.activity_id, sessionData.id);
                 setAttemptId(attemptRes.data.data.id);
             } catch (e) {
@@ -162,19 +212,9 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
         setIsSubmitted(false);
         setSelectedAnswer(null);
         setShowResult(false);
-        setTimeLeft(30);
+        const q = session?.activity?.items?.[currentQuestionIndex + 1] || session?.activity?.items?.[0];
+        setTimeLeft(q?.content?.timeLimit || 30);
         setQuestionStartTime(Date.now());
-    };
-
-    const handleNextQuestion = () => {
-        const totalItems = session?.activity?.items?.length || 0;
-        if (currentQuestionIndex < totalItems - 1) {
-            const nextIdx = currentQuestionIndex + 1;
-            setCurrentQuestionIndex(nextIdx);
-            resetForNextQuestion();
-        } else {
-            setStatus('FINISHED');
-        }
     };
 
     const handleAnswerSelect = (index: number) => {
@@ -189,6 +229,7 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
         setIsSubmitted(true); // Lock UI
         const question = session.activity.items[currentQuestionIndex];
         const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+        const { studentId: sId } = getStudentInfo();
 
         // Send to server FIRST to validate
         try {
@@ -214,12 +255,15 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
             }
 
             if (socket) {
-                // Emit valid result to socket for leaderboard
+                // Emit valid result to socket for leaderboard and teacher real-time monitoring
                 socket.emit('submit_answer', {
                     attempt_id: attemptId,
                     score: result.points,
-                    student_id: 0,
-                    is_correct: validIsCorrect
+                    student_id: sId,
+                    is_correct: validIsCorrect,
+                    question_index: currentQuestionIndex,
+                    answer: selectedAnswer,
+                    time_taken: timeTaken
                 });
             }
         } catch (e) {
@@ -398,23 +442,24 @@ export default function StudentLiveQuiz({ joinCode, initialSession, onExit }: Pr
                         </div>
                     )}
                     <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 text-center max-w-sm w-full shadow-lg">
+                        <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-3 text-saBlue shadow-xs">
+                            <Clock className="w-7 h-7 animate-spin text-saBlue" />
+                        </div>
                         <h3 className="text-lg font-black text-slate-800 mb-1">
-                            {currentQuestionIndex < (session?.activity?.items?.length || 1) - 1
-                                ? 'Next Question Ready'
-                                : 'Quiz Finished!'}
+                            Answer Recorded!
                         </h3>
-                        <p className="text-xs text-slate-500 font-medium mb-5">
-                            {currentQuestionIndex < (session?.activity?.items?.length || 1) - 1
-                                ? 'You can proceed directly to the next question.'
-                                : 'You completed all questions in this session.'}
+                        <p className="text-xs text-slate-500 font-medium mb-4">
+                            Waiting for the teacher to move to the next question...
                         </p>
-                        <Button
-                            onClick={handleNextQuestion}
-                            className="w-full h-12 bg-saBlue hover:bg-saBlueDarkHover text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-md flex items-center justify-center gap-2 transition-all hover:scale-[1.01]"
-                        >
-                            <span>{currentQuestionIndex < (session?.activity?.items?.length || 1) - 1 ? 'Next Question' : 'View Results'}</span>
-                            <ArrowRight className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-center items-center gap-1.5 py-1">
+                            {[0, 1, 2].map(i => (
+                                <div 
+                                    key={i} 
+                                    className="w-2.5 h-2.5 bg-saBlue rounded-full animate-bounce" 
+                                    style={{ animationDelay: `${i * 0.15}s` }} 
+                                />
+                            ))}
+                        </div>
                     </div>
                 </div>
             )}

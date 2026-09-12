@@ -385,4 +385,11 @@
   .page-enter {
     @apply animate-fadeUp;
   }
+
+  /* Ensure Razorpay payment gateway iframe is always on top and directly clickable */
+  .razorpay-container,
+  .razorpay-checkout-frame {
+    z-index: 2147483647 !important;
+    pointer-events: auto !important;
+  }
 }

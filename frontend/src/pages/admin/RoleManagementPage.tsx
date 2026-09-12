@@ -84,6 +84,7 @@ const defaultPermissions: PermissionsType = {
   accountDeletion: { manage: false },
   chat: { viewAll: false },
   announcements: { manage: false },
+  holidays: { view: false, create: false, update: false, delete: false },
 };
 
 const permissionModules: Array<{
@@ -111,6 +112,7 @@ const permissionModules: Array<{
   { key: 'enquiries', label: 'Student Enquiries', category: 'Communication', icon: HelpCircle },
   { key: 'analytics', label: 'Reports & Analytics', category: 'Administration', icon: BarChart3 },
   { key: 'accountDeletion', label: 'Account Deletion', category: 'Administration', icon: Lock },
+  { key: 'holidays', label: 'Holiday Management', category: 'Administration', icon: Calendar },
 ];
 
 const categoryTabs = ['All', 'Academics', 'Assessments', 'Communication', 'Administration'] as const;

@@ -871,8 +871,8 @@ router.patch('/admin/agency-payouts/:payoutId', authenticate, authorize('ADMIN')
 router.get('/holidays', authenticate, holidayController.getAllHolidays);
 router.get('/holidays/upcoming', authenticate, holidayController.getUpcomingHolidays);
 router.get('/holidays/:id', authenticate, holidayController.getHolidayById);
-router.post('/holidays', authenticate, authorizeStrict('ADMIN'), holidayController.createHoliday);
-router.put('/holidays/:id', authenticate, authorizeStrict('ADMIN'), holidayController.updateHoliday);
-router.delete('/holidays/:id', authenticate, authorizeStrict('ADMIN'), holidayController.deleteHoliday);
+router.post('/holidays', authenticate, authorize('ADMIN'), holidayController.createHoliday);
+router.put('/holidays/:id', authenticate, authorize('ADMIN'), holidayController.updateHoliday);
+router.delete('/holidays/:id', authenticate, authorize('ADMIN'), holidayController.deleteHoliday);
 
 export default router;

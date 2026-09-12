@@ -62,6 +62,7 @@ import DeleteConfirmationModal from '@/components/ui/deleteConfirmationModal';
 import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { useAuthStore } from '@/store/authStore';
 import { usePageTitle } from '@/hooks/usePageTitle';
+import { usePermissions } from '@/hooks/usePermissions';
 import { holidayService } from '@/services/api';
 import {
   publicHolidayService,
@@ -131,7 +132,11 @@ export const HOLIDAY_TYPE_CONFIG: Record<HolidayType, {
 export default function HolidayManagementPage() {
   usePageTitle('Holiday Management');
   const user = useAuthStore((state) => state.user);
+  const { hasPermission } = usePermissions();
   const isAdmin = user?.role === 'ADMIN';
+  const canCreate = isAdmin || hasPermission('holidays', 'create');
+  const canUpdate = isAdmin || hasPermission('holidays', 'update');
+  const canDelete = isAdmin || hasPermission('holidays', 'delete');
 
   // View state
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -285,7 +290,7 @@ export default function HolidayManagementPage() {
 
   // Open Add modal with preselected date
   const openAddModalForDate = (date: Date) => {
-    if (!isAdmin) return;
+    if (!canCreate) return;
     const formatted = format(date, 'yyyy-MM-dd');
     setFormData({
       title: '',
@@ -303,7 +308,7 @@ export default function HolidayManagementPage() {
   // Open Edit modal
   const openEditModal = (holiday: Holiday, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!isAdmin) return;
+    if (!canUpdate) return;
     setFormData({
       id: holiday.id,
       title: holiday.title,
@@ -511,7 +516,7 @@ export default function HolidayManagementPage() {
               </button>
             </div>
 
-            {isAdmin && (
+            {canCreate && (
               <Button
                 onClick={() => openAddModalForDate(new Date())}
                 className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl h-10 px-4 font-bold text-xs uppercase tracking-wider gap-1.5 shadow-sm active:scale-95 transition-all"
@@ -645,7 +650,7 @@ export default function HolidayManagementPage() {
                   <div
                     key={day.toISOString()}
                     onClick={() => {
-                      if (isAdmin && isCurrentMonth) {
+                      if (canCreate && isCurrentMonth) {
                         openAddModalForDate(day);
                       }
                     }}
@@ -655,7 +660,7 @@ export default function HolidayManagementPage() {
                         : isTodayDate
                         ? 'bg-blue-50/40 border-saBlue/40 shadow-xs'
                         : 'bg-white border-slate-100 hover:border-saBlue/30 hover:shadow-xs'
-                    } ${isAdmin ? 'cursor-pointer' : 'cursor-default'}`}
+                    } ${canCreate && isCurrentMonth ? 'cursor-pointer' : 'cursor-default'}`}
                   >
                     {/* Date Number & Quick Add Button */}
                     <div className="flex items-center justify-between">
@@ -671,7 +676,7 @@ export default function HolidayManagementPage() {
                         {format(day, 'd')}
                       </span>
 
-                      {isAdmin && isCurrentMonth && (
+                      {canCreate && isCurrentMonth && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -867,31 +872,31 @@ export default function HolidayManagementPage() {
                               <Eye className="w-4 h-4" />
                             </Button>
 
-                            {isAdmin && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => openEditModal(holiday, e)}
-                                  className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                  title="Edit Holiday"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
+                            {canUpdate && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => openEditModal(holiday, e)}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                title="Edit Holiday"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                            )}
 
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setHolidayToDelete(holiday);
-                                  }}
-                                  className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
-                                  title="Delete Holiday"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </>
+                            {canDelete && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setHolidayToDelete(holiday);
+                                }}
+                                className="h-8 w-8 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                title="Delete Holiday"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
                             )}
                           </div>
                         </td>
@@ -1218,37 +1223,37 @@ export default function HolidayManagementPage() {
                 </div>
 
                 <DialogFooter className="gap-2 pt-2">
-                  {isAdmin && (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => openEditModal(selectedHoliday)}
-                        className="rounded-xl border-slate-200 text-xs font-bold h-10 px-4 gap-1.5"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </Button>
+                  {canUpdate && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => openEditModal(selectedHoliday)}
+                      className="rounded-xl border-slate-200 text-xs font-bold h-10 px-4 gap-1.5"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </Button>
+                  )}
 
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setHolidayToDelete(selectedHoliday);
-                          setIsDetailModalOpen(false);
-                        }}
-                        className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold h-10 px-4 gap-1.5"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </Button>
-                    </>
+                  {canDelete && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setHolidayToDelete(selectedHoliday);
+                        setIsDetailModalOpen(false);
+                      }}
+                      className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold h-10 px-4 gap-1.5"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete</span>
+                    </Button>
                   )}
 
                   <Button
                     type="button"
                     onClick={() => setIsDetailModalOpen(false)}
-                    className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold h-10 px-5 ml-auto"
+                    className="bg-saBlue hover:bg-saBlueDarkHover text-white rounded-xl text-xs font-bold h-10 px-5 ml-auto"
                   >
                     Close
                   </Button>

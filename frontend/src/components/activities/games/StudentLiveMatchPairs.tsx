@@ -65,6 +65,32 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
         }
     }, [startTime, status]);
 
+    const getStudentInfo = () => {
+        let studentId = 0;
+        let studentName = '';
+
+        const rawSid = localStorage.getItem('student_id');
+        if (rawSid) studentId = parseInt(rawSid, 10);
+
+        try {
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                if (!studentId) {
+                    studentId = user.student?.id || user.student_id || user.id || 0;
+                }
+                if (!studentName) {
+                    studentName = user.name || user.email || '';
+                }
+            }
+        } catch (e) { }
+
+        if (!studentName) {
+            studentName = `Guest ${Math.floor(Math.random() * 1000)}`;
+        }
+        return { studentId, studentName };
+    };
+
     const joinSession = async () => {
         try {
             let sessionData = session;
@@ -81,22 +107,13 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
             const newSocket = io(baseUrl);
             setSocket(newSocket);
 
-            const studentId = localStorage.getItem('student_id') || 0;
-            let guestName = '';
-            try {
-                const userStr = localStorage.getItem('user');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    guestName = user.name || user.email || '';
-                }
-            } catch (e) { }
-            if (!guestName) guestName = `Guest ${Math.floor(Math.random() * 1000)}`;
+            const { studentId, studentName } = getStudentInfo();
 
             newSocket.on('connect', () => {
                 newSocket.emit('join_session', {
                     join_code: joinCode,
                     student_id: studentId,
-                    guest_name: guestName
+                    guest_name: studentName
                 });
             });
 
@@ -151,42 +168,43 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
     };
 
     const handleLeftClick = (index: number) => {
-        const key = `L${index}`;
-        if (matched.has(key)) return;
+        if (matched.has(`L${index}`)) return;
         setSelectedLeft(index);
         playSound('click');
+        if (selectedRight !== null) {
+            checkMatch(index, selectedRight);
+        }
     };
 
     const handleRightClick = (index: number) => {
-        const key = `R${index}`;
-        if (matched.has(key)) return;
-        if (selectedLeft === null) return;
-
+        if (matched.has(`R${index}`)) return;
         setSelectedRight(index);
+        playSound('click');
+        if (selectedLeft !== null) {
+            checkMatch(selectedLeft, index);
+        }
+    };
 
-        const isCorrect = leftItems[selectedLeft].pairId === rightItems[index].pairId;
+    const checkMatch = (leftIndex: number, rightIndex: number) => {
+        const left = leftItems[leftIndex];
+        const right = rightItems[rightIndex];
 
-        if (isCorrect) {
+        if (left.pairId === right.pairId) {
             const newMatched = new Set(matched);
-            newMatched.add(`L${selectedLeft}`);
-            newMatched.add(`R${index}`);
+            newMatched.add(`L${leftIndex}`);
+            newMatched.add(`R${rightIndex}`);
             setMatched(newMatched);
 
-            const points = (leftItems[selectedLeft].points || 10);
+            const points = (leftItems[leftIndex].points || 10);
             const newScore = score + points;
             setScore(newScore);
             playSound('correct');
             confetti({ particleCount: 30, spread: 50, origin: { y: 0.6 } });
 
-            submitMatch(selectedLeft, index, true, points);
-
-            if (newMatched.size === leftItems.length * 2) {
-                // Game local complete, but we wait for teacher to end session usually?
-                // Or we show a "Done!" state waiting for others?
-            }
+            submitMatch(leftIndex, rightIndex, true, points);
         } else {
             playSound('incorrect');
-            submitMatch(selectedLeft, index, false, 0);
+            submitMatch(leftIndex, rightIndex, false, 0);
         }
 
         setTimeout(() => {
@@ -197,23 +215,7 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     const submitMatch = async (leftIndex: number, rightIndex: number, isCorrect: boolean, points: number) => {
         if (!attemptId || !session) return;
-
-        // Optimistic update for socket?
-        if (isCorrect && socket) {
-            socket.emit('submit_answer', {
-                attempt_id: attemptId,
-                score: points, // Incremental score? Or total?
-                // The backend `submit_answer` handler in quizSocket.handler.ts currently expects 'score' and updates via DB query?
-                // Actually the socket handler QUERIES the database for leaderboard.
-                // It listens to 'submit_answer' mainly to trigger a leaderboard refresh for EVERYONE.
-                // The payload `score` in `submit_answer` event might not be used if the handler re-queries.
-                // Let's check socket handler logic.
-                // It uses `attempt_id` to find session, then queries ALL attempts.
-                // So we MUST submit to DB first to have accurate scores.
-                student_id: 0,
-                is_correct: isCorrect
-            });
-        }
+        const { studentId: sId } = getStudentInfo();
 
         try {
             await activityAttemptAPI.submitResponse({
@@ -225,9 +227,14 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
                 },
                 is_correct: isCorrect,
             });
-            // After DB update, emit again to ensure fresh data?
+
             if (socket) {
-                socket.emit('submit_answer', { attempt_id: attemptId, is_correct: isCorrect });
+                socket.emit('submit_answer', {
+                    attempt_id: attemptId,
+                    score: points,
+                    student_id: sId,
+                    is_correct: isCorrect
+                });
             }
         } catch (error) {
             console.error(error);

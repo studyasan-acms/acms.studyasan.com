@@ -82,6 +82,7 @@ export default function ExploreCheckoutModal({
 
   // Payment execution state
   const [processing, setProcessing] = useState(false);
+  const [isGatewayActive, setIsGatewayActive] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState<any | null>(null);
 
   const unitPrice = item.price ?? 0;
@@ -181,6 +182,7 @@ export default function ExploreCheckoutModal({
           color: orderData.theme_color || '#0276D3',
         },
         handler: async (response: any) => {
+          setIsGatewayActive(false);
           try {
             // 4. Verify payment on backend
             const verifyRes = await paymentGatewayService.verifyPayment({
@@ -207,18 +209,23 @@ export default function ExploreCheckoutModal({
         },
         modal: {
           ondismiss: () => {
+            setIsGatewayActive(false);
             setProcessing(false);
           },
         },
       };
 
+      // Temporarily hide checkout dialog so Radix backdrop/focus trap doesn't block Razorpay clicks
+      setIsGatewayActive(true);
       const razorpayInstance = new (window as any).Razorpay(options);
       razorpayInstance.on('payment.failed', (failRes: any) => {
+        setIsGatewayActive(false);
         toast.error(failRes?.error?.description || 'Payment transaction failed');
         setProcessing(false);
       });
       razorpayInstance.open();
     } catch (err: any) {
+      setIsGatewayActive(false);
       console.error('Order creation error:', err);
       toast.error(err?.response?.data?.error || 'Failed to initiate payment');
       setProcessing(false);
@@ -240,7 +247,7 @@ export default function ExploreCheckoutModal({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={isOpen && !isGatewayActive} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg rounded-3xl p-6 border-slate-200 shadow-2xl">
         {paymentSuccess ? (
           /* ─── SUCCESS CELEBRATION VIEW ─────────────────────────────── */
@@ -255,7 +262,7 @@ export default function ExploreCheckoutModal({
                     width: i % 3 === 0 ? '10px' : i % 3 === 1 ? '7px' : '5px',
                     height: i % 3 === 0 ? '10px' : i % 3 === 1 ? '7px' : '5px',
                     borderRadius: i % 4 === 0 ? '50%' : '2px',
-                    background: ['#0276D3','#10b981','#f59e0b','#ec4899','#8b5cf6','#06b6d4'][i % 6],
+                    background: ['#0276D3', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4'][i % 6],
                     left: `${(i * 17 + 7) % 95}%`,
                     top: `${(i * 23 + 5) % 80}%`,
                     animation: `confettiFall ${1.2 + (i % 5) * 0.3}s ease-out ${(i % 7) * 0.1}s both`,
@@ -345,7 +352,7 @@ export default function ExploreCheckoutModal({
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 font-medium">Payment Via</span>
                   <span className="font-bold text-slate-700 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Razorpay
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Online
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -550,7 +557,7 @@ export default function ExploreCheckoutModal({
                   </>
                 ) : (
                   <>
-                    <Lock className="w-4 h-4" /> Pay ₹{finalAmount.toFixed(2)} via Razorpay
+                    <Lock className="w-4 h-4" /> Pay ₹{finalAmount.toFixed(2)} Online
                   </>
                 )}
               </Button>

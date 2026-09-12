@@ -191,21 +191,14 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
 
     socket.emit('student_answer', {
       attempt_id: attemptId,
+      student_id: studentId,
       question_index: currentQuestionIndex,
       answer,
       is_correct: correct,
       time_taken: timeTaken,
+      score: points,
       score_add: points,
     });
-
-    setTimeout(() => {
-      const totalItems = session?.activity?.items?.length || 0;
-      if (currentQuestionIndex < totalItems - 1) {
-        setCurrentQuestionIndex((prev) => prev + 1);
-      } else {
-        setStatus('FINISHED');
-      }
-    }, 2200);
   };
 
   if (status === 'CONNECTING' || status === 'WAITING') {

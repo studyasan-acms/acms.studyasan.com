@@ -24,6 +24,7 @@ interface Permissions {
     roles?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     sections?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
     announcements?: { manage?: boolean };
+    holidays?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
 }
 
 export const usePermissions = () => {

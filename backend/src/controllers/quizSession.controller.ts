@@ -183,6 +183,27 @@ export const nextQuestion = async (req: Request, res: Response) => {
 
         getIo().to(`session_${id}`).emit('next_question', { index: nextIndex });
 
+        try {
+            const leaderboard = await prisma.activityAttempt.findMany({
+                where: { quiz_session_id: Number(id) },
+                select: {
+                    student_id: true,
+                    score: true,
+                    student: { select: { id: true, user: { select: { name: true } } } },
+                },
+                orderBy: { score: 'desc' },
+                take: 50,
+            });
+            const formatted = leaderboard.map((l) => ({
+                student_id: l.student_id,
+                name: l.student?.user?.name || `Student ${l.student_id}`,
+                score: l.score,
+            }));
+            getIo().to(`session_${id}`).emit('leaderboard_update', formatted);
+        } catch (e) {
+            console.error('Error broadcasting leaderboard on nextQuestion:', e);
+        }
+
         return sendSuccess(res, updatedSession, 'Moved to next question');
     } catch (error: any) {
         return sendError(res, error.message);

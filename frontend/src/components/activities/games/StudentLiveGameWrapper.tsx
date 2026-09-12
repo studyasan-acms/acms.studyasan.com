@@ -56,19 +56,22 @@ export default function StudentLiveGameWrapper({ joinCode, onExit, initialSessio
       const newSocket = io(baseUrl);
       setSocket(newSocket);
 
-      const studentId = localStorage.getItem('student_id') || 0;
+      let studentId = parseInt(localStorage.getItem('student_id') || '0', 10);
       let guestName = '';
       try {
         const userStr = localStorage.getItem('user');
         if (userStr) {
           const user = JSON.parse(userStr);
+          if (!studentId) {
+            studentId = user.student?.id || user.student_id || user.id || 0;
+          }
           guestName = user.name || user.email || '';
         }
       } catch (e) {
         console.error('Error parsing user data', e);
       }
       if (!guestName) {
-        guestName = `Student ${Math.floor(Math.random() * 1000)}`;
+        guestName = `Student ${studentId || Math.floor(Math.random() * 1000)}`;
       }
       setStudentName(guestName);
 

@@ -76,10 +76,19 @@ export default function TrueFalseGame({
         }
       }, 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !showResult && !showCelebration && selectedAnswer !== null) {
-      handleSubmit();
+    } else if (timeLeft === 0 && !showResult && !showCelebration) {
+      if (selectedAnswer !== null) {
+        handleSubmit();
+      } else if (isLive) {
+        setIsCorrect(false);
+        setShowResult(true);
+        playSound('incorrect');
+        if (onAnswerSubmit) {
+          onAnswerSubmit(false, 30);
+        }
+      }
     }
-  }, [timeLeft, showResult, showCelebration, selectedAnswer]);
+  }, [timeLeft, showResult, showCelebration, selectedAnswer, isLive]);
 
   const handleSelectAnswer = (answer: boolean) => {
     if (showResult) return;
@@ -556,24 +565,47 @@ export default function TrueFalseGame({
 
       {/* Inline Floating Result Feedback */}
       {showResult && (
-        <div className="absolute inset-0 z-50 pointer-events-none flex flex-col items-center justify-center bg-black/35 backdrop-blur-[2px] animate-in fade-in duration-200">
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/85 backdrop-blur-xs animate-in fade-in duration-200 p-6">
           <div
-            className={`text-5xl sm:text-7xl font-black uppercase tracking-wider animate-bounce drop-shadow-[0_8px_16px_rgba(0,0,0,0.3)] flex items-center gap-3 ${
-              isCorrect ? 'text-emerald-400' : 'text-red-400'
+            className={`text-4xl sm:text-6xl font-black uppercase tracking-wider mb-6 flex items-center gap-3 ${
+              isCorrect ? 'text-emerald-500 animate-bounce' : 'text-red-500'
             }`}
           >
             {isCorrect ? (
               <>
-                <CheckCircle2 className="w-14 h-14 sm:w-20 sm:h-20" />
-                <span>Awesome!</span>
+                <CheckCircle2 className="w-12 h-12 sm:w-16 sm:h-16" />
+                <span>{isLive ? 'Correct!' : 'Awesome!'}</span>
               </>
             ) : (
               <>
-                <XCircle className="w-14 h-14 sm:w-20 sm:h-20" />
-                <span>Oops!</span>
+                <XCircle className="w-12 h-12 sm:w-16 sm:h-16" />
+                <span>{isLive ? 'Incorrect' : 'Oops!'}</span>
               </>
             )}
           </div>
+
+          {isLive && (
+            <div className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 text-center max-w-sm w-full shadow-lg">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center mx-auto mb-3 text-saBlue shadow-xs">
+                <Clock className="w-7 h-7 animate-spin text-saBlue" />
+              </div>
+              <h3 className="text-lg font-black text-slate-800 mb-1">
+                Answer Recorded!
+              </h3>
+              <p className="text-xs text-slate-500 font-medium mb-4">
+                Waiting for the teacher to move to the next question...
+              </p>
+              <div className="flex justify-center items-center gap-1.5 py-1">
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="w-2.5 h-2.5 bg-saBlue rounded-full animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
