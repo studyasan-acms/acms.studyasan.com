@@ -28,7 +28,7 @@ interface Module {
   estimated_time_minutes: number;
 }
 
-// Helper to parse modules from subject.modules (with backwards-compatibility fallback to subject.syllabus.modules)
+// Helper to parse modules from subject.modules (with backwards-compatibility fallback to subject.syllabus.modules and subject.syllabus.units)
 const parseModulesHelper = (rawModules: any, rawSyllabus?: any): Module[] => {
   let modules: any = rawModules;
   while (typeof modules === 'string') {
@@ -43,7 +43,7 @@ const parseModulesHelper = (rawModules: any, rawSyllabus?: any): Module[] => {
     return modules;
   }
 
-  // Fallback for legacy data stored in syllabus.modules
+  // Fallback for legacy data stored in syllabus (modules or units)
   if (rawSyllabus) {
     let syllabus = rawSyllabus;
     while (typeof syllabus === 'string') {
@@ -53,8 +53,30 @@ const parseModulesHelper = (rawModules: any, rawSyllabus?: any): Module[] => {
         break;
       }
     }
-    if (syllabus && typeof syllabus === 'object' && Array.isArray(syllabus.modules)) {
-      return syllabus.modules;
+    if (syllabus && typeof syllabus === 'object') {
+      if (Array.isArray(syllabus.modules) && syllabus.modules.length > 0) {
+        return syllabus.modules;
+      }
+      if (Array.isArray(syllabus.units) && syllabus.units.length > 0) {
+        return syllabus.units.map((u: any, idx: number) => ({
+          module_id: idx + 1,
+          title: u.name || u.title || `Module ${idx + 1}`,
+          description: u.content || u.description || '',
+          order: idx + 1,
+          content: [],
+          estimated_time_minutes: 0,
+        }));
+      }
+    }
+    if (Array.isArray(syllabus) && syllabus.length > 0) {
+      return syllabus.map((u: any, idx: number) => ({
+        module_id: idx + 1,
+        title: u.name || u.title || `Module ${idx + 1}`,
+        description: u.content || u.description || '',
+        order: idx + 1,
+        content: [],
+        estimated_time_minutes: 0,
+      }));
     }
   }
 

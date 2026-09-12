@@ -164,27 +164,31 @@ export const startTestAttempt = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Test is not available at this time', 403);
     }
 
-    // Check if student has already attempted this test (non-practice attempt) or earned a certificate
-    const existingAttempt = await prisma.testAttempt.findFirst({
-      where: {
-        test_id: parseInt(testId),
-        student_id: user.student.id,
-        is_practice: false,
-      },
-      include: {
-        certificate: true,
-      },
-    });
+    const isPracticeAttempt = test.test_type === 'PRACTICE' || Boolean(req.body?.is_practice);
 
-    if (existingAttempt) {
-      if (existingAttempt.certificate) {
-        return sendError(
-          res,
-          `You have already completed this assessment and earned your official certificate (Certificate ID: ${existingAttempt.certificate.code}). You cannot re-attempt this exam.`,
-          403
-        );
+    // Check if student has already attempted this test (non-practice attempt) or earned a certificate
+    if (!isPracticeAttempt) {
+      const existingAttempt = await prisma.testAttempt.findFirst({
+        where: {
+          test_id: parseInt(testId),
+          student_id: user.student.id,
+          is_practice: false,
+        },
+        include: {
+          certificate: true,
+        },
+      });
+
+      if (existingAttempt) {
+        if (existingAttempt.certificate) {
+          return sendError(
+            res,
+            `You have already completed this assessment and earned your official certificate (Certificate ID: ${existingAttempt.certificate.code}). You cannot re-attempt this exam.`,
+            403
+          );
+        }
+        return sendError(res, 'You have already attempted this test', 403);
       }
-      return sendError(res, 'You have already attempted this test', 403);
     }
 
     // Calculate actual total marks from test questions if available
@@ -197,6 +201,7 @@ export const startTestAttempt = async (req: AuthRequest, res: Response) => {
         test_id: parseInt(testId),
         student_id: user.student.id,
         total_marks: effectiveTotalMarks,
+        is_practice: isPracticeAttempt,
       },
       include: {
         test: {
