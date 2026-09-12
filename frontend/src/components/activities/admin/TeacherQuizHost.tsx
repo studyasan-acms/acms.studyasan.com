@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Users, Play, ArrowRight, Trophy, Copy, Check, QrCode, Wifi, CheckCircle2, XCircle, Clock, Sparkles } from 'lucide-react';
+import { X, Users, Play, ArrowRight, Trophy, Copy, Check, Wifi, CheckCircle2, XCircle, Clock, Sparkles } from 'lucide-react';
 import { Button } from '../../ui/button';
 import { Card } from '../../ui/card';
 import type { Activity } from '../../../types/activity';
@@ -279,7 +279,7 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                                     </button>
                                 </div>
 
-                                <div className="space-y-3.5 py-4 border-t border-b border-slate-100">
+                                <div className="space-y-3.5 pt-4 border-t border-slate-100">
                                     <h3 className="text-xs font-black text-saBlue uppercase tracking-wider">How students join:</h3>
                                     <div className="space-y-2.5">
                                         <div className="flex items-start gap-3">
@@ -291,26 +291,6 @@ export default function TeacherQuizHost({ activity, onClose }: Props) {
                                             <p className="text-slate-600 text-xs sm:text-sm font-medium">Enter code <span className="font-mono font-bold text-saBlue bg-blue-50 px-2 py-0.5 rounded border border-blue-200">{session.join_code}</span></p>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-
-                            {/* QR Code Container */}
-                            <div className="flex items-center gap-4 mt-6 pt-4 border-t border-slate-100">
-                                <div className="h-20 w-20 bg-white p-1 rounded-2xl shadow-sm shrink-0 flex items-center justify-center border border-slate-200">
-                                    <img 
-                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=100&data=${encodeURIComponent(window.location.origin + '/dashboard/student-activities?code=' + session.join_code)}`} 
-                                        alt="Join QR Code" 
-                                        className="w-full h-full object-contain"
-                                    />
-                                </div>
-                                <div>
-                                    <h4 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
-                                        <QrCode className="h-4 w-4 text-saBlue" />
-                                        QR Join
-                                    </h4>
-                                    <p className="text-xs text-slate-400 leading-normal mt-0.5">
-                                        Students can scan this QR code with a phone or tablet camera.
-                                    </p>
                                 </div>
                             </div>
                         </div>
