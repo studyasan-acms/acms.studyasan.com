@@ -159,6 +159,16 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
     });
   };
 
+  const normalizeBoolean = (val: any): boolean => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim().toLowerCase();
+      return trimmed === 'true' || trimmed === '1' || trimmed === 'yes';
+    }
+    if (typeof val === 'number') return val === 1;
+    return Boolean(val);
+  };
+
   const handleAnswerSubmit = async (answer: boolean, timeTaken: number) => {
     if (!socket || !attemptId) {
       console.error('Socket or AttemptId missing, cannot emit student_answer');
@@ -166,7 +176,16 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
     }
 
     const question = session?.activity?.items?.[currentQuestionIndex];
-    const correct = answer === question?.content?.correctAnswer;
+    let content = question?.content;
+    if (typeof content === 'string') {
+      try {
+        content = JSON.parse(content);
+      } catch (e) {
+        console.error('Failed to parse question content', e);
+      }
+    }
+    const expected = normalizeBoolean(content?.correctAnswer);
+    const correct = answer === expected;
     const points = correct ? question?.points || 10 : 0;
     setScore((prev) => prev + points);
 
@@ -180,8 +199,13 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
     });
 
     setTimeout(() => {
-      setStatus('WAITING');
-    }, 2000);
+      const totalItems = session?.activity?.items?.length || 0;
+      if (currentQuestionIndex < totalItems - 1) {
+        setCurrentQuestionIndex((prev) => prev + 1);
+      } else {
+        setStatus('FINISHED');
+      }
+    }, 2200);
   };
 
   if (status === 'CONNECTING' || status === 'WAITING') {
@@ -217,8 +241,8 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
         </div>
 
         {/* Center Content */}
-        <div className="flex-1 flex items-center justify-center p-6">
-          <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-start">
+          <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden mt-4 sm:mt-10">
             <div className="relative inline-block mb-6">
               <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-blue-50 text-saBlue rounded-3xl flex items-center justify-center animate-pulse border border-blue-100 shadow-sm">
                 <Clock className="w-10 h-10 sm:w-12 sm:h-12 animate-spin" />
@@ -277,7 +301,16 @@ export default function StudentLiveTrueFalse({ joinCode, initialSession, onExit 
       <TrueFalseGame
         activity={currentActivity}
         attemptId={attemptId}
-        onComplete={() => {}}
+        onComplete={async (finalScore, timeTaken) => {
+          if (attemptId) {
+            try {
+              await activityAttemptAPI.complete(attemptId, timeTaken, finalScore);
+            } catch (e) {
+              console.error('Failed to complete True/False attempt', e);
+            }
+          }
+          setStatus('FINISHED');
+        }}
         onCancel={onExit}
         isLive={true}
         currentQuestionIndex={currentQuestionIndex}

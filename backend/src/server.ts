@@ -56,12 +56,17 @@ app.get(/.*/, (req, res) => {
 // Initialize Socket.IO
 initSocket(httpServer);
 
-// Start notification processor & Janus session cleanup service
+import { DatabaseBackupService } from './services/databaseBackup.service.js';
+import { DataRetentionCleanupService } from './services/dataRetentionCleanup.service.js';
+
+// Start notification processor & background cron services
 NotificationProcessorService.start();
 JanusCleanupService.start();
 KnowYourChildScheduler.start();
 RecordingCleanupService.start();
 ClassSessionScheduler.start();
+DatabaseBackupService.start();
+DataRetentionCleanupService.start();
 
 httpServer.listen(PORT, () => {
   console.log(` Server is running on port ${PORT}`);

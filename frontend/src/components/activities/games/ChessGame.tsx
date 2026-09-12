@@ -654,10 +654,12 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
             </div>
 
             {/* Header */}
-            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
-                <div className="flex items-center gap-4">
-                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-                    <div className="h-6 w-px bg-white/25 hidden sm:block" />
+            <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center shrink-0">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+                    </div>
+                    <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
                     {vsComputer ? (
                         <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
                             Level {currentLevel}{totalLevels ? ` / ${totalLevels}` : ''}
@@ -667,22 +669,22 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                             Pass & Play (vs Teacher)
                         </span>
                     )}
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
-                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+                        {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
                 </div>
 
-                <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
-                        <Star className="w-4 h-4 mr-2 fill-current" />
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base">
+                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 fill-current" />
                         <span>{Math.round(score)} EXP</span>
                     </div>
-                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
-                        <Clock className="w-4 h-4 mr-2" />
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base font-mono">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={resetGame} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
-                        <RotateCcw className="w-5 h-5" />
+                    <Button variant="ghost" onClick={resetGame} className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors">
+                        <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
                     </Button>
                     <Button
                         variant="ghost"
@@ -693,17 +695,18 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                                 onCancel();
                             }
                         }}
-                        className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors"
+                        className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors"
                         title={score > 0 ? "Save & Exit" : "Exit"}
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4 sm:w-5 sm:h-5" />
                     </Button>
                 </div>
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 relative z-10 w-full">
+                <div className="w-full max-w-7xl mx-auto py-2 sm:py-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
 
                     {/* Left Column: Instructions & Black Captured */}
                     <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
@@ -758,61 +761,59 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                             </p>
                         </div>
 
-                        <Card className="p-3 flex items-center justify-center bg-white border border-slate-200 rounded-3xl shadow-sm">
-                            <div className="inline-block">
-                                <div className="grid gap-0 border-8 border-slate-850 rounded-2xl overflow-hidden shadow-lg select-none">
-                                    {board.map((row, rowIndex) => (
-                                        <div key={rowIndex} className="flex">
-                                            {row.map((piece, colIndex) => {
-                                                const isLight = (rowIndex + colIndex) % 2 === 0;
-                                                const isSelected = selectedSquare && selectedSquare[0] === rowIndex && selectedSquare[1] === colIndex;
-                                                const isLegalDestination = selectedSquare && isLegalMove(selectedSquare[0], selectedSquare[1], rowIndex, colIndex);
-                                                const isKingChecked = piece?.type === 'king' && isKingInCheck(board, piece.color);
+                        <Card className="p-2 sm:p-4 flex items-center justify-center bg-white border border-slate-200 rounded-3xl shadow-sm w-full max-w-[min(calc(100vw-32px),500px)] mx-auto">
+                            <div className="w-full aspect-square border-4 sm:border-8 border-slate-800 rounded-2xl overflow-hidden shadow-lg select-none">
+                                <div className="grid grid-cols-8 grid-rows-8 w-full h-full">
+                                    {board.map((row, rowIndex) =>
+                                        row.map((piece, colIndex) => {
+                                            const isLight = (rowIndex + colIndex) % 2 === 0;
+                                            const isSelected = selectedSquare && selectedSquare[0] === rowIndex && selectedSquare[1] === colIndex;
+                                            const isLegalDestination = selectedSquare && isLegalMove(selectedSquare[0], selectedSquare[1], rowIndex, colIndex);
+                                            const isKingChecked = piece?.type === 'king' && isKingInCheck(board, piece.color);
 
-                                                return (
-                                                    <div
-                                                        key={`${rowIndex}-${colIndex}`}
-                                                        className={`
-                                                            relative w-8 h-8 xs:w-9 xs:h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 flex items-center justify-center
-                                                            cursor-pointer transition-all duration-200 text-xl xs:text-2xl sm:text-3xl md:text-4xl select-none
-                                                            ${isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'}
-                                                            ${isSelected ? 'ring-4 ring-saBlue ring-inset z-10' : ''}
-                                                            ${isKingChecked ? 'ring-4 ring-rose-500 ring-inset bg-rose-500/25 animate-pulse z-10' : ''}
-                                                            hover:brightness-105
-                                                        `}
-                                                        onClick={() => {
-                                                            // Student can only move white pieces in vsComputer mode
-                                                            if (vsComputer && currentPlayer !== 'white') return;
-                                                            // Alternate moves in Pass & Play mode
-                                                            if (vsComputer) {
-                                                                currentPlayer === 'white' && handleSquareClick(rowIndex, colIndex);
-                                                            } else {
-                                                                handleSquareClick(rowIndex, colIndex);
-                                                            }
-                                                        }}
-                                                    >
-                                                        {/* Legal move indicator dot or capture ring */}
-                                                        {isLegalDestination && !piece && (
-                                                            <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-saBlue/50 pointer-events-none" />
-                                                        )}
-                                                        {isLegalDestination && piece && (
-                                                            <div className="absolute inset-0.5 rounded-sm border-2 border-rose-500/80 pointer-events-none animate-pulse" />
-                                                        )}
-                                                        {piece && (
-                                                            <span className={`
-                                                                select-none relative z-10
-                                                                ${piece.color === 'white'
-                                                                    ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] filter brightness-125'
-                                                                    : 'text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]'}
-                                                            `}>
-                                                                {pieceSymbols[piece.color][piece.type]}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ))}
+                                            return (
+                                                <div
+                                                    key={`${rowIndex}-${colIndex}`}
+                                                    className={`
+                                                        relative w-full h-full aspect-square flex items-center justify-center
+                                                        cursor-pointer transition-all duration-150 text-2xl xs:text-3xl sm:text-3xl md:text-4xl select-none
+                                                        ${isLight ? 'bg-[#f0d9b5]' : 'bg-[#b58863]'}
+                                                        ${isSelected ? 'ring-3 sm:ring-4 ring-saBlue ring-inset z-10' : ''}
+                                                        ${isKingChecked ? 'ring-3 sm:ring-4 ring-rose-500 ring-inset bg-rose-500/25 animate-pulse z-10' : ''}
+                                                        hover:brightness-105
+                                                    `}
+                                                    onClick={() => {
+                                                        // Student can only move white pieces in vsComputer mode
+                                                        if (vsComputer && currentPlayer !== 'white') return;
+                                                        // Alternate moves in Pass & Play mode
+                                                        if (vsComputer) {
+                                                            currentPlayer === 'white' && handleSquareClick(rowIndex, colIndex);
+                                                        } else {
+                                                            handleSquareClick(rowIndex, colIndex);
+                                                        }
+                                                    }}
+                                                >
+                                                    {/* Legal move indicator dot or capture ring */}
+                                                    {isLegalDestination && !piece && (
+                                                        <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-saBlue/50 pointer-events-none" />
+                                                    )}
+                                                    {isLegalDestination && piece && (
+                                                        <div className="absolute inset-0.5 rounded-sm border-2 border-rose-500/80 pointer-events-none animate-pulse" />
+                                                    )}
+                                                    {piece && (
+                                                        <span className={`
+                                                            select-none relative z-10
+                                                            ${piece.color === 'white'
+                                                                ? 'text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)] filter brightness-125'
+                                                                : 'text-black drop-shadow-[0_1px_1px_rgba(255,255,255,0.6)]'}
+                                                        `}>
+                                                            {pieceSymbols[piece.color][piece.type]}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </div>
                         </Card>
@@ -893,6 +894,7 @@ export default function ChessGame({ activity, attemptId, onComplete, onCancel }:
                     </div>
                 </div>
             </div>
+        </div>
 
             {/* Level Cleared Transition Overlay - Placed at root end of JSX with fixed high z-index */}
             {showLevelUp && (

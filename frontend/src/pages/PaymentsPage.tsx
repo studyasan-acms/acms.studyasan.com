@@ -214,8 +214,10 @@ const PaymentsPage: React.FC = () => {
         return enrollment.test_series?.title || 'Unknown Test Series';
       case 'ACTIVITY_GROUP':
         return enrollment.activity_group?.name || 'Unknown Activity Group';
+      case 'ACTIVITY':
+        return enrollment.activity?.title || 'Unknown Activity';
       default:
-        return 'Unknown Item';
+        return enrollment.activity?.title || 'Unknown Item';
     }
   };
 

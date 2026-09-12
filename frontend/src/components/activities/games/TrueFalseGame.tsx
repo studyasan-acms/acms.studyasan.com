@@ -87,10 +87,47 @@ export default function TrueFalseGame({
     playSound('click');
   };
 
+  const getParsedContent = (item: any) => {
+    if (!item) return {};
+    let c = item.content;
+    if (typeof c === 'string') {
+      try {
+        c = JSON.parse(c);
+      } catch (e) {
+        console.error('Failed to parse TrueFalse content', e);
+      }
+    }
+    return c || {};
+  };
+
+  const normalizeBoolean = (val: any): boolean => {
+    if (typeof val === 'boolean') return val;
+    if (typeof val === 'string') {
+      const trimmed = val.trim().toLowerCase();
+      return trimmed === 'true' || trimmed === '1' || trimmed === 'yes';
+    }
+    if (typeof val === 'number') return val === 1;
+    return Boolean(val);
+  };
+
+  const currentContent = getParsedContent(question);
+
+  const resetGame = () => {
+    setCurrentQuestion(0);
+    setScore(0);
+    setShowResult(false);
+    setSelectedAnswer(null);
+    setIsCorrect(false);
+    setCorrectCount(0);
+    setTimeLeft(30);
+    setShowCelebration(false);
+  };
+
   const handleSubmit = async () => {
     if (selectedAnswer === null || !question) return;
 
-    const correct = selectedAnswer === question.content.correctAnswer;
+    const expectedAnswer = normalizeBoolean(currentContent.correctAnswer);
+    const correct = selectedAnswer === expectedAnswer;
     const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
     setIsCorrect(correct);
@@ -161,8 +198,10 @@ export default function TrueFalseGame({
         accuracy={accuracy}
         totalQuestions={totalQuestions}
         correctAnswers={correctCount}
+        onPlayAgain={resetGame}
+        playAgainText="Play Again"
         onContinue={handleFinishGame}
-        continueText="Finish & Claim Rewards"
+        continueText="Back to Activities"
       />
     );
   }
@@ -229,9 +268,11 @@ export default function TrueFalseGame({
       </div>
 
       {/* Branded Header */}
-      <div className="p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
+      <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
         <div className="flex items-center gap-3 sm:gap-4">
-          <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-7 sm:h-8 object-contain" />
+          <div className="flex items-center shrink-0">
+            <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+          </div>
           <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
           <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
             <span>True / False</span>
@@ -251,20 +292,20 @@ export default function TrueFalseGame({
             className="p-1.5 sm:p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors"
             title={isMuted ? 'Unmute audio' : 'Mute audio'}
           >
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-3 sm:gap-5">
+        <div className="flex items-center gap-2 sm:gap-4">
           {/* EXP Badge */}
-          <div className="flex items-center bg-white/15 px-3.5 py-1.5 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-sm">
-            <Star className="w-4 h-4 mr-1.5 fill-current text-amber-300" />
+          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base">
+            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 fill-current text-amber-300" />
             <span>{score} EXP</span>
           </div>
 
           {/* Countdown Clock */}
-          <div className="flex items-center bg-white/15 px-3.5 py-1.5 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-sm font-mono">
-            <Clock className="w-4 h-4 mr-1.5" />
+          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base font-mono">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className={timeLeft <= 5 ? 'animate-pulse text-red-300' : ''}>{timeLeft}s</span>
           </div>
 
@@ -272,17 +313,17 @@ export default function TrueFalseGame({
           <Button
             variant="ghost"
             onClick={onCancel}
-            className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors"
+            className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors"
             title="Exit Activity"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </div>
       </div>
 
       {/* Progress Bar */}
       {!isLive && (
-        <div className="h-1.5 w-full bg-slate-200">
+        <div className="h-1.5 w-full bg-slate-200 shrink-0">
           <div
             className="h-full bg-saBlue transition-all duration-500 shadow-[0_0_8px_rgba(37,99,235,0.4)]"
             style={{ width: `${totalQuestions > 0 ? ((activeQuestionIndex + 1) / totalQuestions) * 100 : 0}%` }}
@@ -291,8 +332,9 @@ export default function TrueFalseGame({
       )}
 
       {/* Main Content Stage */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-5 sm:gap-7 items-start">
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 relative z-10 w-full">
+        <div className="w-full max-w-7xl mx-auto py-2 sm:py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
           {/* Left Column: Instructions */}
           <div className="lg:col-span-1 order-1 flex flex-col gap-4 self-stretch">
             <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
@@ -341,8 +383,9 @@ export default function TrueFalseGame({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               {/* Option: TRUE */}
               {(() => {
+                const expectedAnswer = normalizeBoolean(currentContent.correctAnswer);
                 const isSelected = selectedAnswer === true;
-                const isCorrectOption = question.content?.correctAnswer === true;
+                const isCorrectOption = expectedAnswer === true;
 
                 let cardStyle =
                   'bg-white border-slate-200 text-slate-700 hover:border-emerald-300 hover:bg-emerald-50/40 hover:scale-[1.015] hover:shadow-md';
@@ -397,8 +440,9 @@ export default function TrueFalseGame({
 
               {/* Option: FALSE */}
               {(() => {
+                const expectedAnswer = normalizeBoolean(currentContent.correctAnswer);
                 const isSelected = selectedAnswer === false;
-                const isCorrectOption = question.content?.correctAnswer === false;
+                const isCorrectOption = expectedAnswer === false;
 
                 let cardStyle =
                   'bg-white border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-amber-50/40 hover:scale-[1.015] hover:shadow-md';
@@ -508,6 +552,7 @@ export default function TrueFalseGame({
           </div>
         </div>
       </div>
+    </div>
 
       {/* Inline Floating Result Feedback */}
       {showResult && (

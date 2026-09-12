@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Trophy, Star, Clock, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Trophy, Star, Clock, Sparkles, CheckCircle2, ArrowRight, RotateCcw } from 'lucide-react';
 import { Card } from '../../ui/card';
 import { Button } from '../../ui/button';
 import confetti from 'canvas-confetti';
@@ -15,6 +15,8 @@ interface VictoryCelebrationModalProps {
   correctAnswers?: number;
   onContinue: () => void;
   continueText?: string;
+  onPlayAgain?: () => void;
+  playAgainText?: string;
 }
 
 /**
@@ -179,6 +181,8 @@ export default function VictoryCelebrationModal({
   correctAnswers,
   onContinue,
   continueText = 'Claim Rewards & Continue',
+  onPlayAgain,
+  playAgainText = 'Play Again',
 }: VictoryCelebrationModalProps) {
   // Fire celebratory multi-stage confetti on mount
   useEffect(() => {
@@ -324,15 +328,28 @@ export default function VictoryCelebrationModal({
           </div>
         </div>
 
-        {/* Action Button */}
-        <Button
-          onClick={onContinue}
-          size="lg"
-          className="w-full h-13 bg-gradient-to-r from-saBlue via-blue-600 to-saBlue hover:from-blue-700 hover:to-blue-800 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-500/25 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
-        >
-          <span>{continueText}</span>
-          <ArrowRight className="w-4 h-4" />
-        </Button>
+        {/* Action Buttons */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          {onPlayAgain && (
+            <Button
+              onClick={onPlayAgain}
+              variant="outline"
+              size="lg"
+              className="flex-1 h-13 border-2 border-slate-200 hover:border-saBlue hover:bg-blue-50 text-slate-700 font-black text-sm uppercase tracking-wider rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4 text-saBlue" />
+              <span>{playAgainText || "Play Again"}</span>
+            </Button>
+          )}
+          <Button
+            onClick={onContinue}
+            size="lg"
+            className="flex-1 h-13 bg-gradient-to-r from-saBlue via-blue-600 to-saBlue hover:from-blue-700 hover:to-blue-800 text-white font-black text-sm uppercase tracking-wider rounded-2xl shadow-lg shadow-blue-500/25 transition-all duration-300 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+          >
+            <span>{continueText || "Continue"}</span>
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
       </Card>
     </div>
   );

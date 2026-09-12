@@ -75,45 +75,80 @@ export default (io: Server, socket: Socket) => {
         }
     });
 
-    // Submit Answer (Real-time update for leaderboard)
-    socket.on('submit_answer', async ({ attempt_id, score, student_id }) => {
+    // Submit Answer (Real-time update for teacher view & leaderboard)
+    const handleStudentAnswerSubmission = async ({
+        attempt_id,
+        score,
+        student_id,
+        is_correct,
+        question_index,
+        answer,
+        time_taken,
+    }: {
+        attempt_id: number | string;
+        score?: number;
+        student_id?: number | string;
+        is_correct?: boolean;
+        question_index?: number;
+        answer?: any;
+        time_taken?: number;
+    }) => {
         try {
-            // Fetch updated leaderboard for this session
-            // We need to know the session ID. 
-            // Option A: Client sends session_id. 
-            // Option B: We look up attempt -> session_id.
-
             const attempt = await prisma.activityAttempt.findUnique({
                 where: { id: Number(attempt_id) },
-                select: { quiz_session_id: true }
+                select: {
+                    id: true,
+                    quiz_session_id: true,
+                    score: true,
+                    student_id: true,
+                    student: { select: { id: true, user: { select: { name: true } } } },
+                },
             });
 
             if (attempt && attempt.quiz_session_id) {
+                const sId = attempt.student?.id || Number(student_id) || 0;
+                const sName = attempt.student?.user?.name || `Student ${sId}`;
+
+                // 1. Broadcast student attempt response to the room (teacher gets real-time status: Correct / Incorrect)
+                io.to(`session_${attempt.quiz_session_id}`).emit('student_response_update', {
+                    student_id: sId,
+                    student_name: sName,
+                    question_index: question_index !== undefined ? Number(question_index) : undefined,
+                    is_correct: Boolean(is_correct),
+                    answer: answer !== undefined ? answer : null,
+                    score_added: Number(score || 0),
+                    total_score: attempt.score,
+                    time_taken: time_taken || 0,
+                    timestamp: new Date().toISOString(),
+                });
+
+                // 2. Broadcast updated leaderboard
                 const leaderboard = await prisma.activityAttempt.findMany({
-                    where: {
-                        quiz_session_id: attempt.quiz_session_id
-                    },
+                    where: { quiz_session_id: attempt.quiz_session_id },
                     select: {
                         student_id: true,
                         score: true,
-                        student: { select: { user: { select: { name: true } } } }
+                        student: { select: { user: { select: { name: true } } } },
                     },
                     orderBy: { score: 'desc' },
-                    take: 10
+                    take: 20,
                 });
 
-                const formattedLeaderboard = leaderboard.map(l => ({
+                const formattedLeaderboard = leaderboard.map((l) => ({
                     student_id: l.student_id,
-                    name: l.student.user.name,
-                    score: l.score
+                    name: l.student?.user?.name || `Student ${l.student_id}`,
+                    score: l.score,
                 }));
 
                 io.to(`session_${attempt.quiz_session_id}`).emit('leaderboard_update', formattedLeaderboard);
             }
         } catch (e) {
-            console.error('Error updating leaderboard:', e);
+            console.error('Error handling student answer submission:', e);
         }
-    });
+    };
+
+    socket.on('submit_answer', handleStudentAnswerSubmission);
+    socket.on('student_answer', handleStudentAnswerSubmission);
 
     // Teacher actions are also handled via API + Broadcast.
 

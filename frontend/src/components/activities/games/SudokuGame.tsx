@@ -458,31 +458,33 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
             </div>
 
             {/* Header */}
-            <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
-                <div className="flex items-center gap-4">
-                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-                    <div className="h-6 w-px bg-white/25 hidden sm:block" />
-                    <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+                <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="flex items-center shrink-0">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+                    </div>
+                    <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                    <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
                         Sudoku
                         <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
                             Level {currentLevel}{totalLevels ? ` / ${totalLevels}` : ''}
                         </span>
                     </h2>
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
-                        {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+                        {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
                     </button>
                 </div>
 
-                <div className="flex items-center gap-4 sm:gap-6">
-                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
-                        <Star className="w-4 h-4 mr-2 fill-current" />
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base">
+                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 fill-current" />
                         <span>{Math.round(score)} EXP</span>
                     </div>
-                    <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
-                        <Clock className="w-4 h-4 mr-2" />
+                    <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base font-mono">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
                         <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={resetPuzzle} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
+                    <Button variant="ghost" onClick={resetPuzzle} className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors">
                         <RotateCcw className="w-5 h-5" />
                     </Button>
                     <Button 
@@ -494,7 +496,7 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
                                 onCancel();
                             }
                         }} 
-                        className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors"
+                        className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors"
                         title={score > 0 ? "Save & Exit" : "Exit"}
                     >
                         <X className="w-5 h-5" />
@@ -503,8 +505,9 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-6 relative z-10 w-full">
+                <div className="w-full max-w-7xl mx-auto py-2 sm:py-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
                     
                     {/* Left Column: Instructions & Hints */}
                     <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch justify-between">
@@ -688,6 +691,7 @@ export default function SudokuGame({ activity, attemptId, onComplete, onCancel }
 
                 </div>
             </div>
+        </div>
 
             {/* Level Cleared Transition Overlay - Placed at root end of JSX with fixed high z-index */}
             {showLevelUp && (

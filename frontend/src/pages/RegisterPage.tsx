@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,8 @@ import { useAuthStore } from "@/store/authStore";
 import { Loader2, Check, X, Eye, EyeOff, ArrowLeft, Mail, RefreshCw } from "lucide-react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 import { usePageTitle } from "@/hooks/usePageTitle";
-
-interface PasswordStrength {
-  isValid: boolean;
-  score: number;
-  errors: string[];
-  suggestions: string[];
-}
+import { validatePasswordStrength } from "@/utils/passwordValidator";
+import { PasswordRequirementsList } from "@/components/common/PasswordRequirementsList";
 
 type RegistrationStep = "form" | "otp";
 
@@ -29,6 +24,7 @@ export default function RegisterPage() {
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -42,44 +38,6 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  // Password strength state
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({
-    isValid: false,
-    score: 0,
-    errors: [],
-    suggestions: [],
-  });
-  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
-
-  // Debounced password validation
-  const validatePasswordDebounced = useCallback(async (password: string) => {
-    if (password.length < 3) {
-      setPasswordStrength({
-        isValid: false,
-        score: 0,
-        errors: [],
-        suggestions: [],
-      });
-      return;
-    }
-
-    setIsCheckingPassword(true);
-    try {
-      const response = await authService.checkPasswordStrength(password);
-      setPasswordStrength(response.data);
-    } catch {
-      // Fallback to local validation if API fails
-      setPasswordStrength({
-        isValid: password.length >= 8,
-        score: Math.min(4, Math.floor(password.length / 3)),
-        errors: password.length < 8 ? ["Password must be at least 8 characters"] : [],
-        suggestions: [],
-      });
-    } finally {
-      setIsCheckingPassword(false);
-    }
-  }, []);
-
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get('ref') || params.get('code') || params.get('reference_code');
@@ -87,15 +45,6 @@ export default function RegisterPage() {
       setFormData(prev => ({ ...prev, reference_code: ref.toUpperCase() }));
     }
   }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (formData.password) {
-        validatePasswordDebounced(formData.password);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [formData.password, validatePasswordDebounced]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -107,15 +56,18 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
     setError("");
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
+    // Validate password strength on UI level
+    const passwordValidation = validatePasswordStrength(formData.password);
+    if (!passwordValidation.isValid) {
+      setError("Please ensure your password meets all security requirements below");
       return;
     }
 
-    if (!passwordStrength.isValid) {
-      setError("Please create a stronger password");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
       return;
     }
 
@@ -232,66 +184,7 @@ export default function RegisterPage() {
     }));
   };
 
-  const getStrengthColor = (score: number) => {
-    switch (score) {
-      case 0:
-        return "bg-red-500";
-      case 1:
-        return "bg-orange-500";
-      case 2:
-        return "bg-yellow-500";
-      case 3:
-        return "bg-lime-500";
-      case 4:
-        return "bg-green-500";
-      default:
-        return "bg-gray-300";
-    }
-  };
-
-  const getStrengthLabel = (score: number) => {
-    switch (score) {
-      case 0:
-        return "Very Weak";
-      case 1:
-        return "Weak";
-      case 2:
-        return "Fair";
-      case 3:
-        return "Strong";
-      case 4:
-        return "Very Strong";
-      default:
-        return "";
-    }
-  };
-
-  const renderPasswordRequirements = () => {
-    const requirements = [
-      { label: "At least 8 characters", met: formData.password.length >= 8 },
-      { label: "One uppercase letter", met: /[A-Z]/.test(formData.password) },
-      { label: "One lowercase letter", met: /[a-z]/.test(formData.password) },
-      { label: "One number", met: /[0-9]/.test(formData.password) },
-      { label: "One special character", met: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password) },
-    ];
-
-    return (
-      <div className="mt-2 space-y-1">
-        {requirements.map((req, index) => (
-          <div key={index} className="flex items-center gap-2 text-xs">
-            {req.met ? (
-              <Check className="h-3 w-3 text-green-500" />
-            ) : (
-              <X className="h-3 w-3 text-gray-400" />
-            )}
-            <span className={req.met ? "text-green-600" : "text-gray-500"}>
-              {req.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const passwordValidation = validatePasswordStrength(formData.password);
 
   return (
     <div className="min-h-screen flex bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-hidden">
@@ -432,34 +325,11 @@ export default function RegisterPage() {
                     </button>
                   </div>
 
-                  {/* Password strength indicator */}
-                  {formData.password && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 flex gap-1">
-                          {[0, 1, 2, 3, 4].map((index) => (
-                            <div
-                              key={index}
-                              className={`h-1.5 flex-1 rounded-full transition-colors ${index <= passwordStrength.score
-                                ? getStrengthColor(passwordStrength.score)
-                                : "bg-gray-200"
-                                }`}
-                            />
-                          ))}
-                        </div>
-                        <span
-                          className={`text-xs font-medium ${passwordStrength.score >= 3
-                            ? "text-green-600"
-                            : passwordStrength.score >= 2
-                              ? "text-yellow-600"
-                              : "text-red-600"
-                            }`}
-                        >
-                          {isCheckingPassword ? "..." : getStrengthLabel(passwordStrength.score)}
-                        </span>
-                      </div>
-                      {renderPasswordRequirements()}
-                    </div>
+                  {/* Show password requirements only when user has submitted */}
+                  {hasSubmitted && (
+                    <PasswordRequirementsList
+                      requirements={passwordValidation.requirements}
+                    />
                   )}
                 </div>
 
@@ -494,14 +364,23 @@ export default function RegisterPage() {
                       )}
                     </button>
                   </div>
-                  {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                    <p className="text-xs text-red-500 flex items-center gap-1">
-                      <X className="h-3 w-3" /> Passwords do not match
-                    </p>
-                  )}
-                  {formData.confirmPassword && formData.password === formData.confirmPassword && (
-                    <p className="text-xs text-green-600 flex items-center gap-1">
-                      <Check className="h-3 w-3" /> Passwords match
+                  {hasSubmitted && formData.confirmPassword && (
+                    <p
+                      className={`text-xs flex items-center gap-1 mt-1 ${
+                        formData.password === formData.confirmPassword
+                          ? "text-green-600"
+                          : "text-red-500"
+                      }`}
+                    >
+                      {formData.password === formData.confirmPassword ? (
+                        <>
+                          <Check className="h-3 w-3" /> Passwords match
+                        </>
+                      ) : (
+                        <>
+                          <X className="h-3 w-3" /> Passwords do not match
+                        </>
+                      )}
                     </p>
                   )}
                 </div>
@@ -528,7 +407,7 @@ export default function RegisterPage() {
               <CardFooter className="flex flex-col space-y-4 p-6 pt-0">
                 <Button
                   type="submit"
-                  disabled={isLoading || !passwordStrength.isValid}
+                  disabled={isLoading}
                   className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
                 >
                   {isLoading ? (

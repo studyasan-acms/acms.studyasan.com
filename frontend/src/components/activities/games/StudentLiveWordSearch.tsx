@@ -168,8 +168,8 @@ export default function StudentLiveWordSearch({ joinCode, initialSession, onExit
                         <X className="w-5 h-5" />
                     </Button>
                 </div>
-                <div className="flex-1 flex items-center justify-center p-6">
-                    <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-start">
+                    <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden mt-4 sm:mt-10">
                         <div className="w-20 h-20 mx-auto mb-6 bg-blue-50 text-saBlue rounded-3xl flex items-center justify-center animate-pulse border border-blue-100 shadow-sm">
                             <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-saBlue"></div>
                         </div>
@@ -206,7 +206,16 @@ export default function StudentLiveWordSearch({ joinCode, initialSession, onExit
             <WordSearchGame
                 activity={session.activity}
                 attemptId={attemptId}
-                onComplete={() => { }}
+                onComplete={async (finalScore, timeTaken) => {
+                    if (attemptId) {
+                        try {
+                            await activityAttemptAPI.complete(attemptId, timeTaken, finalScore);
+                        } catch (e) {
+                            console.error('Failed to complete live word search attempt', e);
+                        }
+                    }
+                    setStatus('FINISHED');
+                }}
                 onCancel={onExit}
                 isLive={true}
                 targetWord={targetWord}

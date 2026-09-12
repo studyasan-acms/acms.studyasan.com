@@ -787,7 +787,7 @@ export default function StudentDetailPage() {
                 </Button>
               </div>
 
-              <div className="grid sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Subjects */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -860,6 +860,34 @@ export default function StudentDetailPage() {
                         ))}
                       </ul>
                     ) : <p className="text-gray-300 text-xs italic">No activity groups</p>}
+                  </div>
+                </div>
+
+                {/* Activities & Games */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                      Activities & Games ({(student as any).activity_enrollments?.length || 0})
+                    </h4>
+                  </div>
+                  <div className="bg-gray-50/50 rounded-2xl p-3 border border-gray-100 min-h-[100px]">
+                    {((student as any).activity_enrollments || []).length > 0 ? (
+                      <ul className="space-y-1.5">
+                        {((student as any).activity_enrollments || []).map((e: any) => (
+                          <li key={e.id} className="text-xs font-medium text-gray-600 truncate flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 truncate">
+                              <div className="w-1.5 h-1.5 rounded-full bg-saBlue flex-shrink-0"></div>
+                              <span className="truncate font-semibold" title={e.activity?.title}>{e.activity?.title || 'Game'}</span>
+                            </div>
+                            {e.activity?.activity_type && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-saBlue font-bold shrink-0">
+                                {e.activity.activity_type.replace('_', ' ')}
+                              </span>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-gray-300 text-xs italic">No individual activities</p>}
                   </div>
                 </div>
               </div>

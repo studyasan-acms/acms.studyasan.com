@@ -24,6 +24,7 @@ import StudentLiveQuiz from '../../components/activities/games/StudentLiveQuiz.t
 import StudentLiveMatchPairs from '../../components/activities/games/StudentLiveMatchPairs.tsx';
 import StudentLiveWordSearch from '../../components/activities/games/StudentLiveWordSearch.tsx';
 import StudentLiveTrueFalse from '../../components/activities/games/StudentLiveTrueFalse.tsx';
+import StudentLiveGameWrapper from '../../components/activities/games/StudentLiveGameWrapper.tsx';
 import CodingIDEGame from '../../components/activities/games/CodingIDEGame.tsx';
 import CodingLeetcodeGame from '../../components/activities/games/CodingLeetcodeGame.tsx';
 import { usePageTitle } from "@/hooks/usePageTitle";
@@ -151,6 +152,14 @@ export default function StudentActivitiesPage() {
     try {
       const res = await quizSessionAPI.join(joinCode.trim());
       const session = res.data.data;
+      if (session.activity_id) {
+        try {
+          const attemptRes = await activityAttemptAPI.start(session.activity_id, session.id);
+          setAttemptId(attemptRes.data.data.id);
+        } catch (e) {
+          console.warn('Could not pre-start session attempt', e);
+        }
+      }
       setActiveLiveSession(session);
       setShowJoinModal(false);
     } catch (e: any) {
@@ -246,7 +255,8 @@ export default function StudentActivitiesPage() {
   // Render Full Screen Active Game / Live Session
   const renderGame = () => {
     if (activeLiveSession) {
-      if (activeLiveSession.activity?.activity_type === 'MATCH_PAIRS') {
+      const liveActType = activeLiveSession.activity?.activity_type;
+      if (liveActType === 'MATCH_PAIRS') {
         return (
           <StudentLiveMatchPairs
             joinCode={activeLiveSession.join_code}
@@ -254,7 +264,7 @@ export default function StudentActivitiesPage() {
             onExit={() => setActiveLiveSession(null)}
           />
         );
-      } else if (activeLiveSession.activity?.activity_type === 'WORD_SEARCH') {
+      } else if (liveActType === 'WORD_SEARCH') {
         return (
           <StudentLiveWordSearch
             joinCode={activeLiveSession.join_code}
@@ -262,7 +272,7 @@ export default function StudentActivitiesPage() {
             onExit={() => setActiveLiveSession(null)}
           />
         );
-      } else if (activeLiveSession.activity?.activity_type === 'TRUE_FALSE') {
+      } else if (liveActType === 'TRUE_FALSE') {
         return (
           <StudentLiveTrueFalse
             joinCode={activeLiveSession.join_code}
@@ -270,10 +280,19 @@ export default function StudentActivitiesPage() {
             onExit={() => setActiveLiveSession(null)}
           />
         );
+      } else if (liveActType === 'QUIZ_GAME') {
+        return (
+          <StudentLiveQuiz
+            joinCode={activeLiveSession.join_code}
+            initialSession={activeLiveSession}
+            onExit={() => setActiveLiveSession(null)}
+          />
+        );
       }
       return (
-        <StudentLiveQuiz
+        <StudentLiveGameWrapper
           joinCode={activeLiveSession.join_code}
+          initialSession={activeLiveSession}
           onExit={() => setActiveLiveSession(null)}
         />
       );

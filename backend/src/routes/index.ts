@@ -43,6 +43,7 @@ import * as whiteboardController from '../controllers/whiteboard.controller.js';
 import * as invoiceController from '../controllers/invoice.controller.js';
 import * as recordingController from '../controllers/recording.controller.js';
 import * as sectionController from '../controllers/section.controller.js';
+import * as adminMaintenanceController from '../controllers/adminMaintenance.controller.js';
 import * as paymentGatewayController from '../controllers/paymentGateway.controller.js';
 import * as holidayController from '../controllers/holiday.controller.js';
 import announcementRoutes from './announcement.routes.js';
@@ -101,6 +102,10 @@ router.post('/account/cancel-deletion', authenticate, authorize('STUDENT', 'TEAC
 router.get('/admin/deletion-requests', authenticate, authorize('ADMIN'), deletionController.getDeletionRequests);
 router.post('/admin/verify-deletion/:userId', authenticate, authorize('ADMIN'), deletionController.verifyDeletion);
 router.delete('/admin/delete-user/:userId', authenticate, authorize('ADMIN'), deletionController.deleteUserAccount);
+
+// Admin Maintenance & Automated Cron Triggers
+router.post('/admin/backups/run', authenticate, authorize('ADMIN'), adminMaintenanceController.triggerDatabaseBackup);
+router.post('/admin/retention-cleanup/run', authenticate, authorize('ADMIN'), adminMaintenanceController.triggerRetentionCleanup);
 
 // Push Notification routes
 router.post('/notifications/subscribe', authenticate, pushNotificationController.subscribeToNotifications);

@@ -238,9 +238,9 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
 
     if (status === 'LOBBY') {
         return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50 text-slate-800">
+            <div className="fixed inset-0 z-50 overflow-y-auto flex flex-col items-center justify-start bg-slate-50 text-slate-800 p-4 sm:p-6">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 -z-10" />
-                <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden mx-4 animate-in zoom-in-95 duration-300">
+                <Card className="bg-white border border-slate-200 rounded-3xl p-8 sm:p-12 text-center max-w-lg w-full shadow-xl relative overflow-hidden mx-4 animate-in zoom-in-95 duration-300 mt-6 sm:mt-12">
                     <div className="w-20 h-20 mx-auto mb-6 bg-blue-50 text-saBlue rounded-3xl flex items-center justify-center animate-bounce border border-blue-100 shadow-sm">
                         <Gamepad2 className="w-10 h-10" />
                     </div>

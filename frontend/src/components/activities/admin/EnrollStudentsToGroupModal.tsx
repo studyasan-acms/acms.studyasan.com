@@ -151,9 +151,18 @@ export default function EnrollStudentsToGroupModal({ group, onClose, onSuccess }
             <p className="text-sm text-gray-600 mt-1">
               Group: <span className="font-semibold">{group.name}</span>
             </p>
-            <p className="text-xs text-gray-500">
-              Students will be enrolled to all {group._count?.activities || 0} published activities in this group
+            <p className="text-xs text-gray-500 mt-0.5">
+              Students will be enrolled to all {group._count?.activities || (group as any).activities?.length || 0} published activities in this group
             </p>
+            {(group as any).activities && (group as any).activities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {(group as any).activities.map((act: any) => (
+                  <span key={act.id} className="text-[10px] bg-white border border-blue-200 text-blue-700 px-2 py-0.5 rounded-md font-semibold">
+                    {act.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="w-5 h-5" />

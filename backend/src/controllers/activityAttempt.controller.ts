@@ -113,10 +113,20 @@ export const submitResponse = async (req: Request, res: Response) => {
       return sendError(res, 'Activity item not found', 404);
     }
 
-    // Server-side validation for Quizzes
-    const content = item.content as any;
-    if (content && typeof content.correctAnswer === 'number' && response && typeof response.answer === 'number') {
-      is_correct = content.correctAnswer === response.answer;
+    // Server-side validation for Quizzes and True/False
+    let content = item.content as any;
+    if (typeof content === 'string') {
+      try { content = JSON.parse(content); } catch (e) {}
+    }
+
+    if (content && content.correctAnswer !== undefined && response && response.answer !== undefined) {
+      if (typeof content.correctAnswer === 'number' && typeof response.answer === 'number') {
+        is_correct = content.correctAnswer === response.answer;
+      } else if (typeof content.correctAnswer === 'boolean' || typeof response.answer === 'boolean') {
+        const normExpected = String(content.correctAnswer).toLowerCase() === 'true' || content.correctAnswer === 1;
+        const normActual = String(response.answer).toLowerCase() === 'true' || response.answer === 1;
+        is_correct = normExpected === normActual;
+      }
     }
 
     // Calculate points

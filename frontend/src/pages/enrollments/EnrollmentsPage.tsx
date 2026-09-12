@@ -93,7 +93,7 @@ const EnrollmentsPage: React.FC = () => {
         student_email: e.student.user.email,
         student: e.student,
         // Determine item name based on type
-        item_name: e.subject?.name || e.test_series?.title || e.activity_group?.name || 'Unknown Item',
+        item_name: e.subject?.name || e.test_series?.title || (e as any).activity?.title || e.activity_group?.name || 'Unknown Item',
         enrolled_at: e.created_on,
         original: e
       }));

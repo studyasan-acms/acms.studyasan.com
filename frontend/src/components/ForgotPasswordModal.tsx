@@ -10,7 +10,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { authService } from "@/services/api";
-import { Loader2, Mail, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, KeyRound, Check, X } from "lucide-react";
+import { validatePasswordStrength } from "@/utils/passwordValidator";
+import { PasswordRequirementsList } from "@/components/common/PasswordRequirementsList";
 
 interface ForgotPasswordModalProps {
   isOpen: boolean;
@@ -33,6 +35,7 @@ export default function ForgotPasswordModal({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [hasSubmitted, setHasSubmitted] = useState(false);
 
   const handleClose = () => {
     setStep("email");
@@ -44,6 +47,7 @@ export default function ForgotPasswordModal({
     setSuccess("");
     setShowPassword(false);
     setShowConfirmPassword(false);
+    setHasSubmitted(false);
     onClose();
   };
 
@@ -85,6 +89,7 @@ export default function ForgotPasswordModal({
       setTimeout(() => {
         setStep("password");
         setSuccess("");
+        setHasSubmitted(false);
       }, 1500);
     } catch (err: any) {
       setError(
@@ -97,18 +102,20 @@ export default function ForgotPasswordModal({
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    setHasSubmitted(true);
     setError("");
     setSuccess("");
+
+    // Validate password strength on UI level
+    const validation = validatePasswordStrength(newPassword);
+    if (!validation.isValid) {
+      setError("Please ensure your password meets all security requirements below");
+      return;
+    }
 
     // Validate passwords match
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match");
-      return;
-    }
-
-    // Validate password strength
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters long");
       return;
     }
 
@@ -151,6 +158,8 @@ export default function ForgotPasswordModal({
       setIsLoading(false);
     }
   };
+
+  const passwordValidation = validatePasswordStrength(newPassword);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -326,7 +335,6 @@ export default function ForgotPasswordModal({
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  minLength={8}
                 />
                 <button
                   type="button"
@@ -340,6 +348,11 @@ export default function ForgotPasswordModal({
                   )}
                 </button>
               </div>
+              {hasSubmitted && (
+                <PasswordRequirementsList
+                  requirements={passwordValidation.requirements}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
@@ -355,7 +368,6 @@ export default function ForgotPasswordModal({
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  minLength={8}
                 />
                 <button
                   type="button"
@@ -369,9 +381,23 @@ export default function ForgotPasswordModal({
                   )}
                 </button>
               </div>
-              <p className="text-xs text-gray-500">
-                Password must be at least 8 characters long
-              </p>
+              {hasSubmitted && confirmPassword && (
+                <p
+                  className={`text-xs flex items-center gap-1 ${
+                    newPassword === confirmPassword ? "text-green-600" : "text-red-500"
+                  }`}
+                >
+                  {newPassword === confirmPassword ? (
+                    <>
+                      <Check className="h-3 w-3" /> Passwords match
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-3 w-3" /> Passwords do not match
+                    </>
+                  )}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-3">

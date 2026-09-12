@@ -155,6 +155,14 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
     }, 2000);
   };
 
+  const resetGame = () => {
+    setCurrentQuestion(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+    setTimeLeft(30);
+  };
+
   if (currentQuestion >= totalQuestions) {
     const timeTaken = Math.floor((Date.now() - startTime) / 1000);
     return (
@@ -164,8 +172,10 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
         score={score}
         timeTaken={timeTaken}
         totalQuestions={totalQuestions}
+        onPlayAgain={resetGame}
+        playAgainText="Play Again"
         onContinue={() => onComplete(score, timeTaken)}
-        continueText="Finish & Claim Rewards"
+        continueText="Back to Activities"
       />
     );
   }
@@ -228,38 +238,40 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       </div>
 
       {/* Header */}
-      <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-center gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white">
-        <div className="flex items-center gap-4">
-          <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-          <div className="h-6 w-px bg-white/25 hidden sm:block" />
-          <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+      <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center shrink-0">
+            <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+          </div>
+          <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
+          <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
             Quiz
-            <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
+            <span className="text-[10px] bg-white/15 text-white px-2 py-0.5 rounded-full border border-white/20 font-bold uppercase tracking-wider">
               {currentQuestion + 1} / {totalQuestions}
             </span>
           </h2>
-          <button onClick={() => setIsMuted(!isMuted)} className="p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
-            {isMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
+            {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
           </button>
         </div>
 
-        <div className="flex items-center gap-4 sm:gap-6">
-          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base">
-            <Star className="w-4 h-4 mr-2 fill-current" />
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base">
+            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 fill-current" />
             <span>{score} EXP</span>
           </div>
-          <div className="flex items-center bg-white/15 px-4 py-2 rounded-xl text-white border border-white/20 font-bold text-sm sm:text-base font-mono">
-            <Clock className="w-4 h-4 mr-2" />
+          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base font-mono">
+            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
             <span className={timeLeft <= 5 ? 'animate-pulse text-red-300' : ''}>{timeLeft}s</span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-2 rounded-xl transition-colors">
-            <X className="w-5 h-5" />
+          <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors">
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="h-1.5 w-full bg-slate-200">
+      <div className="h-1.5 w-full bg-slate-200 shrink-0">
         <div
           className="h-full bg-saBlue transition-all duration-500"
           style={{ width: `${((currentQuestion + 1) / totalQuestions) * 100}%` }}
@@ -267,28 +279,29 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10 w-full max-w-7xl mx-auto flex flex-col justify-center">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8 items-start">
-          
-          {/* Left Column: Instructions */}
-          <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
-            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
-              <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
-              <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
-                {activity.instructions || "Read the question carefully and select the correct answer from the options below. Click 'Submit Answer' to confirm your response before the timer expires!"}
-              </p>
-            </Card>
-          </div>
+      <div className="flex-1 overflow-y-auto p-3 sm:p-6 relative z-10 w-full">
+        <div className="w-full max-w-7xl mx-auto py-2 sm:py-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
+              
+              {/* Left Column: Instructions */}
+              <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
+                <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
+                  <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
+                  <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
+                    {activity.instructions || "Read the question carefully and select the correct answer from the options below. Click 'Submit Answer' to confirm your response before the timer expires!"}
+                  </p>
+                </Card>
+              </div>
 
-          {/* Center Column: Question & Answers */}
-          <div className="lg:col-span-2 order-2 flex flex-col gap-5 items-stretch min-h-0">
-            {/* Question Card */}
-            <Card className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col items-center justify-center min-h-[140px]">
-              {question.content.questionMedia && (
-                <div className="mb-3 flex justify-center w-full max-h-[160px] overflow-hidden rounded-xl">
-                  <img src={question.content.questionMedia} alt="Question Reference" className="h-full w-auto max-w-full object-contain rounded-lg shadow-sm" />
-                </div>
-              )}
+              {/* Center Column: Question & Answers */}
+              <div className="lg:col-span-2 order-2 flex flex-col gap-4 sm:gap-5 items-stretch min-h-0">
+                {/* Question Card */}
+                <Card className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-xs flex flex-col items-center justify-center min-h-[140px]">
+                  {question.content.questionMedia && (
+                    <div className="mb-4 flex justify-center w-full max-w-lg aspect-video max-h-[180px] sm:max-h-[220px] overflow-hidden rounded-xl bg-slate-50 border border-slate-200 shadow-sm">
+                      <img src={question.content.questionMedia} alt="Question Reference" className="w-full h-full object-contain" />
+                    </div>
+                  )}
               {question.content.question && (
                 <h3 className="text-base sm:text-xl font-extrabold text-slate-800 text-center leading-relaxed">
                   {question.content.question}
@@ -316,7 +329,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
                     key={index}
                     onClick={() => handleAnswerSelect(index)}
                     disabled={showResult}
-                    className={`w-full min-h-[4rem] px-4 py-3 rounded-xl border transition-all duration-200 flex items-center gap-3 text-left ${statusClass}`}
+                    className={`w-full min-h-[4.5rem] px-4 py-3 rounded-xl border transition-all duration-200 flex items-center gap-3 text-left ${statusClass}`}
                   >
                     <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-colors ${
                       isSelected ? 'bg-saBlue text-white' : 'bg-slate-100 text-slate-500'
@@ -325,8 +338,8 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
                     </span>
                     <div className="flex-1 min-w-0 flex flex-col">
                       {question.content.optionsMedia?.[index] && (
-                        <div className="max-h-[60px] overflow-hidden mb-1 flex justify-start">
-                          <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="h-full w-auto object-contain rounded" />
+                        <div className="w-full aspect-video max-h-[140px] overflow-hidden mb-2 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center">
+                          <img src={question.content.optionsMedia[index]} alt={`Option ${String.fromCharCode(65 + index)}`} className="w-full h-full object-contain" />
                         </div>
                       )}
                       {option && <span className="text-sm font-semibold">{option}</span>}
@@ -393,6 +406,7 @@ export default function QuizGameComponent({ activity, attemptId, onComplete, onC
 
         </div>
       </div>
+    </div>
 
       {/* Result Popup Overlay */}
       {showResult && (
