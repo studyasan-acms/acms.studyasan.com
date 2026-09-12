@@ -154,22 +154,24 @@ export default function CodingLeetcodeGame({ activity, attemptId, onComplete, on
             </div>
 
             {/* Header */}
-            <div className="p-4 flex justify-between items-center bg-saBlue border-b border-saBlue/80 text-white z-20 shadow-xs">
-                <div className="flex items-center gap-4">
-                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-                    <div className="h-6 w-px bg-white/25" />
-                    <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+                    <div className="flex items-center shrink-0">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain" />
+                    </div>
+                    <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                    <h2 className="text-xs sm:text-base font-black uppercase tracking-wider text-white truncate min-w-0">
                         Coding Challenge
                     </h2>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs">
-                        <Star className="w-4 h-4 mr-2 fill-current" />
-                        <span>{activity.items?.[0]?.points || 120} EXP</span>
+                <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+                    <div className="flex items-center bg-white/15 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/20 font-bold text-[11px] sm:text-sm shrink-0 whitespace-nowrap">
+                        <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 fill-current text-amber-300" />
+                        <span>{activity.items?.[0]?.points || 120}<span className="hidden xs:inline ml-0.5">EXP</span></span>
                     </div>
-                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white hover:text-white p-2 rounded-xl transition-colors">
-                        <X className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0">
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                 </div>
             </div>

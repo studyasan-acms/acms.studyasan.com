@@ -533,36 +533,39 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
       </div>
 
       {/* Header */}
-      <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           <div className="flex items-center shrink-0">
-            <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+            <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain" />
           </div>
-          <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
-          <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+          <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+          <h2 className="text-xs sm:text-base font-black uppercase tracking-wider text-white truncate min-w-0">
             Word Search
-            {activity.items && activity.items.length > 1 && (
-              <span className="text-[10px] bg-white/15 text-white px-2.5 py-1 rounded-full border border-white/20 font-bold uppercase tracking-wider">
-                Grid {currentItem + 1} of {activity.items.length}
-              </span>
-            )}
           </h2>
-          <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 text-white/80 hover:text-white rounded-full transition-colors">
-            {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-          </button>
+          {activity.items && activity.items.length > 1 && (
+            <span className="hidden md:inline-block text-[10px] bg-white/15 text-white px-2 py-0.5 rounded-full border border-white/20 font-bold uppercase tracking-wider shrink-0">
+              Grid {currentItem + 1}/{activity.items.length}
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base">
-            <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2 fill-current" />
-            <span>{Math.round(score)} EXP</span>
+        <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+          <button onClick={() => setIsMuted(!isMuted)} className="p-1 sm:p-1.5 hover:bg-white/10 text-white/80 hover:text-white rounded-lg transition-colors shrink-0" title={isMuted ? "Unmute" : "Mute"}>
+            {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+          </button>
+          
+          <div className="flex items-center bg-white/15 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-white border border-white/20 font-bold text-[11px] sm:text-sm shrink-0 whitespace-nowrap">
+            <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 fill-current text-amber-300" />
+            <span>{Math.round(score)}<span className="hidden xs:inline ml-0.5">EXP</span></span>
           </div>
-          <div className="flex items-center bg-white/15 px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl text-white border border-white/20 font-bold text-xs sm:text-base font-mono">
-            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
+
+          <div className="flex items-center bg-white/15 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl text-white border border-white/20 font-bold text-[11px] sm:text-sm font-mono shrink-0 whitespace-nowrap">
+            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1" />
             <span>{timeElapsed}s</span>
           </div>
-          <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white p-1.5 sm:p-2 rounded-xl transition-colors">
-            <X className="w-4 h-4 sm:w-5 sm:h-5" />
+
+          <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0">
+            <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </Button>
         </div>
       </div>
@@ -581,7 +584,7 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 items-start">
               
               {/* Left Column: Instructions */}
-              <div className="lg:col-span-1 order-1 lg:order-1 flex flex-col gap-4 self-stretch">
+              <div className="lg:col-span-1 order-3 lg:order-1 flex flex-col gap-4 self-stretch">
                 <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
                   <h3 className="text-xs font-black mb-2 text-saBlue uppercase tracking-wider">Instructions</h3>
                   <p className="text-xs text-slate-500 leading-relaxed font-medium flex-1">
@@ -648,27 +651,32 @@ export default function WordSearchGame({ activity, attemptId, onComplete, onCanc
           </div>
 
           {/* Right Column: Words List */}
-          <div className="lg:col-span-1 order-3 flex flex-col self-stretch">
-            <Card className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex-1 flex flex-col">
-              <h3 className="text-sm font-black text-center text-saBlue uppercase tracking-wider border-b border-slate-100 pb-3 mb-4">
-                Find These Words
-              </h3>
-              <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[280px] lg:max-h-[350px] pr-1">
+          <div className="lg:col-span-1 order-1 lg:order-3 flex flex-col self-stretch">
+            <Card className="bg-white border border-slate-200 rounded-2xl p-3.5 sm:p-5 shadow-xs flex-1 flex flex-col">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+                <h3 className="text-xs sm:text-sm font-black text-saBlue uppercase tracking-wider">
+                  Find These Words
+                </h3>
+                <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {foundWords.size} / {words.length}
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2 lg:flex-col lg:space-y-2.5 lg:gap-0 flex-1 overflow-y-auto max-h-[140px] sm:max-h-[180px] lg:max-h-[350px] pr-1">
                 {words.map((word, index) => {
                   const isFound = foundWords.has(word);
                   return (
                     <div
                       key={index}
-                      className={`p-3.5 rounded-xl transition-all duration-200 border flex items-center justify-between font-bold ${
+                      className={`px-3 py-1.5 sm:px-3.5 sm:py-2.5 lg:p-3.5 rounded-xl transition-all duration-200 border flex items-center justify-between gap-2 font-bold ${
                         isFound
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200 line-through opacity-75'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100/60'
                       }`}
                     >
-                      <span className="text-sm md:text-base">{word}</span>
+                      <span className="text-xs sm:text-sm md:text-base">{word}</span>
                       {isFound && (
-                        <div className="text-emerald-600">
-                          <CheckCircle className="w-5 h-5 fill-current" />
+                        <div className="text-emerald-600 shrink-0">
+                          <CheckCircle className="w-4 h-4 lg:w-5 lg:h-5 fill-current" />
                         </div>
                       )}
                     </div>

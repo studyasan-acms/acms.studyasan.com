@@ -285,25 +285,27 @@ export default function StudentLiveMatchPairs({ joinCode, onExit, initialSession
             <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] rounded-full bg-saVividOrange/10 blur-[120px] -z-10" />
 
             {/* Header */}
-            <div className="p-3 sm:p-5 flex justify-between items-center bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs">
-                <div className="flex items-center gap-3">
-                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-7 sm:h-8 object-contain" />
-                    <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
-                    <span className="font-black text-sm sm:text-lg uppercase tracking-wider whitespace-nowrap">Live Match Pairs</span>
-                    <button onClick={() => setIsMuted(!isMuted)} className="p-1.5 sm:p-2 hover:bg-white/10 rounded-full">
-                        {isMuted ? <VolumeX className="w-4 h-4 sm:w-5 sm:h-5" /> : <Volume2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-                    </button>
+            <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain shrink-0" />
+                    <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                    <span className="font-black text-xs sm:text-base uppercase tracking-wider truncate min-w-0">Live Match Pairs</span>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-4">
-                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs sm:text-sm">
-                        <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 fill-current text-amber-300" />
-                        <span>{Math.round(score)} EXP</span>
+                <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+                    <button onClick={() => setIsMuted(!isMuted)} className="p-1 sm:p-1.5 hover:bg-white/10 text-white/80 hover:text-white rounded-lg transition-colors shrink-0" title={isMuted ? "Unmute" : "Mute"}>
+                        {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                    </button>
+                    <div className="flex items-center bg-white/15 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/20 font-bold text-[11px] sm:text-sm shrink-0 whitespace-nowrap">
+                        <Star className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 fill-current text-amber-300" />
+                        <span>{Math.round(score)}<span className="hidden xs:inline ml-0.5">EXP</span></span>
                     </div>
-                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs sm:text-sm font-mono">
-                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5" />
+                    <div className="flex items-center bg-white/15 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl border border-white/20 font-bold text-[11px] sm:text-sm font-mono shrink-0 whitespace-nowrap">
+                        <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />
                         <span>{timeElapsed}s</span>
                     </div>
-                    <Button variant="ghost" onClick={onExit} className="hover:bg-white/10 text-white p-2 rounded-xl"><X className="w-5 h-5" /></Button>
+                    <Button variant="ghost" size="icon" onClick={onExit} className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0">
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </Button>
                 </div>
             </div>
 

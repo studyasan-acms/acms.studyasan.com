@@ -156,16 +156,16 @@ export default function StudentLiveWordSearch({ joinCode, initialSession, onExit
         return (
             <div className="fixed inset-0 z-50 bg-slate-50 text-slate-800 flex flex-col font-sans overflow-hidden">
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-40 -z-10" />
-                <div className="p-4 sm:p-5 flex justify-between items-center bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs">
-                    <div className="flex items-center gap-3">
-                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-7 sm:h-8 object-contain" />
-                        <div className="h-5 sm:h-6 w-px bg-white/25" />
-                        <h2 className="text-base sm:text-lg font-black uppercase tracking-wider">
+                <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue text-white border-b border-saBlue/80 z-20 shadow-xs shrink-0">
+                    <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain shrink-0" />
+                        <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                        <h2 className="text-xs sm:text-base font-black uppercase tracking-wider truncate min-w-0">
                             Live Word Search
                         </h2>
                     </div>
-                    <Button variant="ghost" onClick={onExit} className="hover:bg-white/10 text-white p-2 rounded-xl">
-                        <X className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" onClick={onExit} className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0">
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col items-center justify-start">

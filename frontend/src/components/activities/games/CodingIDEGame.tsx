@@ -143,33 +143,36 @@ export default function CodingIDEGame({ activity, attemptId, onComplete, onCance
             </div>
 
             {/* Header */}
-            <div className="p-4 flex justify-between items-center bg-saBlue border-b border-saBlue/80 text-white z-20 shadow-xs">
-                <div className="flex items-center gap-4">
-                    <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-8 object-contain" />
-                    <div className="h-6 w-px bg-white/25" />
-                    <h2 className="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
+            <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
+                    <div className="flex items-center shrink-0">
+                        <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain" />
+                    </div>
+                    <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+                    <h2 className="text-xs sm:text-base font-black uppercase tracking-wider text-white truncate min-w-0">
                         Collaborative IDE
-                        <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase tracking-wider animate-pulse">
-                            Live Sync
-                        </span>
                     </h2>
+                    <span className="hidden xs:inline-block text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold uppercase tracking-wider animate-pulse shrink-0">
+                        Live
+                    </span>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center bg-white/15 px-3 py-1.5 rounded-xl border border-white/20 font-bold text-xs">
-                        <Users className="w-4 h-4 mr-2" />
+                <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
+                    <div className="hidden sm:flex items-center bg-white/15 px-2.5 py-1 rounded-lg border border-white/20 font-bold text-xs shrink-0 whitespace-nowrap">
+                        <Users className="w-3.5 h-3.5 mr-1.5" />
                         <span>Collaborating</span>
                     </div>
                     {attemptId && (
                         <Button 
                             onClick={handleFinishSession}
-                            className="bg-saVividOrange hover:bg-orange-600 text-white font-bold h-9 px-4 rounded-xl shadow-xs"
+                            size="sm"
+                            className="bg-saVividOrange hover:bg-orange-600 text-white font-bold h-7 sm:h-8 px-2.5 sm:px-3 text-xs rounded-lg sm:rounded-xl shadow-xs shrink-0"
                         >
-                            Complete Activity
+                            Complete
                         </Button>
                     )}
-                    <Button variant="ghost" onClick={onCancel} className="hover:bg-white/10 text-white hover:text-white p-2 rounded-xl transition-colors">
-                        <X className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0">
+                        <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </Button>
                 </div>
             </div>

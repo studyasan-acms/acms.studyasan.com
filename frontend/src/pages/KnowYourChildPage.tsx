@@ -189,6 +189,38 @@ export default function KnowYourChildPage() {
     }
   };
 
+  const handleDownloadCardPDF = async (report: any) => {
+    const current = selectedReport;
+    setSelectedReport(report);
+    setTimeout(async () => {
+      const element = document.getElementById("weekly-report-card-print");
+      if (element) {
+        try {
+          toast.info("Generating PDF...");
+          const canvas = await html2canvas(element, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: "#f0f4ff"
+          });
+          const imgData = canvas.toDataURL("image/png");
+          const pdf = new jsPDF({
+            orientation: "portrait",
+            unit: "px",
+            format: [canvas.width / 2, canvas.height / 2]
+          });
+          pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
+          pdf.save(`Weekly_Report_${student?.user?.name || "Student"}_${report.month}.pdf`);
+          toast.success("PDF downloaded successfully!");
+        } catch (err) {
+          console.error("PDF error:", err);
+          toast.error("Failed to download PDF.");
+        }
+      }
+      setSelectedReport(current);
+    }, 300);
+  };
+
   const handleFeedbackSubmit = async () => {
     if (!feedbackModalReport) return;
     if (!feedbackText.trim()) {
@@ -283,9 +315,9 @@ export default function KnowYourChildPage() {
               </div>
 
               {/* FILTERS BAR */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 pt-2">
                 {/* Search Bar */}
-                <div className="relative">
+                <div className="relative col-span-2 sm:col-span-2 md:col-span-1 lg:col-span-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
                     type="text"
@@ -295,86 +327,94 @@ export default function KnowYourChildPage() {
                       setSearchTerm(e.target.value);
                       fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, selectedWeekFilter, e.target.value);
                     }}
-                    className="pl-9 h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white"
+                    className="pl-9 h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white w-full"
                   />
                 </div>
 
                 {/* Subject Filter */}
-                <Select
-                  value={selectedSubjectFilter}
-                  onValueChange={(val) => {
-                    setSelectedSubjectFilter(val);
-                    fetchStudentData(1, val, selectedMonthFilter, selectedStatusFilter, selectedWeekFilter, searchTerm);
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
-                    <SelectValue placeholder="All Subjects" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Subjects</SelectItem>
-                    {enrolledSubjects.map((s: any) => (
-                      <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="col-span-1">
+                  <Select
+                    value={selectedSubjectFilter}
+                    onValueChange={(val) => {
+                      setSelectedSubjectFilter(val);
+                      fetchStudentData(1, val, selectedMonthFilter, selectedStatusFilter, selectedWeekFilter, searchTerm);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white w-full">
+                      <SelectValue placeholder="All Subjects" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Subjects</SelectItem>
+                      {enrolledSubjects.map((s: any) => (
+                        <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Month Filter */}
-                <Select
-                  value={selectedMonthFilter}
-                  onValueChange={(val) => {
-                    setSelectedMonthFilter(val);
-                    fetchStudentData(1, selectedSubjectFilter, val, selectedStatusFilter, selectedWeekFilter, searchTerm);
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
-                    <SelectValue placeholder="All Months" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Months</SelectItem>
-                    {["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"].map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="col-span-1">
+                  <Select
+                    value={selectedMonthFilter}
+                    onValueChange={(val) => {
+                      setSelectedMonthFilter(val);
+                      fetchStudentData(1, selectedSubjectFilter, val, selectedStatusFilter, selectedWeekFilter, searchTerm);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white w-full">
+                      <SelectValue placeholder="All Months" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Months</SelectItem>
+                      {["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"].map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Week Filter */}
-                <Select
-                  value={selectedWeekFilter}
-                  onValueChange={(val) => {
-                    setSelectedWeekFilter(val);
-                    fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, val, searchTerm);
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
-                    <SelectValue placeholder="All Weeks" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Weeks</SelectItem>
-                    {allWeeks.map((week) => (
-                      <SelectItem key={week} value={week}>
-                        Week of {format(new Date(week), "MMM d, yyyy")}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="col-span-1">
+                  <Select
+                    value={selectedWeekFilter}
+                    onValueChange={(val) => {
+                      setSelectedWeekFilter(val);
+                      fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, selectedStatusFilter, val, searchTerm);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white w-full">
+                      <SelectValue placeholder="All Weeks" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Weeks</SelectItem>
+                      {allWeeks.map((week) => (
+                        <SelectItem key={week} value={week}>
+                          Week of {format(new Date(week), "MMM d, yyyy")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 {/* Feedback Reply Status Filter */}
-                <Select
-                  value={selectedStatusFilter}
-                  onValueChange={(val) => {
-                    setSelectedStatusFilter(val);
-                    fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, val, selectedWeekFilter, searchTerm);
-                  }}
-                >
-                  <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white">
-                    <SelectValue placeholder="All Feedback Statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="col-span-1">
+                  <Select
+                    value={selectedStatusFilter}
+                    onValueChange={(val) => {
+                      setSelectedStatusFilter(val);
+                      fetchStudentData(1, selectedSubjectFilter, selectedMonthFilter, val, selectedWeekFilter, searchTerm);
+                    }}
+                  >
+                    <SelectTrigger className="h-10 text-xs rounded-xl border-slate-200 bg-slate-50/50 focus:bg-white w-full">
+                      <SelectValue placeholder="All Feedback Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               {hasActiveFilters && (
@@ -402,7 +442,132 @@ export default function KnowYourChildPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-white">
+                {/* MOBILE VIEW: RESPONSIVE CARDS / BOXES */}
+                <div className="block md:hidden space-y-3">
+                  {reports.map((report) => {
+                    const isSelected = selectedReport?.id === report.id;
+                    return (
+                      <div
+                        key={report.id}
+                        className={cn(
+                          "p-4 rounded-2xl border transition-all shadow-xs bg-white space-y-3",
+                          isSelected
+                            ? "border-saBlue ring-2 ring-saBlue/20 bg-blue-50/15"
+                            : "border-slate-200/80 hover:border-slate-300"
+                        )}
+                      >
+                        {/* Top Row: Month, Subject & Feedback Status */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <Badge variant="outline" className="bg-orange-50 border-orange-200 text-orange-600 font-extrabold px-2.5 py-0.5 rounded-lg text-xs">
+                              {report.month}
+                            </Badge>
+                            {report.subject ? (
+                              <Badge variant="secondary" className="bg-blue-50 border-blue-200 text-blue-700 font-bold px-2.5 py-0.5 rounded-lg text-xs">
+                                {report.subject.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-slate-400 italic">General</span>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => openFeedbackModal(report)}
+                            className="cursor-pointer group shrink-0"
+                            title="Click to view/submit feedback"
+                          >
+                            {report.parent_feedback ? (
+                              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 text-[11px] group-hover:bg-emerald-100 transition-colors">
+                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                Submitted
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-50 border-amber-200 text-amber-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 text-[11px] group-hover:bg-amber-100 transition-colors">
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>
+                                Pending
+                              </Badge>
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Card Info Grid */}
+                        <div className="grid grid-cols-2 gap-2 text-xs py-2 border-y border-slate-100/90">
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-semibold text-slate-800 truncate">
+                              Week of {format(new Date(report.week_start_date), "MMM d")}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-700 truncate">
+                              {report.teacher?.user?.name || "Teacher"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Teacher Remarks snippet if present */}
+                        {report.teacher_comment && (
+                          <div className="bg-slate-50/80 border border-slate-100 rounded-xl p-2.5 text-xs text-slate-600 leading-relaxed">
+                            <span className="font-bold text-slate-700">Remarks:</span> "{report.teacher_comment}"
+                          </div>
+                        )}
+
+                        {/* Actions Row */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            variant={isSelected ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => handleSelectReport(report)}
+                            className={cn(
+                              "flex-1 rounded-xl h-9 text-xs font-bold transition-all shadow-xs",
+                              isSelected
+                                ? "bg-saBlue text-white hover:bg-saBlue/90"
+                                : "text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-saBlue"
+                            )}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1.5" /> View Card
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openFeedbackModal(report)}
+                            className="flex-1 rounded-xl h-9 text-xs font-bold text-slate-700 border-slate-200 hover:bg-blue-50 hover:text-saBlue transition-all shadow-xs"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 mr-1.5 text-saBlue" /> Feedback
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleDownloadCardPDF(report)}
+                            className="rounded-xl border-slate-200 h-9 w-9 text-slate-500 hover:text-saBlue hover:bg-blue-50 shrink-0"
+                            title="Download PDF"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </Button>
+
+                          {(user?.role === "ADMIN" || user?.role === "TEACHER") && (
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => handleDeleteReport(report.id)}
+                              className="rounded-xl border-red-200 h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 shrink-0"
+                              title="Delete Report"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* DESKTOP VIEW: TABULAR REPORT */}
+                <div className="hidden md:block border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm bg-white">
                   <Table>
                     <TableHeader className="bg-slate-50/80">
                       <TableRow className="border-b border-slate-100 hover:bg-transparent">
@@ -498,37 +663,7 @@ export default function KnowYourChildPage() {
                                 <Button
                                   variant="outline"
                                   size="icon"
-                                  onClick={async () => {
-                                    const current = selectedReport;
-                                    setSelectedReport(report);
-                                    setTimeout(async () => {
-                                      const element = document.getElementById("weekly-report-card-print");
-                                      if (element) {
-                                        try {
-                                          toast.info("Generating PDF...");
-                                          const canvas = await html2canvas(element, {
-                                            scale: 2,
-                                            useCORS: true,
-                                            logging: false,
-                                            backgroundColor: "#f0f4ff"
-                                          });
-                                          const imgData = canvas.toDataURL("image/png");
-                                          const pdf = new jsPDF({
-                                            orientation: "portrait",
-                                            unit: "px",
-                                            format: [canvas.width / 2, canvas.height / 2]
-                                          });
-                                          pdf.addImage(imgData, "PNG", 0, 0, canvas.width / 2, canvas.height / 2);
-                                          pdf.save(`Weekly_Report_${student?.user?.name || "Student"}_${report.month}.pdf`);
-                                          toast.success("PDF downloaded successfully!");
-                                        } catch (err) {
-                                          console.error("PDF error:", err);
-                                          toast.error("Failed to download PDF.");
-                                        }
-                                      }
-                                      setSelectedReport(current);
-                                    }, 300);
-                                  }}
+                                  onClick={() => handleDownloadCardPDF(report)}
                                   className="rounded-xl border-slate-200 h-8 w-8 text-slate-500 hover:text-saBlue hover:bg-blue-50"
                                   title="Download PDF"
                                 >

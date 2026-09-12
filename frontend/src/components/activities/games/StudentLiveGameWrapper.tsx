@@ -164,28 +164,29 @@ export default function StudentLiveGameWrapper({ joinCode, onExit, initialSessio
     return createPortal(
       <div className="fixed inset-0 z-[9999] bg-slate-50 text-slate-800 flex flex-col font-sans overflow-y-auto">
         {/* Header */}
-        <div className="px-4 py-3 sm:px-6 sm:py-3.5 flex flex-row justify-between items-center gap-3 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0 sticky top-0">
-          <div className="flex items-center gap-3 sm:gap-4">
+        <div className="px-2.5 py-2 sm:px-6 sm:py-3 flex flex-row justify-between items-center gap-1.5 sm:gap-4 bg-saBlue border-b border-saBlue/80 z-20 shadow-xs text-white shrink-0 sticky top-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
             <div className="flex items-center shrink-0">
-              <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-6 sm:h-7 w-auto object-contain" />
+              <img src="/studyasan-logo.png" alt="StudyAsan Logo" className="h-5 sm:h-7 w-auto object-contain" />
             </div>
-            <div className="h-5 sm:h-6 w-px bg-white/25 hidden sm:block" />
-            <h2 className="text-base sm:text-lg font-black uppercase tracking-wider text-white flex items-center gap-2">
-              <span>{session?.activity?.title || 'Live Session'}</span>
-              <span className="text-[10px] bg-emerald-400/25 text-emerald-200 px-2.5 py-1 rounded-full border border-emerald-400/30 font-bold uppercase tracking-wider animate-pulse">
-                Lobby Active
-              </span>
+            <div className="h-4 sm:h-6 w-px bg-white/25 hidden sm:block" />
+            <h2 className="text-xs sm:text-base font-black uppercase tracking-wider text-white truncate min-w-0">
+              {session?.activity?.title || 'Live Session'}
             </h2>
+            <span className="hidden xs:inline-block text-[10px] bg-emerald-400/25 text-emerald-200 px-2 py-0.5 rounded-full border border-emerald-400/30 font-bold uppercase tracking-wider animate-pulse shrink-0">
+              Lobby
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             <Button
               variant="ghost"
+              size="icon"
               onClick={onExit}
-              className="hover:bg-white/10 text-white p-2 rounded-xl transition-colors"
+              className="hover:bg-white/10 text-white/80 hover:text-white h-7 w-7 sm:h-8 sm:w-8 p-0 rounded-lg transition-colors shrink-0"
               title="Exit Session"
             >
-              <X className="w-5 h-5" />
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
           </div>
         </div>

@@ -216,18 +216,18 @@ export const publicHolidayService = {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: Array<{ countryCode: string; name: string }> = await res.json();
 
-      const flagMap = new Map(POPULAR_COUNTRIES.map((c) => [c.countryCode, c.flag]));
-      const list = data.map((c) => ({
-        countryCode: c.countryCode,
-        name: c.name,
-        flag: flagMap.get(c.countryCode) || '🌐',
-      }));
+      const existingCodes = new Set(POPULAR_COUNTRIES.map((c) => c.countryCode));
+      const additionalCountries = data
+        .filter((c) => !existingCodes.has(c.countryCode))
+        .map((c) => ({
+          countryCode: c.countryCode,
+          name: c.name,
+          flag: '🌐',
+        }));
 
-      const popularCodes = new Set(POPULAR_COUNTRIES.map((c) => c.countryCode));
-      const popular = list.filter((c) => popularCodes.has(c.countryCode));
-      const others = list.filter((c) => !popularCodes.has(c.countryCode));
-
-      countriesCache = [...popular, ...others];
+      // POPULAR_COUNTRIES (with India at the very top) + other countries from API sorted alphabetically
+      additionalCountries.sort((a, b) => a.name.localeCompare(b.name));
+      countriesCache = [...POPULAR_COUNTRIES, ...additionalCountries];
       return countriesCache;
     } catch {
       return POPULAR_COUNTRIES;
