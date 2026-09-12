@@ -79,8 +79,16 @@ export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const canManage =
+    user?.role === 'ADMIN' ||
+    (user?.role === 'TEACHER' && permissions.announcements?.manage);
+
   // View & Filter state
-  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>(() => {
+    const saved = localStorage.getItem('studyasan_announcements_view');
+    if (saved === 'table' || saved === 'cards') return saved;
+    return canManage ? 'table' : 'cards';
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTypeFilter, setSelectedTypeFilter] = useState<string>('ALL');
   const [sortOption, setSortOption] = useState<string>('date_desc');
@@ -121,10 +129,6 @@ export default function AnnouncementsPage() {
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const canManage =
-    user?.role === 'ADMIN' ||
-    (user?.role === 'TEACHER' && permissions.announcements?.manage);
 
   const fetchAnnouncements = async () => {
     try {
@@ -589,23 +593,27 @@ export default function AnnouncementsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/80 border-b border-slate-200">
-                  <TableHead className="w-[130px] font-bold text-xs uppercase tracking-wider text-slate-700 pl-4 sm:pl-6">
+                  <TableHead className="w-[120px] sm:w-[140px] font-bold text-xs uppercase tracking-wider text-slate-700 pl-4 sm:pl-6">
                     Category
                   </TableHead>
                   <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 min-w-[240px]">
-                    Title & Message
+                    {canManage ? 'Title & Message' : 'Announcement'}
                   </TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 min-w-[180px] hidden md:table-cell">
-                    Target Audience
-                  </TableHead>
-                  <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 hidden lg:table-cell">
-                    Author
-                  </TableHead>
+                  {canManage && (
+                    <>
+                      <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 min-w-[180px] hidden md:table-cell">
+                        Target Audience
+                      </TableHead>
+                      <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 hidden lg:table-cell">
+                        Author
+                      </TableHead>
+                    </>
+                  )}
                   <TableHead className="font-bold text-xs uppercase tracking-wider text-slate-700 min-w-[120px]">
                     Date
                   </TableHead>
                   <TableHead className="text-right font-bold text-xs uppercase tracking-wider text-slate-700 pr-4 sm:pr-6">
-                    Actions
+                    {canManage ? 'Actions' : 'View'}
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -614,15 +622,26 @@ export default function AnnouncementsPage() {
                   const config = getAnnouncementTypeConfig(a.type);
                   const Icon = config.icon;
                   const dates = formatDate(a.created_at);
+                  const isExpanded = expandedCards[a.id];
+                  const isLong = a.content.length > 130;
 
                   return (
                     <TableRow
                       key={a.id}
-                      className="hover:bg-slate-50/70 transition-colors border-b border-slate-100 cursor-pointer"
-                      onClick={() => setViewingAnnouncement(a)}
+                      className={cn(
+                        'hover:bg-slate-50/70 transition-colors border-b border-slate-100 cursor-pointer',
+                        isExpanded && 'bg-slate-50/40'
+                      )}
+                      onClick={() => {
+                        if (!canManage) {
+                          toggleExpand(a.id);
+                        } else {
+                          setViewingAnnouncement(a);
+                        }
+                      }}
                     >
                       {/* Type Badge */}
-                      <TableCell className="pl-4 sm:pl-6 py-3">
+                      <TableCell className="pl-4 sm:pl-6 py-3.5 align-top">
                         <span
                           className={cn(
                             'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border',
@@ -634,89 +653,144 @@ export default function AnnouncementsPage() {
                         </span>
                       </TableCell>
 
-                      {/* Title & Preview */}
-                      <TableCell className="py-3">
-                        <div className="flex items-center gap-3 max-w-md">
+                      {/* Title & Announcement Details */}
+                      <TableCell className="py-3.5 align-top">
+                        <div className="flex items-start gap-3">
                           {a.image_url ? (
                             <img
                               src={a.image_url}
                               alt={a.title}
-                              className="w-10 h-10 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingAnnouncement(a);
+                              }}
+                              className="w-12 h-12 rounded-xl object-cover border border-slate-200 shrink-0 shadow-2xs hover:opacity-90 transition-opacity"
+                              title="Click to view full image"
                             />
                           ) : (
                             <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-400 border border-slate-200/60 shrink-0 flex items-center justify-center">
                               <Megaphone className="w-4 h-4 opacity-40" />
                             </div>
                           )}
-                          <div className="min-w-0">
-                            <p className="font-bold text-slate-900 text-xs sm:text-sm line-clamp-1 leading-snug hover:text-saBlue transition-colors">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-slate-900 text-xs sm:text-sm leading-snug hover:text-saBlue transition-colors">
                               {a.title}
                             </p>
-                            <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5 font-normal">
+                            <p
+                              className={cn(
+                                'text-xs text-slate-600 mt-1 font-normal leading-relaxed whitespace-pre-wrap break-words',
+                                !canManage && !isExpanded && isLong
+                                  ? 'line-clamp-2'
+                                  : canManage
+                                  ? 'line-clamp-1'
+                                  : ''
+                              )}
+                            >
                               {a.content}
                             </p>
+
+                            {isLong && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpand(a.id);
+                                }}
+                                className="text-[11px] font-bold text-saBlue hover:text-saBlueDark mt-1.5 inline-flex items-center gap-1"
+                              >
+                                {isExpanded ? (
+                                  <>
+                                    Show less <ChevronUp className="w-3 h-3" />
+                                  </>
+                                ) : (
+                                  <>
+                                    Read full announcement <ChevronDown className="w-3 h-3" />
+                                  </>
+                                )}
+                              </button>
+                            )}
+
+                            {isExpanded && a.image_url && (
+                              <div
+                                className="mt-3 rounded-xl overflow-hidden border border-slate-200 max-h-72 bg-slate-50 cursor-pointer"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingAnnouncement(a);
+                                }}
+                              >
+                                <img
+                                  src={a.image_url}
+                                  alt={a.title}
+                                  className="w-full h-full max-h-72 object-contain"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
 
-                      {/* Target Groups */}
-                      <TableCell className="hidden md:table-cell py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex flex-wrap items-center gap-1 max-w-xs text-[10px]">
-                          {a.target_roles && a.target_roles.length > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md font-medium border border-slate-200">
-                              <Users className="w-3 h-3 text-slate-400" />
-                              {a.target_roles.join(', ')}
-                            </span>
-                          )}
-
-                          {a.target_boards && a.target_boards.length > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
-                              <Layers className="w-3 h-3 text-blue-400" />
-                              {a.target_boards.map((id) => boards.find((b) => b.id === id)?.name || id).join(', ')}
-                            </span>
-                          )}
-
-                          {a.target_classes && a.target_classes.length > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium border border-emerald-100">
-                              <GraduationCap className="w-3 h-3 text-emerald-400" />
-                              {a.target_classes.map((id) => classes.find((c) => c.id === id)?.name || id).join(', ')}
-                            </span>
-                          )}
-
-                          {a.target_subjects && a.target_subjects.length > 0 && (
-                            <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-md font-medium border border-purple-100">
-                              <BookOpen className="w-3 h-3 text-purple-400" />
-                              {a.target_subjects.map((id) => subjects.find((s) => s.id === id)?.name || id).join(', ')}
-                            </span>
-                          )}
-
-                          {!a.target_roles?.length &&
-                            !a.target_boards?.length &&
-                            !a.target_classes?.length &&
-                            !a.target_subjects?.length &&
-                            !a.target_groups?.length && (
-                              <span className="inline-flex items-center gap-1 text-slate-400 text-[11px] italic">
-                                <Globe className="w-3 h-3 text-slate-300" />
-                                Everyone
+                      {/* Target Groups - only if canManage */}
+                      {canManage && (
+                        <TableCell className="hidden md:table-cell py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex flex-wrap items-center gap-1 max-w-xs text-[10px]">
+                            {a.target_roles && a.target_roles.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md font-medium border border-slate-200">
+                                <Users className="w-3 h-3 text-slate-400" />
+                                {a.target_roles.join(', ')}
                               </span>
                             )}
-                        </div>
-                      </TableCell>
 
-                      {/* Author */}
-                      <TableCell className="hidden lg:table-cell py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
-                            {(a.creator?.name || 'A').charAt(0).toUpperCase()}
+                            {a.target_boards && a.target_boards.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded-md font-medium border border-blue-100">
+                                <Layers className="w-3 h-3 text-blue-400" />
+                                {a.target_boards.map((id) => boards.find((b) => b.id === id)?.name || id).join(', ')}
+                              </span>
+                            )}
+
+                            {a.target_classes && a.target_classes.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded-md font-medium border border-emerald-100">
+                                <GraduationCap className="w-3 h-3 text-emerald-400" />
+                                {a.target_classes.map((id) => classes.find((c) => c.id === id)?.name || id).join(', ')}
+                              </span>
+                            )}
+
+                            {a.target_subjects && a.target_subjects.length > 0 && (
+                              <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded-md font-medium border border-purple-100">
+                                <BookOpen className="w-3 h-3 text-purple-400" />
+                                {a.target_subjects.map((id) => subjects.find((s) => s.id === id)?.name || id).join(', ')}
+                              </span>
+                            )}
+
+                            {!a.target_roles?.length &&
+                              !a.target_boards?.length &&
+                              !a.target_classes?.length &&
+                              !a.target_subjects?.length &&
+                              !a.target_groups?.length && (
+                                <span className="inline-flex items-center gap-1 text-slate-400 text-[11px] italic">
+                                  <Globe className="w-3 h-3 text-slate-300" />
+                                  Everyone
+                                </span>
+                              )}
                           </div>
-                          <span className="text-xs text-slate-700 font-medium truncate max-w-[120px]">
-                            {a.creator?.name || 'Administrator'}
-                          </span>
-                        </div>
-                      </TableCell>
+                        </TableCell>
+                      )}
+
+                      {/* Author - only if canManage */}
+                      {canManage && (
+                        <TableCell className="hidden lg:table-cell py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
+                              {(a.creator?.name || 'A').charAt(0).toUpperCase()}
+                            </div>
+                            <span className="text-xs text-slate-700 font-medium truncate max-w-[120px]">
+                              {a.creator?.name || 'Administrator'}
+                            </span>
+                          </div>
+                        </TableCell>
+                      )}
 
                       {/* Date */}
-                      <TableCell className="py-3" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
                         <div className="text-[11px] text-slate-500">
                           <p className="font-semibold text-slate-700 whitespace-nowrap">{dates.full}</p>
                           <p className="text-[10px] text-slate-400 whitespace-nowrap">{dates.relative}</p>
@@ -724,14 +798,14 @@ export default function AnnouncementsPage() {
                       </TableCell>
 
                       {/* Actions */}
-                      <TableCell className="text-right pr-4 sm:pr-6 py-3" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className="text-right pr-4 sm:pr-6 py-3.5 align-top" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setViewingAnnouncement(a)}
                             className="h-8 w-8 text-slate-400 hover:text-saBlue hover:bg-saBlue/10 rounded-xl"
-                            title="View announcement"
+                            title="View announcement modal"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </Button>
@@ -879,59 +953,61 @@ export default function AnnouncementsPage() {
                     )}
                   </div>
 
-                  {/* Author & Targeting Badges */}
-                  <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                    {/* Author */}
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
-                        {(a.creator?.name || 'Admin').charAt(0).toUpperCase()}
+                  {/* Author & Targeting Badges - only for managers */}
+                  {canManage && (
+                    <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      {/* Author */}
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
+                          {(a.creator?.name || 'Admin').charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-semibold text-slate-700 text-xs">
+                          Posted by {a.creator?.name || 'Administrator'}
+                        </span>
                       </div>
-                      <span className="font-semibold text-slate-700 text-xs">
-                        Posted by {a.creator?.name || 'Administrator'}
-                      </span>
-                    </div>
 
-                    {/* Target Audience Badges */}
-                    <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                      {a.target_roles && a.target_roles.length > 0 && (
-                        <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium border border-slate-200">
-                          <Users className="w-3 h-3 text-slate-400" />
-                          {a.target_roles.join(', ')}
-                        </span>
-                      )}
-
-                      {a.target_boards && a.target_boards.length > 0 && (
-                        <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium border border-blue-100">
-                          <Layers className="w-3 h-3 text-blue-400" />
-                          {a.target_boards.map((id) => boards.find((b) => b.id === id)?.name || id).join(', ')}
-                        </span>
-                      )}
-
-                      {a.target_classes && a.target_classes.length > 0 && (
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-medium border border-emerald-100">
-                          <GraduationCap className="w-3 h-3 text-emerald-400" />
-                          {a.target_classes.map((id) => classes.find((c) => c.id === id)?.name || id).join(', ')}
-                        </span>
-                      )}
-
-                      {a.target_subjects && a.target_subjects.length > 0 && (
-                        <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md font-medium border border-purple-100">
-                          <BookOpen className="w-3 h-3 text-purple-400" />
-                          {a.target_subjects.map((id) => subjects.find((s) => s.id === id)?.name || id).join(', ')}
-                        </span>
-                      )}
-
-                      {!a.target_roles?.length &&
-                        !a.target_boards?.length &&
-                        !a.target_classes?.length &&
-                        !a.target_subjects?.length &&
-                        !a.target_groups?.length && (
-                          <span className="text-slate-400 text-[11px] italic">
-                            Visible to Everyone
+                      {/* Target Audience Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {a.target_roles && a.target_roles.length > 0 && (
+                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium border border-slate-200">
+                            <Users className="w-3 h-3 text-slate-400" />
+                            {a.target_roles.join(', ')}
                           </span>
                         )}
+
+                        {a.target_boards && a.target_boards.length > 0 && (
+                          <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-medium border border-blue-100">
+                            <Layers className="w-3 h-3 text-blue-400" />
+                            {a.target_boards.map((id) => boards.find((b) => b.id === id)?.name || id).join(', ')}
+                          </span>
+                        )}
+
+                        {a.target_classes && a.target_classes.length > 0 && (
+                          <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-medium border border-emerald-100">
+                            <GraduationCap className="w-3 h-3 text-emerald-400" />
+                            {a.target_classes.map((id) => classes.find((c) => c.id === id)?.name || id).join(', ')}
+                          </span>
+                        )}
+
+                        {a.target_subjects && a.target_subjects.length > 0 && (
+                          <span className="inline-flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md font-medium border border-purple-100">
+                            <BookOpen className="w-3 h-3 text-purple-400" />
+                            {a.target_subjects.map((id) => subjects.find((s) => s.id === id)?.name || id).join(', ')}
+                          </span>
+                        )}
+
+                        {!a.target_roles?.length &&
+                          !a.target_boards?.length &&
+                          !a.target_classes?.length &&
+                          !a.target_subjects?.length &&
+                          !a.target_groups?.length && (
+                            <span className="text-slate-400 text-[11px] italic">
+                              Visible to Everyone
+                            </span>
+                          )}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -1071,47 +1147,49 @@ export default function AnnouncementsPage() {
                 {viewingAnnouncement.content}
               </div>
 
-              {/* Targeting and metadata summary */}
-              <div className="pt-4 border-t border-slate-100 space-y-3">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
-                    {(viewingAnnouncement.creator?.name || 'A').charAt(0).toUpperCase()}
+              {/* Targeting and metadata summary - only for managers */}
+              {canManage && (
+                <div className="pt-4 border-t border-slate-100 space-y-3">
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center font-bold text-[10px]">
+                      {(viewingAnnouncement.creator?.name || 'A').charAt(0).toUpperCase()}
+                    </div>
+                    <span>Posted by <strong className="text-slate-800">{viewingAnnouncement.creator?.name || 'Administrator'}</strong></span>
                   </div>
-                  <span>Posted by <strong className="text-slate-800">{viewingAnnouncement.creator?.name || 'Administrator'}</strong></span>
-                </div>
 
-                {/* Target Chips */}
-                <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                  <span className="text-slate-400 text-xs mr-1">Audience:</span>
-                  {viewingAnnouncement.target_roles?.map((r) => (
-                    <span key={r} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-slate-200">
-                      {r}
-                    </span>
-                  ))}
-                  {viewingAnnouncement.target_boards?.map((id) => (
-                    <span key={id} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-blue-100">
-                      {boards.find((b) => b.id === id)?.name || `Board ${id}`}
-                    </span>
-                  ))}
-                  {viewingAnnouncement.target_classes?.map((id) => (
-                    <span key={id} className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-emerald-100">
-                      {classes.find((c) => c.id === id)?.name || `Class ${id}`}
-                    </span>
-                  ))}
-                  {viewingAnnouncement.target_subjects?.map((id) => (
-                    <span key={id} className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-purple-100">
-                      {subjects.find((s) => s.id === id)?.name || `Subject ${id}`}
-                    </span>
-                  ))}
-                  {!viewingAnnouncement.target_roles?.length &&
-                    !viewingAnnouncement.target_boards?.length &&
-                    !viewingAnnouncement.target_classes?.length &&
-                    !viewingAnnouncement.target_subjects?.length &&
-                    !viewingAnnouncement.target_groups?.length && (
-                      <span className="text-slate-500 text-xs italic">Everyone (All students & faculty)</span>
-                    )}
+                  {/* Target Chips */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="text-slate-400 text-xs mr-1">Audience:</span>
+                    {viewingAnnouncement.target_roles?.map((r) => (
+                      <span key={r} className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-slate-200">
+                        {r}
+                      </span>
+                    ))}
+                    {viewingAnnouncement.target_boards?.map((id) => (
+                      <span key={id} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-blue-100">
+                        {boards.find((b) => b.id === id)?.name || `Board ${id}`}
+                      </span>
+                    ))}
+                    {viewingAnnouncement.target_classes?.map((id) => (
+                      <span key={id} className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-emerald-100">
+                        {classes.find((c) => c.id === id)?.name || `Class ${id}`}
+                      </span>
+                    ))}
+                    {viewingAnnouncement.target_subjects?.map((id) => (
+                      <span key={id} className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md text-[11px] font-medium border border-purple-100">
+                        {subjects.find((s) => s.id === id)?.name || `Subject ${id}`}
+                      </span>
+                    ))}
+                    {!viewingAnnouncement.target_roles?.length &&
+                      !viewingAnnouncement.target_boards?.length &&
+                      !viewingAnnouncement.target_classes?.length &&
+                      !viewingAnnouncement.target_subjects?.length &&
+                      !viewingAnnouncement.target_groups?.length && (
+                        <span className="text-slate-500 text-xs italic">Everyone (All students & faculty)</span>
+                      )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Modal Footer */}

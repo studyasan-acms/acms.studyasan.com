@@ -36,6 +36,8 @@ import {
   Clock,
   RefreshCw,
   Eye,
+  Globe,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +63,12 @@ import UnifiedPageHeader from '@/components/ui/UnifiedPageHeader';
 import { useAuthStore } from '@/store/authStore';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { holidayService } from '@/services/api';
+import {
+  publicHolidayService,
+  POPULAR_COUNTRIES,
+  type PublicHolidayCountry,
+  type PublicHolidayItem,
+} from '@/services/publicHoliday.service';
 import type { Holiday, HolidayType, CreateHolidayData, UpdateHolidayData } from '@/types';
 import { toast } from 'sonner';
 
@@ -160,6 +168,93 @@ export default function HolidayManagementPage() {
   });
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
 
+  // Public Holiday API & Country State
+  const [selectedCountry, setSelectedCountry] = useState<string>(() => {
+    return localStorage.getItem('studyasan_holiday_country') || 'IN';
+  });
+  const [availableCountries, setAvailableCountries] = useState<PublicHolidayCountry[]>(POPULAR_COUNTRIES);
+  const [detectedHoliday, setDetectedHoliday] = useState<PublicHolidayItem | null>(null);
+  const [isCheckingHoliday, setIsCheckingHoliday] = useState<boolean>(false);
+  const [countryHolidaysList, setCountryHolidaysList] = useState<PublicHolidayItem[]>([]);
+  const [showCountryHolidays, setShowCountryHolidays] = useState<boolean>(false);
+
+  // Load available countries from API
+  useEffect(() => {
+    publicHolidayService.getAvailableCountries().then((countries) => {
+      if (countries && countries.length > 0) {
+        setAvailableCountries(countries);
+      }
+    });
+  }, []);
+
+  // Fetch full year holidays for selected country
+  const fetchCountryYearHolidays = useCallback(async (year: number, countryCode: string) => {
+    try {
+      const list = await publicHolidayService.getHolidaysForYear(year, countryCode);
+      setCountryHolidaysList(list);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  // Auto-detect public holiday on start_date or selectedCountry change
+  useEffect(() => {
+    if (!isFormModalOpen || !formData.start_date || !selectedCountry) {
+      setDetectedHoliday(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCheckingHoliday(true);
+
+    publicHolidayService
+      .getHolidayOnDate(formData.start_date, selectedCountry)
+      .then((holiday) => {
+        if (isMounted) {
+          setDetectedHoliday(holiday);
+          setIsCheckingHoliday(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setDetectedHoliday(null);
+          setIsCheckingHoliday(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.start_date, selectedCountry, isFormModalOpen]);
+
+  // Update country list whenever modal is opened or country changes
+  useEffect(() => {
+    if (isFormModalOpen && selectedCountry) {
+      const year = parseInt(formData.start_date.split('-')[0], 10) || currentDate.getFullYear();
+      fetchCountryYearHolidays(year, selectedCountry);
+    }
+  }, [selectedCountry, formData.start_date, isFormModalOpen, currentDate, fetchCountryYearHolidays]);
+
+  const handleCountryChange = (code: string) => {
+    setSelectedCountry(code);
+    localStorage.setItem('studyasan_holiday_country', code);
+  };
+
+  const handleApplyDetectedHoliday = (holidayToApply: PublicHolidayItem) => {
+    const suggestedType = publicHolidayService.suggestHolidayType(holidayToApply);
+    const countryName = availableCountries.find((c) => c.countryCode === selectedCountry)?.name || selectedCountry;
+
+    setFormData((prev) => ({
+      ...prev,
+      title: holidayToApply.name || holidayToApply.localName,
+      start_date: holidayToApply.date,
+      end_date: holidayToApply.date,
+      type: suggestedType,
+      description: `Official public holiday in ${countryName}${holidayToApply.localName && holidayToApply.localName !== holidayToApply.name ? ` (${holidayToApply.localName})` : ''}.`,
+    }));
+    toast.success(`Applied "${holidayToApply.name}" to holiday form`);
+  };
+
   // Fetch holidays
   const fetchHolidays = useCallback(async () => {
     try {
@@ -200,6 +295,7 @@ export default function HolidayManagementPage() {
       type: 'GENERAL',
     });
     setFormErrors({});
+    setShowCountryHolidays(false);
     setFormMode('create');
     setIsFormModalOpen(true);
   };
@@ -217,6 +313,7 @@ export default function HolidayManagementPage() {
       type: holiday.type,
     });
     setFormErrors({});
+    setShowCountryHolidays(false);
     setFormMode('edit');
     setIsDetailModalOpen(false);
     setIsFormModalOpen(true);
@@ -824,6 +921,148 @@ export default function HolidayManagementPage() {
           </DialogHeader>
 
           <form onSubmit={handleSubmitForm} className="space-y-4 pt-2">
+            {/* Country Public Holiday Auto-Detector */}
+            {(() => {
+              const countryObj = availableCountries.find((c) => c.countryCode === selectedCountry);
+              const countryName = countryObj?.name || selectedCountry;
+              const countryFlag = countryObj?.flag || '🌐';
+              const activeYear = parseInt(formData.start_date.split('-')[0], 10) || currentDate.getFullYear();
+
+              return (
+                <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-saBlue/10 text-saBlue flex items-center justify-center shrink-0">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-800">Public Holiday Finder</p>
+                        <p className="text-[10px] text-slate-500 truncate">Auto-detects official holidays for date</p>
+                      </div>
+                    </div>
+
+                    {/* Country Selector */}
+                    <div className="w-44 shrink-0">
+                      <Select value={selectedCountry} onValueChange={handleCountryChange}>
+                        <SelectTrigger className="h-8 rounded-xl bg-white border-slate-200 text-xs font-bold">
+                          <SelectValue placeholder="Select Country" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 rounded-xl">
+                          {availableCountries.map((c) => (
+                            <SelectItem key={c.countryCode} value={c.countryCode} className="text-xs">
+                              <span className="mr-1.5">{c.flag || '🌐'}</span>
+                              <span>{c.name}</span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Detection Banner or Status */}
+                  {detectedHoliday ? (
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300/80 rounded-xl p-3 flex items-center justify-between gap-2 shadow-2xs animate-in fade-in">
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center shrink-0 text-xs shadow-xs">
+                          <PartyPopper className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[9px] uppercase font-black tracking-wider bg-amber-200/90 text-amber-900 px-1.5 py-0.5 rounded">
+                              Holiday on this Date
+                            </span>
+                            <p className="text-xs font-black text-slate-900 truncate">
+                              {detectedHoliday.name}
+                            </p>
+                          </div>
+                          {detectedHoliday.localName && detectedHoliday.localName !== detectedHoliday.name && (
+                            <p className="text-[11px] text-slate-600 font-medium truncate">
+                              Local: {detectedHoliday.localName}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-slate-500">
+                            {format(parseISO(detectedHoliday.date), 'MMMM d, yyyy')} • {countryFlag} {countryName}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={() => handleApplyDetectedHoliday(detectedHoliday)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 h-8 px-3 shadow-xs gap-1"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Auto-Fill</span>
+                      </Button>
+                    </div>
+                  ) : isCheckingHoliday ? (
+                    <div className="flex items-center gap-2 text-xs text-slate-500 bg-white/80 p-2 rounded-xl border border-slate-100">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-saBlue" />
+                      <span>Checking {countryName} holiday calendar for {formData.start_date}...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 bg-white/80 px-2.5 py-1.5 rounded-xl border border-slate-100">
+                      <span>No public holiday for {formData.start_date ? format(parseISO(formData.start_date), 'MMM d') : 'date'} in {countryName}.</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCountryHolidays((p) => !p)}
+                        className="text-saBlue hover:text-saBlueDarkHover font-bold text-xs ml-2 shrink-0 hover:underline"
+                      >
+                        {showCountryHolidays ? 'Hide list' : `Browse ${activeYear} Holidays`}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Expandable Country Year Holidays Explorer */}
+                  {showCountryHolidays && (
+                    <div className="pt-2 border-t border-slate-200 space-y-1.5 animate-in fade-in">
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 px-1">
+                        <span>All Public Holidays in {countryName} ({activeYear})</span>
+                        <span className="text-slate-400 font-normal">{countryHolidaysList.length} total</span>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                        {countryHolidaysList.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic py-2 text-center">No holidays available for this country.</p>
+                        ) : (
+                          countryHolidaysList.map((ch, idx) => {
+                            const isMatch = ch.date === formData.start_date;
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => handleApplyDetectedHoliday(ch)}
+                                className={`p-2 rounded-xl text-xs flex items-center justify-between gap-2 border transition-all cursor-pointer ${
+                                  isMatch
+                                    ? 'bg-saBlue/10 border-saBlue/30 text-saBlue font-bold'
+                                    : 'bg-white hover:bg-slate-100/80 border-slate-200/70 text-slate-700'
+                                }`}
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-bold truncate">{ch.name}</p>
+                                  <p className="text-[10px] text-slate-400 font-normal">
+                                    {format(parseISO(ch.date), 'MMMM d, yyyy (EEEE)')}
+                                    {ch.localName && ch.localName !== ch.name ? ` • ${ch.localName}` : ''}
+                                  </p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[10px] font-bold text-saBlue hover:bg-saBlue/10 shrink-0"
+                                >
+                                  Select
+                                </Button>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Title */}
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-700">Holiday Title *</Label>

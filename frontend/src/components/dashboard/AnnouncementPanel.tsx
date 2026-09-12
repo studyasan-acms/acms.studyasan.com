@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { announcementService } from "@/services/api";
 import { useNavigate } from "react-router-dom";
 import { getAnnouncementTypeConfig } from "@/utils/announcementUtils";
+import { useAuthStore } from "@/store/authStore";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { Announcement } from "@/types";
 
 interface AnnouncementPanelProps {
@@ -17,6 +19,12 @@ export default function AnnouncementPanel({
   isOpen,
   onClose,
 }: AnnouncementPanelProps) {
+  const { user } = useAuthStore();
+  const { permissions } = usePermissions();
+  const canManage =
+    user?.role === 'ADMIN' ||
+    (user?.role === 'TEACHER' && permissions.announcements?.manage);
+
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -157,8 +165,12 @@ export default function AnnouncementPanel({
                     </p>
 
                     <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100">
-                      <span className="font-semibold text-slate-500">By {a.creator?.name || 'Admin'}</span>
-                      <span className="text-saBlue font-bold group-hover:underline">View details →</span>
+                      {canManage ? (
+                        <span className="font-semibold text-slate-500">By {a.creator?.name || 'Admin'}</span>
+                      ) : (
+                        <span className="text-slate-400">Official Notice</span>
+                      )}
+                      <span className="text-saBlue font-bold group-hover:underline">View announcement →</span>
                     </div>
                   </div>
                 </div>
