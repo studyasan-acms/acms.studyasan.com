@@ -10,6 +10,7 @@ const config: CapacitorConfig = {
     // During development, you can uncomment the line below to use live reload:
     // url: 'http://YOUR_LOCAL_IP:5173',
     androidScheme: 'https',
+    iosScheme: 'https',
     allowNavigation: [
       'acms.studyasan.com',
       'janus.studyasan.com',
@@ -19,6 +20,10 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true, // Allow HTTP during development
     backgroundColor: '#0276D3'
+  },
+  ios: {
+    backgroundColor: '#0276D3',
+    contentInset: 'always'
   },
   plugins: {
     SplashScreen: {
