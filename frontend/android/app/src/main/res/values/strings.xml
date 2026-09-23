@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">StudyAsan</string>
     <string name="title_activity_main">StudyAsan</string>
-    <string name="package_name">com.xdas.studyasan</string>
-    <string name="custom_url_scheme">com.xdas.studyasan</string>
+    <string name="package_name">com.studyasan.acms</string>
+    <string name="custom_url_scheme">com.studyasan.acms</string>
 </resources>

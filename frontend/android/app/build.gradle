@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace = "com.xdas.studyasan"
+    namespace = "com.studyasan.acms"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.xdas.studyasan"
+        applicationId "com.studyasan.acms"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -16,8 +16,17 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            storeFile file('studyasan-release-key.jks')
+            storePassword 'Studyasan@12345'
+            keyAlias 'studyasan'
+            keyPassword 'Studyasan@12345'
+        }
+    }
     buildTypes {
         release {
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

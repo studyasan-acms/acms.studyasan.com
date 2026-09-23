@@ -1,4 +1,4 @@
-package com.xdas.studyasan;
+package com.studyasan.acms;
 
 import com.getcapacitor.BridgeActivity;
 
