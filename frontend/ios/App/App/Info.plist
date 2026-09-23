@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>StudyAsan</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSCameraUsageDescription</key>
+	<string>StudyAsan requires camera access for live virtual classrooms and profile photo capture.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>StudyAsan requires microphone access for live interactive classes and voice communication.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>StudyAsan requires photo library access to upload assignments and study materials.</string>
 </dict>
 </plist>
