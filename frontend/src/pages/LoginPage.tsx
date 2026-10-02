@@ -75,7 +75,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-x-hidden overflow-y-auto py-6 md:py-0">
       {/* Background geometric pattern covering the entire page */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         {/* Existing shapes */}

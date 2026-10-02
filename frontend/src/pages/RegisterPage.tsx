@@ -187,7 +187,7 @@ export default function RegisterPage() {
   const passwordValidation = validatePasswordStrength(formData.password);
 
   return (
-    <div className="min-h-screen flex bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-x-hidden overflow-y-auto py-6 md:py-0">
       {/* Background geometric shapes */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-10 left-10 w-24 h-24 border-4 border-[#0076CE] rounded-lg rotate-45"></div>

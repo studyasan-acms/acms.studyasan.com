@@ -17,6 +17,8 @@ import ContactPage from '@/pages/public/ContactPage';
 import CareerPage from '@/pages/public/CareerPage';
 import BlogPage from '@/pages/public/BlogPage';
 import CertificationPage from '@/pages/public/CertificationPage';
+import PrivacyPolicyPage from '@/pages/public/PrivacyPolicyPage';
+import TermsConditionsPage from '@/pages/public/TermsConditionsPage';
 
 // Student imports
 import StudentsPage from '@/pages/students/StudentsPage';
@@ -241,6 +243,11 @@ function App() {
           <Route path="contact" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />
           <Route path="blog" element={<BlogPage />} />
+          <Route path="privacy" element={<PrivacyPolicyPage />} />
+          <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="terms" element={<TermsConditionsPage />} />
+          <Route path="terms-and-conditions" element={<TermsConditionsPage />} />
+          <Route path="term-condition" element={<TermsConditionsPage />} />
         </Route>
 
         {/* Standalone Public Certification Route (No public header/footer) */}
