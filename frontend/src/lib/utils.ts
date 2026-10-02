@@ -22,7 +22,7 @@ export function resolveImageUrl(url: string | null | undefined) {
   }
 
   // 3. Handle local relative assets (starting with /)
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/';
+  const apiUrl = import.meta.env.VITE_API_URL || 'https://acms.studyasan.com/api';
   let baseUrl = apiUrl.replace(/\/api\/?$/, '');
 
   // Remove trailing slash if any on baseUrl

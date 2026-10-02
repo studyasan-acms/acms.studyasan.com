@@ -89,9 +89,27 @@ import type {
   HolidayQueryParams,
 } from '@/types';
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
+export const getApiBaseUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && !envUrl.includes('localhost:3000')) {
+    return envUrl;
+  }
+  // Native mobile app check (Capacitor on device)
+  if (typeof window !== 'undefined') {
+    const isCapacitor =
+      window.location.protocol === 'capacitor:' ||
+      window.location.protocol === 'ionic:' ||
+      (window.location.hostname === 'localhost' && !window.location.port);
+    if (isCapacitor) {
+      return 'https://acms.studyasan.com/api';
+    }
+  }
+  return envUrl || '/api';
+};
 
-const api = axios.create({
+export const API_URL = getApiBaseUrl();
+
+export const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',

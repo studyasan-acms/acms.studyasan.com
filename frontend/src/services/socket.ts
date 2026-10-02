@@ -1,8 +1,11 @@
 import { io, Socket } from 'socket.io-client';
+import { API_URL } from './api';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 // Strip /api if present for socket connection
-const SOCKET_URL = API_URL.replace(/\/api\/?$/, '');
+const rawUrl = API_URL.startsWith('/')
+    ? (typeof window !== 'undefined' ? window.location.origin : 'https://acms.studyasan.com')
+    : API_URL;
+const SOCKET_URL = rawUrl.replace(/\/api\/?$/, '');
 
 class SocketService {
     private socket: Socket | null = null;

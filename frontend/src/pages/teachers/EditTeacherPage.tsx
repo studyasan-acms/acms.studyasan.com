@@ -12,11 +12,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { teacherService, locationService, currencyService } from '@/services/api';
-import axios from 'axios';
+import { teacherService, locationService, currencyService, api } from '@/services/api';
 import type { Teacher, Country, State, City, Currency, BloodGroup } from '@/types';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 interface TeacherRole {
   id: number;
@@ -204,10 +201,7 @@ export default function EditTeacherPage() {
 
   const fetchRoles = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(`${API_URL}teacher-roles`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/teacher-roles');
       if (response.data.success) {
         setRoles(response.data.data.roles || []);
       }

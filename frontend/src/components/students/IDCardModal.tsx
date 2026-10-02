@@ -103,7 +103,7 @@ export default function IDCardModal({ isOpen, onClose, data, type }: IDCardModal
 
         // If direct fetch blocked (e.g. S3 CORS), route through the backend proxy
         if (!res || !res.ok) {
-          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/';
+          const apiUrl = import.meta.env.VITE_API_URL || 'https://acms.studyasan.com/api';
           const cleanApiUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
           const proxyUrl = `${cleanApiUrl}/upload/proxy-file?url=${encodeURIComponent(photoUrl)}`;
           res = await fetch(proxyUrl).catch(() => null);

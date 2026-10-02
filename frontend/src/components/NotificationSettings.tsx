@@ -10,7 +10,7 @@ import {
 import { Bell, BellOff, Loader2, Send } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { api } from '@/services/api';
 
 export default function NotificationSettings() {
   const { isSupported, permission, fcmToken, isLoading, requestPermission } =
@@ -20,18 +20,7 @@ export default function NotificationSettings() {
   const sendTestNotification = async () => {
     setIsSendingTest(true);
     try {
-      const token = localStorage.getItem('token');
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
-      
-      const response = await axios.post(
-        `${apiUrl}/notifications/test`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await api.post('/notifications/test', {});
       
       if (response.data?.success !== false) {
         toast.success('Test notification sent! Check your browser for the notification.');

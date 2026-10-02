@@ -6,6 +6,7 @@ import {
   getNotificationPermissionStatus,
 } from '@/lib/firebase';
 import { toast } from 'sonner';
+import { api } from '@/services/api';
 
 interface NotificationPayload {
   notification?: {
@@ -35,7 +36,6 @@ export const useNotifications = (): UseNotificationsReturn => {
 
   const sendTokenToServer = useCallback(async (token: string) => {
     try {
-      // Get auth token
       const authToken = localStorage.getItem('token');
       
       if (!authToken) {
@@ -43,22 +43,7 @@ export const useNotifications = (): UseNotificationsReturn => {
         return;
       }
 
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api').replace(/\/$/, '');
-
-      // Send to your backend API
-      const response = await fetch(`${apiUrl}/notifications/subscribe`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ fcm_token: token }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to send token to server');
-      }
-
+      await api.post('/notifications/subscribe', { fcm_token: token });
       console.log('FCM token sent to server successfully');
     } catch (error) {
       console.error('Error sending token to server:', error);

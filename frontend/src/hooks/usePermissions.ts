@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { api } from '@/services/api';
 
 interface Permissions {
     students?: { view?: boolean; create?: boolean; update?: boolean; delete?: boolean };
@@ -44,9 +42,7 @@ export const usePermissions = () => {
                     return;
                 }
 
-                const response = await axios.get(`${API_URL}my-permissions`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const response = await api.get('/my-permissions');
 
                 if (response.data.success) {
                     setPermissions(response.data.data.permissions || {});
