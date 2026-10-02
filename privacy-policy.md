@@ -3,155 +3,165 @@
 **Last Updated:** October 2, 2026  
 **Effective Date:** October 2, 2026  
 **Official Website:** [https://www.studyasan.com](https://www.studyasan.com)  
-**App Name:** StudyAsan (Academy & Classroom Management System - ACMS)  
+**App Platform:** StudyAsan (ACMS - [https://acms.studyasan.com](https://acms.studyasan.com))  
 **Contact Email:** [contact@studyasan.com](mailto:contact@studyasan.com)  
 **Contact Phone:** +91 74098 88805  
-**Registered Address:** Nainital, Uttarakhand, India  
+**Registered Office Address:** Haldwani, Nainital District, Uttarakhand, India  
 
 ---
 
-## 1. Introduction
+## 1. Introduction & Scope of Policy
 
-Welcome to **StudyAsan** ("we," "our," or "us"). StudyAsan is an online educational academy and Classroom Management System (ACMS) designed to deliver interactive learning, live interactive classrooms, online test series, quizzes, assignments, and educational progress tracking for students, teachers, parents, and educational institutions.
+Welcome to **StudyAsan** ("StudyAsan", "Platform", "Company", "we", "us", or "our"). StudyAsan is a premier educational platform and Academy & Classroom Management System (ACMS) offering live interactive virtual classrooms, structured academic curricula, online test series, quizzes, video lectures, homework evaluation, and comprehensive educational progress analytics.
 
-We are committed to protecting the privacy, confidentiality, and security of our users ("User", "you", "your", or "Student/Teacher/Parent"). This Privacy Policy outlines how we collect, use, store, share, and protect your personal information when you use our mobile application (**StudyAsan** on Google Play Store and iOS App Store) and our web services hosted at [https://www.studyasan.com](https://www.studyasan.com) and [https://acms.studyasan.com](https://acms.studyasan.com) (collectively, the "Platform").
+This Privacy Policy constitutes a legally binding agreement between you ("User", "Student", "Parent", "Legal Guardian", "Teacher", or "Institution") and StudyAsan. It governs the collection, processing, storage, transfer, and protection of your personal information when you access or use:
+1. The **StudyAsan mobile applications** available on the Google Play Store and Apple App Store.
+2. The web applications and domains hosted at **[https://www.studyasan.com](https://www.studyasan.com)** and **[https://acms.studyasan.com](https://acms.studyasan.com)**.
+3. Any related online services, interactive live streams, content, whiteboards, or offline instructional centers managed by StudyAsan.
 
-By accessing or using StudyAsan, you agree to the collection and use of information in accordance with this Privacy Policy. If you do not agree, please do not access or use the Platform.
-
----
-
-## 2. Target Age & Children’s Privacy (COPPA & Google Play Families Policy Compliance)
-
-StudyAsan provides educational services to students aged **9 and older**, encompassing primary, secondary, senior secondary, and competitive examination preparation. 
-
-Because our target audience includes children aged 9 to 12 (under 13 years old), we adhere strictly to the **Children’s Online Privacy Protection Act (COPPA)**, the **General Data Protection Regulation for Children (GDPR-K)**, India's **Digital Personal Data Protection Act (DPDP)**, and **Google Play Developer Program Families Policy**:
-
-1. **Parental/Guardian or School Consent:** For users under the age of 18 (and specifically those under 13), account creation and enrollment must be conducted with verifiable consent from a parent, legal guardian, or authorized educational institution/teacher acting with parent authorization.
-2. **No Behavioral Advertising or Profiling:** We **do NOT** serve personalized, targeted, or behavioral advertisements to children. We do not sell, rent, or trade children’s personal information under any circumstances.
-3. **Limited Data Collection:** We collect only the personal information reasonably necessary for the child to participate in live classes, complete homework, submit assessments, and track educational progress.
-4. **Parental Rights:** Parents and legal guardians have the right to:
-   - Review personal data collected from their child.
-   - Refuse further collection or use of their child's data.
-   - Request the immediate correction or deletion of their child's account and associated data by emailing us at **contact@studyasan.com** or submitting an in-app deletion request.
+We are committed to operating in full compliance with the **Information Technology Act, 2000 (India)**, the **Digital Personal Data Protection Act, 2023 (DPDPA - India)**, the **Children's Online Privacy Protection Act (COPPA - USA)**, the **General Data Protection Regulation (GDPR - EU/UK)**, and **Google Play Store / Apple App Store Developer Data Safety Policies**.
 
 ---
 
-## 3. Information We Collect
+## 2. Target Age & Strict Children’s Privacy Safeguards (COPPA & Families Policy)
 
-We collect information that you provide directly, data generated through your use of the platform, and technical device metadata.
+StudyAsan provides academic tutoring and educational resources to students aged **9 and older** (spanning primary, middle, high school, board exams, and competitive entrance preparations).
 
-### A. Information Provided Directly by Users
-- **Account Registration Data:** Full Name, Email Address, Phone Number, Password (stored securely as a cryptographic hash), and optional Referral Code.
-- **Student Profile Information:** Class/Grade, Educational Board (e.g., CBSE, ICSE, State Boards), School Name, Date of Birth, Gender, Blood Group (optional, for academy ID cards), Profile Picture, and Postal/Residential Address.
-- **Teacher Profile Information:** Qualifications, Teaching Experience, Bio, Salary/Payout Information (for internal accounting), and Contact Information.
-- **Academic & Educational Data:** Homework submissions, test answers, quiz responses, whiteboard interactions, doubts, certificates earned, and attendance logs.
-- **Classroom Interactions & Communication:** Text messages, images, PDFs, files shared within classroom chats or doubt forums, and audio/video streams during live interactive class sessions.
-- **Payment & Invoicing Information:** Transaction reference IDs, invoice numbers, receipt numbers, payment status, and chosen payment method (e.g., UPI, Net Banking, Credit/Debit Card). *Note: Sensitive payment card details or bank credentials are processed securely by licensed third-party payment gateways and are never stored on our servers.*
+Because our user base includes minors aged 9 to 18 (specifically children under 13), we enforce strict statutory safeguards:
 
-### B. Information Collected Automatically
-- **Device & App Information:** Device model, operating system version, unique device identifiers, network state, and app version.
-- **Push Notification Tokens:** Firebase Cloud Messaging (FCM) tokens to deliver crucial educational alerts, class schedule reminders, and assignment updates.
-- **Usage & Performance Data:** Login timestamps, session duration, class attendance records (join time, leave time, duration), and crash/diagnostic logs for app stability and performance optimization.
-
----
-
-## 4. How We Use Your Information
-
-We use the collected information solely for legitimate educational and service delivery purposes, including:
-1. **Delivering Educational Services:** Providing access to live WebRTC-based interactive classrooms, recorded video lectures, modules, syllabus materials, tests, and quizzes.
-2. **Progress & Academic Reporting:** Calculating quiz/test scores, generating performance analytics, producing "Know Your Child" parent reports, and awarding certificates of completion.
-3. **Classroom Administration:** Verifying student attendance, managing teacher-student assignments, and generating digital fee invoices and receipts.
-4. **Communication & Notifications:** Sending real-time push notifications, class schedule reminders, homework deadlines, emergency class links, and account security OTPs.
-5. **Customer Support & Platform Security:** Diagnosing bugs, preventing unauthorized access, ensuring classroom moderation, and resolving user grievances.
+1. **Parental / Guardian / School Consent:** 
+   - Minors under 18 years of age (and specifically children under 13) may only register with the verifiable consent, knowledge, and supervision of a parent, legal guardian, or authorized school representative.
+   - By creating an account for a minor, the parent or guardian expressly confirms that they have read, understood, and consented to the data practices described herein.
+2. **Strict Prohibition on Targeted Advertising & Profiling:**
+   - We **DO NOT** deliver targeted, behavioral, interest-based, or remarketed advertisements to any student.
+   - We **DO NOT** profile children for commercial marketing purposes.
+   - We **DO NOT** sell, lease, trade, or monetize personal data belonging to children under any circumstance.
+3. **Limited Collection Principle:** We only collect personal information that is reasonably necessary for the child to participate in live virtual classes, submit homework, take tests, review report cards, and receive educational guidance.
+4. **Parental Access & Control Rights:**
+   - Parents and legal guardians retain the absolute right to review all personal data collected from their child, request corrections, refuse further data processing, or demand complete account and data deletion at any time.
+   - Inquiries or deletion requests can be submitted via email to **[contact@studyasan.com](mailto:contact@studyasan.com)** or via the in-app account deletion workflow.
 
 ---
 
-## 5. Permissions Used by the Mobile App
+## 3. Categories of Information We Collect
 
-To provide full educational functionality, the StudyAsan mobile application may request the following permissions on your device:
+We collect information directly provided by you, automatically generated during platform utilization, and transmitted through classroom collaboration.
 
-| Permission | Purpose |
-| :--- | :--- |
-| **Internet (`INTERNET`, `ACCESS_NETWORK_STATE`)** | Required to connect to StudyAsan servers, stream live classes, sync study material, and load tests. |
-| **Camera (`CAMERA`)** *(Optional/Requested when needed)* | Used by students and teachers to transmit live video during interactive video classes and to capture photos of homework/written test answers. |
-| **Microphone (`RECORD_AUDIO`)** *(Optional/Requested when needed)* | Used during live classroom sessions to allow students to speak and ask questions to the teacher. |
-| **Storage / Photos (`READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE`)** *(Optional/Requested when needed)* | Used to upload profile pictures, homework documents (PDFs/Images), or download certificates and notes. |
-| **Notifications (`POST_NOTIFICATIONS`)** | Used to deliver important class schedule alerts, homework reminders, and notice board updates. |
+### A. Information Provided Directly by Users:
+* **Account Identity & Credentials:** Full Legal Name, Email Address, Primary Phone Number, Encrypted Password Hash, Profile Picture, and optional Referral/Agency Code.
+* **Student Academic Profile:** Class/Grade, School Name, Educational Board (CBSE, ICSE, State Boards, etc.), Date of Birth, Gender, Blood Group (optional, for student academy identity verification), and Residential/Postal Address.
+* **Teacher / Faculty Profile:** Academic Qualifications, Teaching Experience, Bio, Salary/Payout Account Details (internal billing), Subject Specializations, and Verification Documents.
+* **Classroom & Academic Data:** Homework uploads (images, PDFs), whiteboard annotations, test attempts, question-by-question responses, quiz submissions, doubt inquiries, report cards, and certificates of completion.
+* **Interactive Communications:** Live WebRTC audio/video feeds during real-time class sessions, classroom chat messages, questions asked during live streams, and discussion forum contributions.
+* **Billing & Invoicing Information:** Invoice snapshots, receipt numbers, payment timestamps, billing history, payment methods (UPI, Net Banking, Credit/Debit Card), and transaction reference numbers. *(Note: All payments are processed through RBI-authorized payment gateways; StudyAsan never stores complete credit card numbers, CVVs, or bank account PINs on its servers).*
 
-*You can grant or revoke these permissions at any time via your device's Settings.*
+### B. Information Collected Automatically:
+* **Device & Technical Identifiers:** Device model, operating system and version, unique device identifiers (UUIDs), IP address, browser type, network carrier, and screen resolution.
+* **Push Notification Data:** Firebase Cloud Messaging (FCM) tokens required to deliver real-time classroom alerts, exam schedule updates, and assignment deadlines.
+* **Diagnostic & Usage Logs:** Application performance logs, crash telemetry, session start/end timestamps, attendance logs (join time, leave time, duration spent in virtual classrooms), and page navigation events.
 
 ---
 
-## 6. How We Share Your Information
+## 4. Purposes for Which We Process Your Data
 
-We do **NOT** sell, trade, or monetize your personal information. We only share information with third parties in the following limited circumstances:
+We process personal data strictly for lawful, contractual, and educational purposes:
+1. **Educational Service Delivery:** Authenticating users, providing access to Janus WebRTC live video classrooms, delivering recorded lectures, generating tests, and scoring assessments.
+2. **Academic Progress Reporting:** Evaluating homework, computing test percentiles, producing "Know Your Child" parent performance reports, and issuing verifiable completion certificates.
+3. **Administrative & Financial Operations:** Verifying student attendance, maintaining teacher-student assignments, managing enrollments, and generating digital tax invoices and fee receipts.
+4. **Platform Security & Integrity:** Monitoring virtual classrooms against unauthorized access, safeguarding academic integrity during mock tests, preventing fraud, and conducting bug investigations.
+5. **System Notifications:** Sending account verification OTPs, live class start reminders, homework deadlines, and important administrative announcements.
 
-1. **Authorized School/Academy Faculty:** Teachers, administrators, and designated academic advisors have access to student academic performance, homework, attendance, and contact details strictly for teaching and classroom management.
-2. **Third-Party Service Providers:** We work with trusted infrastructure service providers who are bound by strict data processing and confidentiality agreements:
-   - **Cloud Infrastructure & Hosting:** PostgreSQL database and backend application servers.
-   - **Media & File Storage:** Amazon Web Services (AWS S3) for secure storage of uploaded homework, certificates, and educational assets.
-   - **Real-Time Video Conferencing:** Janus WebRTC Gateway for live video classroom streaming.
-   - **Push Notifications:** Google Firebase Cloud Messaging (FCM).
-   - **Payment Processors:** RBI-regulated payment gateways (e.g., Razorpay, UPI) for secure payment transactions.
-3. **Legal & Regulatory Compliance:** If required by law, subpoena, court order, or governmental authority, or to protect the safety and rights of StudyAsan, our users, or the public.
+---
+
+## 5. Device Permissions Requested by the Mobile Application
+
+To provide an interactive classroom experience, the StudyAsan Android and iOS applications may request runtime permissions:
+
+| Permission | Technical Name | Purpose & Necessity |
+| :--- | :--- | :--- |
+| **Internet Access** | `android.permission.INTERNET`, `ACCESS_NETWORK_STATE` | Required to communicate with StudyAsan servers, stream live WebRTC classes, and sync course materials. |
+| **Camera** *(Optional / On-Demand)* | `android.permission.CAMERA` | Used by students/teachers to broadcast video during live sessions and capture photos of handwritten homework or test answer sheets. |
+| **Microphone** *(Optional / On-Demand)* | `android.permission.RECORD_AUDIO` | Required to participate in live two-way classroom discussions and ask verbal doubts to teachers. |
+| **Storage / Media** *(Optional / On-Demand)* | `android.permission.READ_MEDIA_IMAGES`, `READ_EXTERNAL_STORAGE` | Used to upload assignment PDFs/photos from the device gallery and save offline certificates or study notes. |
+| **Push Notifications** | `android.permission.POST_NOTIFICATIONS` | Used to alert users regarding upcoming class schedules, exam deadlines, and teacher feedback. |
+
+*Users can grant, deny, or revoke any optional permission at any time in their device's Operating System Settings without losing access to non-dependent features.*
+
+---
+
+## 6. How We Share and Disclose Information
+
+StudyAsan maintains a strict **zero-sale policy**: we **do not** sell, trade, rent, or commercialize your personal data to advertisers or third-party data brokers. Data is disclosed only in the following controlled scenarios:
+
+1. **Authorized Academic Faculty & Mentors:** Enrolled teachers and academy administrators have access to student names, attendance logs, homework submissions, and test scores strictly for teaching, grading, and academic mentoring.
+2. **Strictly Vetted Infrastructure Partners:** We engage trusted, enterprise-grade cloud service providers bound by strict confidentiality and data processing agreements:
+   - **Database & Cloud Hosting:** PostgreSQL enterprise database servers.
+   - **Media & Document Storage:** Amazon Web Services (AWS S3) with AES-256 server-side encryption for assignments, notes, and certificates.
+   - **Real-Time Video Infrastructure:** Janus WebRTC Gateway for secure, low-latency live interactive video conferencing.
+   - **Cloud Messaging:** Google Firebase Cloud Messaging (FCM) for push notifications.
+   - **Payment Gateways:** RBI-licensed payment processors (e.g., Razorpay, UPI) for secure payment transactions.
+3. **Legal Obligations & Law Enforcement:** If required by applicable law, court order, regulatory mandate, or legal subpoena, we may disclose specific user data to competent judicial or law enforcement authorities.
 
 ---
 
 ## 7. Data Storage, Retention & Security Safeguards
 
-1. **Data Security:** We implement industry-standard administrative, physical, and technical safeguards, including:
-   - SSL/TLS HTTPS encryption for all data in transit.
-   - Cryptographic hashing (bcrypt/SHA) for passwords and verification OTPs.
-   - Role-Based Access Control (RBAC) ensuring students, teachers, and admins only access permitted data.
-   - Secure server hosting with regular automated backups.
-2. **Data Retention:** We retain personal data as long as the user's account remains active, or as necessary to fulfill educational obligations, resolve disputes, and comply with statutory financial auditing requirements.
+1. **Data Security Architecture:**
+   - **Encryption in Transit:** All communications between your device and StudyAsan servers are encrypted using modern Transport Layer Security (TLS 1.3 / HTTPS).
+   - **Credential Protection:** All user passwords and OTP verification tokens are cryptographically hashed using industry-standard salting algorithms (bcrypt).
+   - **Access Control:** Role-Based Access Control (RBAC) ensures strict data isolation so that users only access information pertinent to their registered role.
+2. **Data Retention Policy:** We retain personal data only as long as the user maintains an active account on StudyAsan or as necessary to comply with statutory educational record-keeping and financial tax auditing obligations.
 
 ---
 
-## 8. User Rights, Account Deletion & Data Removal
+## 8. User Rights, Account Deletion & Complete Data Removal
 
-We empower our users with full control over their personal data.
+In strict accordance with **Google Play Store User Data Policies**, **Apple App Store Guideline 5.1.1**, and international data privacy regulations, all users and parents hold comprehensive rights over their data:
 
-### Your Privacy Rights:
-- **Access & Review:** You can view your profile, enrolled subjects, test history, and attendance records at any time within the app.
-- **Correction / Updating:** You can update your profile details via the in-app **Profile & Settings** page.
-- **Withdrawal of Consent:** You may withdraw consent for data processing by deleting your account.
+### Your Data Rights:
+* **Right of Access:** You can inspect your personal profile, test attempts, invoices, and attendance logs directly in-app.
+* **Right to Rectification:** You can update inaccurate profile details through the **Profile Settings** interface.
+* **Right to Erasure (Account Deletion):** You have the unfettered right to request the permanent deletion of your account and all associated personal data.
 
-### Account & Data Deletion Policy (Google Play Compliant):
-Users have the right to request permanent deletion of their account and all associated personal data:
-
-1. **In-App Account Deletion:**
-   - Log in to the StudyAsan App.
+### How to Request Complete Account & Data Deletion:
+1. **Method 1: Direct In-App Deletion**
+   - Open the StudyAsan app or web portal.
    - Navigate to **Dashboard > Settings > Account Security / Profile**.
-   - Select **"Request Account Deletion"** and confirm via the OTP sent to your registered email.
-2. **Web-Based Deletion Request (Direct URL):**
-   - If you cannot access the app, you can submit a deletion request directly by visiting:  
-     **[https://www.studyasan.com/privacy-policy#account-deletion](https://www.studyasan.com/privacy-policy#account-deletion)** or emailing us at **[contact@studyasan.com](mailto:contact@studyasan.com)** with the subject *"Account Deletion Request"*.
-3. **Data Purge Timeline:** Upon verification of the deletion request, the user's personal profile, login credentials, chat records, and personal identifiers will be permanently removed from our active databases within **30 days**, retaining only non-identifiable aggregated records required by applicable financial/tax laws.
+   - Click **"Request Account Deletion"** and verify your identity using the one-time password (OTP) sent to your registered email.
+2. **Method 2: Direct Web / Email Deletion Request**
+   - If you cannot access the app, email **[contact@studyasan.com](mailto:contact@studyasan.com)** with the subject *"Account Deletion Request"*.
+   - Provide your registered email address and mobile number.
+3. **Data Purge Timeline:** Upon identity verification, all personal identifiers, account credentials, homework uploads, chat histories, and profile records are **permanently and irreversibly purged from our active and backup databases within 30 calendar days**, retaining only non-identifiable tax invoice records mandated by statutory financial laws.
 
 ---
 
-## 9. Third-Party Links & External Services
+## 9. Cross-Border Data Transfers
 
-Our Platform may contain links to external third-party websites or services (e.g., video links, reference learning portals). We are not responsible for the privacy practices or content of external sites. We encourage users to review the privacy policies of any third-party website they visit.
-
----
-
-## 10. Changes to This Privacy Policy
-
-We may periodically update this Privacy Policy to reflect changes in our services, technological advancements, or legal/regulatory requirements. Any updates will be posted directly to this URL with an updated "Effective Date". We encourage you to review this Privacy Policy periodically.
+StudyAsan primary servers and data centers are located in **India**. If you access the Platform from outside India (e.g., USA, EU, UAE, or other international jurisdictions), you acknowledge and agree that your information will be transferred to, stored, and processed in India in accordance with this Privacy Policy and applicable data protection legislation.
 
 ---
 
-## 11. Grievance Officer & Contact Information
+## 10. Third-Party Links & External Educational Content
 
-If you have questions, comments, concerns, or grievances regarding this Privacy Policy, your personal data, or our children's privacy practices, please contact our Grievance & Data Protection Officer:
+The Platform may contain links to external reference materials, educational portals, or video resources. StudyAsan is not responsible for the privacy practices, content, or terms of third-party websites. We advise users to review the privacy statements of any external service they visit.
+
+---
+
+## 11. Amendments to This Privacy Policy
+
+We reserve the right to modify or update this Privacy Policy periodically to reflect technological enhancements, operational changes, or statutory legal requirements. Any revisions will be published immediately on this page with an updated "Effective Date". Material changes will be communicated via in-app alerts or email notifications.
+
+---
+
+## 12. Grievance Redressal & Contact Information
+
+In accordance with the Information Technology Act, 2000, the Digital Personal Data Protection Act, 2023, and international privacy standards, if you have any questions, complaints, grievances, or requests regarding this Privacy Policy or our data handling practices, please contact our designated Grievance Officer:
 
 * **Entity Name:** StudyAsan (ACMS)
-* **Grievance Officer:** Privacy & Data Support Team
-* **Email:** [contact@studyasan.com](mailto:contact@studyasan.com)
-* **Phone:** +91 74098 88805
-* **Office Hours:** Monday – Saturday, 10:00 AM – 7:00 PM IST
-* **Postal Address:** Nainital, Uttarakhand, India
-* **Website:** [https://www.studyasan.com](https://www.studyasan.com)
-* **Direct Privacy Policy URL:** [https://www.studyasan.com/privacy-policy](https://www.studyasan.com/privacy-policy)
+* **Designated Grievance & Data Protection Officer:** Privacy & Compliance Team
+* **Official Email:** [contact@studyasan.com](mailto:contact@studyasan.com)
+* **Official Phone:** +91 74098 88805
+* **Office Working Hours:** Monday – Saturday, 10:00 AM – 7:00 PM IST
+* **Registered Office Address:** Haldwani, Nainital District, Uttarakhand, India
+* **Official Website:** [https://www.studyasan.com](https://www.studyasan.com)
+* **Direct Privacy Policy URL:** [https://acms.studyasan.com/privacy](https://acms.studyasan.com/privacy)

@@ -187,19 +187,19 @@ export default function RegisterPage() {
   const passwordValidation = validatePasswordStrength(formData.password);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-x-hidden overflow-y-auto py-10 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#f0f7ff] relative overflow-x-hidden overflow-y-auto py-10 px-4">
       {/* Background geometric shapes */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
-        <div className="absolute top-10 left-10 w-24 h-24 border-4 border-[#0076CE] rounded-lg rotate-45"></div>
-        <div className="absolute bottom-20 right-16 w-20 h-20 border-4 border-[#0076CE] rounded-full"></div>
-        <div className="absolute top-1/2 left-1/3 w-14 h-14 border-4 border-[#0076CE] -rotate-12"></div>
-        <div className="absolute bottom-32 left-20 w-16 h-16 border-4 border-[#0076CE] rounded-lg"></div>
-        <div className="absolute top-32 right-32 w-20 h-20 border-4 border-[#0076CE] rounded-full"></div>
-        <div className="absolute top-1/4 right-1/4 w-12 h-12 border-4 border-[#0099FF] rounded-lg rotate-12"></div>
-        <div className="absolute bottom-10 left-1/2 w-16 h-16 border-4 border-[#00A3FF] rounded-full rotate-45"></div>
-        <div className="absolute top-3/4 left-1/3 w-20 h-20 border-4 border-[#0076CE] rounded-lg -rotate-30"></div>
-        <div className="absolute bottom-1/3 right-1/5 w-14 h-14 border-4 border-[#0055a3] rounded-full rotate-60"></div>
-        <div className="absolute top-1/2 right-10 w-10 h-10 border-4 border-[#0088DD] rounded-lg rotate-90"></div>
+        <div className="absolute top-10 left-10 w-24 h-24 border-4 border-[#0276D3] rounded-lg rotate-45"></div>
+        <div className="absolute bottom-20 right-16 w-20 h-20 border-4 border-[#0276D3] rounded-full"></div>
+        <div className="absolute top-1/2 left-1/3 w-14 h-14 border-4 border-[#0276D3] -rotate-12"></div>
+        <div className="absolute bottom-32 left-20 w-16 h-16 border-4 border-[#0276D3] rounded-lg"></div>
+        <div className="absolute top-32 right-32 w-20 h-20 border-4 border-[#0276D3] rounded-full"></div>
+        <div className="absolute top-1/4 right-1/4 w-12 h-12 border-4 border-[#0276D3] rounded-lg rotate-12"></div>
+        <div className="absolute bottom-10 left-1/2 w-16 h-16 border-4 border-[#0276D3] rounded-full rotate-45"></div>
+        <div className="absolute top-3/4 left-1/3 w-20 h-20 border-4 border-[#0276D3] rounded-lg -rotate-30"></div>
+        <div className="absolute bottom-1/3 right-1/5 w-14 h-14 border-4 border-[#025AA3] rounded-full rotate-60"></div>
+        <div className="absolute top-1/2 right-10 w-10 h-10 border-4 border-[#0276D3] rounded-lg rotate-90"></div>
       </div>
 
       {/* Main 2-Column Responsive Container */}
@@ -219,9 +219,9 @@ export default function RegisterPage() {
 
         {/* RIGHT SIDE (Register Form / OTP Verification) */}
         <div className="w-full lg:w-1/2 max-w-md flex flex-col items-center">
-          <Card className="w-full bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border-0 overflow-hidden">
+          <Card className="w-full bg-white shadow-xl rounded-2xl border border-slate-200 overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-[#0076CE] to-[#0055a3] px-6 py-8 text-center">
+          <div className="bg-[#0276D3] px-6 py-8 text-center">
             <img
               src="/studyasan-logo.png"
               alt="StudyAsan Logo"
@@ -408,7 +408,7 @@ export default function RegisterPage() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
+                  className="w-full h-11 bg-[#0276D3] hover:bg-[#025AA3] text-white font-semibold rounded-lg shadow-md transition-colors disabled:opacity-50"
                 >
                   {isLoading ? (
                     <>
@@ -423,11 +423,11 @@ export default function RegisterPage() {
                 {/* Agreement notice */}
                 <p className="text-[11px] text-center text-slate-500 leading-tight">
                   By continuing, you agree to StudyAsan's{" "}
-                  <Link to="/terms-and-conditions" className="text-saBlue hover:underline font-medium">
+                  <Link to="/terms-and-conditions" className="text-[#0276D3] hover:underline font-medium">
                     Terms & Conditions
                   </Link>{" "}
                   and{" "}
-                  <Link to="/privacy" className="text-saBlue hover:underline font-medium">
+                  <Link to="/privacy" className="text-[#0276D3] hover:underline font-medium">
                     Privacy Policy
                   </Link>.
                 </p>
@@ -436,7 +436,7 @@ export default function RegisterPage() {
                   Already have an account?{" "}
                   <Link
                     to="/login"
-                    className="text-[#0076CE] hover:text-[#0055a3] hover:underline"
+                    className="text-[#0276D3] hover:text-[#025AA3] hover:underline font-semibold"
                   >
                     Sign in
                   </Link>
@@ -444,21 +444,17 @@ export default function RegisterPage() {
 
                 {/* Policy links */}
                 <div className="pt-2 border-t border-slate-100 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-slate-500 text-center">
-                  <Link to="/privacy" className="hover:text-saBlue hover:underline">
+                  <Link to="/privacy" className="hover:text-[#0276D3] hover:underline">
                     Privacy Policy
                   </Link>
                   <span>•</span>
-                  <Link to="/terms-and-conditions" className="hover:text-saBlue hover:underline">
+                  <Link to="/terms-and-conditions" className="hover:text-[#0276D3] hover:underline">
                     Terms & Conditions
                   </Link>
                   <span>•</span>
-                  <Link to="/refund-policy" className="hover:text-saBlue hover:underline">
+                  <Link to="/refund-policy" className="hover:text-[#0276D3] hover:underline">
                     Refunds
                   </Link>
-                </div>
-
-                <div className="text-[11px] text-center text-slate-400">
-                  Support: <a href="mailto:contact@studyasan.com" className="text-saBlue hover:underline">contact@studyasan.com</a> | <a href="tel:+917409888805" className="text-saBlue hover:underline">+91 74098 88805</a>
                 </div>
               </CardFooter>
             </form>
@@ -488,7 +484,7 @@ export default function RegisterPage() {
 
                 {/* Email info */}
                 <div className="bg-blue-50 rounded-lg p-4 flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-[#0076CE] mt-0.5 flex-shrink-0" />
+                  <Mail className="h-5 w-5 text-[#0276D3] mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm text-gray-700">
                       We've sent a 6-digit verification code to:
@@ -516,7 +512,7 @@ export default function RegisterPage() {
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         disabled={isLoading}
-                        className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0076CE]/20 focus:border-[#0076CE]"
+                        className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-gray-300 focus:ring-2 focus:ring-[#0276D3]/20 focus:border-[#0276D3]"
                       />
                     ))}
                   </div>
@@ -528,7 +524,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={handleResendOtp}
                     disabled={resendCooldown > 0 || isLoading}
-                    className="inline-flex items-center gap-2 text-sm text-[#0076CE] hover:text-[#0055a3] disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+                    className="inline-flex items-center gap-2 text-sm text-[#0276D3] hover:text-[#025AA3] disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
                   >
                     <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                     {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
@@ -541,7 +537,7 @@ export default function RegisterPage() {
                   type="button"
                   onClick={handleVerifyOtp}
                   disabled={isLoading || otp.join("").length !== 6}
-                  className="w-full h-11 bg-gradient-to-r from-[#0076CE] to-[#0055a3] hover:from-[#0066b8] hover:to-[#004488] text-white rounded-lg shadow-lg transition-all duration-300 disabled:opacity-50"
+                  className="w-full h-11 bg-[#0276D3] hover:bg-[#025AA3] text-white font-semibold rounded-lg shadow-md transition-colors disabled:opacity-50"
                 >
                   {isLoading ? (
                     <>

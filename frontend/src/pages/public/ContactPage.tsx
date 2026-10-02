@@ -28,7 +28,7 @@ const contactInfo = [
     {
         icon: MapPin,
         title: 'Location',
-        details: ['Nainital, Uttarakhand', 'India'],
+        details: ['Haldwani, Nainital District', 'Uttarakhand, India'],
         link: '#',
         color: 'from-orange-500 to-red-500',
     },
@@ -338,7 +338,7 @@ export default function ContactPage() {
                     <div className="text-center text-white">
                         <MapPin className="w-16 h-16 mx-auto mb-4 animate-bounce" />
                         <h3 className="text-2xl font-bold mb-2">Visit Us</h3>
-                        <p className="text-blue-100">Nainital, Uttarakhand, India</p>
+                        <p className="text-blue-100">Haldwani, Nainital District, Uttarakhand, India</p>
                     </div>
                 </div>
             </section>

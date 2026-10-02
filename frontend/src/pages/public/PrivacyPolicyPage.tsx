@@ -1,209 +1,156 @@
-import { ShieldCheck, Lock, Eye, FileText, UserX, Mail, Phone, MapPin, CheckCircle2 } from 'lucide-react';
 import { usePageTitle } from '@/hooks/usePageTitle';
 
 export default function PrivacyPolicyPage() {
-  usePageTitle('Privacy Policy');
+  usePageTitle('Privacy Policy - StudyAsan');
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-16">
-      {/* Hero Header */}
-      <div className="bg-gradient-to-r from-blue-900 via-blue-800 to-indigo-900 text-white py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold uppercase tracking-wider">
-            <ShieldCheck size={16} /> Privacy & User Data Protection
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight">
-            StudyAsan Privacy Policy
-          </h1>
-          <p className="text-blue-100/90 text-sm sm:text-base max-w-2xl mx-auto">
-            Your privacy and data safety are of utmost importance. Learn how we handle, protect, and secure your information.
-          </p>
-          <div className="flex items-center justify-center gap-4 text-xs text-blue-200/80 pt-2">
-            <span>Last Updated: October 2, 2026</span>
-            <span>•</span>
-            <span>Effective Date: October 2, 2026</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 -mt-6">
-        <div className="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-6 sm:p-10 space-y-8 text-slate-700 leading-relaxed">
+    <div className="py-10 px-4 sm:px-6">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 sm:p-12 text-slate-800 leading-relaxed space-y-8">
           
+          {/* Document Header */}
+          <div className="border-b border-slate-200 pb-6 space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+              Privacy Policy
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-500">
+              StudyAsan (Android, iOS & Web ACMS Platform) • Last Updated: October 2, 2026 • Effective Date: October 2, 2026
+            </p>
+          </div>
+
           {/* Section 1 */}
           <section className="space-y-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">1</span>
-              Introduction
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              1. Introduction & Scope
             </h2>
-            <p className="text-sm sm:text-base text-slate-600">
-              Welcome to <strong>StudyAsan</strong> ("we," "our," or "us"). StudyAsan is an online educational academy and Classroom Management System (ACMS) designed to deliver interactive learning, live interactive classrooms, online test series, quizzes, assignments, and educational progress tracking for students, teachers, parents, and educational institutions.
+            <p className="text-sm sm:text-base text-slate-700">
+              Welcome to <strong>StudyAsan</strong> ("we," "our," "Company," or "Platform"). StudyAsan provides educational coaching, classroom management systems, live video lectures, online test series, quizzes, assignments, and academic performance tracking through our mobile applications (on Google Play Store and Apple App Store) and our web portal at <a href="https://acms.studyasan.com" className="text-[#0276D3] underline">https://acms.studyasan.com</a> and <a href="https://www.studyasan.com" className="text-[#0276D3] underline">https://www.studyasan.com</a>.
             </p>
-            <p className="text-sm sm:text-base text-slate-600">
-              This Privacy Policy explains how we collect, use, store, disclose, and safeguard your personal information when you access or use our mobile application (<strong>StudyAsan</strong>) and our web services hosted at <a href="https://www.studyasan.com" className="text-blue-600 hover:underline">https://www.studyasan.com</a> and <a href="https://acms.studyasan.com" className="text-blue-600 hover:underline">https://acms.studyasan.com</a>.
+            <p className="text-sm sm:text-base text-slate-700">
+              This Privacy Policy explains how we collect, process, store, disclose, and safeguard user data in strict adherence with the Information Technology Act 2000 (India), Digital Personal Data Protection Act 2023 (DPDP), Children's Online Privacy Protection Act (COPPA), GDPR, and Google Play Store & Apple App Store Developer Data Safety Policies.
             </p>
           </section>
 
           {/* Section 2 - Children's Privacy */}
-          <section className="space-y-3 p-5 bg-amber-50/70 rounded-xl border border-amber-200">
-            <h2 className="text-xl font-bold text-amber-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-amber-200/80 text-amber-900 flex items-center justify-center font-bold text-sm">2</span>
-              Target Age & Children’s Privacy (COPPA & Google Play Families Policy)
+          <section className="space-y-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              2. Target Age & Children’s Privacy (COPPA & Families Policy)
             </h2>
-            <p className="text-sm sm:text-base text-amber-950/90">
-              StudyAsan provides educational curriculum and services to students aged <strong>9 and older</strong>. Because our target audience includes children (under 13 years old), we strictly adhere to the <strong>Children's Online Privacy Protection Act (COPPA)</strong>, <strong>GDPR-K</strong>, and <strong>Google Play Developer Program Families Policy</strong>:
+            <p className="text-sm sm:text-base text-slate-700">
+              StudyAsan offers academic curricula for learners aged <strong>9 and older</strong>. Because our service serves children and minors (specifically under 13 years of age):
             </p>
-            <ul className="space-y-2 text-sm text-amber-900 list-disc list-inside">
-              <li><strong>Parental/School Consent:</strong> Children under 13 must register with verifiable consent from a parent, guardian, or authorized school teacher.</li>
-              <li><strong>No Behavioral Ads or Profiling:</strong> We do NOT serve personalized advertising, tracking ads, or sell children's data to third parties.</li>
-              <li><strong>Parental Rights:</strong> Parents and guardians can review, update, or request immediate deletion of their child's account and personal data at any time by contacting us at <a href="mailto:contact@studyasan.com" className="underline font-semibold">contact@studyasan.com</a>.</li>
+            <ul className="space-y-2 text-sm sm:text-base text-slate-700 list-disc list-inside pl-2">
+              <li><strong>Parental Consent:</strong> Children under the age of 18 (and specifically under 13) may only register with verified consent and supervision from a parent, legal guardian, or authorized school representative.</li>
+              <li><strong>Zero Targeted Advertising:</strong> We DO NOT serve personalized, behavioural, or commercial advertisements to students. We never sell or rent children’s personal data.</li>
+              <li><strong>Limited Data Collection:</strong> We collect only information strictly necessary for the student to attend live virtual classes, submit homework, take tests, and review performance reports.</li>
+              <li><strong>Parental Rights:</strong> Parents and guardians retain the right to review their child's data, request corrections, or demand complete account deletion at any time by contacting <a href="mailto:contact@studyasan.com" className="text-[#0276D3] underline">contact@studyasan.com</a>.</li>
             </ul>
           </section>
 
           {/* Section 3 */}
-          <section className="space-y-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">3</span>
-              Information We Collect
+          <section className="space-y-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              3. Categories of Information Collected
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <UserX size={18} className="text-blue-600" /> Account & Profile Data
-                </h3>
-                <p className="text-slate-600 text-xs">
-                  Full Name, Email Address, Phone Number, Date of Birth, Gender, School Name, Class/Grade, Educational Board, Address, and Profile Picture.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <FileText size={18} className="text-blue-600" /> Academic & Classroom Data
-                </h3>
-                <p className="text-slate-600 text-xs">
-                  Homework submissions, quiz responses, test attempts & scores, whiteboard notes, live classroom attendance logs, and chat messages/attachments.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <Lock size={18} className="text-blue-600" /> Payment & Billing Data
-                </h3>
-                <p className="text-slate-600 text-xs">
-                  Fee invoices, payment status, receipts, and transaction reference IDs. (Sensitive card or UPI PINs are processed securely by payment gateways and never stored on our servers).
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
-                <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <Eye size={18} className="text-blue-600" /> Device & Technical Logs
-                </h3>
-                <p className="text-slate-600 text-xs">
-                  Device model, operating system version, network status, app diagnostics, and Firebase Cloud Messaging (FCM) tokens for push notifications.
-                </p>
-              </div>
+            <div className="space-y-3 text-sm sm:text-base text-slate-700">
+              <p><strong>A. Information Provided by Users:</strong></p>
+              <ul className="list-disc list-inside pl-4 space-y-1 text-slate-600">
+                <li><strong>Account Credentials:</strong> Full Name, Email Address, Phone Number, Password (cryptographically hashed), and Profile Picture.</li>
+                <li><strong>Student Profile:</strong> Class/Grade, Educational Board, School Name, Date of Birth, Gender, Blood Group (optional), and Residential Address.</li>
+                <li><strong>Teacher Profile:</strong> Academic Qualifications, Teaching Experience, Subject Specializations, and Payout Details.</li>
+                <li><strong>Classroom & Academic Data:</strong> Homework files (PDFs/Images), test attempts & answers, doubt queries, quiz scores, and live WebRTC class audio/video.</li>
+                <li><strong>Billing Information:</strong> Invoice records, transaction IDs, payment methods, and fee receipts. (Card details and bank PINs are handled securely by RBI-authorized payment gateways).</li>
+              </ul>
+
+              <p className="pt-2"><strong>B. Technical & Device Information:</strong></p>
+              <ul className="list-disc list-inside pl-4 space-y-1 text-slate-600">
+                <li>Device model, OS version, IP address, app performance logs, and Firebase Cloud Messaging (FCM) tokens for push notifications.</li>
+                <li>Virtual classroom attendance logs (join time, leave time, duration).</li>
+              </ul>
             </div>
           </section>
 
           {/* Section 4 */}
           <section className="space-y-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">4</span>
-              How We Use Your Information
-            </h2>
-            <ul className="space-y-2 text-sm sm:text-base text-slate-600">
-              <li className="flex items-start gap-2">
-                <CheckCircle2 size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
-                <span>Deliver interactive live video classes, study modules, quizzes, tests, and homework grading.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
-                <span>Track student academic progress, compute scores, and generate parent progress reports.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
-                <span>Send essential class reminders, homework alerts, fee receipts, and security verification codes.</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <CheckCircle2 size={18} className="text-green-600 mt-0.5 flex-shrink-0" />
-                <span>Maintain classroom discipline, data integrity, and diagnose application issues.</span>
-              </li>
-            </ul>
-          </section>
-
-          {/* Section 5 - Permissions */}
-          <section className="space-y-3">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">5</span>
-              Mobile App Permissions
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              4. Mobile App Permissions (Android & iOS)
             </h2>
             <div className="overflow-x-auto border border-slate-200 rounded-lg">
               <table className="min-w-full divide-y divide-slate-200 text-xs sm:text-sm">
                 <thead className="bg-slate-50">
                   <tr>
-                    <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Permission</th>
-                    <th className="px-4 py-2.5 text-left font-semibold text-slate-700">Purpose</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-800">Permission</th>
+                    <th className="px-4 py-3 text-left font-semibold text-slate-800">Purpose</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-slate-600">
+                <tbody className="divide-y divide-slate-200 text-slate-700">
                   <tr>
-                    <td className="px-4 py-2.5 font-medium text-slate-900">INTERNET</td>
-                    <td className="px-4 py-2.5">To load curriculum, join live classes, and submit assignments.</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">INTERNET / NETWORK</td>
+                    <td className="px-4 py-2.5">To connect to servers, stream live classes, and synchronize study modules.</td>
                   </tr>
                   <tr>
-                    <td className="px-4 py-2.5 font-medium text-slate-900">CAMERA & MICROPHONE (Optional)</td>
-                    <td className="px-4 py-2.5">To participate in live video classes and capture homework photos.</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">CAMERA (Optional)</td>
+                    <td className="px-4 py-2.5">To broadcast student/teacher video during live classes and scan homework.</td>
+                  </tr>
+                  <tr>
+                    <td className="px-4 py-2.5 font-medium text-slate-900">MICROPHONE (Optional)</td>
+                    <td className="px-4 py-2.5">To allow verbal questions and two-way audio participation in live classes.</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2.5 font-medium text-slate-900">STORAGE / PHOTOS (Optional)</td>
-                    <td className="px-4 py-2.5">To upload assignment PDFs/images and download certificates.</td>
+                    <td className="px-4 py-2.5">To upload homework documents and download notes/certificates.</td>
                   </tr>
                   <tr>
                     <td className="px-4 py-2.5 font-medium text-slate-900">NOTIFICATIONS</td>
-                    <td className="px-4 py-2.5">To receive class start notifications and exam notices.</td>
+                    <td className="px-4 py-2.5">To deliver schedule alerts, live class reminders, and exam notifications.</td>
                   </tr>
                 </tbody>
               </table>
             </div>
           </section>
 
-          {/* Section 6 - Account Deletion */}
-          <section id="account-deletion" className="space-y-3 p-5 bg-red-50/50 rounded-xl border border-red-200">
-            <h2 className="text-xl font-bold text-red-950 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-red-100 text-red-800 flex items-center justify-center font-bold text-sm">6</span>
-              Account & Data Deletion (Google Play Compliant)
+          {/* Section 5 */}
+          <section className="space-y-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              5. How Information is Shared
             </h2>
             <p className="text-sm sm:text-base text-slate-700">
-              Users and parents can request complete permanent deletion of their account and all personal data:
+              We never sell or monetize user data. Information is shared only with:
             </p>
-            <ul className="space-y-2 text-sm text-slate-700 list-disc list-inside">
-              <li><strong>In-App Deletion:</strong> Go to <strong>Dashboard &gt; Settings &gt; Profile</strong>, click <strong>"Request Account Deletion"</strong>, and verify with the email OTP.</li>
-              <li><strong>Web/Email Request:</strong> Email us directly at <a href="mailto:contact@studyasan.com" className="text-blue-600 font-semibold underline">contact@studyasan.com</a> with the subject <em>"Account Deletion Request"</em> from your registered email address.</li>
+            <ul className="space-y-1.5 text-sm sm:text-base text-slate-700 list-disc list-inside pl-2">
+              <li><strong>Assigned Teachers & Mentors:</strong> Strictly for instruction, attendance verification, and academic evaluation.</li>
+              <li><strong>Cloud Infrastructure Providers:</strong> AWS S3 (encrypted file storage), Janus WebRTC (live conferencing), and Firebase (push notifications).</li>
+              <li><strong>Statutory Authorities:</strong> Only when strictly required by applicable law, court order, or judicial process.</li>
             </ul>
-            <p className="text-xs text-slate-500 pt-1">
-              Upon verification, all personal identifiers, account credentials, and submitted records will be permanently purged within 30 days.
+          </section>
+
+          {/* Section 6 - Account Deletion */}
+          <section className="space-y-3">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 border-l-4 border-[#0276D3] pl-3">
+              6. Account & Data Deletion Policy (Play Store & App Store Compliant)
+            </h2>
+            <p className="text-sm sm:text-base text-slate-700">
+              All users have the absolute right to request permanent account deletion:
             </p>
+            <ul className="space-y-1.5 text-sm sm:text-base text-slate-700 list-disc list-inside pl-2">
+              <li><strong>In-App Deletion:</strong> Go to <strong>Dashboard &gt; Settings &gt; Profile</strong>, click <strong>"Request Account Deletion"</strong>, and verify with email OTP.</li>
+              <li><strong>Email Deletion Request:</strong> Email <a href="mailto:contact@studyasan.com" className="text-[#0276D3] underline">contact@studyasan.com</a> with the subject *"Account Deletion Request"*.</li>
+              <li><strong>Timeline:</strong> All personal credentials, chat history, and academic files are permanently purged within <strong>30 calendar days</strong>.</li>
+            </ul>
           </section>
 
           {/* Section 7 - Contact */}
-          <section className="space-y-4 pt-4 border-t border-slate-200">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 flex items-center gap-2">
-              <span className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-sm">7</span>
-              Contact Us & Grievance Officer
+          <section className="space-y-3 border-t border-slate-200 pt-6">
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900">
+              7. Grievance Redressal & Contact Information
             </h2>
-            <p className="text-sm sm:text-base text-slate-600">
-              For any questions, requests, or concerns regarding your privacy or this policy, please contact:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <Mail className="text-blue-600 flex-shrink-0" size={18} />
-                <span className="truncate">contact@studyasan.com</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <Phone className="text-blue-600 flex-shrink-0" size={18} />
-                <span>+91 74098 88805</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <MapPin className="text-blue-600 flex-shrink-0" size={18} />
-                <span>Nainital, Uttarakhand, India</span>
-              </div>
+            <div className="space-y-1 text-sm sm:text-base text-slate-700">
+              <p><strong>Entity Name:</strong> StudyAsan</p>
+              <p><strong>Grievance & Privacy Officer:</strong> Compliance Team</p>
+              <p><strong>Email:</strong> <a href="mailto:contact@studyasan.com" className="text-[#0276D3] underline">contact@studyasan.com</a></p>
+              <p><strong>Phone:</strong> +91 74098 88805</p>
+              <p><strong>Registered Office:</strong> Haldwani, Nainital District, Uttarakhand, India</p>
+              <p><strong>Website:</strong> <a href="https://www.studyasan.com" className="text-[#0276D3] underline">https://www.studyasan.com</a></p>
             </div>
           </section>
 
