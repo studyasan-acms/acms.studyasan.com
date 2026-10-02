@@ -187,7 +187,7 @@ export default function RegisterPage() {
   const passwordValidation = validatePasswordStrength(formData.password);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-x-hidden overflow-y-auto py-6 md:py-0">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#d9ecff] via-[#e8f2ff] to-[#cce4ff] relative overflow-x-hidden overflow-y-auto py-10 px-4">
       {/* Background geometric shapes */}
       <div className="absolute inset-0 opacity-10 pointer-events-none">
         <div className="absolute top-10 left-10 w-24 h-24 border-4 border-[#0076CE] rounded-lg rotate-45"></div>
@@ -202,24 +202,24 @@ export default function RegisterPage() {
         <div className="absolute top-1/2 right-10 w-10 h-10 border-4 border-[#0088DD] rounded-lg rotate-90"></div>
       </div>
 
-      {/* LEFT IMAGE – Tablet (md) */}
-      <div className="hidden md:flex lg:hidden w-1/2 items-center justify-center p-6 relative z-10">
-        <DotLottieReact
-          src="/lottie/Login-Lady.lottie"
-          loop
-          autoplay
-          className="w-full h-auto max-w-md"
-        />
-      </div>
+      {/* Main 2-Column Responsive Container */}
+      <div className="w-full max-w-5xl mx-auto flex flex-col lg:flex-row items-center justify-center gap-8 lg:gap-12 relative z-10 my-auto">
+        
+        {/* LEFT IMAGE – Desktop */}
+        <div className="hidden lg:flex w-full lg:w-1/2 items-center justify-center p-4">
+          <div className="w-full max-w-lg flex items-center justify-center">
+            <DotLottieReact
+              src="/lottie/Login-Lady.lottie"
+              loop
+              autoplay
+              className="w-full h-auto max-h-[480px] drop-shadow-md"
+            />
+          </div>
+        </div>
 
-      {/* LEFT IMAGE – Desktop (lg) */}
-      <div className="hidden lg:flex w-1/2 items-center justify-center p-10 relative z-10">
-        <DotLottieReact src="/lottie/Login-Lady.lottie" loop autoplay />
-      </div>
-
-      {/* RIGHT SIDE (Register Form / OTP Verification) */}
-      <div className="flex w-full md:w-1/2 items-center justify-center p-4 relative z-10">
-        <Card className="w-full max-w-md bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border-0 overflow-hidden">
+        {/* RIGHT SIDE (Register Form / OTP Verification) */}
+        <div className="w-full lg:w-1/2 max-w-md flex flex-col items-center">
+          <Card className="w-full bg-white/95 backdrop-blur-sm shadow-2xl rounded-2xl border-0 overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-[#0076CE] to-[#0055a3] px-6 py-8 text-center">
             <img
@@ -557,10 +557,11 @@ export default function RegisterPage() {
           )}
         </Card>
       </div>
+    </div>
 
       {/* Footer copyright */}
-      <div className="w-full pb-4 text-center">
-        <span className="text-xs text-slate-500">
+      <div className="absolute bottom-2 inset-x-0 text-center pointer-events-none">
+        <span className="text-[11px] text-slate-500">
           © {new Date().getFullYear()} StudyAsan. All rights reserved.
         </span>
       </div>

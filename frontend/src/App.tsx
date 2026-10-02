@@ -11,6 +11,7 @@ import DashboardPage from '@/pages/DashboardPage';
 
 // Public Layout and Pages
 import PublicLayout from '@/components/layout/PublicLayout';
+import StaticPolicyLayout from '@/components/layout/StaticPolicyLayout';
 import HomePage from '@/pages/public/HomePage';
 import AboutPage from '@/pages/public/AboutPage';
 import ContactPage from '@/pages/public/ContactPage';
@@ -248,6 +249,10 @@ function App() {
           <Route path="support" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />
           <Route path="blog" element={<BlogPage />} />
+        </Route>
+
+        {/* Clean Static Policy & Legal Routes (Minimal Header with ONLY Logo + Clean Minimal Footer) */}
+        <Route element={<StaticPolicyLayout />}>
           <Route path="privacy" element={<PrivacyPolicyPage />} />
           <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="terms" element={<TermsConditionsPage />} />
