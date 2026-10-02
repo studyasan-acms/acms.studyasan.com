@@ -56,7 +56,7 @@ export default function PrivacyPolicyPage() {
             <ul className="space-y-2 text-sm text-amber-900 list-disc list-inside">
               <li><strong>Parental/School Consent:</strong> Children under 13 must register with verifiable consent from a parent, guardian, or authorized school teacher.</li>
               <li><strong>No Behavioral Ads or Profiling:</strong> We do NOT serve personalized advertising, tracking ads, or sell children's data to third parties.</li>
-              <li><strong>Parental Rights:</strong> Parents and guardians can review, update, or request immediate deletion of their child's account and personal data at any time by contacting us at <a href="mailto:studyasaneducation@gmail.com" className="underline font-semibold">studyasaneducation@gmail.com</a>.</li>
+              <li><strong>Parental Rights:</strong> Parents and guardians can review, update, or request immediate deletion of their child's account and personal data at any time by contacting us at <a href="mailto:contact@studyasan.com" className="underline font-semibold">contact@studyasan.com</a>.</li>
             </ul>
           </section>
 
@@ -175,7 +175,7 @@ export default function PrivacyPolicyPage() {
             </p>
             <ul className="space-y-2 text-sm text-slate-700 list-disc list-inside">
               <li><strong>In-App Deletion:</strong> Go to <strong>Dashboard &gt; Settings &gt; Profile</strong>, click <strong>"Request Account Deletion"</strong>, and verify with the email OTP.</li>
-              <li><strong>Web/Email Request:</strong> Email us directly at <a href="mailto:studyasaneducation@gmail.com" className="text-blue-600 font-semibold underline">studyasaneducation@gmail.com</a> with the subject <em>"Account Deletion Request"</em> from your registered email address.</li>
+              <li><strong>Web/Email Request:</strong> Email us directly at <a href="mailto:contact@studyasan.com" className="text-blue-600 font-semibold underline">contact@studyasan.com</a> with the subject <em>"Account Deletion Request"</em> from your registered email address.</li>
             </ul>
             <p className="text-xs text-slate-500 pt-1">
               Upon verification, all personal identifiers, account credentials, and submitted records will be permanently purged within 30 days.
@@ -194,11 +194,11 @@ export default function PrivacyPolicyPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <Mail className="text-blue-600 flex-shrink-0" size={18} />
-                <span className="truncate">studyasaneducation@gmail.com</span>
+                <span className="truncate">contact@studyasan.com</span>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <Phone className="text-blue-600 flex-shrink-0" size={18} />
-                <span>+91 7983758633</span>
+                <span>+91 74098 88805</span>
               </div>
               <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <MapPin className="text-blue-600 flex-shrink-0" size={18} />

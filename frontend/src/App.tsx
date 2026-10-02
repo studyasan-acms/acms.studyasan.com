@@ -19,6 +19,8 @@ import BlogPage from '@/pages/public/BlogPage';
 import CertificationPage from '@/pages/public/CertificationPage';
 import PrivacyPolicyPage from '@/pages/public/PrivacyPolicyPage';
 import TermsConditionsPage from '@/pages/public/TermsConditionsPage';
+import DataDeletionPage from '@/pages/public/DataDeletionPage';
+import RefundPolicyPage from '@/pages/public/RefundPolicyPage';
 
 // Student imports
 import StudentsPage from '@/pages/students/StudentsPage';
@@ -240,7 +242,10 @@ function App() {
         {/* Public Website Routes */}
         <Route element={<PublicLayout />}>
           <Route path="about" element={<AboutPage />} />
+          <Route path="about-us" element={<AboutPage />} />
           <Route path="contact" element={<ContactPage />} />
+          <Route path="contact-us" element={<ContactPage />} />
+          <Route path="support" element={<ContactPage />} />
           <Route path="career" element={<CareerPage />} />
           <Route path="blog" element={<BlogPage />} />
           <Route path="privacy" element={<PrivacyPolicyPage />} />
@@ -248,6 +253,12 @@ function App() {
           <Route path="terms" element={<TermsConditionsPage />} />
           <Route path="terms-and-conditions" element={<TermsConditionsPage />} />
           <Route path="term-condition" element={<TermsConditionsPage />} />
+          <Route path="terms-of-service" element={<TermsConditionsPage />} />
+          <Route path="data-deletion" element={<DataDeletionPage />} />
+          <Route path="account-deletion" element={<DataDeletionPage />} />
+          <Route path="delete-account" element={<DataDeletionPage />} />
+          <Route path="refund-policy" element={<RefundPolicyPage />} />
+          <Route path="cancellation-policy" element={<RefundPolicyPage />} />
         </Route>
 
         {/* Standalone Public Certification Route (No public header/footer) */}

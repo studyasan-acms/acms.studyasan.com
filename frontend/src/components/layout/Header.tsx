@@ -22,6 +22,9 @@ import {
   Globe,
   Megaphone,
   ChevronRight,
+  ShieldCheck,
+  FileText,
+  HelpCircle,
 } from "lucide-react";
 import NotificationPanel from "@/components/dashboard/NotificationPanel";
 import AnnouncementPanel from "@/components/dashboard/AnnouncementPanel";
@@ -361,6 +364,32 @@ export default function Header({
                 >
                   <Settings className="h-4 w-4" />
                   Settings
+                </DropdownMenuItem>
+
+                <div className="border-t border-slate-100 my-1" />
+
+                <DropdownMenuItem
+                  onClick={() => window.open("/privacy", "_blank")}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue transition-colors text-sm"
+                >
+                  <ShieldCheck className="h-4 w-4 text-saBlue" />
+                  Privacy Policy
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => window.open("/terms-and-conditions", "_blank")}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue transition-colors text-sm"
+                >
+                  <FileText className="h-4 w-4 text-saBlue" />
+                  Terms & Conditions
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => window.open("/contact", "_blank")}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-slate-700 hover:bg-saBlueSubtle hover:text-saBlue transition-colors text-sm"
+                >
+                  <HelpCircle className="h-4 w-4 text-saBlue" />
+                  Help & Support
                 </DropdownMenuItem>
 
                 <div className="border-t border-slate-100 my-1" />

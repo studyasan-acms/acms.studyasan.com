@@ -4,8 +4,8 @@
 **Effective Date:** October 2, 2026  
 **Official Website:** [https://www.studyasan.com](https://www.studyasan.com)  
 **App Name:** StudyAsan (Academy & Classroom Management System - ACMS)  
-**Contact Email:** [studyasaneducation@gmail.com](mailto:studyasaneducation@gmail.com)  
-**Contact Phone:** +91 7983758633  
+**Contact Email:** [contact@studyasan.com](mailto:contact@studyasan.com)  
+**Contact Phone:** +91 74098 88805  
 **Registered Address:** Nainital, Uttarakhand, India  
 
 ---
@@ -32,7 +32,7 @@ Because our target audience includes children aged 9 to 12 (under 13 years old),
 4. **Parental Rights:** Parents and legal guardians have the right to:
    - Review personal data collected from their child.
    - Refuse further collection or use of their child's data.
-   - Request the immediate correction or deletion of their child's account and associated data by emailing us at **studyasaneducation@gmail.com** or submitting an in-app deletion request.
+   - Request the immediate correction or deletion of their child's account and associated data by emailing us at **contact@studyasan.com** or submitting an in-app deletion request.
 
 ---
 
@@ -126,7 +126,7 @@ Users have the right to request permanent deletion of their account and all asso
    - Select **"Request Account Deletion"** and confirm via the OTP sent to your registered email.
 2. **Web-Based Deletion Request (Direct URL):**
    - If you cannot access the app, you can submit a deletion request directly by visiting:  
-     **[https://www.studyasan.com/privacy-policy#account-deletion](https://www.studyasan.com/privacy-policy#account-deletion)** or emailing us at **[studyasaneducation@gmail.com](mailto:studyasaneducation@gmail.com)** with the subject *"Account Deletion Request"*.
+     **[https://www.studyasan.com/privacy-policy#account-deletion](https://www.studyasan.com/privacy-policy#account-deletion)** or emailing us at **[contact@studyasan.com](mailto:contact@studyasan.com)** with the subject *"Account Deletion Request"*.
 3. **Data Purge Timeline:** Upon verification of the deletion request, the user's personal profile, login credentials, chat records, and personal identifiers will be permanently removed from our active databases within **30 days**, retaining only non-identifiable aggregated records required by applicable financial/tax laws.
 
 ---
@@ -149,8 +149,8 @@ If you have questions, comments, concerns, or grievances regarding this Privacy 
 
 * **Entity Name:** StudyAsan (ACMS)
 * **Grievance Officer:** Privacy & Data Support Team
-* **Email:** [studyasaneducation@gmail.com](mailto:studyasaneducation@gmail.com)
-* **Phone:** +91 7983758633
+* **Email:** [contact@studyasan.com](mailto:contact@studyasan.com)
+* **Phone:** +91 74098 88805
 * **Office Hours:** Monday – Saturday, 10:00 AM – 7:00 PM IST
 * **Postal Address:** Nainital, Uttarakhand, India
 * **Website:** [https://www.studyasan.com](https://www.studyasan.com)

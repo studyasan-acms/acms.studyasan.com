@@ -4,8 +4,8 @@
 **Effective Date:** October 2, 2026  
 **Official Website:** [https://www.studyasan.com](https://www.studyasan.com)  
 **App Platform:** StudyAsan (ACMS - [https://acms.studyasan.com](https://acms.studyasan.com))  
-**Contact Email:** [studyasaneducation@gmail.com](mailto:studyasaneducation@gmail.com)  
-**Contact Phone:** +91 7983758633  
+**Contact Email:** [contact@studyasan.com](mailto:contact@studyasan.com)  
+**Contact Phone:** +91 74098 88805  
 **Registered Address:** Nainital, Uttarakhand, India  
 
 ---
@@ -90,8 +90,8 @@ These Terms and Conditions shall be governed by and construed in accordance with
 For questions, concerns, or legal inquiries regarding these Terms and Conditions:
 
 * **Entity:** StudyAsan
-* **Email:** [studyasaneducation@gmail.com](mailto:studyasaneducation@gmail.com)
-* **Phone:** +91 7983758633
+* **Email:** [contact@studyasan.com](mailto:contact@studyasan.com)
+* **Phone:** +91 74098 88805
 * **Office Hours:** Monday – Saturday, 10:00 AM – 7:00 PM IST
 * **Postal Address:** Nainital, Uttarakhand, India
 * **Website:** [https://www.studyasan.com](https://www.studyasan.com)

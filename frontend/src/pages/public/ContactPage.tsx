@@ -14,15 +14,15 @@ const contactInfo = [
     {
         icon: Phone,
         title: 'Phone',
-        details: ['+91 7983758633'],
-        link: 'tel:+917983758633',
+        details: ['+91 74098 88805'],
+        link: 'tel:+917409888805',
         color: 'from-green-500 to-emerald-500',
     },
     {
         icon: Mail,
         title: 'Email',
-        details: ['studyasaneducation@gmail.com', 'info@studyasan.com'],
-        link: 'mailto:studyasaneducation@gmail.com',
+        details: ['contact@studyasan.com'],
+        link: 'mailto:contact@studyasan.com',
         color: 'from-blue-500 to-cyan-500',
     },
     {

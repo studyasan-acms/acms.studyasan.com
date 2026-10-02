@@ -233,12 +233,24 @@ export default function LoginPage() {
                   Sign up
                 </Link>
               </p>
-              <p className="text-sm text-center text-gray-600">
-                Login As {" "}
-                <Link to="/agency/login" className="text-[#0076CE] hover:text-[#0055a3] hover:underline">
-                  Agency
+              {/* Policy and support footer links inside card */}
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-slate-500 text-center">
+                <Link to="/privacy" className="hover:text-saBlue hover:underline">
+                  Privacy Policy
                 </Link>
-              </p>
+                <span>•</span>
+                <Link to="/terms-and-conditions" className="hover:text-saBlue hover:underline">
+                  Terms & Conditions
+                </Link>
+                <span>•</span>
+                <Link to="/refund-policy" className="hover:text-saBlue hover:underline">
+                  Refunds
+                </Link>
+              </div>
+
+              <div className="text-[11px] text-center text-slate-400">
+                Support: <a href="mailto:contact@studyasan.com" className="text-saBlue hover:underline">contact@studyasan.com</a> | <a href="tel:+917409888805" className="text-saBlue hover:underline">+91 74098 88805</a>
+              </div>
             </CardFooter>
           </form>
         </Card>
@@ -250,10 +262,10 @@ export default function LoginPage() {
         onClose={() => setIsForgotPasswordOpen(false)}
       />
 
-      {/* Footer - centered at bottom of the page */}
-      <div className="absolute bottom-4 inset-x-0 flex justify-center pointer-events-none">
-        <span className="text-xs text-gray-500">
-          © 2024 StudyAsan. All rights reserved.
+      {/* Footer copyright */}
+      <div className="w-full pb-4 text-center">
+        <span className="text-xs text-slate-500">
+          © {new Date().getFullYear()} StudyAsan. All rights reserved.
         </span>
       </div>
     </div>

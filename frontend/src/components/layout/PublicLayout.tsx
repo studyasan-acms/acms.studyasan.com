@@ -39,13 +39,13 @@ export default function PublicLayout() {
       <div className="bg-gradient-to-r from-blue-900 to-blue-800 text-white py-2 text-sm hidden md:block">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <div className="flex items-center gap-6">
-            <a href="tel:+917983758633" className="flex items-center gap-2 hover:text-blue-200 transition-colors">
+            <a href="tel:+917409888805" className="flex items-center gap-2 hover:text-blue-200 transition-colors">
               <Phone size={14} />
-              <span>+91 7983758633</span>
+              <span>+91 74098 88805</span>
             </a>
-            <a href="mailto:studyasaneducation@gmail.com" className="flex items-center gap-2 hover:text-blue-200 transition-colors">
+            <a href="mailto:contact@studyasan.com" className="flex items-center gap-2 hover:text-blue-200 transition-colors">
               <Mail size={14} />
-              <span>studyasaneducation@gmail.com</span>
+              <span>contact@studyasan.com</span>
             </a>
           </div>
           <div className="flex items-center gap-2">
@@ -261,14 +261,14 @@ export default function PublicLayout() {
                 </li>
                 <li className="flex items-start gap-3">
                   <Phone size={20} className="text-blue-400 mt-1 flex-shrink-0" />
-                  <a href="tel:+917983758633" className="text-gray-400 hover:text-white transition-colors">
-                    +91 7983758633
+                  <a href="tel:+917409888805" className="text-gray-400 hover:text-white transition-colors">
+                    +91 74098 88805
                   </a>
                 </li>
                 <li className="flex items-start gap-3">
                   <Mail size={20} className="text-blue-400 mt-1 flex-shrink-0" />
-                  <a href="mailto:studyasaneducation@gmail.com" className="text-gray-400 hover:text-white transition-colors break-all">
-                    studyasaneducation@gmail.com
+                  <a href="mailto:contact@studyasan.com" className="text-gray-400 hover:text-white transition-colors break-all">
+                    contact@studyasan.com
                   </a>
                 </li>
                 <li className="flex items-start gap-3">
@@ -287,12 +287,18 @@ export default function PublicLayout() {
               <p className="text-gray-400 text-sm">
                 © {new Date().getFullYear()} StudyAsan. All rights reserved.
               </p>
-              <div className="flex gap-6 text-sm">
-                <Link to="/terms" className="text-gray-400 hover:text-white transition-colors">
-                  Terms & Conditions
-                </Link>
+              <div className="flex flex-wrap gap-4 md:gap-6 text-sm">
                 <Link to="/privacy" className="text-gray-400 hover:text-white transition-colors">
                   Privacy Policy
+                </Link>
+                <Link to="/terms-and-conditions" className="text-gray-400 hover:text-white transition-colors">
+                  Terms & Conditions
+                </Link>
+                <Link to="/refund-policy" className="text-gray-400 hover:text-white transition-colors">
+                  Refund Policy
+                </Link>
+                <Link to="/data-deletion" className="text-gray-400 hover:text-white transition-colors">
+                  Data Deletion
                 </Link>
               </div>
             </div>

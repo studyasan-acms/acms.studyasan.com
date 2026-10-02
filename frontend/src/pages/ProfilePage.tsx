@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Upload, User, Lock, Save, Camera } from 'lucide-react';
+import { Upload, User, Lock, Save, Camera, ShieldCheck, FileText, RefreshCw, Trash2, HelpCircle, Phone, Mail, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiService } from '@/services/api';
 
@@ -254,7 +254,7 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile Settings</h1>
 
         <Tabs defaultValue="basic" className="w-full">
-          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <TabsList className={`grid w-full ${profileData?.role === 'ADMIN' ? 'grid-cols-3' : 'grid-cols-4'}`}>
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             {profileData?.role !== 'ADMIN' && (
@@ -262,6 +262,7 @@ export default function ProfilePage() {
                 {profileData?.role === 'STUDENT' ? 'Student Details' : 'Teacher Details'}
               </TabsTrigger>
             )}
+            <TabsTrigger value="policies">Policies & Legal</TabsTrigger>
           </TabsList>
 
           <TabsContent value="basic">
@@ -555,6 +556,126 @@ export default function ProfilePage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          {/* Policies & Legal Tab Content */}
+          <TabsContent value="policies" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <ShieldCheck className="h-5 w-5 text-saBlue" />
+                  Legal Policies & App Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Privacy Policy */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <ShieldCheck className="h-4 w-4 text-saBlue" />
+                        Privacy Policy
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Learn how StudyAsan protects, encrypts, and handles your user data and children's privacy.
+                      </p>
+                    </div>
+                    <a
+                      href="/privacy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-saBlue hover:underline"
+                    >
+                      Read Full Policy <ExternalLink size={13} />
+                    </a>
+                  </div>
+
+                  {/* Terms & Conditions */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <FileText className="h-4 w-4 text-saBlue" />
+                        Terms & Conditions
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Review platform terms, classroom code of conduct, and educational service agreements.
+                      </p>
+                    </div>
+                    <a
+                      href="/terms-and-conditions"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-saBlue hover:underline"
+                    >
+                      Read Terms & Conditions <ExternalLink size={13} />
+                    </a>
+                  </div>
+
+                  {/* Refund Policy */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <RefreshCw className="h-4 w-4 text-saBlue" />
+                        Refund & Cancellation Policy
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Information regarding course cancellations, tuition refunds, and processing timelines.
+                      </p>
+                    </div>
+                    <a
+                      href="/refund-policy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-saBlue hover:underline"
+                    >
+                      Read Refund Policy <ExternalLink size={13} />
+                    </a>
+                  </div>
+
+                  {/* Data Deletion Request */}
+                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between space-y-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                        User Data & Account Deletion
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Permanent account closure and complete erasure of personal records.
+                      </p>
+                    </div>
+                    <a
+                      href="/data-deletion"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:underline"
+                    >
+                      Deletion Instructions <ExternalLink size={13} />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Support Card */}
+                <div className="mt-4 p-4 rounded-xl bg-saBlueSubtle border border-saBlue/20 text-slate-700 space-y-2">
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4 text-saBlue" /> Need Help or Support?
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Mail size={14} className="text-saBlue flex-shrink-0" />
+                      <a href="mailto:contact@studyasan.com" className="hover:underline font-medium text-slate-800">
+                        contact@studyasan.com
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Phone size={14} className="text-saBlue flex-shrink-0" />
+                      <a href="tel:+917409888805" className="hover:underline font-medium text-slate-800">
+                        +91 74098 88805
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

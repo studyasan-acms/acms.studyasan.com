@@ -69,7 +69,7 @@ export default function TermsConditionsPage() {
               For any questions regarding these Terms & Conditions, please contact us at:
             </p>
             <p className="text-sm font-semibold text-slate-800">
-              Email: <a href="mailto:studyasaneducation@gmail.com" className="text-blue-600 underline">studyasaneducation@gmail.com</a> | Phone: +91 7983758633
+              Email: <a href="mailto:contact@studyasan.com" className="text-blue-600 underline">contact@studyasan.com</a> | Phone: +91 74098 88805
             </p>
           </section>
 
