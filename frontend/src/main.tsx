@@ -31,8 +31,11 @@ import App from './App.tsx'
 import ErrorBoundary from './components/common/ErrorBoundary.tsx'
 
 // Register Firebase Messaging Service Worker
-// Note: This is separate from the PWA service worker
-if ('serviceWorker' in navigator) {
+// Note: Service workers are web-only — skip on Capacitor native apps where
+// @capacitor/push-notifications handles FCM natively via APNs / FCM SDK.
+import { Capacitor } from '@capacitor/core';
+
+if ('serviceWorker' in navigator && !Capacitor.isNativePlatform()) {
   // Wait for the page to load to avoid conflicts
   window.addEventListener('load', () => {
     navigator.serviceWorker

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, ChevronRight, ClipboardCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePageTitle } from "@/hooks/usePageTitle";
+import { api } from '@/services/api';
 
 interface ClassSession {
   id: number;
@@ -51,16 +52,8 @@ export default function AttendanceListPage() {
       setError(null);
 
       // Fetch past sessions (where attendance would be recorded)
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/past`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
-
-      const result = await response.json();
+      const response = await api.get('/class-sessions/past');
+      const result = response.data;
 
       if (result.success) {
         // API returns sessions directly in data array
@@ -69,7 +62,7 @@ export default function AttendanceListPage() {
         setError(result.message || 'Failed to fetch sessions');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch sessions');
+      setError(err.response?.data?.message || err.message || 'Failed to fetch sessions');
     } finally {
       setLoading(false);
     }

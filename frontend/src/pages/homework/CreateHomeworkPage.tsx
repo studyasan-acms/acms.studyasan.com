@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-import { subjectService } from "@/services/api";
+import { api, subjectService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 
 import type { Subject } from "@/types";
@@ -94,18 +94,10 @@ export default function CreateHomeworkPage() {
 
   const fetchStudentsForSubject = async (subjectId: string) => {
     try {
-      const response = await fetch(`/api/enrollments?subject_id=${subjectId}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const enrolledStudents = data.data.data.map((enrollment: any) => enrollment.student);
-        setStudents(enrolledStudents);
-        setSelectedStudents(enrolledStudents.map((s: Student) => s.id));
-      }
+      const { data } = await api.get(`/enrollments`, { params: { subject_id: subjectId } });
+      const enrolledStudents = data.data.data.map((enrollment: any) => enrollment.student);
+      setStudents(enrolledStudents);
+      setSelectedStudents(enrolledStudents.map((s: Student) => s.id));
     } catch (error) {
       console.error('Error fetching students:', error);
     }
@@ -113,12 +105,7 @@ export default function CreateHomeworkPage() {
 
   const fetchHomeworkForEdit = async (homeworkId: string) => {
     try {
-      const response = await fetch(`/api/homework/${homeworkId}`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      });
-
-      if (!response.ok) return;
-      const body = await response.json();
+      const { data: body } = await api.get(`/homework/${homeworkId}`);
       const data = body.data;
 
       setFormData(prev => ({
@@ -218,27 +205,20 @@ export default function CreateHomeworkPage() {
         submitData.append('document', documentFile);
       }
 
-      let response;
+      let axiosResponse;
       if (id) {
-        response = await fetch(`/api/homework/${id}`, {
-          method: 'PUT',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: submitData
+        axiosResponse = await api.put(`/homework/${id}`, submitData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
       } else {
-        response = await fetch('/api/homework', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-          body: submitData
+        axiosResponse = await api.post('/homework', submitData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
         });
       }
 
-      if (response.ok) {
+      if (axiosResponse.data) {
         toast.success(id ? "Assignment updated!" : "Assignment published!");
         navigate('/dashboard/homework');
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || (id ? 'Failed to update' : 'Failed to create'));
       }
     } catch (error: any) {
       console.error('Error submitting homework:', error);

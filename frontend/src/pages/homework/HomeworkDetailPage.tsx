@@ -21,6 +21,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+import { api } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/lib/utils";
 
@@ -124,18 +125,8 @@ export default function HomeworkDetailPage() {
   const fetchHomework = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/homework/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setHomework(data.data);
-      } else {
-        throw new Error('Failed to fetch homework');
-      }
+      const { data: body } = await api.get(`/homework/${id}`);
+      setHomework(body.data);
     } catch (error) {
       console.error('Error fetching homework:', error);
       toast.error("Failed to load assignment");
@@ -155,18 +146,11 @@ export default function HomeworkDetailPage() {
         });
       }
 
-      const response = await fetch(`/api/homework/responses/${responseId}/check`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: formData
+      await api.patch(`/homework/responses/${responseId}/check`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-
-      if (response.ok) {
-        toast.success("Response checked successfully");
-        fetchHomework();
-      } else {
-        throw new Error('Failed to check response');
-      }
+      toast.success("Response checked successfully");
+      fetchHomework();
     } catch (error: any) {
       toast.error(error.message);
     }
@@ -192,21 +176,13 @@ export default function HomeworkDetailPage() {
         submitData.append('response_media', file);
       });
 
-      const response = await fetch(`/api/homework/${id}/response`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
-        body: submitData
+      await api.post(`/homework/${id}/response`, submitData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
-
-      if (response.ok) {
-        toast.success("Assignment submitted!");
-        fetchHomework();
-        setResponseText("");
-        setResponseFiles([]);
-      } else {
-        const error = await response.json();
-        throw new Error(error.message || 'Submission failed');
-      }
+      toast.success("Assignment submitted!");
+      fetchHomework();
+      setResponseText("");
+      setResponseFiles([]);
     } catch (error: any) {
       toast.error(error.message);
     } finally {
@@ -284,17 +260,9 @@ export default function HomeworkDetailPage() {
               onClick={async () => {
                 if (!confirm('Delete this assignment? This cannot be undone.')) return;
                 try {
-                  const resp = await fetch(`/api/homework/${id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                  });
-                  if (resp.ok) {
-                    toast.success('Assignment deleted');
-                    navigate('/dashboard/homework');
-                  } else {
-                    const err = await resp.json();
-                    throw new Error(err.message || 'Delete failed');
-                  }
+                  await api.delete(`/homework/${id}`);
+                  toast.success('Assignment deleted');
+                  navigate('/dashboard/homework');
                 } catch (error: any) {
                   toast.error(error.message || 'Failed to delete');
                 }

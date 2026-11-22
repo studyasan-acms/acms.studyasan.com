@@ -31,6 +31,7 @@ import {
 import { format } from 'date-fns';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { toast } from 'sonner';
+import { api } from '@/services/api';
 
 interface AttendanceLog {
   id: number;
@@ -96,16 +97,8 @@ export default function ClassAttendancePage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/${sessionId}/attendance`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
-
-      const result = await response.json();
+      const response = await api.get(`/class-sessions/${sessionId}/attendance`);
+      const result = response.data;
 
       if (result.success) {
         setData(result.data);
@@ -113,7 +106,7 @@ export default function ClassAttendancePage() {
         setError(result.message || 'Failed to fetch attendance');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to fetch attendance');
+      setError(err.response?.data?.message || err.message || 'Failed to fetch attendance');
     } finally {
       setLoading(false);
     }
@@ -122,18 +115,8 @@ export default function ClassAttendancePage() {
   const handleMarkAllAsLeft = async () => {
     try {
       setMarkingLeft(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL || '/api/'}class-sessions/${sessionId}/attendance/mark-all-left`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
-          },
-        }
-      );
-
-      const result = await response.json();
+      const response = await api.post(`/class-sessions/${sessionId}/attendance/mark-all-left`);
+      const result = response.data;
 
       if (result.success) {
         toast.success(result.message || 'All participants marked as left');
@@ -142,7 +125,7 @@ export default function ClassAttendancePage() {
         toast.error(result.message || 'Failed to mark attendees as left');
       }
     } catch (err: any) {
-      toast.error(err.message || 'Failed to mark attendees as left');
+      toast.error(err.response?.data?.message || err.message || 'Failed to mark attendees as left');
     } finally {
       setMarkingLeft(false);
     }
