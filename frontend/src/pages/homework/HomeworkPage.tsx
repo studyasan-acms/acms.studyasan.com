@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 
-import { subjectService } from "@/services/api";
+import { api, subjectService } from "@/services/api";
 import { useAuthStore } from "@/store/authStore";
 
 import type { Subject } from "@/types";
@@ -102,49 +102,41 @@ export default function HomeworkPage() {
   const fetchHomework = useCallback(async () => {
     try {
       setLoading(true);
-      let response;
 
-      const params = new URLSearchParams();
-      params.set('page', String(page));
-      params.set('limit', String(limit));
+      const params = { page, limit };
+      let axiosResponse;
 
       if (isStudent) {
-        response = await fetch(`/api/homework/student?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        axiosResponse = await api.get('/homework/student', { params });
       } else {
-        const baseUrl = selectedSubject && selectedSubject !== 'all'
-          ? `/api/subjects/${selectedSubject}/homework`
-          : '/api/homework/teacher';
-        response = await fetch(`${baseUrl}?${params.toString()}`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        });
+        const url = selectedSubject && selectedSubject !== 'all'
+          ? `/subjects/${selectedSubject}/homework`
+          : '/homework/teacher';
+        axiosResponse = await api.get(url, { params });
       }
 
-      if (response.ok) {
-        const body = await response.json();
-        const payload = body.data ?? body;
-        let homeworkData: any[] = [];
-        if (Array.isArray(payload?.data)) {
-          homeworkData = payload.data;
-        } else if (Array.isArray(payload)) {
-          homeworkData = payload;
-        }
-
-        if (isStudent) {
-          homeworkData = homeworkData.map((item: any) => ({
-            ...item.homework,
-            response: item.response,
-            student: item.student,
-            _count: item.homework?._count ?? { responses: 0, assignments: 0 },
-          }));
-        }
-
-        setHomework(homeworkData);
-        const pagination = payload?.pagination || {};
-        setTotal(pagination.total || 0);
-        setTotalPages(pagination.totalPages || 1);
+      const body = axiosResponse.data;
+      const payload = body.data ?? body;
+      let homeworkData: any[] = [];
+      if (Array.isArray(payload?.data)) {
+        homeworkData = payload.data;
+      } else if (Array.isArray(payload)) {
+        homeworkData = payload;
       }
+
+      if (isStudent) {
+        homeworkData = homeworkData.map((item: any) => ({
+          ...item.homework,
+          response: item.response,
+          student: item.student,
+          _count: item.homework?._count ?? { responses: 0, assignments: 0 },
+        }));
+      }
+
+      setHomework(homeworkData);
+      const pagination = payload?.pagination || {};
+      setTotal(pagination.total || 0);
+      setTotalPages(pagination.totalPages || 1);
     } catch (error) {
       console.error('Error fetching homework:', error);
     } finally {
